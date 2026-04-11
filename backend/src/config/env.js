@@ -25,6 +25,12 @@ export const windowMs = parseInteger(process.env.RATE_LIMIT_WINDOW_MS, 15 * 60 *
 export const maxRequestsPerWindow = parseInteger(process.env.RATE_LIMIT_MAX_REQUESTS, 300);
 export const uploadRateLimitMaxRequests = parseInteger(process.env.RATE_LIMIT_UPLOAD_MAX_REQUESTS, 20);
 export const trustProxyValue = isProduction ? 1 : false;
+export const sessionCookieName = process.env.SESSION_COOKIE_NAME || "copmec_session";
+export const sessionSecret = process.env.SESSION_SECRET || (isProduction ? "" : "copmec-dev-session-secret-change-me");
+export const sessionTtlSeconds = parseInteger(process.env.SESSION_TTL_SECONDS, 12 * 60 * 60);
+export const masterUsername = process.env.MASTER_USERNAME || "Maestro";
+export const masterPassword = process.env.MASTER_PASSWORD || (isProduction ? "" : "Maestro123");
+export const publicLoginDirectoryEnabled = process.env.PUBLIC_LOGIN_DIRECTORY_ENABLED === "true" || !isProduction;
 
 export function validateEnv() {
   const missing = [];
@@ -35,6 +41,14 @@ export function validateEnv() {
 
   if (isProduction && allowedOrigins.length === 0) {
     missing.push("CORS_ALLOWED_ORIGINS");
+  }
+
+  if (!sessionSecret) {
+    missing.push("SESSION_SECRET");
+  }
+
+  if (!masterPassword) {
+    missing.push("MASTER_PASSWORD");
   }
 
   if (missing.length) {

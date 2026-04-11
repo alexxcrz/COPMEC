@@ -6,6 +6,7 @@ export async function importBoardFile(file) {
 
   const response = await fetch(`${API_BASE_URL}/api/imports`, {
     method: "POST",
+    credentials: "include",
     body: formData,
   });
 
@@ -19,7 +20,7 @@ export async function importBoardFile(file) {
 }
 
 export async function getCurrentBoard() {
-  const response = await fetch(`${API_BASE_URL}/api/boards/current`);
+  const response = await fetch(`${API_BASE_URL}/api/boards/current`, { credentials: "include" });
   if (!response.ok) {
     return null;
   }
@@ -29,7 +30,7 @@ export async function getCurrentBoard() {
 }
 
 export async function getBoards() {
-  const response = await fetch(`${API_BASE_URL}/api/boards`);
+  const response = await fetch(`${API_BASE_URL}/api/boards`, { credentials: "include" });
   if (!response.ok) {
     return [];
   }
@@ -41,6 +42,7 @@ export async function getBoards() {
 export async function createBoard(payload) {
   const response = await fetch(`${API_BASE_URL}/api/boards`, {
     method: "POST",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
     },
@@ -58,7 +60,7 @@ export async function createBoard(payload) {
 
 export async function searchBoardRows(boardId, query) {
   const searchParams = new URLSearchParams({ q: query || "" });
-  const response = await fetch(`${API_BASE_URL}/api/boards/${boardId}/search?${searchParams.toString()}`);
+  const response = await fetch(`${API_BASE_URL}/api/boards/${boardId}/search?${searchParams.toString()}`, { credentials: "include" });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));

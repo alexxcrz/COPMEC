@@ -34,6 +34,8 @@ Plataforma de gestion de datos relacionales y multimedia para reemplazar multipl
 - API con `helmet` para headers HTTP defensivos.
 - `x-powered-by` deshabilitado.
 - CORS restringido por allowlist con `CORS_ALLOWED_ORIGINS`.
+- Sesiones por cookie `HttpOnly` firmadas en backend.
+- Contraseñas hash con `scrypt` en lugar de texto plano.
 - Rate limiting global y reforzado para cargas e importaciones.
 - Limites configurables para `JSON` y formularios.
 - Variables criticas validadas al arrancar en produccion.
@@ -52,10 +54,12 @@ Pasos recomendados:
 1. Crea el blueprint desde este repositorio en Render.
 2. Configura en `copmec-api` las variables sensibles:
   - `CORS_ALLOWED_ORIGINS`
+  - `MASTER_PASSWORD`
   - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` o `CLOUDINARY_URL`
 3. `DATABASE_URL` queda conectado automaticamente desde `copmec-db` dentro del blueprint.
-4. Configura en `copmec-web` la variable `VITE_API_URL` con la URL publica real del backend.
-5. Despliega primero el backend y luego el frontend.
+4. `SESSION_SECRET` se genera automaticamente en Render por el blueprint.
+5. Configura en `copmec-web` la variable `VITE_API_BASE_URL` o `VITE_API_URL` con la URL publica real del backend.
+6. Despliega primero el backend y luego el frontend.
 
 Variables adicionales disponibles:
 
@@ -64,6 +68,10 @@ Variables adicionales disponibles:
 - `RATE_LIMIT_WINDOW_MS`
 - `RATE_LIMIT_MAX_REQUESTS`
 - `RATE_LIMIT_UPLOAD_MAX_REQUESTS`
+- `SESSION_COOKIE_NAME`
+- `SESSION_TTL_SECONDS`
+- `MASTER_USERNAME`
+- `MASTER_PASSWORD`
 
 ## Render y SPA
 

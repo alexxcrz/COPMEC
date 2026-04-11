@@ -6,6 +6,7 @@ export async function uploadFileToCloudinary(file) {
 
   const response = await fetch(`${API_BASE_URL}/api/uploads`, {
     method: "POST",
+    credentials: "include",
     body: formData,
   });
 

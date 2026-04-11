@@ -2,12 +2,15 @@ import { EventEmitter } from "node:events";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { publicLoginDirectoryEnabled } from "../config/env.js";
+import { hashPassword, isPasswordHash, verifyPassword } from "../utils/passwords.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const dataDirectory = path.resolve(__dirname, "../../data");
 const dataFilePath = path.join(dataDirectory, "warehouse-state.json");
 const warehouseEvents = new EventEmitter();
+export const BOOTSTRAP_MASTER_ID = "bootstrap-master";
 
 const ROLE_LEAD = "Lead";
 const ROLE_SR = "Senior (Sr)";
@@ -184,7 +187,7 @@ function normalizeBoardPermissions(permissions, basePermissions, board = null) {
   };
 }
 
-function normalizeState(state) {
+function normalizeState(state, previousState = null) {
   const fallbackUsers = buildSampleState().users;
   const users = Array.isArray(state.users) && state.users.length ? state.users : fallbackUsers;
   const permissions = normalizePermissions(state.permissions);
@@ -197,10 +200,20 @@ function normalizeState(state) {
     },
     users: users.map((user) => {
       const role = normalizeRole(user.role);
+      const previousUser = previousState?.users?.find((item) => item.id === user.id) || null;
+      const incomingPassword = String(user.password || "").trim();
+      const passwordHash = isPasswordHash(user.passwordHash)
+        ? user.passwordHash
+        : incomingPassword
+          ? hashPassword(incomingPassword)
+          : previousUser?.passwordHash
+            ? previousUser.passwordHash
+          : hashPassword(defaultPassword(role));
       return {
         ...user,
         role,
-        password: user.password || defaultPassword(role),
+        passwordHash,
+        password: undefined,
         managerId: user.managerId ?? null,
         createdById: user.createdById ?? user.managerId ?? null,
       };
@@ -300,25 +313,46 @@ function writeStore(state) {
   fs.writeFileSync(dataFilePath, JSON.stringify(state, null, 2), "utf8");
 }
 
+export function sanitizeUserRecord(user) {
+  if (!user) return null;
+  return {
+    ...user,
+    password: undefined,
+    passwordHash: undefined,
+  };
+}
+
+function sanitizeState(state) {
+  return {
+    ...state,
+    users: (state.users || []).map((user) => sanitizeUserRecord(user)),
+  };
+}
+
 export function getWarehouseState() {
+  return sanitizeState(readStore());
+}
+
+function getRawWarehouseState() {
   return readStore();
 }
 
 export function replaceWarehouseState(nextState) {
-  const current = readStore();
+  const current = getRawWarehouseState();
   const mergedState = normalizeState({
     ...nextState,
     revision: Number(current.revision || 0) + 1,
     updatedAt: new Date().toISOString(),
-  });
+  }, current);
 
   writeStore(mergedState);
-  warehouseEvents.emit("state", mergedState);
-  return mergedState;
+  const sanitizedState = sanitizeState(mergedState);
+  warehouseEvents.emit("state", sanitizedState);
+  return sanitizedState;
 }
 
 export function createWarehouseWeekFromCatalog() {
-  const current = readStore();
+  const current = getRawWarehouseState();
   const now = new Date();
   const weekId = makeId("week");
   const week = {
@@ -353,4 +387,40 @@ export function createWarehouseWeekFromCatalog() {
 export function subscribeWarehouseState(listener) {
   warehouseEvents.on("state", listener);
   return () => warehouseEvents.off("state", listener);
+}
+
+export function findWarehouseUserById(userId) {
+  return getRawWarehouseState().users.find((user) => user.id === userId) || null;
+}
+
+export function authenticateWarehouseUser(login, password) {
+  const normalizedLogin = String(login || "").trim().toLowerCase();
+  const user = getRawWarehouseState().users.find((item) => {
+    const email = String(item.email || "").trim().toLowerCase();
+    const name = String(item.name || "").trim().toLowerCase();
+    return email === normalizedLogin || name === normalizedLogin;
+  });
+
+  if (!user || !user.isActive) return null;
+  if (!verifyPassword(password, user.passwordHash)) return null;
+  return user;
+}
+
+export function getLoginDirectory() {
+  const current = getRawWarehouseState();
+  return {
+    system: {
+      masterBootstrapEnabled: Boolean(current.system?.masterBootstrapEnabled),
+      masterUsername: current.system?.masterUsername || "Maestro",
+    },
+    demoUsers: publicLoginDirectoryEnabled
+      ? current.users
+        .filter((user) => user.isActive)
+        .map((user) => ({ id: user.id, email: user.email, role: user.role, name: user.name }))
+      : [],
+  };
+}
+
+export function hasLeadUser() {
+  return getRawWarehouseState().users.some((user) => normalizeRole(user.role) === ROLE_LEAD);
 }

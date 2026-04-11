@@ -7,6 +7,7 @@ export async function persistCellValue(boardId, rowId, columnKey, value) {
 
   const response = await fetch(`${API_BASE_URL}/api/boards/${boardId}/cells`, {
     method: "PATCH",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
     },
@@ -28,6 +29,7 @@ export async function createBoardRow(boardId) {
 
   const response = await fetch(`${API_BASE_URL}/api/boards/${boardId}/rows`, {
     method: "POST",
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -46,6 +48,7 @@ export async function createBoardColumn(boardId, payload) {
 
   const response = await fetch(`${API_BASE_URL}/api/boards/${boardId}/columns`, {
     method: "POST",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
     },

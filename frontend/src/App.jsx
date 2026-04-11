@@ -40,14 +40,13 @@ import copmecLogo from "./assets/copmec-logo.jpeg";
 import "./App.css";
 
 const STORAGE_KEY = "sicfla.almacen.state.v1";
-const SESSION_KEY = "sicfla.almacen.session.v1";
 const SIDEBAR_COLLAPSED_KEY = "sicfla.almacen.sidebarCollapsed.v1";
 const DASHBOARD_SECTIONS_KEY = "sicfla.almacen.dashboardSections.v1";
 const BOOTSTRAP_MASTER_ID = "bootstrap-master";
 const MASTER_USERNAME = "Maestro";
-const MASTER_PASSWORD = "Maestro123";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_URL ||
   `${window.location.protocol}//${window.location.hostname}:4000/api`;
 const PAGE_BOARD = "index";
 const PAGE_CUSTOM_BOARDS = "customBoards";
@@ -643,6 +642,7 @@ function makeId(prefix) {
 
 async function requestJson(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(options.headers || {}),
@@ -651,14 +651,29 @@ async function requestJson(path, options = {}) {
   });
 
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
+    const errorPayload = await response.json().catch(() => ({}));
+    const error = new Error(errorPayload.message || `HTTP ${response.status}`);
+    error.status = response.status;
+    throw error;
   }
 
   return response.json();
 }
 
 function createWarehouseEventSource() {
-  return new EventSource(`${API_BASE_URL}/warehouse/events`);
+  return new EventSource(`${API_BASE_URL}/warehouse/events`, { withCredentials: true });
+}
+
+function buildLoginDirectoryFromState(state) {
+  return {
+    system: {
+      masterBootstrapEnabled: Boolean(state?.system?.masterBootstrapEnabled),
+      masterUsername: state?.system?.masterUsername || MASTER_USERNAME,
+    },
+    demoUsers: (state?.users || [])
+      .filter((user) => user.isActive)
+      .map((user) => ({ id: user.id, email: user.email, role: user.role, name: user.name })),
+  };
 }
 
 function isoAt(date, hours, minutes) {
@@ -1570,13 +1585,6 @@ function getManagedUserIds(users, userId) {
   return descendants;
 }
 
-function getDefaultPassword(role) {
-  if (role === ROLE_LEAD) return "lead123";
-  if (role === ROLE_SR) return "senior123";
-  if (role === ROLE_SSR) return "ssr123";
-  return "junior123";
-}
-
 function normalizeAreaOption(area) {
   return String(area || "").trim().toUpperCase();
 }
@@ -1609,7 +1617,7 @@ function normalizeUserRecord(user, fallbackManagerId = null) {
     area,
     department: area,
     jobTitle: String(user.jobTitle ?? DEFAULT_JOB_TITLE_BY_ROLE[role] ?? "").trim(),
-    password: user.password || getDefaultPassword(role),
+    password: String(user.password || ""),
     managerId: user.managerId ?? fallbackManagerId,
     createdById: user.createdById ?? fallbackManagerId,
     selfIdentityEditCount: Number.isFinite(selfIdentityEditCount) ? Math.max(0, selfIdentityEditCount) : 0,
@@ -1747,7 +1755,6 @@ function buildDemoUsers() {
       area: "INVENTARIO",
       department: "INVENTARIO",
       jobTitle: "Encargado de area",
-      password: "Lead123",
       role: ROLE_LEAD,
       isActive: true,
       managerId: null,
@@ -1760,7 +1767,6 @@ function buildDemoUsers() {
       area: "PEDIDOS",
       department: "PEDIDOS",
       jobTitle: "Supervisor senior",
-      password: "Senior123",
       role: ROLE_SR,
       isActive: true,
       managerId: leadId,
@@ -1773,7 +1779,6 @@ function buildDemoUsers() {
       area: "INVENTARIO",
       department: "INVENTARIO",
       jobTitle: "Asociado operativo",
-      password: "Demo123",
       role: ROLE_JR,
       isActive: true,
       managerId: leadId,
@@ -2674,19 +2679,20 @@ function LoginScreen({ loginForm, onChange, onSubmit, error, demoUsers }) {
             <button type="submit" className="primary-button login-submit-button">Continuar</button>
           </form>
 
-          <div className="login-demo-users">
-            <h3>Accesos disponibles</h3>
-            <div className="login-demo-list">
-              {demoUsers.map((user) => (
-                <button key={user.id} type="button" className="chip login-demo-chip" onClick={() => {
-                  onChange("email", user.email);
-                  onChange("password", user.password);
-                }}>
-                  {user.role} · {user.email}
-                </button>
-              ))}
+          {demoUsers.length ? (
+            <div className="login-demo-users">
+              <h3>Accesos disponibles</h3>
+              <div className="login-demo-list">
+                {demoUsers.map((user) => (
+                  <button key={user.id} type="button" className="chip login-demo-chip" onClick={() => {
+                    onChange("email", user.email);
+                  }}>
+                    {user.role} · {user.email}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : null}
         </article>
       </section>
     </main>
@@ -3741,10 +3747,11 @@ function App() {
   const [selectedPermissionBoardId, setSelectedPermissionBoardId] = useState("");
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [loginError, setLoginError] = useState("");
+  const [loginDirectory, setLoginDirectory] = useState(() => buildLoginDirectoryFromState(loadState()));
   const [bootstrapLeadForm, setBootstrapLeadForm] = useState({ name: "", email: "", area: "", jobTitle: "", password: "" });
   const [bootstrapLeadError, setBootstrapLeadError] = useState("");
   const [auditFilters, setAuditFilters] = useState({ scope: "all", userId: "all", period: "all", search: "" });
-  const [sessionUserId, setSessionUserId] = useState(() => localStorage.getItem(SESSION_KEY) || "");
+  const [sessionUserId, setSessionUserId] = useState("");
   const [now, setNow] = useState(Date.now());
   const [syncStatus, setSyncStatus] = useState("Conectando");
   const isHydratedRef = useRef(false);
@@ -3782,14 +3789,6 @@ function App() {
   }, [customBoardActionsMenuOpen]);
 
   useEffect(() => {
-    if (sessionUserId) {
-      localStorage.setItem(SESSION_KEY, sessionUserId);
-      return;
-    }
-    localStorage.removeItem(SESSION_KEY);
-  }, [sessionUserId]);
-
-  useEffect(() => {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
 
@@ -3803,17 +3802,65 @@ function App() {
 
   useEffect(() => {
     let active = true;
+
+    async function bootstrapAuth() {
+      try {
+        const directory = await requestJson("/auth/login-options");
+        if (active) {
+          setLoginDirectory(directory);
+        }
+      } catch {
+        if (active) {
+          setLoginDirectory(buildLoginDirectoryFromState(state));
+        }
+      }
+
+      try {
+        const session = await requestJson("/auth/session");
+        if (!active) return;
+        setSessionUserId(session.userId || "");
+      } catch {
+        if (active) {
+          setSessionUserId("");
+          isHydratedRef.current = true;
+          setSyncStatus("Modo local");
+        }
+      }
+    }
+
+    bootstrapAuth();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!sessionUserId || sessionUserId === BOOTSTRAP_MASTER_ID) {
+      if (!sessionUserId) {
+        setSyncStatus("Modo local");
+      }
+      isHydratedRef.current = true;
+      return undefined;
+    }
+
+    let active = true;
     const events = createWarehouseEventSource();
 
     async function hydrate() {
       try {
         const remoteState = await requestJson("/warehouse/state");
         if (!active) return;
+        const normalizedState = normalizeWarehouseState(remoteState);
         skipNextSyncRef.current = true;
-        setState(normalizeWarehouseState(remoteState));
+        setState(normalizedState);
+        setLoginDirectory(buildLoginDirectoryFromState(normalizedState));
         setSyncStatus("Sincronizado");
-      } catch {
+      } catch (error) {
         if (!active) return;
+        if (error?.status === 401) {
+          setSessionUserId("");
+        }
         setSyncStatus("Modo local");
       } finally {
         isHydratedRef.current = true;
@@ -3826,8 +3873,10 @@ function App() {
       try {
         const payload = JSON.parse(event.data);
         if (payload.type !== "state" || !payload.state) return;
+        const normalizedState = normalizeWarehouseState(payload.state);
         skipNextSyncRef.current = true;
-        setState(normalizeWarehouseState(payload.state));
+        setState(normalizedState);
+        setLoginDirectory(buildLoginDirectoryFromState(normalizedState));
         setSyncStatus("Sincronizado");
       } catch {
         setSyncStatus("Sincronizado");
@@ -3844,9 +3893,10 @@ function App() {
       active = false;
       events.close();
     };
-  }, []);
+  }, [sessionUserId]);
 
   useEffect(() => {
+    if (!sessionUserId) return;
     if (!isHydratedRef.current) return;
     if (skipNextSyncRef.current) {
       skipNextSyncRef.current = false;
@@ -3860,21 +3910,26 @@ function App() {
           body: JSON.stringify(state),
         });
         skipNextSyncRef.current = true;
-        setState(nextState);
+        const normalizedState = normalizeWarehouseState(nextState);
+        setState(normalizedState);
+        setLoginDirectory(buildLoginDirectoryFromState(normalizedState));
         setSyncStatus("Sincronizado");
-      } catch {
+      } catch (error) {
+        if (error?.status === 401) {
+          setSessionUserId("");
+        }
         setSyncStatus("Modo local");
       }
     }, 250);
 
     return () => window.clearTimeout(timer);
-  }, [state]);
+  }, [sessionUserId, state]);
 
   const currentUser = useMemo(
     () => state.users.find((user) => user.id === sessionUserId) || null,
     [sessionUserId, state.users],
   );
-  const isBootstrapMasterSession = sessionUserId === BOOTSTRAP_MASTER_ID && state.system?.masterBootstrapEnabled;
+  const isBootstrapMasterSession = sessionUserId === BOOTSTRAP_MASTER_ID && loginDirectory.system?.masterBootstrapEnabled;
   const catalogMap = useMemo(() => new Map(state.catalog.map((item) => [item.id, item])), [state.catalog]);
   const userMap = useMemo(() => new Map(state.users.map((item) => [item.id, item])), [state.users]);
   const activeWeek = useMemo(
@@ -4863,7 +4918,7 @@ function App() {
       department: draft.area || getUserArea(currentUser),
       jobTitle: draft.jobTitle || DEFAULT_JOB_TITLE_BY_ROLE[normalizeRole(draft.role)] || "",
       isActive: draft.isActive !== "false",
-      password: draft.password || getDefaultPassword(draft.role),
+      password: draft.password || "",
       managerId: draft.managerId || currentUser?.id || null,
       createdById: currentUser?.id || null,
     });
@@ -4910,12 +4965,10 @@ function App() {
   function updateUserModalRole(nextRole) {
     setUserModal((current) => {
       const shouldRefreshJobTitle = current.mode === "create" || current.jobTitle === (DEFAULT_JOB_TITLE_BY_ROLE[current.role] || "");
-      const shouldRefreshPassword = current.mode === "create" || current.password === getDefaultPassword(current.role);
       const nextDraft = {
         ...current,
         role: nextRole,
         jobTitle: shouldRefreshJobTitle ? (DEFAULT_JOB_TITLE_BY_ROLE[nextRole] || "") : current.jobTitle,
-        password: shouldRefreshPassword ? getDefaultPassword(nextRole) : current.password,
         permissionPageId: "",
       };
 
@@ -4939,7 +4992,7 @@ function App() {
       area: getUserArea(currentUser),
       jobTitle: DEFAULT_JOB_TITLE_BY_ROLE[defaultRole] || "",
       isActive: "true",
-      password: getDefaultPassword(defaultRole),
+      password: "",
       managerId: currentUser?.id || "",
     });
     setUserModal({
@@ -4960,7 +5013,7 @@ function App() {
       area: getUserArea(user),
       jobTitle: getUserJobTitle(user),
       isActive: String(user.isActive),
-      password: user.password || "",
+      password: "",
       managerId: user.managerId || "",
     });
     setUserModal({
@@ -4971,6 +5024,7 @@ function App() {
 
   function submitUserModal() {
     if (!currentUser || !actionPermissions.manageUsers || !canCreateRole(currentUser.role, userModal.role) && userModal.mode === "create") return;
+    const trimmedPassword = userModal.password.trim();
     const payload = {
       id: userModal.id || makeId("usr"),
       name: userModal.name.trim(),
@@ -4980,13 +5034,15 @@ function App() {
       department: userModal.area.trim(),
       jobTitle: userModal.jobTitle.trim(),
       isActive: userModal.isActive === "true",
-      password: userModal.password || getDefaultPassword(userModal.role),
       managerId: userModal.managerId || currentUser?.id || null,
       createdById: userModal.mode === "create" ? currentUser?.id || null : userModal.managerId || currentUser?.id || null,
       ...(userModal.mode === "create" ? { selfIdentityEditCount: 0 } : {}),
     };
 
-    if (!payload.name || !payload.email || !payload.area || !payload.jobTitle) return;
+    if (!payload.name || !payload.email || !payload.area || !payload.jobTitle || (userModal.mode === "create" && !trimmedPassword)) return;
+    if (trimmedPassword) {
+      payload.password = trimmedPassword;
+    }
 
     setState((current) => ({
       ...(() => {
@@ -5780,30 +5836,43 @@ function App() {
     setBootstrapLeadError("");
   }
 
-  function handleLogin(event) {
+  async function handleLogin(event) {
     event.preventDefault();
-    if (state.system?.masterBootstrapEnabled && normalizeKey(loginForm.email) === normalizeKey(MASTER_USERNAME) && loginForm.password === MASTER_PASSWORD) {
-      setSessionUserId(BOOTSTRAP_MASTER_ID);
-      return;
-    }
+    setLoginError("");
+    try {
+      const authResult = await requestJson("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email: loginForm.email, password: loginForm.password }),
+      });
+      setSessionUserId(authResult.userId || "");
+      if (authResult.isBootstrapMaster) {
+        setPage(PAGE_DASHBOARD);
+        return;
+      }
 
-    const user = state.users.find((item) => normalizeKey(item.email) === normalizeKey(loginForm.email) || normalizeKey(item.name) === normalizeKey(loginForm.email));
-    if (!user || user.password !== loginForm.password) {
-      setLoginError("Credenciales inválidas.");
-      return;
+      const remoteState = await requestJson("/warehouse/state");
+      const normalizedState = normalizeWarehouseState(remoteState);
+      skipNextSyncRef.current = true;
+      setState(normalizedState);
+      setLoginDirectory(buildLoginDirectoryFromState(normalizedState));
+      const nextUser = normalizedState.users.find((user) => user.id === authResult.userId) || authResult.user;
+      setPage(nextUser?.role === ROLE_JR ? PAGE_CUSTOM_BOARDS : PAGE_DASHBOARD);
+      setSyncStatus("Sincronizado");
+    } catch (error) {
+      setLoginError(error?.message || "Credenciales inválidas.");
     }
-    if (!user.isActive) {
-      setLoginError("El usuario está inactivo.");
-      return;
-    }
-    setSessionUserId(user.id);
-    setPage(user.role === ROLE_JR ? PAGE_CUSTOM_BOARDS : PAGE_DASHBOARD);
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    try {
+      await requestJson("/auth/logout", { method: "POST" });
+    } catch {
+      // Ignore logout transport errors and clear client session anyway.
+    }
     setSessionUserId("");
     setLoginForm({ email: "", password: "" });
     setLoginError("");
+    setLoginDirectory(buildLoginDirectoryFromState(state));
   }
 
   function handleCreateFirstLead(event) {
@@ -6209,7 +6278,7 @@ function App() {
     setResetUserPasswordModal({
       open: true,
       userId: user.id,
-      password: user.password || getDefaultPassword(user.role),
+      password: "",
       message: "",
     });
   }
@@ -6243,7 +6312,7 @@ function App() {
   }
 
   if (!currentUser) {
-    return <LoginScreen loginForm={loginForm} onChange={updateLoginField} onSubmit={handleLogin} error={loginError} demoUsers={state.system?.masterBootstrapEnabled ? [{ id: BOOTSTRAP_MASTER_ID, role: "Usuario maestro", email: MASTER_USERNAME, password: MASTER_PASSWORD }] : state.users.filter((user) => user.isActive)} />;
+    return <LoginScreen loginForm={loginForm} onChange={updateLoginField} onSubmit={handleLogin} error={loginError} demoUsers={loginDirectory.system?.masterBootstrapEnabled ? [{ id: BOOTSTRAP_MASTER_ID, role: "Usuario maestro", email: loginDirectory.system?.masterUsername || MASTER_USERNAME }] : loginDirectory.demoUsers} />;
   }
 
   return (

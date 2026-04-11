@@ -1,4 +1,5 @@
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import express from "express";
 import { rateLimit } from "express-rate-limit";
 import helmet from "helmet";
@@ -12,6 +13,8 @@ import {
   urlencodedBodyLimit,
   windowMs,
 } from "./config/env.js";
+import { attachAuthSession, requireAuth, requireTrustedOrigin } from "./middleware/auth.middleware.js";
+import { authRouter } from "./routes/auth.routes.js";
 import { boardRouter } from "./routes/board.routes.js";
 import { errorHandler } from "./middleware/error.middleware.js";
 import { healthRouter } from "./routes/health.routes.js";
@@ -31,6 +34,7 @@ app.use(helmet({
 
 app.use(cors({
   origin: corsOriginValidator,
+  credentials: true,
   methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   maxAge: 86400,
@@ -53,6 +57,9 @@ const uploadLimiter = rateLimit({
   message: { message: "Límite temporal alcanzado para cargas o importaciones." },
 });
 
+app.use(cookieParser());
+app.use(attachAuthSession);
+app.use(requireTrustedOrigin);
 app.use(express.json({ limit: jsonBodyLimit, strict: true }));
 app.use(express.urlencoded({ extended: true, limit: urlencodedBodyLimit }));
 
@@ -65,9 +72,10 @@ app.get("/", (_req, res) => {
 });
 
 app.use("/api/health", healthRouter);
-app.use("/api/boards", boardRouter);
-app.use("/api/imports", uploadLimiter, importRouter);
-app.use("/api/uploads", uploadLimiter, uploadRouter);
-app.use("/api/warehouse", warehouseRouter);
+app.use("/api/auth", authRouter);
+app.use("/api/boards", requireAuth, boardRouter);
+app.use("/api/imports", requireAuth, uploadLimiter, importRouter);
+app.use("/api/uploads", requireAuth, uploadLimiter, uploadRouter);
+app.use("/api/warehouse", requireAuth, warehouseRouter);
 
 app.use(errorHandler);
