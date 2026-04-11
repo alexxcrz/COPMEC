@@ -29,6 +29,45 @@ Plataforma de gestion de datos relacionales y multimedia para reemplazar multipl
 - `npm run build`: construye frontend
 - `npm run start`: ejecuta backend en modo produccion
 
+## Seguridad aplicada
+
+- API con `helmet` para headers HTTP defensivos.
+- `x-powered-by` deshabilitado.
+- CORS restringido por allowlist con `CORS_ALLOWED_ORIGINS`.
+- Rate limiting global y reforzado para cargas e importaciones.
+- Limites configurables para `JSON` y formularios.
+- Variables criticas validadas al arrancar en produccion.
+- `.gitignore` ampliado para evitar publicar secretos y artefactos.
+
+## Deploy en Render
+
+El repositorio ya incluye `render.yaml` para desplegar:
+
+- `copmec-api`: servicio web Node/Express.
+- `copmec-web`: sitio estatico de Vite.
+
+Pasos recomendados:
+
+1. Crea el blueprint desde este repositorio en Render.
+2. Configura en `copmec-api` las variables sensibles:
+  - `DATABASE_URL`
+  - `CORS_ALLOWED_ORIGINS`
+  - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` o `CLOUDINARY_URL`
+3. Configura en `copmec-web` la variable `VITE_API_URL` con la URL publica real del backend.
+4. Despliega primero el backend y luego el frontend.
+
+Variables adicionales disponibles:
+
+- `JSON_BODY_LIMIT`
+- `URLENCODED_BODY_LIMIT`
+- `RATE_LIMIT_WINDOW_MS`
+- `RATE_LIMIT_MAX_REQUESTS`
+- `RATE_LIMIT_UPLOAD_MAX_REQUESTS`
+
+## Render y SPA
+
+El frontend incluye `_redirects` para que las rutas del cliente React funcionen correctamente en Render Static Sites.
+
 ## Estado por fases
 
 - Fase 1: completada
