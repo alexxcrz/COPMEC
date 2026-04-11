@@ -93,6 +93,20 @@ const DEFAULT_DASHBOARD_SECTION_STATE = {
   causes: false,
   alerts: false,
 };
+const DEFAULT_ADMIN_TAB = "catalog";
+
+function getInitialRouteState() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    page: params.get("page") || PAGE_DASHBOARD,
+    adminTab: params.get("tab") || DEFAULT_ADMIN_TAB,
+    selectedBoardId: params.get("board") || "",
+    selectedWeekId: params.get("week") || "",
+    selectedHistoryWeekId: params.get("history") || "",
+  };
+}
+
+const INITIAL_ROUTE_STATE = getInitialRouteState();
 
 const BOARD_FIELD_TYPES = [
   { value: "text", label: "Texto libre" },
@@ -674,6 +688,16 @@ function buildLoginDirectoryFromState(state) {
       .filter((user) => user.isActive)
       .map((user) => ({ id: user.id, email: user.email, role: user.role, name: user.name })),
   };
+}
+
+function buildRouteQuery({ page, adminTab, selectedBoardId, selectedWeekId, selectedHistoryWeekId }) {
+  const params = new URLSearchParams();
+  if (page && page !== PAGE_DASHBOARD) params.set("page", page);
+  if (adminTab && adminTab !== DEFAULT_ADMIN_TAB && page === PAGE_ADMIN) params.set("tab", adminTab);
+  if (selectedBoardId && page === PAGE_CUSTOM_BOARDS) params.set("board", selectedBoardId);
+  if (selectedWeekId && page === PAGE_DASHBOARD) params.set("week", selectedWeekId);
+  if (selectedHistoryWeekId && page === PAGE_HISTORY) params.set("history", selectedHistoryWeekId);
+  return params.toString();
 }
 
 function isoAt(date, hours, minutes) {
@@ -3684,7 +3708,7 @@ function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChange, onS
 
 function App() {
   const [state, setState] = useState(loadState);
-  const [page, setPage] = useState(PAGE_DASHBOARD);
+  const [page, setPage] = useState(INITIAL_ROUTE_STATE.page);
   const [dashboardSectionsOpen, setDashboardSectionsOpen] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(DASHBOARD_SECTIONS_KEY) || "null");
@@ -3693,14 +3717,14 @@ function App() {
       return DEFAULT_DASHBOARD_SECTION_STATE;
     }
   });
-  const [adminTab, setAdminTab] = useState("catalog");
+  const [adminTab, setAdminTab] = useState(INITIAL_ROUTE_STATE.adminTab);
   const [selectedWeekId, setSelectedWeekId] = useState(() => {
     const initial = loadState();
-    return initial.weeks.find((week) => week.isActive)?.id || initial.weeks[0]?.id || "";
+    return INITIAL_ROUTE_STATE.selectedWeekId || initial.weeks.find((week) => week.isActive)?.id || initial.weeks[0]?.id || "";
   });
   const [selectedHistoryWeekId, setSelectedHistoryWeekId] = useState(() => {
     const initial = loadState();
-    return initial.weeks[0]?.id || "";
+    return INITIAL_ROUTE_STATE.selectedHistoryWeekId || initial.weeks[0]?.id || "";
   });
   const [boardFilters, setBoardFilters] = useState({ responsibleId: "all", activityId: "all", status: "all" });
   const [inventorySearch, setInventorySearch] = useState("");
@@ -3742,7 +3766,7 @@ function App() {
   const [deleteBoardId, setDeleteBoardId] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true");
-  const [selectedCustomBoardId, setSelectedCustomBoardId] = useState("");
+  const [selectedCustomBoardId, setSelectedCustomBoardId] = useState(INITIAL_ROUTE_STATE.selectedBoardId);
   const [customBoardActionsMenuOpen, setCustomBoardActionsMenuOpen] = useState(false);
   const [selectedPermissionBoardId, setSelectedPermissionBoardId] = useState("");
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
@@ -3754,6 +3778,8 @@ function App() {
   const [sessionUserId, setSessionUserId] = useState("");
   const [now, setNow] = useState(Date.now());
   const [syncStatus, setSyncStatus] = useState("Conectando");
+  const [securityEvents, setSecurityEvents] = useState([]);
+  const [securityEventsStatus, setSecurityEventsStatus] = useState("idle");
   const isHydratedRef = useRef(false);
   const skipNextSyncRef = useRef(false);
   const contentShellRef = useRef(null);
@@ -3799,6 +3825,18 @@ function App() {
   useEffect(() => {
     document.title = "COPMEC";
   }, []);
+
+  useEffect(() => {
+    const nextQuery = buildRouteQuery({
+      page,
+      adminTab,
+      selectedBoardId: selectedCustomBoardId,
+      selectedWeekId,
+      selectedHistoryWeekId,
+    });
+    const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}${window.location.hash || ""}`;
+    window.history.replaceState(null, "", nextUrl);
+  }, [adminTab, page, selectedCustomBoardId, selectedHistoryWeekId, selectedWeekId]);
 
   useEffect(() => {
     let active = true;
@@ -4453,6 +4491,33 @@ function App() {
       }
     }
   }, [currentUser, isBootstrapMasterSession, sessionUserId]);
+
+  useEffect(() => {
+    if (!currentUser || (ROLE_LEVEL[currentUser.role] || 0) < ROLE_LEVEL[ROLE_SR]) {
+      setSecurityEvents([]);
+      setSecurityEventsStatus("idle");
+      return;
+    }
+
+    let active = true;
+    setSecurityEventsStatus("loading");
+
+    requestJson("/auth/security-events?limit=150")
+      .then((payload) => {
+        if (!active) return;
+        setSecurityEvents(Array.isArray(payload.data) ? payload.data : []);
+        setSecurityEventsStatus("ready");
+      })
+      .catch(() => {
+        if (!active) return;
+        setSecurityEvents([]);
+        setSecurityEventsStatus("error");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [currentUser?.id, currentUser?.role]);
 
   const actionPermissions = useMemo(
     () => Object.fromEntries(ACTION_DEFINITIONS.map((item) => [item.id, canDoAction(currentUser, item.id, normalizedPermissions)])),
@@ -7093,6 +7158,44 @@ function App() {
                       </tbody>
                     </table>
                   </div>
+                </article>
+
+                <article className="surface-card full-width table-card admin-surface-card permissions-card">
+                  <div className="card-header-row">
+                    <div>
+                      <h3>Eventos de seguridad</h3>
+                      <p>Registro técnico de autenticación, accesos bloqueados y operaciones sensibles del backend.</p>
+                    </div>
+                    <span className="chip primary">{securityEvents.length} eventos</span>
+                  </div>
+                  {securityEventsStatus === "loading" ? <p className="inline-message">Cargando eventos de seguridad...</p> : null}
+                  {securityEventsStatus === "error" ? <p className="validation-text">No se pudieron cargar los eventos de seguridad.</p> : null}
+                  {securityEvents.length ? (
+                    <div className="table-wrap permissions-matrix-wrap">
+                      <table className="admin-table-clean permissions-matrix-table">
+                        <thead>
+                          <tr>
+                            <th>Fecha</th>
+                            <th>Evento</th>
+                            <th>Usuario</th>
+                            <th>Ruta</th>
+                            <th>Detalle</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {securityEvents.slice(0, 60).map((entry, index) => (
+                            <tr key={`${entry.timestamp || "evt"}-${entry.eventType || index}-${index}`}>
+                              <td>{entry.timestamp ? formatDateTime(entry.timestamp) : "N/A"}</td>
+                              <td><span className="chip">{entry.eventType || "evento"}</span></td>
+                              <td>{entry.userId ? userMap.get(entry.userId)?.name || entry.userId : entry.authType || "anónimo"}</td>
+                              <td>{entry.method || ""} {entry.path || ""}</td>
+                              <td>{Object.entries(entry.details || {}).map(([key, value]) => `${key}: ${value}`).join(" · ") || entry.origin || entry.ip || "Sin detalle"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : securityEventsStatus === "ready" ? <p className="inline-message">Aún no hay eventos de seguridad registrados.</p> : null}
                 </article>
               </>
             ) : null}

@@ -1,4 +1,5 @@
 import { importBoardFromFile } from "../services/import.service.js";
+import { auditSecurityEvent } from "../services/security-events.service.js";
 
 export async function importBoardController(req, res, next) {
   try {
@@ -10,6 +11,13 @@ export async function importBoardController(req, res, next) {
     }
 
     const board = await importBoardFromFile(req.file);
+
+    auditSecurityEvent("board_imported", req, {
+      originalName: req.file.originalname,
+      mimeType: req.file.mimetype,
+      boardId: board?.id,
+      boardName: board?.name,
+    });
 
     return res.status(201).json({
       ok: true,

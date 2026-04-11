@@ -1,0 +1,66 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const dataDirectory = path.resolve(__dirname, "../../data");
+const logFilePath = path.join(dataDirectory, "security-events.log");
+
+function ensureLogFile() {
+  if (!fs.existsSync(dataDirectory)) {
+    fs.mkdirSync(dataDirectory, { recursive: true });
+  }
+  if (!fs.existsSync(logFilePath)) {
+    fs.writeFileSync(logFilePath, "", "utf8");
+  }
+}
+
+function limitValue(value, maxLength = 400) {
+  const normalized = typeof value === "string" ? value : JSON.stringify(value);
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength)}...` : normalized;
+}
+
+export function auditSecurityEvent(eventType, req, details = {}) {
+  try {
+    ensureLogFile();
+    const entry = {
+      timestamp: new Date().toISOString(),
+      eventType,
+      method: req?.method || null,
+      path: req?.originalUrl || req?.path || null,
+      ip: req?.ip || req?.socket?.remoteAddress || null,
+      origin: req?.headers?.origin || null,
+      userAgent: req?.headers?.["user-agent"] || null,
+      authType: req?.auth?.type || null,
+      userId: req?.auth?.userId || req?.auth?.user?.id || null,
+      role: req?.auth?.role || req?.auth?.user?.role || null,
+      details: Object.fromEntries(Object.entries(details).map(([key, value]) => [key, limitValue(value)])),
+    };
+    fs.appendFileSync(logFilePath, `${JSON.stringify(entry)}\n`, "utf8");
+  } catch {
+    // Security logging must not break the request flow.
+  }
+}
+
+export function readSecurityEvents(limit = 200) {
+  try {
+    ensureLogFile();
+    const raw = fs.readFileSync(logFilePath, "utf8");
+    return raw
+      .split(/\r?\n/)
+      .filter(Boolean)
+      .slice(-Math.max(1, Math.min(Number(limit) || 200, 1000)))
+      .reverse()
+      .map((line) => {
+        try {
+          return JSON.parse(line);
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}

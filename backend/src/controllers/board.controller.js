@@ -8,6 +8,7 @@ import {
   searchBoardRows,
   updateBoardCell,
 } from "../services/board.persistence.js";
+import { auditSecurityEvent } from "../services/security-events.service.js";
 
 const DEFAULT_COLUMNS = [
   { key: "codigo", label: "Codigo", type: "text" },
@@ -49,6 +50,8 @@ export async function createBoardController(req, res, next) {
       columns,
       rows,
     });
+
+    auditSecurityEvent("board_created", req, { boardId: board?.id, boardName: board?.name });
 
     return res.status(201).json({ ok: true, data: board });
   } catch (error) {
@@ -115,6 +118,15 @@ export async function updateBoardCellController(req, res, next) {
 
     await updateBoardCell({ boardId, rowId, columnKey, value });
 
+    auditSecurityEvent("board_cell_updated", req, {
+      boardId,
+      rowId,
+      columnKey,
+      fileUrl: value && typeof value === "object" ? value.url || null : null,
+      fileThumbUrl: value && typeof value === "object" ? value.thumbUrl || null : null,
+      filePublicId: value && typeof value === "object" ? value.publicId || null : null,
+    });
+
     return res.json({ ok: true });
   } catch (error) {
     return next(error);
@@ -132,6 +144,8 @@ export async function createBoardRowController(req, res, next) {
         message: "No se pudo crear la fila.",
       });
     }
+
+    auditSecurityEvent("board_row_created", req, { boardId, rowId: row?.id });
 
     return res.status(201).json({ ok: true, data: row });
   } catch (error) {
@@ -168,6 +182,8 @@ export async function createBoardColumnController(req, res, next) {
       type,
       options,
     });
+
+    auditSecurityEvent("board_column_created", req, { boardId, columnId: column?.id, key, type });
 
     return res.status(201).json({ ok: true, data: column });
   } catch (error) {

@@ -1,8 +1,20 @@
 import { verifySessionToken } from "../config/auth.js";
 import { allowedOrigins, isProduction, sessionCookieName } from "../config/env.js";
+import { auditSecurityEvent } from "../services/security-events.service.js";
 import { findWarehouseUserById } from "../services/warehouse.store.js";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+const ROLE_LEAD = "Lead";
+const ROLE_SR = "Senior (Sr)";
+const ROLE_SSR = "Semi-Senior (Ssr)";
+const ROLE_JR = "Junior (Jr)";
+
+const ROLE_LEVEL = {
+  [ROLE_JR]: 1,
+  [ROLE_SSR]: 2,
+  [ROLE_SR]: 3,
+  [ROLE_LEAD]: 4,
+};
 
 export function attachAuthSession(req, _res, next) {
   const token = req.cookies?.[sessionCookieName];
@@ -37,10 +49,60 @@ export function attachAuthSession(req, _res, next) {
 
 export function requireAuth(req, res, next) {
   if (!req.auth) {
+    auditSecurityEvent("auth_required", req);
     res.status(401).json({ ok: false, message: "Sesión requerida." });
     return;
   }
   next();
+}
+
+export function requireRoles(allowedRoles) {
+  const roleSet = new Set(Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles]);
+  return (req, res, next) => {
+    if (!req.auth) {
+      auditSecurityEvent("auth_required", req, { allowedRoles: Array.from(roleSet) });
+      res.status(401).json({ ok: false, message: "Sesión requerida." });
+      return;
+    }
+
+    const currentRole = req.auth.role || req.auth.user?.role || null;
+    if (req.auth.type === "master") {
+      next();
+      return;
+    }
+
+    if (roleSet.has(currentRole)) {
+      next();
+      return;
+    }
+
+    auditSecurityEvent("forbidden_role", req, { allowedRoles: Array.from(roleSet), currentRole });
+    res.status(403).json({ ok: false, message: "No tienes permisos para realizar esta acción." });
+  };
+}
+
+export function requireMinimumRole(minimumRole) {
+  return (req, res, next) => {
+    if (!req.auth) {
+      auditSecurityEvent("auth_required", req, { minimumRole });
+      res.status(401).json({ ok: false, message: "Sesión requerida." });
+      return;
+    }
+
+    if (req.auth.type === "master") {
+      next();
+      return;
+    }
+
+    const currentRole = req.auth.role || req.auth.user?.role || null;
+    if ((ROLE_LEVEL[currentRole] || 0) >= (ROLE_LEVEL[minimumRole] || Number.MAX_SAFE_INTEGER)) {
+      next();
+      return;
+    }
+
+    auditSecurityEvent("forbidden_role", req, { minimumRole, currentRole });
+    res.status(403).json({ ok: false, message: "No tienes permisos suficientes para esta acción." });
+  };
 }
 
 export function requireTrustedOrigin(req, res, next) {
@@ -65,5 +127,6 @@ export function requireTrustedOrigin(req, res, next) {
     return;
   }
 
+  auditSecurityEvent("blocked_origin", req, { origin });
   res.status(403).json({ ok: false, message: "Origen no confiable." });
 }
