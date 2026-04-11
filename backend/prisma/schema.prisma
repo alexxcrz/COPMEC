@@ -1,0 +1,100 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ColumnType {
+  text
+  number
+  checkbox
+  select
+  file
+  date
+}
+
+model Board {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  columns             Column[] @relation("BoardColumns")
+  rows                Row[]
+  columnsAsLinkTarget Column[] @relation("ColumnLinkTarget")
+
+  @@index([name])
+}
+
+model Column {
+  id            String     @id @default(cuid())
+  boardId       String
+  name          String
+  key           String
+  type          ColumnType
+  position      Int
+  isRequired    Boolean    @default(false)
+  settings      Json?
+  targetBoardId String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  board       Board  @relation("BoardColumns", fields: [boardId], references: [id], onDelete: Cascade)
+  targetBoard Board? @relation("ColumnLinkTarget", fields: [targetBoardId], references: [id], onDelete: SetNull)
+  cells       Cell[]
+
+  @@unique([boardId, key])
+  @@index([boardId, position])
+  @@index([targetBoardId])
+}
+
+model Row {
+  id        String   @id @default(cuid())
+  boardId   String
+  position  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cells Cell[]
+
+  @@index([boardId, position])
+}
+
+model Cell {
+  id       String @id @default(cuid())
+  rowId    String
+  columnId String
+
+  valueText    String?
+  valueNumber  Decimal?  @db.Decimal(18, 4)
+  valueBoolean Boolean?
+  valueDate    DateTime?
+  valueJson    Json?
+
+  fileUrl      String?
+  fileThumbUrl String?
+  filePublicId String?
+  fileMimeType String?
+
+  linkedBoardId String?
+  linkedRowId   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  row    Row    @relation(fields: [rowId], references: [id], onDelete: Cascade)
+  column Column @relation(fields: [columnId], references: [id], onDelete: Cascade)
+
+  @@unique([rowId, columnId])
+  @@index([columnId])
+  @@index([linkedBoardId, linkedRowId])
+}

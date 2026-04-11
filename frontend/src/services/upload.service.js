@@ -1,0 +1,19 @@
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+
+export async function uploadFileToCloudinary(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${API_BASE_URL}/api/uploads`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "No se pudo subir el archivo.");
+  }
+
+  const payload = await response.json();
+  return payload.data;
+}

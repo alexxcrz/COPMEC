@@ -1,0 +1,23 @@
+.media-page {
+  border: 1px solid var(--sicfla-border);
+  border-radius: 1.5rem;
+  padding: 1rem;
+  background: #ffffff;
+}
+
+.media-page h2 {
+  margin: 0;
+  color: #093232;
+}
+
+.media-page p {
+  color: #365151;
+}
+
+.media-placeholder {
+  margin-top: 1rem;
+  border: 1px dashed var(--sicfla-border);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  background: #f6fcfb;
+}

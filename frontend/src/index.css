@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+:root {
+  --sicfla-brand: #133d33;
+  --sicfla-brand-soft: #1b6a57;
+  --sicfla-bg: #edf4ef;
+  --sicfla-card: #ffffff;
+  --sicfla-border: #cfe0d8;
+  --sicfla-text: #17332c;
+  --sicfla-muted: #678178;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(117, 172, 146, 0.2) 0%, transparent 30%),
+    radial-gradient(circle at 95% 0%, rgba(255, 210, 168, 0.26) 0%, transparent 24%),
+    linear-gradient(180deg, #f7faf8 0%, #edf4ef 100%),
+    var(--sicfla-bg);
+  color: var(--sicfla-text);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
