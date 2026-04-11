@@ -1,5 +1,7 @@
 import multer from "multer";
 import path from "node:path";
+import { auditSecurityEvent } from "../services/security-events.service.js";
+import { isAllowedImportBuffer } from "../utils/file-signatures.js";
 
 const storage = multer.memoryStorage();
 const ALLOWED_EXTENSIONS = new Set([".csv", ".xlsx", ".xls"]);
@@ -23,6 +25,24 @@ function fileFilter(_req, file, cb) {
 
 export const importUpload = multer({
   storage,
-  limits: { fileSize: 12 * 1024 * 1024 },
+  limits: { fileSize: 12 * 1024 * 1024, files: 1, fields: 10, parts: 12 },
   fileFilter,
 });
+
+export function requireValidImportSignature(req, res, next) {
+  if (!req.file) {
+    next();
+    return;
+  }
+
+  if (!isAllowedImportBuffer(req.file)) {
+    auditSecurityEvent("blocked_import_signature", req, {
+      originalName: req.file.originalname,
+      mimeType: req.file.mimetype,
+    });
+    res.status(400).json({ ok: false, message: "El contenido del archivo importado no coincide con el formato esperado." });
+    return;
+  }
+
+  next();
+}

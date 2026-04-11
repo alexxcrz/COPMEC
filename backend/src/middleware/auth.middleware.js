@@ -1,7 +1,12 @@
-import { verifySessionToken } from "../config/auth.js";
+import { clearSessionCookie, verifySessionToken } from "../config/auth.js";
 import { allowedOrigins, isProduction, sessionCookieName } from "../config/env.js";
 import { auditSecurityEvent } from "../services/security-events.service.js";
-import { findWarehouseUserById, validateWarehouseStateMutation } from "../services/warehouse.store.js";
+import {
+  canUserDoBoardAction,
+  canUserDoWarehouseAction,
+  findWarehouseUserById,
+  validateWarehouseStateMutation,
+} from "../services/warehouse.store.js";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 const ROLE_LEAD = "Lead";
@@ -16,7 +21,7 @@ const ROLE_LEVEL = {
   [ROLE_LEAD]: 4,
 };
 
-export function attachAuthSession(req, _res, next) {
+export function attachAuthSession(req, res, next) {
   const token = req.cookies?.[sessionCookieName];
   if (!token) {
     req.auth = null;
@@ -27,13 +32,14 @@ export function attachAuthSession(req, _res, next) {
   try {
     const payload = verifySessionToken(token);
     if (payload.type === "master") {
-      req.auth = { type: "master", userId: null, role: "Lead" };
+      req.auth = { type: "master", userId: "bootstrap-master", role: "Lead" };
       next();
       return;
     }
 
     const user = findWarehouseUserById(payload.userId);
     if (!user || !user.isActive) {
+      clearSessionCookie(res);
       req.auth = null;
       next();
       return;
@@ -42,6 +48,7 @@ export function attachAuthSession(req, _res, next) {
     req.auth = { type: "user", userId: user.id, role: user.role, user };
     next();
   } catch {
+    clearSessionCookie(res);
     req.auth = null;
     next();
   }
@@ -143,4 +150,58 @@ export function requireWarehouseStateWriteAccess(req, res, next) {
     ok: false,
     message: "No tienes permisos para actualizar este estado del sistema.",
   });
+}
+
+export function requireWarehouseAction(actionId) {
+  return (req, res, next) => {
+    if (!req.auth) {
+      auditSecurityEvent("auth_required", req, { actionId });
+      res.status(401).json({ ok: false, message: "Sesión requerida." });
+      return;
+    }
+
+    if (req.auth.type === "master") {
+      next();
+      return;
+    }
+
+    if (canUserDoWarehouseAction(req.auth.user, actionId)) {
+      next();
+      return;
+    }
+
+    auditSecurityEvent("forbidden_action", req, { actionId, userId: req.auth.userId });
+    res.status(403).json({ ok: false, message: "No tienes permisos para realizar esta acción." });
+  };
+}
+
+export function requireBoardAction(actionId, options = {}) {
+  const { boardIdParam = "boardId" } = options;
+
+  return (req, res, next) => {
+    if (!req.auth) {
+      auditSecurityEvent("auth_required", req, { actionId, boardIdParam });
+      res.status(401).json({ ok: false, message: "Sesión requerida." });
+      return;
+    }
+
+    if (req.auth.type === "master") {
+      next();
+      return;
+    }
+
+    const boardId = req.params?.[boardIdParam] || req.body?.[boardIdParam] || req.body?.boardId;
+    if (!boardId) {
+      res.status(400).json({ ok: false, message: "No se encontró el tablero objetivo." });
+      return;
+    }
+
+    if (canUserDoBoardAction(req.auth.user, boardId, actionId)) {
+      next();
+      return;
+    }
+
+    auditSecurityEvent("forbidden_board_action", req, { actionId, boardId, userId: req.auth.userId });
+    res.status(403).json({ ok: false, message: "No tienes permisos para operar en este tablero." });
+  };
 }

@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { parse } from "csv-parse/sync";
 
 function cleanHeader(value, index) {
@@ -37,7 +37,22 @@ function describeFormula(formula) {
   };
 }
 
-export function parseImportFile(file) {
+function normalizeCellValue(value) {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "object") {
+    if (Array.isArray(value.richText)) {
+      return value.richText.map((part) => part.text || "").join("");
+    }
+    if (value.text) return String(value.text);
+    if (value.hyperlink && value.text) return String(value.text);
+    if (value.result !== undefined && value.formula) return normalizeCellValue(value.result);
+    if (value instanceof Date) return value.toISOString();
+  }
+  if (value instanceof Date) return value.toISOString();
+  return value;
+}
+
+export async function parseImportFile(file) {
   const ext = file.originalname.split(".").pop()?.toLowerCase();
 
   if (ext === "csv") {
@@ -52,36 +67,44 @@ export function parseImportFile(file) {
     return { headers, rows: records, formulasByRow: [], formulaLibrary: [] };
   }
 
-  const workbook = XLSX.read(file.buffer, { type: "buffer" });
-  const firstSheetName = workbook.SheetNames[0];
-  const firstSheet = workbook.Sheets[firstSheetName];
-  const range = XLSX.utils.decode_range(firstSheet["!ref"] || "A1:A1");
-  const headerRow = range.s.r;
+  if (ext !== "xlsx" && ext !== "xlsm" && ext !== "xls") {
+    throw new Error("Formato de archivo no compatible para importación.");
+  }
+
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(file.buffer);
+  const firstSheet = workbook.worksheets[0];
+
+  if (!firstSheet || firstSheet.rowCount === 0) {
+    return { headers: [], rows: [], formulasByRow: [], formulaLibrary: [] };
+  }
 
   const headers = [];
-  for (let col = range.s.c; col <= range.e.c; col += 1) {
-    const headerAddress = XLSX.utils.encode_cell({ r: headerRow, c: col });
-    const headerCell = firstSheet[headerAddress];
-    headers.push(cleanHeader(headerCell?.v, col - range.s.c));
+  const headerRow = firstSheet.getRow(1);
+  const columnCount = headerRow.actualCellCount || headerRow.cellCount || firstSheet.columnCount || 0;
+  for (let col = 1; col <= columnCount; col += 1) {
+    const headerCell = headerRow.getCell(col);
+    headers.push(cleanHeader(normalizeCellValue(headerCell.value), col - 1));
   }
 
   const rows = [];
   const formulasByRow = [];
   const formulaLibraryMap = new Map();
 
-  for (let rowIndex = headerRow + 1; rowIndex <= range.e.r; rowIndex += 1) {
+  for (let rowIndex = 2; rowIndex <= firstSheet.rowCount; rowIndex += 1) {
+    const row = firstSheet.getRow(rowIndex);
     const rowObject = {};
     const formulaObject = {};
 
-    for (let col = range.s.c; col <= range.e.c; col += 1) {
-      const header = headers[col - range.s.c];
-      const cellAddress = XLSX.utils.encode_cell({ r: rowIndex, c: col });
-      const cell = firstSheet[cellAddress];
+    for (let col = 1; col <= headers.length; col += 1) {
+      const header = headers[col - 1];
+      const cell = row.getCell(col);
+      const rawValue = normalizeCellValue(cell.value);
 
-      rowObject[header] = cell?.v ?? "";
+      rowObject[header] = rawValue ?? "";
 
-      if (cell?.f) {
-        const formula = `=${cell.f}`;
+      if (cell.formula) {
+        const formula = `=${cell.formula}`;
         formulaObject[header] = formula;
         if (!formulaLibraryMap.has(formula)) {
           formulaLibraryMap.set(formula, describeFormula(formula));

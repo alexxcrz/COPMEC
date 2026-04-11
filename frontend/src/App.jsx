@@ -1459,6 +1459,81 @@ function decodeCsvBuffer(buffer) {
   return new TextDecoder("windows-1252", { fatal: false }).decode(buffer);
 }
 
+function parseCsvTextToObjects(text) {
+  const rows = [];
+  let currentRow = [];
+  let currentValue = "";
+  let isInsideQuotes = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    const nextCharacter = text[index + 1];
+
+    if (character === '"') {
+      if (isInsideQuotes && nextCharacter === '"') {
+        currentValue += '"';
+        index += 1;
+      } else {
+        isInsideQuotes = !isInsideQuotes;
+      }
+      continue;
+    }
+
+    if (character === "," && !isInsideQuotes) {
+      currentRow.push(currentValue);
+      currentValue = "";
+      continue;
+    }
+
+    if ((character === "\n" || character === "\r") && !isInsideQuotes) {
+      if (character === "\r" && nextCharacter === "\n") {
+        index += 1;
+      }
+      currentRow.push(currentValue);
+      if (currentRow.some((value) => String(value).trim() !== "")) {
+        rows.push(currentRow);
+      }
+      currentRow = [];
+      currentValue = "";
+      continue;
+    }
+
+    currentValue += character;
+  }
+
+  currentRow.push(currentValue);
+  if (currentRow.some((value) => String(value).trim() !== "")) {
+    rows.push(currentRow);
+  }
+
+  if (!rows.length) return [];
+
+  const headers = rows[0].map((header, index) => String(header || `columna_${index + 1}`).trim());
+  return rows.slice(1).map((row) =>
+    headers.reduce((accumulator, header, index) => {
+      accumulator[header] = row[index] ?? "";
+      return accumulator;
+    }, {}),
+  );
+}
+
+async function getExcelJsModule() {
+  const module = await import("exceljs/dist/exceljs.min.js");
+  return module.default || module;
+}
+
+function triggerBrowserDownload(buffer, fileName, mimeType) {
+  const blob = new Blob([buffer], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
 function sanitizeImportedText(value) {
   if (typeof value !== "string") return value;
 
@@ -1497,20 +1572,43 @@ function mapInventoryImportRow(row, index) {
 }
 
 async function parseInventoryImportFile(file) {
-  const XLSX = await import("xlsx");
   const buffer = await file.arrayBuffer();
   const isCsv = /\.csv$/i.test(file.name);
-  const workbook = isCsv
-    ? XLSX.read(decodeCsvBuffer(buffer), { type: "string", raw: false })
-    : XLSX.read(buffer, { type: "array" });
-  const firstSheetName = workbook.SheetNames[0];
+  let rows = [];
 
-  if (!firstSheetName) {
-    throw new Error("No se encontró ninguna hoja en el archivo.");
+  if (isCsv) {
+    rows = parseCsvTextToObjects(decodeCsvBuffer(buffer));
+  } else {
+    const ExcelJS = await getExcelJsModule();
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+    const firstSheet = workbook.worksheets[0];
+
+    if (!firstSheet) {
+      throw new Error("No se encontró ninguna hoja en el archivo.");
+    }
+
+    const headerRow = firstSheet.getRow(1);
+    const headers = [];
+    const columnCount = headerRow.actualCellCount || headerRow.cellCount || firstSheet.columnCount || 0;
+
+    for (let columnIndex = 1; columnIndex <= columnCount; columnIndex += 1) {
+      headers.push(String(headerRow.getCell(columnIndex).text || `columna_${columnIndex}`).trim());
+    }
+
+    rows = [];
+    for (let rowIndex = 2; rowIndex <= firstSheet.rowCount; rowIndex += 1) {
+      const worksheetRow = firstSheet.getRow(rowIndex);
+      const row = headers.reduce((accumulator, header, columnIndex) => {
+        accumulator[header] = worksheetRow.getCell(columnIndex + 1).text || "";
+        return accumulator;
+      }, {});
+
+      if (Object.values(row).some((value) => String(value).trim() !== "")) {
+        rows.push(row);
+      }
+    }
   }
-
-  const sheet = workbook.Sheets[firstSheetName];
-  const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
   return rows
     .map((row, index) => mapInventoryImportRow(row, index))
@@ -1518,19 +1616,27 @@ async function parseInventoryImportFile(file) {
 }
 
 async function downloadInventoryTemplateFile() {
-  const XLSX = await import("xlsx");
-  const worksheet = XLSX.utils.json_to_sheet([
-    {
-      codigo: "ALM-001",
-      nombre: "Detergente industrial",
-      presentacion: "Bidon 20L",
-      piezas_por_caja: 4,
-      cajas_por_tarima: 30,
-    },
-  ]);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Inventario");
-  XLSX.writeFile(workbook, "plantilla-inventario.xlsx");
+  const ExcelJS = await getExcelJsModule();
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Inventario");
+
+  worksheet.columns = [
+    { header: "codigo", key: "codigo", width: 18 },
+    { header: "nombre", key: "nombre", width: 28 },
+    { header: "presentacion", key: "presentacion", width: 20 },
+    { header: "piezas_por_caja", key: "piezas_por_caja", width: 18 },
+    { header: "cajas_por_tarima", key: "cajas_por_tarima", width: 18 },
+  ];
+  worksheet.addRow({
+    codigo: "ALM-001",
+    nombre: "Detergente industrial",
+    presentacion: "Bidon 20L",
+    piezas_por_caja: 4,
+    cajas_por_tarima: 30,
+  });
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  triggerBrowserDownload(buffer, "plantilla-inventario.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 }
 
 function getResponsibleVisual(userName) {
@@ -6186,13 +6292,24 @@ function App() {
     if (!selectedCustomBoard || !canDoBoardAction(currentUser, selectedCustomBoard)) return;
 
     try {
-      const XLSX = await import("xlsx");
+      const ExcelJS = await getExcelJsModule();
       const rows = getBoardExportRows(selectedCustomBoard);
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Tablero");
+      const exportRows = rows.length ? rows : [{ Estado: "Sin filas registradas" }];
+      const headers = Object.keys(exportRows[0] || {});
 
-      const worksheet = XLSX.utils.json_to_sheet(rows.length ? rows : [{ Estado: "Sin filas registradas" }]);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Tablero");
-      XLSX.writeFile(workbook, `${normalizeKey(selectedCustomBoard.name).replace(/\s+/g, "-") || "tablero-operativo"}.xlsx`);
+      worksheet.columns = headers.map((header) => ({ header, key: header, width: Math.max(header.length + 4, 18) }));
+      exportRows.forEach((row) => {
+        worksheet.addRow(row);
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      triggerBrowserDownload(
+        buffer,
+        `${normalizeKey(selectedCustomBoard.name).replace(/\s+/g, "-") || "tablero-operativo"}.xlsx`,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
       setBoardRuntimeFeedback({ tone: "success", message: `Se exportó ${selectedCustomBoard.name} a Excel.` });
     } catch {
       setBoardRuntimeFeedback({ tone: "danger", message: "No se pudo exportar el tablero a Excel." });

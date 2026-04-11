@@ -59,7 +59,7 @@ export async function importBoardFromFile(file) {
     rows,
     formulasByRow,
     formulaLibrary,
-  } = parseImportFile(file);
+  } = await parseImportFile(file);
 
   if (!headers.length) {
     throw new Error("No se encontraron encabezados en el archivo importado.");

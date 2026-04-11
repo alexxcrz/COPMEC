@@ -1,11 +1,8 @@
 import { Router } from "express";
 import { importBoardController } from "../controllers/import.controller.js";
-import { requireRoles } from "../middleware/auth.middleware.js";
-import { importUpload } from "../middleware/import.middleware.js";
-
-const ROLE_LEAD = "Lead";
-const ROLE_SR = "Senior (Sr)";
+import { requireWarehouseAction } from "../middleware/auth.middleware.js";
+import { importUpload, requireValidImportSignature } from "../middleware/import.middleware.js";
 
 export const importRouter = Router();
 
-importRouter.post("/", requireRoles([ROLE_LEAD, ROLE_SR]), importUpload.single("file"), importBoardController);
+importRouter.post("/", requireWarehouseAction("importInventory"), importUpload.single("file"), requireValidImportSignature, importBoardController);

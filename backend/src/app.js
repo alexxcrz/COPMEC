@@ -4,6 +4,7 @@ import express from "express";
 import { rateLimit } from "express-rate-limit";
 import helmet from "helmet";
 import {
+  authRateLimitMaxRequests,
   corsOriginValidator,
   isProduction,
   jsonBodyLimit,
@@ -21,6 +22,7 @@ import { healthRouter } from "./routes/health.routes.js";
 import { importRouter } from "./routes/import.routes.js";
 import { uploadRouter } from "./routes/upload.routes.js";
 import { warehouseRouter } from "./routes/warehouse.routes.js";
+import { auditSecurityEvent } from "./services/security-events.service.js";
 
 export const app = express();
 
@@ -46,7 +48,10 @@ app.use(rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => req.path === "/api/health",
-  message: { message: "Demasiadas solicitudes. Intenta de nuevo en unos minutos." },
+  handler: (req, res) => {
+    auditSecurityEvent("rate_limited", req, { scope: "global" });
+    res.status(429).json({ message: "Demasiadas solicitudes. Intenta de nuevo en unos minutos." });
+  },
 }));
 
 const uploadLimiter = rateLimit({
@@ -54,12 +59,31 @@ const uploadLimiter = rateLimit({
   max: uploadRateLimitMaxRequests,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: "Límite temporal alcanzado para cargas o importaciones." },
+  handler: (req, res) => {
+    auditSecurityEvent("rate_limited", req, { scope: "uploads" });
+    res.status(429).json({ message: "Límite temporal alcanzado para cargas o importaciones." });
+  },
+});
+
+const authLimiter = rateLimit({
+  windowMs,
+  max: authRateLimitMaxRequests,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    auditSecurityEvent("rate_limited", req, { scope: "auth_login" });
+    res.status(429).json({ message: "Demasiados intentos de autenticación. Intenta más tarde." });
+  },
 });
 
 app.use(cookieParser());
 app.use(attachAuthSession);
 app.use(requireTrustedOrigin);
+app.use("/api", (_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, max-age=0");
+  res.setHeader("Pragma", "no-cache");
+  next();
+});
 app.use(express.json({ limit: jsonBodyLimit, strict: true }));
 app.use(express.urlencoded({ extended: true, limit: urlencodedBodyLimit }));
 
@@ -72,6 +96,7 @@ app.get("/", (_req, res) => {
 });
 
 app.use("/api/health", healthRouter);
+app.use("/api/auth/login", authLimiter);
 app.use("/api/auth", authRouter);
 app.use("/api/boards", requireAuth, boardRouter);
 app.use("/api/imports", requireAuth, uploadLimiter, importRouter);

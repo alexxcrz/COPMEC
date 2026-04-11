@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireRoles, requireWarehouseStateWriteAccess } from "../middleware/auth.middleware.js";
+import { requireWarehouseAction, requireWarehouseStateWriteAccess } from "../middleware/auth.middleware.js";
 import { auditSecurityEvent } from "../services/security-events.service.js";
 import {
   createWarehouseWeekFromCatalog,
@@ -7,9 +7,6 @@ import {
   replaceWarehouseState,
   subscribeWarehouseState,
 } from "../services/warehouse.store.js";
-
-const ROLE_LEAD = "Lead";
-const ROLE_SR = "Senior (Sr)";
 
 export const warehouseRouter = Router();
 
@@ -27,7 +24,7 @@ warehouseRouter.put("/state", requireWarehouseStateWriteAccess, (req, res) => {
   res.json(nextState);
 });
 
-warehouseRouter.post("/weeks", requireRoles([ROLE_LEAD, ROLE_SR]), (_req, res) => {
+warehouseRouter.post("/weeks", requireWarehouseAction("createWeek"), (_req, res) => {
   const nextState = createWarehouseWeekFromCatalog();
   auditSecurityEvent("warehouse_week_created", _req, {
     revision: nextState?.revision,

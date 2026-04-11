@@ -4,6 +4,7 @@ import {
   masterPassword,
   masterUsername,
   sessionCookieName,
+  sessionCookieSameSite,
   sessionSecret,
   sessionTtlSeconds,
 } from "./env.js";
@@ -27,9 +28,10 @@ export function getSessionCookieOptions() {
   return {
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction ? "none" : "lax",
+    sameSite: sessionCookieSameSite,
     maxAge: sessionTtlSeconds * 1000,
     path: "/",
+    priority: "high",
   };
 }
 

@@ -1,5 +1,5 @@
 {
-  "revision": 1538,
+  "revision": 1548,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro"
@@ -11,14 +11,14 @@
       "name": "Alejandro Cruz Martinez",
       "email": "alecruz.almacen@blife.com.mx",
       "department": "ESTO",
-      "password": "081227",
       "role": "Lead",
       "isActive": true,
       "managerId": "usr-lead-nu7wt83h",
       "createdById": "bootstrap-master",
       "area": "ESTO",
       "jobTitle": "Encargado de Mejora Conitua",
-      "selfIdentityEditCount": 0
+      "selfIdentityEditCount": 0,
+      "passwordHash": "scrypt$4eaf57ab7084be09683241bd94122f70$df9c9dd170f22161dafb274aa2516e3c6133fc93e417793e84fcf61d06c63a9f388fb60969b85d021f9c811b3dc853eaf294477e82ff6835bfa127e1f421a02e"
     },
     {
       "id": "usr-a2hd8qtb",
@@ -29,10 +29,10 @@
       "department": "ESTO",
       "jobTitle": "Encargado Establecimiento",
       "isActive": true,
-      "password": "lead123",
       "managerId": "usr-lead-nu7wt83h",
       "createdById": "usr-lead-nu7wt83h",
-      "selfIdentityEditCount": 0
+      "selfIdentityEditCount": 0,
+      "passwordHash": "scrypt$b5fe7f026efd828ca39d3c27260e86f6$9a5e22f8548c1a770204e3481c54d19cc9ed834f35793f43ea56da36924587462621507d2f6eaf069675e2ec330b2faa7e2a0a1cf12f55031015642ac566b6f6"
     }
   ],
   "weeks": [
@@ -3801,7 +3801,7 @@
     }
   ],
   "controlBoards": [],
-  "updatedAt": "2026-04-11T13:00:03.801Z",
+  "updatedAt": "2026-04-11T15:04:00.647Z",
   "permissions": {
     "pages": {
       "index": {

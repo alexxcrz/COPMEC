@@ -149,6 +149,16 @@ function normalizePermissions(permissions) {
   };
 }
 
+function userMatchesPermissionEntry(user, entry) {
+  if (!user || !entry) return false;
+  const normalizedRole = normalizeRole(user.role);
+  if (Array.isArray(entry.roles) && entry.roles.includes(normalizedRole)) return true;
+  if (Array.isArray(entry.userIds) && entry.userIds.includes(user.id)) return true;
+  const department = String(user.department || user.area || "").trim();
+  if (department && Array.isArray(entry.departments) && entry.departments.includes(department)) return true;
+  return false;
+}
+
 function buildBoardPermissions(basePermissions, board = null) {
   const visibilityUserIds = Array.from(new Set([board?.ownerId, ...(board?.accessUserIds || [])].filter(Boolean)));
   return {
@@ -400,6 +410,27 @@ export function canManageWarehouseBoard(user, board) {
   if (board.createdById === user.id || board.ownerId === user.id) return true;
   if ((board.accessUserIds || []).includes(user.id)) return true;
   return false;
+}
+
+export function canUserDoWarehouseAction(user, actionId, permissions = null) {
+  if (!user || !actionId) return false;
+  const normalizedRole = normalizeRole(user.role);
+  if (normalizedRole === ROLE_LEAD) return true;
+
+  const resolvedPermissions = permissions || getRawWarehouseState().permissions;
+  const normalizedPermissions = normalizePermissions(resolvedPermissions);
+  const userOverride = normalizedPermissions.userOverrides?.[user.id]?.actions?.[actionId];
+  if (typeof userOverride === "boolean") return userOverride;
+  return userMatchesPermissionEntry(user, normalizedPermissions.actions?.[actionId]);
+}
+
+export function canUserDoBoardAction(user, boardId, actionId) {
+  if (!user || !boardId || !actionId) return false;
+  const currentState = getRawWarehouseState();
+  const board = (currentState.controlBoards || []).find((item) => item.id === boardId);
+  if (!board) return false;
+  if (!canManageWarehouseBoard(user, board)) return false;
+  return canUserDoWarehouseAction(user, actionId, currentState.permissions);
 }
 
 export function validateWarehouseStateMutation(auth, nextState) {

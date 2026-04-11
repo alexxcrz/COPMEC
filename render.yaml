@@ -26,6 +26,8 @@ services:
         generateValue: true
       - key: SESSION_TTL_SECONDS
         value: 43200
+      - key: SESSION_COOKIE_SAMESITE
+        value: lax
       - key: PUBLIC_LOGIN_DIRECTORY_ENABLED
         value: false
       - key: MASTER_USERNAME
@@ -40,6 +42,8 @@ services:
         value: 900000
       - key: RATE_LIMIT_MAX_REQUESTS
         value: 300
+      - key: RATE_LIMIT_AUTH_MAX_REQUESTS
+        value: 12
       - key: RATE_LIMIT_UPLOAD_MAX_REQUESTS
         value: 20
       - key: CLOUDINARY_CLOUD_NAME
@@ -73,6 +77,12 @@ services:
       - path: /*
         name: Referrer-Policy
         value: strict-origin-when-cross-origin
+      - path: /*
+        name: Permissions-Policy
+        value: accelerometer=(), autoplay=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), microphone=(), payment=(), usb=()
+      - path: /*
+        name: Content-Security-Policy
+        value: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https: wss:; media-src 'self' blob: https:; worker-src 'self' blob:; form-action 'self'
     envVars:
       - key: NODE_VERSION
         value: 22

@@ -8,6 +8,7 @@ export function errorHandler(err, _req, res, _next) {
   const isCorsError = lowerMessage.includes("origin not allowed by cors");
   const isPayloadTooLarge = err?.code === "LIMIT_FILE_SIZE";
   const isBadUpload = err?.name === "MulterError";
+  const isClientError = Number(err?.status || 0) >= 400 && Number(err?.status || 0) < 500;
 
   const status = err.status || (isCorsError ? 403 : isPayloadTooLarge ? 413 : isBadUpload ? 400 : isDbAuthError ? 503 : 500);
 
@@ -19,6 +20,8 @@ export function errorHandler(err, _req, res, _next) {
         ? "Origen no permitido por la configuracion de seguridad."
         : isPayloadTooLarge
           ? "El archivo excede el tamano maximo permitido."
-          : err.message || "Unexpected server error.",
+          : isBadUpload || isClientError
+            ? err.message || "Solicitud invalida."
+            : "Unexpected server error.",
   });
 }
