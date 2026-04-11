@@ -393,6 +393,100 @@ export function findWarehouseUserById(userId) {
   return getRawWarehouseState().users.find((user) => user.id === userId) || null;
 }
 
+export function canManageWarehouseBoard(user, board) {
+  if (!user || !board) return false;
+  const normalizedRole = normalizeRole(user.role);
+  if (normalizedRole === ROLE_LEAD) return true;
+  if (board.createdById === user.id || board.ownerId === user.id) return true;
+  if ((board.accessUserIds || []).includes(user.id)) return true;
+  return false;
+}
+
+export function validateWarehouseStateMutation(auth, nextState) {
+  if (!auth) {
+    return { ok: false, reason: "auth_required" };
+  }
+
+  if (auth.type === "master") {
+    return { ok: true };
+  }
+
+  const currentUser = findWarehouseUserById(auth.userId);
+  if (!currentUser?.isActive) {
+    return { ok: false, reason: "user_not_active" };
+  }
+
+  const currentState = getRawWarehouseState();
+  const nextUsers = Array.isArray(nextState?.users) ? nextState.users : currentState.users;
+  const nextBoards = Array.isArray(nextState?.controlBoards) ? nextState.controlBoards : currentState.controlBoards;
+  const normalizedRole = normalizeRole(currentUser.role);
+
+  if (normalizedRole !== ROLE_JR) {
+    return { ok: true };
+  }
+
+  const restrictedKeys = ["users", "permissions", "weeks", "catalog", "inventoryItems", "boardTemplates", "activities", "pauseLogs", "controlRows", "areaCatalog", "system"];
+  for (const key of restrictedKeys) {
+    const currentValue = JSON.stringify(currentState[key] ?? null);
+    const nextValue = JSON.stringify((nextState?.[key] ?? currentState[key]) ?? null);
+    if (currentValue !== nextValue) {
+      return { ok: false, reason: "restricted_section_changed", section: key };
+    }
+  }
+
+  if (nextUsers.length !== currentState.users.length) {
+    return { ok: false, reason: "user_list_changed" };
+  }
+
+  if (nextBoards.length !== currentState.controlBoards.length) {
+    return { ok: false, reason: "board_list_changed" };
+  }
+
+  const nextBoardMap = new Map(nextBoards.map((board) => [board.id, board]));
+  for (const currentBoard of currentState.controlBoards) {
+    const nextBoard = nextBoardMap.get(currentBoard.id);
+    if (!nextBoard) {
+      return { ok: false, reason: "board_missing", boardId: currentBoard.id };
+    }
+
+    const canManage = canManageWarehouseBoard(currentUser, currentBoard);
+    const currentStructure = JSON.stringify({
+      name: currentBoard.name,
+      description: currentBoard.description,
+      createdById: currentBoard.createdById,
+      ownerId: currentBoard.ownerId,
+      accessUserIds: currentBoard.accessUserIds || [],
+      settings: currentBoard.settings || {},
+      fields: currentBoard.fields || [],
+      permissions: currentBoard.permissions || {},
+    });
+    const nextStructure = JSON.stringify({
+      name: nextBoard.name,
+      description: nextBoard.description,
+      createdById: nextBoard.createdById,
+      ownerId: nextBoard.ownerId,
+      accessUserIds: nextBoard.accessUserIds || [],
+      settings: nextBoard.settings || {},
+      fields: nextBoard.fields || [],
+      permissions: nextBoard.permissions || {},
+    });
+
+    if (currentStructure !== nextStructure) {
+      return { ok: false, reason: "board_structure_changed", boardId: currentBoard.id };
+    }
+
+    if (!canManage) {
+      const currentRows = JSON.stringify(currentBoard.rows || []);
+      const nextRows = JSON.stringify(nextBoard.rows || []);
+      if (currentRows !== nextRows) {
+        return { ok: false, reason: "board_rows_changed_without_access", boardId: currentBoard.id };
+      }
+    }
+  }
+
+  return { ok: true };
+}
+
 export function authenticateWarehouseUser(login, password) {
   const normalizedLogin = String(login || "").trim().toLowerCase();
   const user = getRawWarehouseState().users.find((item) => {

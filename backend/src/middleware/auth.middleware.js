@@ -1,7 +1,7 @@
 import { verifySessionToken } from "../config/auth.js";
 import { allowedOrigins, isProduction, sessionCookieName } from "../config/env.js";
 import { auditSecurityEvent } from "../services/security-events.service.js";
-import { findWarehouseUserById } from "../services/warehouse.store.js";
+import { findWarehouseUserById, validateWarehouseStateMutation } from "../services/warehouse.store.js";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 const ROLE_LEAD = "Lead";
@@ -129,4 +129,18 @@ export function requireTrustedOrigin(req, res, next) {
 
   auditSecurityEvent("blocked_origin", req, { origin });
   res.status(403).json({ ok: false, message: "Origen no confiable." });
+}
+
+export function requireWarehouseStateWriteAccess(req, res, next) {
+  const result = validateWarehouseStateMutation(req.auth, req.body || {});
+  if (result.ok) {
+    next();
+    return;
+  }
+
+  auditSecurityEvent("forbidden_state_mutation", req, result);
+  res.status(result.reason === "auth_required" ? 401 : 403).json({
+    ok: false,
+    message: "No tienes permisos para actualizar este estado del sistema.",
+  });
 }
