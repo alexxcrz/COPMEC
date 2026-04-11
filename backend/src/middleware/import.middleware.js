@@ -1,15 +1,17 @@
 import multer from "multer";
+import path from "node:path";
 
 const storage = multer.memoryStorage();
+const ALLOWED_EXTENSIONS = new Set([".csv", ".xlsx", ".xls"]);
+const ALLOWED_MIME_TYPES = new Set([
+  "text/csv",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+]);
 
 function fileFilter(_req, file, cb) {
-  const valid =
-    file.mimetype === "text/csv" ||
-    file.mimetype === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
-    file.mimetype === "application/vnd.ms-excel" ||
-    file.originalname.endsWith(".csv") ||
-    file.originalname.endsWith(".xlsx") ||
-    file.originalname.endsWith(".xls");
+  const extension = path.extname(String(file.originalname || "")).toLowerCase();
+  const valid = ALLOWED_MIME_TYPES.has(file.mimetype) && ALLOWED_EXTENSIONS.has(extension);
 
   if (!valid) {
     cb(new Error("Archivo no soportado. Usa CSV o XLSX."));

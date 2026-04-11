@@ -45,16 +45,17 @@ El repositorio ya incluye `render.yaml` para desplegar:
 
 - `copmec-api`: servicio web Node/Express.
 - `copmec-web`: sitio estatico de Vite.
+- `copmec-db`: base de datos PostgreSQL administrada por Render.
 
 Pasos recomendados:
 
 1. Crea el blueprint desde este repositorio en Render.
 2. Configura en `copmec-api` las variables sensibles:
-  - `DATABASE_URL`
   - `CORS_ALLOWED_ORIGINS`
   - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` o `CLOUDINARY_URL`
-3. Configura en `copmec-web` la variable `VITE_API_URL` con la URL publica real del backend.
-4. Despliega primero el backend y luego el frontend.
+3. `DATABASE_URL` queda conectado automaticamente desde `copmec-db` dentro del blueprint.
+4. Configura en `copmec-web` la variable `VITE_API_URL` con la URL publica real del backend.
+5. Despliega primero el backend y luego el frontend.
 
 Variables adicionales disponibles:
 
@@ -67,6 +68,10 @@ Variables adicionales disponibles:
 ## Render y SPA
 
 El frontend incluye `_redirects` para que las rutas del cliente React funcionen correctamente en Render Static Sites.
+
+## Variables de frontend
+
+- Usa [frontend/.env.example](frontend/.env.example) como base local para `VITE_API_URL`.
 
 ## Estado por fases
 

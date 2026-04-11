@@ -5,6 +5,7 @@ services:
     rootDir: backend
     plan: free
     buildCommand: npm install && npx prisma generate
+    preDeployCommand: npx prisma db push --skip-generate
     startCommand: npm start
     healthCheckPath: /api/health
     autoDeployTrigger: commit
@@ -14,7 +15,9 @@ services:
       - key: NODE_VERSION
         value: 22
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: copmec-db
+          property: connectionString
       - key: CORS_ALLOWED_ORIGINS
         sync: false
       - key: JSON_BODY_LIMIT
@@ -63,3 +66,11 @@ services:
         value: 22
       - key: VITE_API_URL
         sync: false
+
+databases:
+  - name: copmec-db
+    plan: free
+    region: oregon
+    databaseName: copmec
+    user: copmec
+    postgresMajorVersion: "17"

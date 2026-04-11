@@ -1,4 +1,5 @@
 import multer from "multer";
+import path from "node:path";
 
 const ALLOWED_MIME_TYPES = [
   "image/jpeg",
@@ -8,10 +9,16 @@ const ALLOWED_MIME_TYPES = [
   "application/pdf",
 ];
 
+const ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".pdf"]);
+
 const storage = multer.memoryStorage();
 
 function fileFilter(_req, file, cb) {
-  if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+  const extension = path.extname(String(file.originalname || "")).toLowerCase();
+  const hasValidMimeType = ALLOWED_MIME_TYPES.includes(file.mimetype);
+  const hasValidExtension = ALLOWED_EXTENSIONS.has(extension);
+
+  if (hasValidMimeType && hasValidExtension) {
     cb(null, true);
     return;
   }
