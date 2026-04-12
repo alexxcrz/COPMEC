@@ -36,6 +36,14 @@ import {
   Zap,
 } from "lucide-react";
 import { Modal } from "./components/Modal";
+import { BoardBuilderModal, BoardComponentStudioModal } from "./components/ModalesConstructorTableros";
+import GestionInventario from "./paginas/GestionInventario";
+import GestionUsuarios from "./paginas/GestionUsuarios";
+import HistorialSemanas from "./paginas/HistorialSemanas";
+import MisTableros from "./paginas/MisTableros";
+import PaginaNoEncontrada from "./paginas/PaginaNoEncontrada";
+import PanelIndicadores from "./paginas/PanelIndicadores";
+import TablerosCreados from "./paginas/TablerosCreados";
 import copmecLogo from "./assets/copmec-logo.jpeg";
 import "./App.css";
 
@@ -57,6 +65,45 @@ const PAGE_INVENTORY = "inventory";
 const PAGE_USERS = "users";
 const PAGE_NOT_FOUND = "404";
 
+const PAGE_ROUTE_SLUGS = {
+  [PAGE_DASHBOARD]: "dashboard",
+  [PAGE_CUSTOM_BOARDS]: "mis-tableros",
+  [PAGE_BOARD]: "creador-de-tableros",
+  [PAGE_ADMIN]: "creador-de-tableros",
+  [PAGE_HISTORY]: "historial",
+  [PAGE_INVENTORY]: "inventario",
+  [PAGE_USERS]: "administrador",
+  [PAGE_NOT_FOUND]: "404",
+};
+
+const PAGE_ROUTE_ALIASES = {
+  dashboard: PAGE_DASHBOARD,
+  [PAGE_DASHBOARD]: PAGE_DASHBOARD,
+  "mis-tableros": PAGE_CUSTOM_BOARDS,
+  [PAGE_CUSTOM_BOARDS]: PAGE_CUSTOM_BOARDS,
+  "creador-de-tableros": PAGE_BOARD,
+  "tableros-creados": PAGE_BOARD,
+  [PAGE_BOARD]: PAGE_BOARD,
+  constructor: PAGE_BOARD,
+  [PAGE_ADMIN]: PAGE_BOARD,
+  historial: PAGE_HISTORY,
+  [PAGE_HISTORY]: PAGE_HISTORY,
+  inventario: PAGE_INVENTORY,
+  [PAGE_INVENTORY]: PAGE_INVENTORY,
+  administrador: PAGE_USERS,
+  [PAGE_USERS]: PAGE_USERS,
+  [PAGE_NOT_FOUND]: PAGE_NOT_FOUND,
+};
+
+const EMPTY_LOGIN_DIRECTORY = {
+  system: {
+    masterBootstrapEnabled: false,
+    masterUsername: null,
+    showBootstrapMasterHint: false,
+  },
+  demoUsers: [],
+};
+
 const ROLE_LEAD = "Lead";
 const ROLE_SR = "Senior (Sr)";
 const ROLE_SSR = "Semi-Senior (Ssr)";
@@ -66,6 +113,12 @@ const STATUS_PENDING = "Pendiente";
 const STATUS_RUNNING = "En curso";
 const STATUS_PAUSED = "Pausado";
 const STATUS_FINISHED = "Terminado";
+const INVENTORY_DOMAIN_BASE = "base";
+const INVENTORY_DOMAIN_CLEANING = "cleaning";
+const INVENTORY_DOMAIN_ORDERS = "orders";
+const INVENTORY_MOVEMENT_RESTOCK = "restock";
+const INVENTORY_MOVEMENT_CONSUME = "consume";
+const INVENTORY_MOVEMENT_TRANSFER = "transfer";
 
 const CONTROL_STATUS_OPTIONS = ["Pendiente", "En curso", "Completado", "Bloqueado"];
 const USER_ROLES = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
@@ -76,6 +129,7 @@ const ROLE_LEVEL = {
   [ROLE_SR]: 3,
   [ROLE_LEAD]: 4,
 };
+const TEMPORARY_PASSWORD_MIN_LENGTH = 4;
 const PROFILE_SELF_EDIT_LIMIT = 1;
 const DEFAULT_AREA_OPTIONS = ["ESTO", "TRANSPORTE", "REGULATORIO", "CALIDAD", "INVENTARIO", "PEDIDOS", "RETAIL"];
 const INVENTORY_LOOKUP_LOGISTICS_FIELD = "inventoryLookupLogistics";
@@ -83,7 +137,7 @@ const DEFAULT_JOB_TITLE_BY_ROLE = {
   [ROLE_LEAD]: "Encargado de área",
   [ROLE_SR]: "Supervisor senior",
   [ROLE_SSR]: "Coordinador de operación",
-  [ROLE_JR]: "Asociado operativo",
+  [ROLE_JR]: "Player operativo",
 };
 const DASHBOARD_CHART_PALETTE = ["#0ea5e9", "#14b8a6", "#84cc16", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#64748b"];
 const DEFAULT_DASHBOARD_SECTION_STATE = {
@@ -94,12 +148,40 @@ const DEFAULT_DASHBOARD_SECTION_STATE = {
   alerts: false,
 };
 const DEFAULT_ADMIN_TAB = "catalog";
+const ACTIVITY_FREQUENCY_OPTIONS = [
+  { value: "daily", label: "Diario" },
+  { value: "every2days", label: "Cada 2 días" },
+  { value: "every3days", label: "Cada 3 días" },
+  { value: "weekdays", label: "Lunes a viernes" },
+  { value: "twiceWeek", label: "2 veces por semana" },
+  { value: "threeTimesWeek", label: "3 veces por semana" },
+  { value: "fourTimesWeek", label: "4 veces por semana" },
+  { value: "fiveTimesWeek", label: "5 veces por semana" },
+  { value: "sixTimesWeek", label: "6 veces por semana" },
+  { value: "weekly", label: "Semanal" },
+];
+const ACTIVITY_FREQUENCY_LABELS = Object.fromEntries(ACTIVITY_FREQUENCY_OPTIONS.map((item) => [item.value, item.label]));
+const ACTIVITY_FREQUENCY_DAY_OFFSETS = {
+  daily: [0, 1, 2, 3, 4, 5, 6],
+  every2days: [0, 2, 4, 6],
+  every3days: [0, 3, 6],
+  weekdays: [0, 1, 2, 3, 4],
+  twiceWeek: [0, 3],
+  threeTimesWeek: [0, 2, 4],
+  fourTimesWeek: [0, 1, 3, 5],
+  fiveTimesWeek: [0, 1, 2, 3, 4],
+  sixTimesWeek: [0, 1, 2, 3, 4, 5],
+  weekly: [0],
+};
 
 function getInitialRouteState() {
+  const pathnameSegments = window.location.pathname.split("/").filter(Boolean);
+  const pathPage = String(pathnameSegments[0] || "").trim().toLowerCase();
   const params = new URLSearchParams(window.location.search);
+  const routePage = String(params.get("page") || "").trim();
   return {
-    page: params.get("page") || PAGE_DASHBOARD,
-    adminTab: params.get("tab") || DEFAULT_ADMIN_TAB,
+    page: PAGE_ROUTE_ALIASES[pathPage] || PAGE_ROUTE_ALIASES[routePage] || PAGE_DASHBOARD,
+    adminTab: normalizeAdminTab(params.get("tab") || DEFAULT_ADMIN_TAB),
     selectedBoardId: params.get("board") || "",
     selectedWeekId: params.get("week") || "",
     selectedHistoryWeekId: params.get("history") || "",
@@ -116,7 +198,7 @@ const BOARD_FIELD_TYPES = [
   { value: "inventoryProperty", label: "Dato derivado de inventario" },
   { value: "select", label: "Menú desplegable" },
   { value: "formula", label: "Fórmula" },
-  { value: "user", label: "Asociado" },
+  { value: "user", label: "Player" },
   { value: "status", label: "Estado" },
   { value: "date", label: "Fecha" },
   { value: "textarea", label: "Notas" },
@@ -131,7 +213,7 @@ const BOARD_FIELD_TYPE_DETAILS = {
   inventoryProperty: "Trae un dato automático del inventario ya vinculado.",
   select: "Muestra una lista rápida de opciones para elegir.",
   formula: "Calcula un resultado con otros campos del tablero.",
-  user: "Asigna un asociado sin escribirlo manualmente.",
+  user: "Asigna un player sin escribirlo manualmente.",
   status: "Controla el estado operativo de la fila.",
   date: "Guarda fechas clave como entrega, turno o corte.",
   textarea: "Sirve para observaciones o instrucciones más largas.",
@@ -188,7 +270,7 @@ const BOARD_TEMPLATES = [
   {
     id: "produccion",
     name: "Producción",
-    description: "Da seguimiento a lotes, asociados, cantidades y estatus de operación.",
+    description: "Da seguimiento a lotes, players, cantidades y estatus de operación.",
     settings: { showWorkflow: true, showMetrics: true, showAssignee: true, showDates: true },
     columns: [
       { label: "Lote", type: "text", helpText: "Identificador del lote o corrida.", required: true, width: "sm", groupName: "Base", groupColor: "#ede9fe" },
@@ -282,7 +364,7 @@ const FORMULA_OPERATIONS = [
 
 const OPTION_SOURCE_TYPES = [
   { value: "manual", label: "Opciones manuales" },
-  { value: "users", label: "Asociados existentes" },
+  { value: "users", label: "Players existentes" },
   { value: "inventory", label: "Inventario" },
   { value: "catalog", label: "Catálogo de actividades" },
   { value: "status", label: "Estados estándar" },
@@ -301,6 +383,9 @@ const INVENTORY_IMPORT_FIELD_ALIASES = {
   codigo: "code",
   sku: "code",
   clave: "code",
+  dominio: "domain",
+  domain: "domain",
+  tipoinventario: "domain",
   nombre: "name",
   producto: "name",
   descripcion: "name",
@@ -316,13 +401,110 @@ const INVENTORY_IMPORT_FIELD_ALIASES = {
   cajasxtarima: "boxesPerPallet",
   cajas_tarima: "boxesPerPallet",
   boxesperpallet: "boxesPerPallet",
+  stockactual: "stockUnits",
+  existencias: "stockUnits",
+  stock: "stockUnits",
+  stockunits: "stockUnits",
+  stockminimo: "minStockUnits",
+  minimoreorden: "minStockUnits",
+  minstockunits: "minStockUnits",
+  ubicacion: "storageLocation",
+  storagelocation: "storageLocation",
+  unidad: "unitLabel",
+  unitlabel: "unitLabel",
+  actividadcatalogo: "activityCatalogIds",
+  actividadcatalogoids: "activityCatalogIds",
+  consumoporinicio: "consumptionPerStart",
+  consumptionperstart: "consumptionPerStart",
 };
+
+const INVENTORY_DOMAIN_OPTIONS = [
+  { value: INVENTORY_DOMAIN_BASE, label: "Base" },
+  { value: INVENTORY_DOMAIN_CLEANING, label: "Insumos de limpieza" },
+  { value: INVENTORY_DOMAIN_ORDERS, label: "Insumos para pedidos" },
+];
+
+const INVENTORY_MOVEMENT_OPTIONS = [
+  { value: INVENTORY_MOVEMENT_RESTOCK, label: "Entrada / reabasto" },
+  { value: INVENTORY_MOVEMENT_CONSUME, label: "Consumo" },
+  { value: INVENTORY_MOVEMENT_TRANSFER, label: "Transferencia" },
+];
+
+function normalizeInventoryDomain(value) {
+  const key = normalizeKey(value);
+  if (["cleaning", "limpieza", "clean"].includes(key)) return INVENTORY_DOMAIN_CLEANING;
+  if (["orders", "order", "pedidos", "pedido"].includes(key)) return INVENTORY_DOMAIN_ORDERS;
+  return INVENTORY_DOMAIN_BASE;
+}
+
+function normalizeInventoryItemRecord(item) {
+  const domain = normalizeInventoryDomain(item?.domain);
+  return {
+    ...item,
+    domain,
+    stockUnits: domain === INVENTORY_DOMAIN_BASE ? 0 : Math.max(0, Number(item?.stockUnits || 0)),
+    minStockUnits: domain === INVENTORY_DOMAIN_BASE ? 0 : Math.max(0, Number(item?.minStockUnits || 0)),
+    storageLocation: domain === INVENTORY_DOMAIN_BASE ? "" : String(item?.storageLocation || "").trim(),
+    unitLabel: String(item?.unitLabel || "pzas").trim() || "pzas",
+    activityCatalogIds: domain === INVENTORY_DOMAIN_CLEANING ? (Array.isArray(item?.activityCatalogIds) ? item.activityCatalogIds.filter(Boolean) : typeof item?.activityCatalogIds === "string" ? item.activityCatalogIds.split(/[;,]/).map((entry) => entry.trim()).filter(Boolean) : []) : [],
+    consumptionPerStart: domain === INVENTORY_DOMAIN_CLEANING ? Math.max(0, Number(item?.consumptionPerStart || 0)) : 0,
+  };
+}
+
+function getInventoryManageActionId(domain) {
+  if (domain === INVENTORY_DOMAIN_CLEANING) return "manageCleaningInventory";
+  if (domain === INVENTORY_DOMAIN_ORDERS) return "manageOrderInventory";
+  return "manageInventory";
+}
+
+function getInventoryImportActionId(domain) {
+  if (domain === INVENTORY_DOMAIN_CLEANING) return "importCleaningInventory";
+  if (domain === INVENTORY_DOMAIN_ORDERS) return "importOrderInventory";
+  return "importInventory";
+}
+
+function createInventoryModalState(mode = "create", item = {}, fallbackDomain = INVENTORY_DOMAIN_BASE) {
+  const normalized = normalizeInventoryItemRecord(item);
+  return {
+    open: false,
+    mode,
+    id: normalized.id || null,
+    domain: normalized.domain || fallbackDomain,
+    code: normalized.code || "",
+    name: normalized.name || "",
+    presentation: normalized.presentation || "",
+    piecesPerBox: normalized.piecesPerBox ? String(normalized.piecesPerBox) : "",
+    boxesPerPallet: normalized.boxesPerPallet ? String(normalized.boxesPerPallet) : "",
+    stockUnits: normalized.stockUnits ? String(normalized.stockUnits) : "",
+    minStockUnits: normalized.minStockUnits ? String(normalized.minStockUnits) : "",
+    storageLocation: normalized.storageLocation || "",
+    unitLabel: normalized.unitLabel || "pzas",
+    activityCatalogIds: normalized.activityCatalogIds || [],
+    consumptionPerStart: normalized.consumptionPerStart ? String(normalized.consumptionPerStart) : "",
+  };
+}
+
+function createInventoryMovementModalState(item = null, movementType = INVENTORY_MOVEMENT_RESTOCK, fallbackDomain = INVENTORY_DOMAIN_BASE) {
+  const normalizedItem = item ? normalizeInventoryItemRecord(item) : null;
+  return {
+    open: false,
+    itemId: normalizedItem?.id || null,
+    itemName: normalizedItem?.name || "",
+    domain: normalizedItem?.domain || fallbackDomain,
+    movementType,
+    quantity: "",
+    notes: "",
+    warehouse: "",
+    recipientName: "",
+    storageLocation: normalizedItem?.storageLocation || "",
+    unitLabel: normalizedItem?.unitLabel || "pzas",
+  };
+}
 
 const NAV_ITEMS = [
   { id: PAGE_DASHBOARD, label: "Dashboard", icon: BarChart3, roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
   { id: PAGE_CUSTOM_BOARDS, label: "Mis tableros", icon: LayoutDashboard, roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
-  { id: PAGE_BOARD, label: "Tableros creados", icon: ClipboardList, roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
-  { id: PAGE_ADMIN, label: "Constructor", icon: Settings, roles: [ROLE_LEAD, ROLE_SR] },
+  { id: PAGE_BOARD, label: "Creador de tableros", icon: ClipboardList, roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
   { id: PAGE_HISTORY, label: "Historial", icon: CalendarDays, roles: [ROLE_LEAD, ROLE_SR] },
   { id: PAGE_INVENTORY, label: "Inventario", icon: Package, roles: [ROLE_LEAD, ROLE_SR] },
   { id: PAGE_USERS, label: "Administrador", icon: Users, roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
@@ -332,18 +514,21 @@ const ACTION_DEFINITIONS = [
   { id: "createWeek", label: "Crear nueva semana", category: "Operación semanal", defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "manageCatalog", label: "Crear y editar catálogo", category: "Administración", defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "manageWeeks", label: "Editar semanas", category: "Administración", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "viewReports", label: "Ver reportes avanzados", category: "Dashboard", defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "managePermissions", label: "Editar permisos", category: "Permisos", defaultRoles: [ROLE_LEAD] },
-  { id: "manageUsers", label: "Crear y editar asociados", category: "Asociados", defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
-  { id: "deleteUsers", label: "Eliminar asociados", category: "Asociados", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "resetPasswords", label: "Restablecer contraseñas", category: "Asociados", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "manageInventory", label: "Crear y editar inventario", category: "Inventario", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "importInventory", label: "Importar inventario", category: "Inventario", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "saveBoard", label: "Crear y editar tableros", category: "Constructor", defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "manageUsers", label: "Crear y editar players", category: "Players", defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
+  { id: "deleteUsers", label: "Eliminar players", category: "Players", defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "resetPasswords", label: "Restablecer contraseñas", category: "Players", defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "manageInventory", label: "Crear y editar inventario base", category: "Inventario", defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "importInventory", label: "Importar inventario base", category: "Inventario", defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "manageCleaningInventory", label: "Crear y editar insumos de limpieza", category: "Inventario", defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "importCleaningInventory", label: "Importar insumos de limpieza", category: "Inventario", defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "manageOrderInventory", label: "Crear y editar insumos para pedidos", category: "Inventario", defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "importOrderInventory", label: "Importar insumos para pedidos", category: "Inventario", defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "saveBoard", label: "Crear y editar tableros", category: "Creador de tableros", defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "deleteBoard", label: "Eliminar tableros", category: "Tableros creados", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "saveTemplate", label: "Guardar plantillas", category: "Constructor", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "editTemplate", label: "Editar plantillas", category: "Constructor", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "deleteTemplate", label: "Eliminar plantillas", category: "Constructor", defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "saveTemplate", label: "Guardar plantillas", category: "Creador de tableros", defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "editTemplate", label: "Editar plantillas", category: "Creador de tableros", defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "deleteTemplate", label: "Eliminar plantillas", category: "Creador de tableros", defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "createBoardRow", label: "Agregar filas en Mis tableros", category: "Mis tableros", defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
   { id: "editFinishedBoardRow", label: "Editar filas terminadas", category: "Mis tableros", defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
   { id: "boardWorkflow", label: "Ejecutar flujo del tablero", category: "Mis tableros", defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
@@ -367,11 +552,11 @@ const BOARD_PERMISSION_ACTIONS = ACTION_DEFINITIONS.filter((item) => BOARD_PERMI
 
 const PAGE_ACTION_GROUPS = {
   [PAGE_CUSTOM_BOARDS]: ["createBoardRow", "editFinishedBoardRow", "boardWorkflow", "exportBoardExcel", "previewBoardPdf", "exportBoardPdf"],
-  [PAGE_DASHBOARD]: ["viewReports"],
-  [PAGE_BOARD]: ["duplicateBoard", "duplicateBoardWithRows", "deleteBoard"],
-  [PAGE_ADMIN]: ["manageCatalog", "manageWeeks", "saveBoard", "saveTemplate", "editTemplate", "deleteTemplate"],
+  [PAGE_DASHBOARD]: [],
+  [PAGE_BOARD]: ["manageCatalog", "saveBoard", "saveTemplate", "editTemplate", "deleteTemplate", "duplicateBoard", "duplicateBoardWithRows", "deleteBoard"],
+  [PAGE_ADMIN]: [],
   [PAGE_HISTORY]: [],
-  [PAGE_INVENTORY]: ["manageInventory", "importInventory"],
+  [PAGE_INVENTORY]: ["manageInventory", "importInventory", "manageCleaningInventory", "importCleaningInventory", "manageOrderInventory", "importOrderInventory"],
   [PAGE_USERS]: ["manageUsers", "deleteUsers", "resetPasswords", "managePermissions"],
 };
 
@@ -404,21 +589,24 @@ const RESPONSIBLE_VISUALS = {
 
 const ROLE_PERMISSION_MATRIX = {
   [ROLE_LEAD]: {
-    pages: [PAGE_DASHBOARD, PAGE_CUSTOM_BOARDS, PAGE_BOARD, PAGE_ADMIN, PAGE_HISTORY, PAGE_INVENTORY, PAGE_USERS],
+    pages: [PAGE_DASHBOARD, PAGE_CUSTOM_BOARDS, PAGE_BOARD, PAGE_HISTORY, PAGE_INVENTORY, PAGE_USERS],
     actions: ACTION_DEFINITIONS.map((item) => item.id),
   },
   [ROLE_SR]: {
-    pages: [PAGE_DASHBOARD, PAGE_CUSTOM_BOARDS, PAGE_BOARD, PAGE_ADMIN, PAGE_HISTORY, PAGE_INVENTORY, PAGE_USERS],
+    pages: [PAGE_DASHBOARD, PAGE_CUSTOM_BOARDS, PAGE_BOARD, PAGE_HISTORY, PAGE_INVENTORY, PAGE_USERS],
     actions: [
       "createWeek",
       "manageCatalog",
       "manageWeeks",
-      "viewReports",
       "manageUsers",
       "deleteUsers",
       "resetPasswords",
       "manageInventory",
       "importInventory",
+      "manageCleaningInventory",
+      "importCleaningInventory",
+      "manageOrderInventory",
+      "importOrderInventory",
       "saveBoard",
       "deleteBoard",
       "saveTemplate",
@@ -437,7 +625,6 @@ const ROLE_PERMISSION_MATRIX = {
   [ROLE_SSR]: {
     pages: [PAGE_DASHBOARD, PAGE_CUSTOM_BOARDS, PAGE_BOARD, PAGE_USERS],
     actions: [
-      "viewReports",
       "manageUsers",
       "createBoardRow",
       "editFinishedBoardRow",
@@ -590,7 +777,6 @@ function buildPermissionsFromPreset(presetId) {
   const permissions = buildDefaultPermissions();
 
   if (presetId === "supervised") {
-    permissions.pages[PAGE_ADMIN].roles = [ROLE_LEAD];
     permissions.pages[PAGE_USERS].roles = [ROLE_LEAD, ROLE_SR];
     permissions.pages[PAGE_INVENTORY].roles = [ROLE_LEAD, ROLE_SR];
 
@@ -601,6 +787,10 @@ function buildPermissionsFromPreset(presetId) {
     permissions.actions.resetPasswords.roles = [ROLE_LEAD, ROLE_SR];
     permissions.actions.manageInventory.roles = [ROLE_LEAD, ROLE_SR];
     permissions.actions.importInventory.roles = [ROLE_LEAD];
+    permissions.actions.manageCleaningInventory.roles = [ROLE_LEAD, ROLE_SR];
+    permissions.actions.importCleaningInventory.roles = [ROLE_LEAD];
+    permissions.actions.manageOrderInventory.roles = [ROLE_LEAD, ROLE_SR];
+    permissions.actions.importOrderInventory.roles = [ROLE_LEAD];
     permissions.actions.saveBoard.roles = [ROLE_LEAD, ROLE_SR];
     permissions.actions.deleteBoard.roles = [ROLE_LEAD, ROLE_SR];
     permissions.actions.saveTemplate.roles = [ROLE_LEAD, ROLE_SR];
@@ -614,7 +804,6 @@ function buildPermissionsFromPreset(presetId) {
   }
 
   if (presetId === "readonly") {
-    permissions.pages[PAGE_ADMIN].roles = [ROLE_LEAD];
     permissions.pages[PAGE_USERS].roles = [ROLE_LEAD];
     permissions.pages[PAGE_INVENTORY].roles = [ROLE_LEAD, ROLE_SR];
 
@@ -622,7 +811,6 @@ function buildPermissionsFromPreset(presetId) {
       permissions.actions[actionId].roles = [];
     });
 
-    permissions.actions.viewReports.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR];
     permissions.actions.previewBoardPdf.roles = [ROLE_LEAD, ROLE_SR];
     permissions.actions.exportBoardExcel.roles = [ROLE_LEAD, ROLE_SR];
     permissions.actions.exportBoardPdf.roles = [ROLE_LEAD, ROLE_SR];
@@ -674,6 +862,15 @@ async function requestJson(path, options = {}) {
   return response.json();
 }
 
+function applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus) {
+  skipNextSyncRef.current = true;
+  const normalizedState = normalizeWarehouseState(remoteState);
+  setState(normalizedState);
+  setLoginDirectory(buildLoginDirectoryFromState(normalizedState));
+  setSyncStatus("Sincronizado");
+  return normalizedState;
+}
+
 function createWarehouseEventSource() {
   return new EventSource(`${API_BASE_URL}/warehouse/events`, { withCredentials: true });
 }
@@ -682,28 +879,76 @@ function buildLoginDirectoryFromState(state) {
   return {
     system: {
       masterBootstrapEnabled: Boolean(state?.system?.masterBootstrapEnabled),
-      masterUsername: state?.system?.masterUsername || MASTER_USERNAME,
+      masterUsername: null,
+      showBootstrapMasterHint: false,
     },
-    demoUsers: (state?.users || [])
-      .filter((user) => user.isActive)
-      .map((user) => ({ id: user.id, email: user.email, role: user.role, name: user.name })),
+    demoUsers: [],
   };
 }
 
 function buildRouteQuery({ page, adminTab, selectedBoardId, selectedWeekId, selectedHistoryWeekId }) {
   const params = new URLSearchParams();
-  if (page && page !== PAGE_DASHBOARD) params.set("page", page);
   if (adminTab && adminTab !== DEFAULT_ADMIN_TAB && page === PAGE_ADMIN) params.set("tab", adminTab);
   if (selectedBoardId && page === PAGE_CUSTOM_BOARDS) params.set("board", selectedBoardId);
-  if (selectedWeekId && page === PAGE_DASHBOARD) params.set("week", selectedWeekId);
   if (selectedHistoryWeekId && page === PAGE_HISTORY) params.set("history", selectedHistoryWeekId);
   return params.toString();
+}
+
+function buildRoutePath(page) {
+  const pageSlug = PAGE_ROUTE_SLUGS[page] || PAGE_ROUTE_SLUGS[PAGE_DASHBOARD];
+  return `/${pageSlug}`;
+}
+
+function normalizeAdminTab(value) {
+  return value === "weeks" ? "weeks" : DEFAULT_ADMIN_TAB;
+}
+
+function normalizeActivityFrequency(value) {
+  const normalizedValue = String(value || "").trim();
+  return ACTIVITY_FREQUENCY_LABELS[normalizedValue] ? normalizedValue : "weekly";
+}
+
+function getActivityFrequencyLabel(value) {
+  return ACTIVITY_FREQUENCY_LABELS[normalizeActivityFrequency(value)] || ACTIVITY_FREQUENCY_LABELS.weekly;
+}
+
+function normalizeCatalogItemRecord(item = {}) {
+  return {
+    ...item,
+    frequency: normalizeActivityFrequency(item.frequency),
+  };
+}
+
+function buildWeekActivitiesFromCatalogItem(weekId, item, weekStart, responsibleId) {
+  const offsets = ACTIVITY_FREQUENCY_DAY_OFFSETS[normalizeActivityFrequency(item.frequency)] || ACTIVITY_FREQUENCY_DAY_OFFSETS.weekly;
+  return offsets.map((dayOffset) => ({
+    id: makeId("act"),
+    weekId,
+    catalogActivityId: item.id,
+    responsibleId: responsibleId || null,
+    status: STATUS_PENDING,
+    activityDate: isoAt(addDays(weekStart, dayOffset), 8, 0),
+    startTime: null,
+    endTime: null,
+    accumulatedSeconds: 0,
+    lastResumedAt: null,
+    customName: item.name,
+  }));
 }
 
 function isoAt(date, hours, minutes) {
   const next = new Date(date);
   next.setHours(hours, minutes, 0, 0);
   return next.toISOString();
+}
+
+function isStrongPassword(value) {
+  const password = String(value || "");
+  return password.length >= 10 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9]/.test(password);
+}
+
+function isTemporaryPassword(value) {
+  return String(value || "").trim().length >= TEMPORARY_PASSWORD_MIN_LENGTH;
 }
 
 function addDays(date, days) {
@@ -797,6 +1042,18 @@ function formatDashboardPeriodLabel(periodKey, periodType) {
     return `${halfLabel} · ${new Intl.DateTimeFormat("es-MX", { month: "long", year: "numeric" }).format(range.start)}`;
   }
   return `Semana · ${formatDateRangeCompact(range.start, range.end)}`;
+}
+
+function getDashboardFilterStartDate(dateValue) {
+  if (!dateValue) return null;
+  const next = new Date(`${dateValue}T00:00:00`);
+  return Number.isNaN(next.getTime()) ? null : next;
+}
+
+function getDashboardFilterEndDate(dateValue) {
+  if (!dateValue) return null;
+  const next = new Date(`${dateValue}T23:59:59.999`);
+  return Number.isNaN(next.getTime()) ? null : next;
 }
 
 function getIshikawaCategory(label) {
@@ -1220,7 +1477,7 @@ function formatBoardPreviewValue(value, field, userMap, inventoryItems) {
     return inventoryItem ? `${inventoryItem.name} · ${inventoryItem.presentation}` : "Producto vinculado";
   }
   if (field.type === "user") {
-    return userMap.get(value)?.name || "Asociado";
+    return userMap.get(value)?.name || "Player";
   }
   if (field.type === "date" && value) {
     return formatDate(value);
@@ -1565,9 +1822,16 @@ function mapInventoryImportRow(row, index) {
     id: `import-${index + 1}`,
     code,
     name,
+    domain: normalizeInventoryDomain(normalizedRow.domain),
     presentation: String(normalizedRow.presentation || "").trim(),
     piecesPerBox: toInventoryNumber(normalizedRow.piecesPerBox),
     boxesPerPallet: toInventoryNumber(normalizedRow.boxesPerPallet),
+    stockUnits: toInventoryNumber(normalizedRow.stockUnits),
+    minStockUnits: toInventoryNumber(normalizedRow.minStockUnits),
+    storageLocation: String(normalizedRow.storageLocation || "").trim(),
+    unitLabel: String(normalizedRow.unitLabel || "pzas").trim() || "pzas",
+    activityCatalogIds: String(normalizedRow.activityCatalogIds || "").split(/[;,]/).map((entry) => entry.trim()).filter(Boolean),
+    consumptionPerStart: toInventoryNumber(normalizedRow.consumptionPerStart),
   };
 }
 
@@ -1622,17 +1886,31 @@ async function downloadInventoryTemplateFile() {
 
   worksheet.columns = [
     { header: "codigo", key: "codigo", width: 18 },
+    { header: "dominio", key: "dominio", width: 18 },
     { header: "nombre", key: "nombre", width: 28 },
     { header: "presentacion", key: "presentacion", width: 20 },
     { header: "piezas_por_caja", key: "piezas_por_caja", width: 18 },
     { header: "cajas_por_tarima", key: "cajas_por_tarima", width: 18 },
+    { header: "stock_actual", key: "stock_actual", width: 18 },
+    { header: "stock_minimo", key: "stock_minimo", width: 18 },
+    { header: "ubicacion", key: "ubicacion", width: 24 },
+    { header: "unidad", key: "unidad", width: 14 },
+    { header: "actividad_catalogo_ids", key: "actividad_catalogo_ids", width: 28 },
+    { header: "consumo_por_inicio", key: "consumo_por_inicio", width: 20 },
   ];
   worksheet.addRow({
     codigo: "ALM-001",
+    dominio: "base",
     nombre: "Detergente industrial",
     presentacion: "Bidon 20L",
     piezas_por_caja: 4,
     cajas_por_tarima: 30,
+    stock_actual: 18,
+    stock_minimo: 8,
+    ubicacion: "Cuarto de limpieza",
+    unidad: "bidones",
+    actividad_catalogo_ids: "cat-piso;cat-oficinas",
+    consumo_por_inicio: 1,
   });
 
   const buffer = await workbook.xlsx.writeBuffer();
@@ -1748,6 +2026,8 @@ function normalizeUserRecord(user, fallbackManagerId = null) {
     department: area,
     jobTitle: String(user.jobTitle ?? DEFAULT_JOB_TITLE_BY_ROLE[role] ?? "").trim(),
     password: String(user.password || ""),
+    mustChangePassword: Boolean(user.mustChangePassword),
+    temporaryPasswordIssuedAt: user.temporaryPasswordIssuedAt || null,
     managerId: user.managerId ?? fallbackManagerId,
     createdById: user.createdById ?? fallbackManagerId,
     selfIdentityEditCount: Number.isFinite(selfIdentityEditCount) ? Math.max(0, selfIdentityEditCount) : 0,
@@ -1904,11 +2184,11 @@ function buildDemoUsers() {
     },
     {
       id: makeId("usr-demo-jr"),
-      name: "Demo Asociado",
+      name: "Demo Player",
       email: "demo@copmec.local",
       area: "INVENTARIO",
       department: "INVENTARIO",
-      jobTitle: "Asociado operativo",
+      jobTitle: "Player operativo",
       role: ROLE_JR,
       isActive: true,
       managerId: leadId,
@@ -1925,19 +2205,23 @@ function buildSampleState() {
   const users = buildDemoUsers();
 
   const catalog = [
-    { id: "cat-piso", name: "Piso producción", timeLimitMinutes: 50, isMandatory: true, isDeleted: false },
-    { id: "cat-banos", name: "Lavado de baños", timeLimitMinutes: 40, isMandatory: true, isDeleted: false },
-    { id: "cat-inspeccion", name: "Inspección nave", timeLimitMinutes: 75, isMandatory: true, isDeleted: false },
-    { id: "cat-oficinas", name: "Limpieza oficinas", timeLimitMinutes: 50, isMandatory: true, isDeleted: false },
-    { id: "cat-comedor", name: "Comedor", timeLimitMinutes: 50, isMandatory: true, isDeleted: false },
-    { id: "cat-vidrios", name: "Limpieza vidrios", timeLimitMinutes: 50, isMandatory: false, isDeleted: false },
-    { id: "cat-rampas", name: "Revisión de rampas", timeLimitMinutes: 35, isMandatory: false, isDeleted: false },
+    normalizeCatalogItemRecord({ id: "cat-piso", name: "Piso producción", timeLimitMinutes: 50, isMandatory: true, isDeleted: false, frequency: "daily" }),
+    normalizeCatalogItemRecord({ id: "cat-banos", name: "Lavado de baños", timeLimitMinutes: 40, isMandatory: true, isDeleted: false, frequency: "daily" }),
+    normalizeCatalogItemRecord({ id: "cat-inspeccion", name: "Inspección nave", timeLimitMinutes: 75, isMandatory: true, isDeleted: false, frequency: "threeTimesWeek" }),
+    normalizeCatalogItemRecord({ id: "cat-oficinas", name: "Limpieza oficinas", timeLimitMinutes: 50, isMandatory: true, isDeleted: false, frequency: "weekdays" }),
+    normalizeCatalogItemRecord({ id: "cat-comedor", name: "Comedor", timeLimitMinutes: 50, isMandatory: true, isDeleted: false, frequency: "daily" }),
+    normalizeCatalogItemRecord({ id: "cat-vidrios", name: "Limpieza vidrios", timeLimitMinutes: 50, isMandatory: false, isDeleted: false, frequency: "twiceWeek" }),
+    normalizeCatalogItemRecord({ id: "cat-rampas", name: "Revisión de rampas", timeLimitMinutes: 35, isMandatory: false, isDeleted: false, frequency: "weekly" }),
   ];
 
   const inventoryItems = [
-    { id: "inv-1", code: "ALM-001", name: "Detergente industrial", presentation: "Bidón 20L", piecesPerBox: 4, boxesPerPallet: 30 },
-    { id: "inv-2", code: "ALM-002", name: "Papel higiénico", presentation: "Paquete 12 rollos", piecesPerBox: 6, boxesPerPallet: 24 },
-    { id: "inv-3", code: "ALM-003", name: "Guantes nitrilo", presentation: "Caja 100 piezas", piecesPerBox: 10, boxesPerPallet: 18 },
+    normalizeInventoryItemRecord({ id: "inv-1", code: "ALM-001", name: "Tarima estándar", presentation: "Tarima", piecesPerBox: 1, boxesPerPallet: 1, domain: INVENTORY_DOMAIN_BASE, stockUnits: 36, minStockUnits: 10, storageLocation: "Almacén central", unitLabel: "pzas" }),
+    normalizeInventoryItemRecord({ id: "inv-2", code: "ALM-002", name: "Caja master", presentation: "Paquete", piecesPerBox: 20, boxesPerPallet: 48, domain: INVENTORY_DOMAIN_BASE, stockUnits: 240, minStockUnits: 80, storageLocation: "Racks A-2", unitLabel: "pzas" }),
+    normalizeInventoryItemRecord({ id: "inv-3", code: "ALM-003", name: "Playo transparente", presentation: "Rollo", piecesPerBox: 6, boxesPerPallet: 40, domain: INVENTORY_DOMAIN_BASE, stockUnits: 120, minStockUnits: 36, storageLocation: "Racks B-1", unitLabel: "rollos" }),
+    normalizeInventoryItemRecord({ id: "inv-4", code: "LIMP-001", name: "Detergente industrial", presentation: "Bidón 20L", piecesPerBox: 4, boxesPerPallet: 30, domain: INVENTORY_DOMAIN_CLEANING, stockUnits: 18, minStockUnits: 8, storageLocation: "Cuarto de limpieza", unitLabel: "bidones", activityCatalogIds: ["cat-piso", "cat-oficinas"], consumptionPerStart: 1 }),
+    normalizeInventoryItemRecord({ id: "inv-5", code: "LIMP-002", name: "Papel higiénico", presentation: "Paquete 12 rollos", piecesPerBox: 6, boxesPerPallet: 24, domain: INVENTORY_DOMAIN_CLEANING, stockUnits: 42, minStockUnits: 18, storageLocation: "Cuarto de limpieza", unitLabel: "paquetes", activityCatalogIds: ["cat-banos"], consumptionPerStart: 1 }),
+    normalizeInventoryItemRecord({ id: "inv-6", code: "PED-001", name: "Separador corrugado", presentation: "Fajo 25 piezas", piecesPerBox: 25, boxesPerPallet: 80, domain: INVENTORY_DOMAIN_ORDERS, stockUnits: 220, minStockUnits: 100, storageLocation: "Nave 2 · Estante 4", unitLabel: "pzas" }),
+    normalizeInventoryItemRecord({ id: "inv-7", code: "PED-002", name: "Esquinero", presentation: "Paquete 50 piezas", piecesPerBox: 50, boxesPerPallet: 60, domain: INVENTORY_DOMAIN_ORDERS, stockUnits: 150, minStockUnits: 70, storageLocation: "Nave 1 · Jaula 2", unitLabel: "pzas" }),
   ];
 
   const weeks = [
@@ -1982,6 +2266,7 @@ function buildSampleState() {
     weeks: starterWorkspace?.weeks || weeks,
     catalog,
     inventoryItems,
+    inventoryMovements: [],
     activities: starterWorkspace?.activities || activities,
     pauseLogs: starterWorkspace?.pauseLogs || pauseLogs,
     controlRows: starterWorkspace?.controlRows || controlRows,
@@ -2008,7 +2293,7 @@ function normalizeWarehouseState(parsed) {
     users,
     areaCatalog: buildAreaCatalog(users, parsed.areaCatalog),
     weeks: shouldHydrateDemoWorkspace && (!Array.isArray(parsed.weeks) || parsed.weeks.length === 0) ? sampleState.weeks : parsed.weeks,
-    catalog: Array.isArray(parsed.catalog) && parsed.catalog.length ? parsed.catalog : sampleState.catalog,
+    catalog: Array.isArray(parsed.catalog) && parsed.catalog.length ? parsed.catalog.map((item) => normalizeCatalogItemRecord(item)) : sampleState.catalog,
     activities: shouldHydrateDemoWorkspace && (!Array.isArray(parsed.activities) || parsed.activities.length === 0) ? sampleState.activities : parsed.activities,
     pauseLogs: shouldHydrateDemoWorkspace && !Array.isArray(parsed.pauseLogs) ? sampleState.pauseLogs : parsed.pauseLogs,
     controlRows: shouldHydrateDemoWorkspace && (!Array.isArray(parsed.controlRows) || parsed.controlRows.length === 0) ? sampleState.controlRows : parsed.controlRows,
@@ -2026,7 +2311,8 @@ function normalizeWarehouseState(parsed) {
           };
         })
       : sampleState.controlBoards,
-    inventoryItems: Array.isArray(parsed.inventoryItems) && parsed.inventoryItems.length ? parsed.inventoryItems : sampleState.inventoryItems,
+    inventoryItems: Array.isArray(parsed.inventoryItems) && parsed.inventoryItems.length ? parsed.inventoryItems.map((item) => normalizeInventoryItemRecord(item)) : sampleState.inventoryItems,
+    inventoryMovements: Array.isArray(parsed.inventoryMovements) ? parsed.inventoryMovements : sampleState.inventoryMovements,
     boardTemplates: Array.isArray(parsed.boardTemplates) ? parsed.boardTemplates : [],
     permissions: normalizedPermissions,
     auditLog: Array.isArray(parsed.auditLog) ? parsed.auditLog : [],
@@ -2047,28 +2333,17 @@ function loadState() {
 
 function buildWeekActivities(weekId, catalog, users) {
   const activeUsers = users.filter((user) => user.isActive);
-  const baseDate = new Date();
+  const baseDate = startOfWeek(new Date());
   let assigneeIndex = 0;
 
   return catalog
     .filter((item) => !item.isDeleted)
-    .map((item, index) => {
+    .flatMap((item) => {
       const responsible = activeUsers[assigneeIndex % activeUsers.length] || users[0] || null;
       assigneeIndex += 1;
-      return {
-        id: makeId("act"),
-        weekId,
-        catalogActivityId: item.id,
-        responsibleId: responsible?.id || null,
-        status: STATUS_PENDING,
-        activityDate: isoAt(addDays(baseDate, index), 8, 0),
-        startTime: null,
-        endTime: null,
-        accumulatedSeconds: 0,
-        lastResumedAt: null,
-        customName: item.name,
-      };
-    });
+      return buildWeekActivitiesFromCatalogItem(weekId, item, baseDate, responsible?.id || null);
+    })
+    .sort((left, right) => new Date(left.activityDate) - new Date(right.activityDate));
 }
 
 function buildStarterWorkspace(leadUser, catalog, inventoryItems, permissions, workspaceUsers = [leadUser]) {
@@ -2240,6 +2515,25 @@ function MetricCard({ label, value, hint, tone = "default" }) {
       <strong>{value}</strong>
       <small>{hint}</small>
     </article>
+  );
+}
+
+function InventoryStockBar({ current, minimum, unitLabel = "pzas" }) {
+  const safeCurrent = Math.max(0, Number(current || 0));
+  const safeMinimum = Math.max(0, Number(minimum || 0));
+  const baseline = Math.max(safeCurrent, safeMinimum, 1);
+  const percent = Math.min(100, (safeCurrent / baseline) * 100);
+  const isLow = safeCurrent <= safeMinimum;
+  return (
+    <div className="progress-row">
+      <div className="progress-row-head">
+        <span>{isLow ? "Stock crítico" : "Stock disponible"}</span>
+        <strong className={isLow ? "danger-text" : ""}>{safeCurrent} {unitLabel} · mínimo {safeMinimum}</strong>
+      </div>
+      <div className="progress-track">
+        <div className={`progress-fill ${isLow ? "danger" : ""}`} style={{ width: `${Math.max(10, percent)}%` }} />
+      </div>
+    </div>
   );
 }
 
@@ -2752,6 +3046,16 @@ function LoginScreen({ loginForm, onChange, onSubmit, error, demoUsers }) {
           <div className="login-visual-scene" aria-hidden="true">
             <div className="login-scene-grid" />
             <div className="login-scene-scanline" />
+            <div className="login-scene-data-flow">
+              <span className="login-scene-data-line line-a" />
+              <span className="login-scene-data-line line-b" />
+              <span className="login-scene-data-line line-c" />
+            </div>
+            <div className="login-scene-status-board">
+              <span className="login-scene-status-chip live">Inventario</span>
+              <span className="login-scene-status-chip">Players</span>
+              <span className="login-scene-status-chip alert">Alertas</span>
+            </div>
             <span className="login-scene-particle particle-a" />
             <span className="login-scene-particle particle-b" />
             <span className="login-scene-particle particle-c" />
@@ -2779,6 +3083,16 @@ function LoginScreen({ loginForm, onChange, onSubmit, error, demoUsers }) {
                 <span className="login-scene-box" />
               </div>
             </div>
+            <div className="login-scene-card login-scene-card-pie">
+              <div className="login-scene-pie-chart">
+                <span className="login-scene-pie-core" />
+              </div>
+              <div className="login-scene-pie-legend">
+                <span><i className="login-scene-legend-tone tone-green" /> Operación</span>
+                <span><i className="login-scene-legend-tone tone-gold" /> Cumplido</span>
+                <span><i className="login-scene-legend-tone tone-blue" /> Calidad</span>
+              </div>
+            </div>
             <div className="login-scene-card login-scene-card-bottom">
               <div className="login-scene-timeline">
                 <span className="login-scene-node active" />
@@ -2799,7 +3113,7 @@ function LoginScreen({ loginForm, onChange, onSubmit, error, demoUsers }) {
           <form className="login-form" onSubmit={onSubmit}>
             <label className="app-modal-field login-field">
               <span>Usuario o correo</span>
-              <input value={loginForm.email} onChange={(event) => onChange("email", event.target.value)} placeholder="Maestro o usuario@copmec.local" />
+              <input value={loginForm.email} onChange={(event) => onChange("email", event.target.value)} placeholder="Player" />
             </label>
             <label className="app-modal-field login-field">
               <span>Contraseña</span>
@@ -2858,7 +3172,7 @@ function BootstrapLeadSetup({ setupForm, onChange, onSubmit, error, areaOptions,
 
         <article className="login-form-panel">
           <div className="login-form-panel-head">
-            <h2>Alta inicial de asociado líder</h2>
+            <h2>Alta inicial de player líder</h2>
             <p>Primer acceso principal</p>
           </div>
 
@@ -2890,679 +3204,11 @@ function BootstrapLeadSetup({ setupForm, onChange, onSubmit, error, areaOptions,
               <input type="password" value={setupForm.password} onChange={(event) => onChange("password", event.target.value)} placeholder="Contraseña segura" />
             </label>
             {error ? <p className="validation-text">{error}</p> : null}
-            <button type="submit" className="primary-button login-submit-button">Crear asociado líder y cerrar maestro</button>
+            <button type="submit" className="primary-button login-submit-button">Crear player líder y cerrar maestro</button>
           </form>
         </article>
       </section>
     </main>
-  );
-}
-
-function BoardComponentStudioModal({ open, mode, draft, onChange, onClose, onConfirm, catalog, inventoryItems, visibleUsers }) {
-  const studioSteps = [
-    { title: "Tipo", subtitle: "Qué componente necesitas" },
-    { title: "Base", subtitle: "Nombre y estructura" },
-    { title: "Reglas", subtitle: "Automatización y color" },
-    { title: "Resumen", subtitle: "Revisión final" },
-  ];
-  const [currentStep, setCurrentStep] = useState(0);
-  const selectedType = draft.fieldType;
-  const selectedTypeOption = BOARD_FIELD_TYPES.find((type) => type.value === selectedType);
-  const showOptionSource = selectedType === "select";
-  const showInventoryProperty = selectedType === "inventoryProperty";
-  const showFormulaFields = selectedType === "formula";
-  const showColorRules = selectedType !== "formula";
-  const isInventoryBundleType = selectedType === INVENTORY_LOOKUP_LOGISTICS_FIELD;
-  const autoGeneratedFieldLabels = selectedType === INVENTORY_LOOKUP_LOGISTICS_FIELD
-    ? ["Piezas por caja", "Cajas por tarima"]
-    : [];
-  const selectedTypeUsage = selectedType === INVENTORY_LOOKUP_LOGISTICS_FIELD
-    ? "Sirve cuando quieres usar el mismo buscador de inventario de siempre, pero dejando dos columnas extra editables para piezas por caja y cajas por tarima."
-    : getBoardFieldTypeDescription(selectedType);
-  const colorOperatorNeedsValue = !["isEmpty", "isNotEmpty", "isTrue", "isFalse"].includes(draft.colorOperator);
-  const colorValueUsesBooleanSelect = selectedType === "boolean" && ["equals", "notEquals"].includes(draft.colorOperator);
-
-  useEffect(() => {
-    if (open) {
-      setCurrentStep(0);
-    }
-  }, [open, mode]);
-
-  const isLastStep = currentStep === studioSteps.length - 1;
-
-  function handleStepConfirm() {
-    if (!isLastStep) {
-      setCurrentStep((step) => Math.min(step + 1, studioSteps.length - 1));
-      return;
-    }
-    onConfirm();
-  }
-
-  let colorValuePlaceholder = "Ej: Alta, 20, Crítico";
-  let colorValueHelp = "Cuando la celda llegue a este valor, se aplicará el color.";
-
-  if (["contains", "notContains", "startsWith", "endsWith"].includes(draft.colorOperator)) {
-    colorValuePlaceholder = "Ej: Crítico, Urgente, LIB";
-    colorValueHelp = "Usa una palabra o fragmento de texto para activar el color.";
-  } else if (["inList", "notInList"].includes(draft.colorOperator)) {
-    colorValuePlaceholder = "Ej: Alta, Media, Crítica";
-    colorValueHelp = "Escribe varios valores separados por coma para comparar contra una lista.";
-  } else if ([">", ">=", "<", "<="].includes(draft.colorOperator)) {
-    colorValuePlaceholder = "Ej: 20, 3.5 o 2026-04-10";
-    colorValueHelp = "Funciona con números y también con fechas comparables.";
-  } else if (draft.colorOperator === "notEquals") {
-    colorValuePlaceholder = "Ej: Rechazado, No, 0";
-    colorValueHelp = "El color se activa cuando el valor sea distinto al capturado aquí.";
-  } else if (!colorOperatorNeedsValue) {
-    colorValueHelp = "Esta condición se activa sola; no necesitas capturar un valor adicional.";
-  }
-
-  return (
-    <Modal
-      open={open}
-      className="component-studio-modal"
-      title={mode === "edit" ? "Editar componente" : "Studio de Componentes"}
-      confirmLabel={isLastStep ? (mode === "edit" ? "Guardar cambios" : "Agregar componente") : "Siguiente"}
-      cancelLabel="Cerrar"
-      onClose={onClose}
-      onConfirm={handleStepConfirm}
-      footerActions={currentStep > 0 ? (
-        <>
-          <div className="component-studio-footer-progress">Paso {currentStep + 1} de {studioSteps.length}</div>
-          <button type="button" className="sicfla-button ghost" onClick={() => setCurrentStep((step) => Math.max(step - 1, 0))}>Anterior</button>
-        </>
-      ) : <div className="component-studio-footer-progress">Paso 1 de {studioSteps.length}</div>}
-    >
-      <div className="component-studio-shell">
-        <div className="component-studio-intro">
-          <span className="chip primary">{mode === "edit" ? "Edición guiada" : "Diseño guiado"}</span>
-          <p>{mode === "edit" ? "Actualiza este componente sin perder orden ni claridad en el tablero." : "Ahora el alta va por pasos para que primero elijas qué necesitas y después configures solo lo importante."}</p>
-          <div className="saved-board-list">
-            <span className="chip">Catálogo: {catalog.filter((item) => !item.isDeleted).length}</span>
-            <span className="chip">Inventario: {(inventoryItems || []).length}</span>
-              <span className="chip">Asociados: {visibleUsers.filter((item) => item.isActive).length}</span>
-          </div>
-        </div>
-
-        <div className="component-studio-stepper">
-          {studioSteps.map((step, index) => (
-            <button key={step.title} type="button" className={index === currentStep ? "component-studio-step active" : index < currentStep ? "component-studio-step complete" : "component-studio-step"} onClick={() => setCurrentStep(index)}>
-              <span className="component-studio-step-number">{index + 1}</span>
-              <span>
-                <strong>{step.title}</strong>
-                <small>{step.subtitle}</small>
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {currentStep === 0 ? (
-          <>
-            <section className="component-studio-section">
-              <div className="component-studio-section-head">
-                <h4>1. Tipo de componente</h4>
-                <p>Elige qué tipo de dato capturará o calculará esta celda.</p>
-              </div>
-              <div className="component-type-grid">
-                {BOARD_FIELD_TYPES.map((type) => (
-                  <button key={type.value} type="button" className={draft.fieldType === type.value ? "component-type-card active" : "component-type-card"} onClick={() => onChange((current) => ({ ...current, fieldType: type.value }))}>
-                    <strong>{type.label}</strong>
-                    <span>{getBoardFieldTypeDescription(type.value)}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            <section className="component-studio-section component-studio-spotlight">
-              <div>
-                <span className="chip primary">Para qué sirve</span>
-                <strong>{selectedTypeOption?.label || "Componente"}</strong>
-                <p>{selectedTypeUsage}</p>
-              </div>
-              {autoGeneratedFieldLabels.length ? (
-                <div className="component-studio-summary-list">
-                  <strong>Se agregan en automático</strong>
-                  <div className="saved-board-list">
-                    {autoGeneratedFieldLabels.map((label) => <span key={label} className="chip">{label}</span>)}
-                  </div>
-                </div>
-              ) : null}
-            </section>
-          </>
-        ) : null}
-
-        {currentStep === 1 ? (
-          <section className="component-studio-section component-studio-config-grid">
-            <div className="component-studio-section-head component-studio-field-span-2">
-              <div>
-                <h4>2. Datos base</h4>
-                <p>Define el nombre, la sección y la ayuda visual del componente.</p>
-              </div>
-            </div>
-            <label className="app-modal-field">
-              <span>Sección</span>
-              <input value={draft.groupName} onChange={(event) => onChange((current) => ({ ...current, groupName: event.target.value }))} placeholder="Ej: Identificación, Validación, Cierre" />
-              <small className="builder-help-text">Agrupa componentes relacionados para mantener el tablero ordenado.</small>
-            </label>
-            <label className="app-modal-field">
-              <span>Color de sección</span>
-              <input type="color" value={draft.groupColor} onChange={(event) => onChange((current) => ({ ...current, groupColor: event.target.value }))} />
-              <small className="builder-help-text">Color visual rápido para identificar este bloque de columnas.</small>
-            </label>
-            <label className="app-modal-field component-studio-field-span-2">
-              <span>Nombre visible</span>
-              <input value={draft.fieldLabel} onChange={(event) => onChange((current) => ({ ...current, fieldLabel: event.target.value }))} placeholder="Ej: SKU, Piezas surtidas, Fecha de corte" />
-              <small className="builder-help-text">Es el nombre que verá el equipo en la cabecera del tablero.</small>
-            </label>
-            <label className="app-modal-field component-studio-field-span-2">
-              <span>Ayuda corta</span>
-              <input value={draft.fieldHelp} onChange={(event) => onChange((current) => ({ ...current, fieldHelp: event.target.value }))} placeholder="Ej: Selecciona el producto para autollenar datos" />
-              <small className="builder-help-text">Sirve para explicar rápido qué debe capturarse aquí.</small>
-            </label>
-            <label className="app-modal-field component-studio-field-span-2">
-              <span>Placeholder</span>
-              <input value={draft.placeholder} onChange={(event) => onChange((current) => ({ ...current, placeholder: event.target.value }))} placeholder="Ej: Escribe el folio o el comentario" />
-              <small className="builder-help-text">Texto guía dentro de la celda antes de capturar algo.</small>
-            </label>
-            <label className="app-modal-field">
-              <span>Valor inicial</span>
-              <input value={draft.defaultValue} onChange={(event) => onChange((current) => ({ ...current, defaultValue: event.target.value }))} placeholder="Ej: Pendiente, 0, No o una fecha" />
-              <small className="builder-help-text">Se coloca automáticamente cuando se crea una fila nueva.</small>
-            </label>
-            <label className="app-modal-field">
-              <span>Ancho</span>
-              <select value={draft.fieldWidth} onChange={(event) => onChange((current) => ({ ...current, fieldWidth: event.target.value }))}>
-                {BOARD_FIELD_WIDTHS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-              </select>
-              <small className="builder-help-text">Controla cuánto espacio visual ocupará la columna.</small>
-            </label>
-            <label className="app-modal-field">
-              <span>Campo obligatorio</span>
-              <select value={draft.isRequired} onChange={(event) => onChange((current) => ({ ...current, isRequired: event.target.value }))}>
-                <option value="false">No</option>
-                <option value="true">Sí</option>
-              </select>
-              <small className="builder-help-text">Marca la columna como clave para la operación.</small>
-            </label>
-          </section>
-        ) : null}
-
-        {currentStep === 2 ? (
-          <div className="component-studio-logic-stack">
-            {isInventoryBundleType ? (
-              <section className="component-studio-section component-studio-spotlight">
-                <div>
-                  <span className="chip primary">Bundle automático</span>
-                  <strong>Buscador con empaque editable</strong>
-                  <p>Al guardar, este componente crea el buscador principal y dos columnas numéricas editables para piezas por caja y cajas por tarima.</p>
-                </div>
-                <div className="saved-board-list">
-                  <span className="chip">Buscador de inventario</span>
-                  <span className="chip">Piezas por caja</span>
-                  <span className="chip">Cajas por tarima</span>
-                </div>
-              </section>
-            ) : null}
-
-            {showOptionSource ? (
-              <section className="component-studio-section three-columns component-studio-short-grid">
-                <label className="app-modal-field">
-                  <span>Fuente de menú</span>
-                  <select value={draft.optionSource} onChange={(event) => onChange((current) => ({ ...current, optionSource: event.target.value }))}>
-                    {OPTION_SOURCE_TYPES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                  </select>
-                  <small className="builder-help-text">Define de dónde saldrán las opciones que verá el usuario.</small>
-                </label>
-                <label className="app-modal-field">
-                  <span>Opciones manuales</span>
-                  <input value={draft.optionsText} onChange={(event) => onChange((current) => ({ ...current, optionsText: event.target.value }))} placeholder="Ej: Alta, Media, Baja" />
-                  <small className="builder-help-text">Escribe opciones separadas por coma si no vienen de otro catálogo.</small>
-                </label>
-              </section>
-            ) : null}
-
-            {showInventoryProperty ? (
-              <section className="component-studio-section three-columns component-studio-short-grid">
-                <label className="app-modal-field">
-                  <span>Campo origen</span>
-                  <select value={draft.sourceFieldId} onChange={(event) => onChange((current) => ({ ...current, sourceFieldId: event.target.value }))}>
-                    <option value="">Seleccionar...</option>
-                    {draft.columns.map((column) => <option key={column.id} value={column.id}>{column.label}</option>)}
-                  </select>
-                  <small className="builder-help-text">Elige el buscador de inventario del que se tomará la información.</small>
-                </label>
-                <label className="app-modal-field">
-                  <span>Dato de inventario</span>
-                  <select value={draft.inventoryProperty} onChange={(event) => onChange((current) => ({ ...current, inventoryProperty: event.target.value }))}>
-                    {INVENTORY_PROPERTIES.map((property) => <option key={property.value} value={property.value}>{property.label}</option>)}
-                  </select>
-                  <small className="builder-help-text">Trae automáticamente código, nombre, presentación o conversiones.</small>
-                </label>
-                <div className="component-rule-hint compact-surface-card">
-                  <strong>Atajo visual</strong>
-                  <p>Estos selectores cortos quedan alineados en una sola fila para capturar más rápido.</p>
-                </div>
-              </section>
-            ) : null}
-
-            {showFormulaFields ? (
-              <section className="component-studio-section three-columns">
-                <label className="app-modal-field">
-                  <span>Operando izquierdo</span>
-                  <select value={draft.formulaLeftFieldId} onChange={(event) => onChange((current) => ({ ...current, formulaLeftFieldId: event.target.value }))}>
-                    <option value="">Seleccionar...</option>
-                    {draft.columns.map((column) => <option key={column.id} value={column.id}>{column.label}</option>)}
-                  </select>
-                  <small className="builder-help-text">Primer valor que participa en la operación.</small>
-                </label>
-                <label className="app-modal-field">
-                  <span>Operación</span>
-                  <select value={draft.formulaOperation} onChange={(event) => onChange((current) => ({ ...current, formulaOperation: event.target.value }))}>
-                    {FORMULA_OPERATIONS.map((operation) => <option key={operation.value} value={operation.value}>{operation.label}</option>)}
-                  </select>
-                  <small className="builder-help-text">Define cómo se calculará el resultado final.</small>
-                </label>
-                <label className="app-modal-field">
-                  <span>Operando derecho</span>
-                  <select value={draft.formulaRightFieldId} onChange={(event) => onChange((current) => ({ ...current, formulaRightFieldId: event.target.value }))}>
-                    <option value="">Seleccionar...</option>
-                    {draft.columns.map((column) => <option key={column.id} value={column.id}>{column.label}</option>)}
-                  </select>
-                  <small className="builder-help-text">Segundo valor que completa la fórmula.</small>
-                </label>
-              </section>
-            ) : null}
-
-            {showColorRules ? (
-              <section className={`component-studio-section ${colorOperatorNeedsValue ? "three-columns" : "color-rule-two-columns"}`}>
-                <label className="app-modal-field">
-                  <span>Condición de color</span>
-                  <select value={draft.colorOperator} onChange={(event) => onChange((current) => ({ ...current, colorOperator: event.target.value }))}>
-                    {COLOR_RULE_OPERATORS.map((operator) => <option key={operator.value} value={operator.value}>{operator.label}</option>)}
-                  </select>
-                  <small className="builder-help-text">Se usa para pintar la celda cuando cumpla una regla.</small>
-                </label>
-                {colorOperatorNeedsValue ? (
-                  <label className="app-modal-field">
-                    <span>Valor de comparación</span>
-                    {colorValueUsesBooleanSelect ? (
-                      <select value={draft.colorValue || "Sí"} onChange={(event) => onChange((current) => ({ ...current, colorValue: event.target.value }))}>
-                        <option value="Sí">Sí</option>
-                        <option value="No">No</option>
-                      </select>
-                    ) : (
-                      <input value={draft.colorValue} onChange={(event) => onChange((current) => ({ ...current, colorValue: event.target.value }))} placeholder={colorValuePlaceholder} />
-                    )}
-                    <small className="builder-help-text">{colorValueHelp}</small>
-                  </label>
-                ) : (
-                  <div className="component-rule-hint compact-surface-card">
-                    <strong>Sin valor adicional</strong>
-                    <p>{colorValueHelp}</p>
-                  </div>
-                )}
-                <div className="component-color-grid">
-                  <label className="app-modal-field">
-                    <span>Color fondo</span>
-                    <input type="color" value={draft.colorBg} onChange={(event) => onChange((current) => ({ ...current, colorBg: event.target.value }))} />
-                    <small className="builder-help-text">Color del fondo cuando la regla se active.</small>
-                  </label>
-                  <label className="app-modal-field">
-                    <span>Color texto</span>
-                    <input type="color" value={draft.colorText} onChange={(event) => onChange((current) => ({ ...current, colorText: event.target.value }))} />
-                    <small className="builder-help-text">Color del texto para mantener la lectura clara.</small>
-                  </label>
-                </div>
-              </section>
-            ) : null}
-
-            {!showOptionSource && !showInventoryProperty && !showFormulaFields && !showColorRules ? (
-              <section className="component-studio-section component-studio-empty">
-                <strong>Sin reglas adicionales</strong>
-                <p>Este tipo de componente no necesita configuración extra. Puedes pasar al resumen final.</p>
-              </section>
-            ) : null}
-          </div>
-        ) : null}
-
-        {currentStep === 3 ? (
-          <section className="component-studio-section component-studio-summary">
-            <div>
-              <strong>{draft.fieldLabel || "Nuevo componente"}</strong>
-              <span>{selectedTypeUsage}</span>
-            </div>
-            <div className="component-studio-summary-list">
-              <div className="saved-board-list">
-                <span className="chip primary">Tipo: {selectedTypeOption?.label}</span>
-                <span className="chip">Sección: {draft.groupName || "General"}</span>
-                <span className="chip">Ancho: {BOARD_FIELD_WIDTHS.find((item) => item.value === draft.fieldWidth)?.label}</span>
-                {draft.isRequired === "true" ? <span className="chip danger">Obligatorio</span> : null}
-                {draft.defaultValue ? <span className="chip success">Valor inicial</span> : null}
-              </div>
-              {autoGeneratedFieldLabels.length ? (
-                <div className="saved-board-list">
-                  {autoGeneratedFieldLabels.map((label) => <span key={label} className="chip">Auto: {label}</span>)}
-                </div>
-              ) : null}
-            </div>
-          </section>
-        ) : null}
-      </div>
-    </Modal>
-  );
-}
-
-function BoardBuilderModal({
-  open,
-  mode,
-  draft,
-  onChange,
-  onClose,
-  onConfirm,
-  onOpenComponentStudio,
-  onSaveTemplate,
-  onClear,
-  feedback,
-  templateSearch,
-  onTemplateSearchChange,
-  templateCategoryFilter,
-  onTemplateCategoryChange,
-  templateCategories,
-  filteredBoardTemplates,
-  onPreviewTemplate,
-  onApplyTemplate,
-  selectedPreviewTemplate,
-  onClearTemplatePreview,
-  previewBoard,
-  draftColumnGroups,
-  onMoveDraftColumn,
-  onDuplicateDraftColumn,
-  onEditDraftColumn,
-  onRemoveDraftColumn,
-  visibleUsers,
-  currentUser,
-  userMap,
-  inventoryItems,
-  canSaveTemplate,
-  canSaveBoard,
-}) {
-  const [actionMenuOpen, setActionMenuOpen] = useState(false);
-  const [accessMenuOpen, setAccessMenuOpen] = useState(false);
-  const actionMenuRef = useRef(null);
-  const accessMenuRef = useRef(null);
-  const previewSections = getBoardSectionGroups(previewBoard);
-  const previewRows = previewBoard?.rows?.slice(0, 2) || [];
-  const previewAccessNames = (previewBoard?.accessUserIds || []).map((userId) => userMap.get(userId)?.name).filter(Boolean);
-  const availableOperationalUsers = visibleUsers.filter((user) => user.isActive && user.id !== draft.ownerId);
-  const selectedOperationalNames = (draft.accessUserIds || []).map((userId) => userMap.get(userId)?.name).filter(Boolean);
-
-  useEffect(() => {
-    if (!actionMenuOpen) return undefined;
-
-    function handlePointerDown(event) {
-      if (!actionMenuRef.current?.contains(event.target)) {
-        setActionMenuOpen(false);
-      }
-    }
-
-    window.addEventListener("pointerdown", handlePointerDown);
-    return () => window.removeEventListener("pointerdown", handlePointerDown);
-  }, [actionMenuOpen]);
-
-  useEffect(() => {
-    if (!accessMenuOpen) return undefined;
-
-    function handlePointerDown(event) {
-      if (!accessMenuRef.current?.contains(event.target)) {
-        setAccessMenuOpen(false);
-      }
-    }
-
-    window.addEventListener("pointerdown", handlePointerDown);
-    return () => window.removeEventListener("pointerdown", handlePointerDown);
-  }, [accessMenuOpen]);
-
-  return (
-    <Modal
-      open={open}
-      className="board-builder-modal"
-      title={mode === "edit" ? "Editar tablero" : "Nuevo tablero"}
-      confirmLabel={mode === "edit" ? "Guardar cambios" : "Crear tablero"}
-      cancelLabel="Cerrar"
-      onClose={onClose}
-      onConfirm={onConfirm}
-    >
-      <div className="board-builder-modal-shell">
-        <section className="board-builder-workbench">
-          <div className="board-builder-hero compact-surface-card">
-            <div>
-              <span className="chip primary">{mode === "edit" ? "Edición estructural" : "Constructor guiado"}</span>
-              <h4>{mode === "edit" ? "Ajusta el tablero existente sin salir de aquí" : "Arma un tablero completo en un solo flujo"}</h4>
-              <p>Construye el tablero desde cero. La vista previa de la derecha refleja el tablero tal como quedará armado.</p>
-            </div>
-            <div className="board-builder-hero-actions" ref={actionMenuRef}>
-              <button
-                type="button"
-                className="icon-button board-builder-menu-trigger"
-                aria-label="Abrir acciones del constructor"
-                aria-expanded={actionMenuOpen}
-                onClick={() => setActionMenuOpen((current) => !current)}
-              >
-                <Menu size={16} />
-              </button>
-              {actionMenuOpen ? (
-                <div className="board-builder-actions-dropdown">
-                  <button type="button" className="board-builder-menu-item" onClick={() => { setActionMenuOpen(false); onOpenComponentStudio(); }}>
-                    Agregar componente
-                  </button>
-                  <button type="button" className="board-builder-menu-item danger" onClick={() => { setActionMenuOpen(false); onClear(); }}>
-                    Limpiar
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="builder-overview-grid board-builder-tight-grid board-builder-overview-grid">
-            <label className="app-modal-field builder-card compact-builder-card">
-              <span>Nombre del tablero</span>
-              <input value={draft.name} onChange={(event) => onChange((current) => ({ ...current, name: event.target.value }))} placeholder="Ej: Embarques nocturnos" />
-            </label>
-            <label className="app-modal-field builder-card compact-builder-card">
-                        <span>Asociado</span>
-              <select value={draft.ownerId} onChange={(event) => onChange((current) => ({ ...current, ownerId: event.target.value }))}>
-                <option value="">Seleccionar...</option>
-                {visibleUsers.filter((user) => user.isActive).map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
-              </select>
-            </label>
-            <label className="app-modal-field builder-card compact-builder-card builder-card-wide">
-              <span>Descripción</span>
-              <input value={draft.description} onChange={(event) => onChange((current) => ({ ...current, description: event.target.value }))} placeholder="Qué controla, para qué sirve y cuándo se usa" />
-            </label>
-            <div className="app-modal-field builder-card compact-builder-card builder-card-wide">
-              <span>Accesos operativos</span>
-              <div className="board-access-selector" ref={accessMenuRef}>
-                <button type="button" className="board-access-trigger" onClick={() => setAccessMenuOpen((current) => !current)} aria-expanded={accessMenuOpen}>
-                  <span>{selectedOperationalNames.length ? selectedOperationalNames.join(", ") : "Seleccionar asociados con acceso"}</span>
-                  <ArrowDown size={16} />
-                </button>
-                {accessMenuOpen ? (
-                  <div className="board-access-dropdown">
-                    {availableOperationalUsers.length ? availableOperationalUsers.map((user) => {
-                      const checked = (draft.accessUserIds || []).includes(user.id);
-                      return (
-                        <label key={user.id} className="board-access-option">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => onChange((current) => ({
-                              ...current,
-                              accessUserIds: checked
-                                ? (current.accessUserIds || []).filter((userId) => userId !== user.id)
-                                : Array.from(new Set([...(current.accessUserIds || []), user.id])).filter((userId) => userId !== current.ownerId),
-                            }))}
-                          />
-                          <span>{user.name}</span>
-                        </label>
-                      );
-                    }) : <p className="board-access-empty">No hay asociados disponibles para asignar acceso.</p>}
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </div>
-
-          <div className="builder-settings-grid board-builder-settings-grid board-builder-short-select-grid">
-            <label className="app-modal-field builder-card compact-builder-card">
-              <span>Workflow</span>
-              <select value={String(draft.settings.showWorkflow)} onChange={(event) => onChange((current) => ({ ...current, settings: { ...current.settings, showWorkflow: event.target.value === "true" } }))}>
-                <option value="true">Activado</option>
-                <option value="false">Desactivado</option>
-              </select>
-            </label>
-            <label className="app-modal-field builder-card compact-builder-card">
-              <span>Métricas</span>
-              <select value={String(draft.settings.showMetrics)} onChange={(event) => onChange((current) => ({ ...current, settings: { ...current.settings, showMetrics: event.target.value === "true" } }))}>
-                <option value="true">Activadas</option>
-                <option value="false">Desactivadas</option>
-              </select>
-            </label>
-            <label className="app-modal-field builder-card compact-builder-card">
-                            <span>Asociado visible</span>
-              <select value={String(draft.settings.showAssignee)} onChange={(event) => onChange((current) => ({ ...current, settings: { ...current.settings, showAssignee: event.target.value === "true" } }))}>
-                <option value="true">Sí</option>
-                <option value="false">No</option>
-              </select>
-            </label>
-            <label className="app-modal-field builder-card compact-builder-card">
-              <span>Fechas visibles</span>
-              <select value={String(draft.settings.showDates)} onChange={(event) => onChange((current) => ({ ...current, settings: { ...current.settings, showDates: event.target.value === "true" } }))}>
-                <option value="true">Sí</option>
-                <option value="false">No</option>
-              </select>
-            </label>
-          </div>
-
-          <div className="builder-section-head board-builder-section-head">
-            <div>
-              <h4>Componentes configurados</h4>
-              <p>Modifica el tablero y observa inmediatamente cómo cambia la estructura final.</p>
-            </div>
-            <span className="chip primary">{draft.columns.length} componente(s)</span>
-          </div>
-          <p className="required-legend"><span className="required-mark" aria-hidden="true">*</span> obligatorio</p>
-          <div className="builder-component-list board-builder-component-list">
-            {draftColumnGroups.length ? draftColumnGroups.map((group) => (
-              <section key={group.name} className="builder-group-block compact-group-block">
-                <div className="builder-group-head" style={{ borderColor: group.color }}>
-                  <span className="builder-group-indicator" style={{ backgroundColor: group.color }} />
-                  <div>
-                    <strong>{group.name}</strong>
-                    <p>{group.columns.length} componente(s)</p>
-                  </div>
-                </div>
-                {group.columns.map((column) => (
-                  <article key={column.id} className="builder-component-card compact-component-card">
-                    <div>
-                      <strong>{renderBoardFieldLabel(column.label, column.required)}</strong>
-                      <p>{column.helpText || getBoardFieldTypeDescription(column.type)}</p>
-                    </div>
-                    <div className="saved-board-list compact-component-actions">
-                      <span className="chip primary">{BOARD_FIELD_TYPES.find((item) => item.value === column.type)?.label || column.type}</span>
-                      <button type="button" className="icon-button" onClick={() => onMoveDraftColumn(column.id, "up")}><ArrowUp size={14} /> Subir</button>
-                      <button type="button" className="icon-button" onClick={() => onMoveDraftColumn(column.id, "down")}><ArrowDown size={14} /> Bajar</button>
-                      <button type="button" className="icon-button" onClick={() => onDuplicateDraftColumn(column.id)}><Copy size={14} /> Duplicar</button>
-                      <button type="button" className="icon-button" onClick={() => onEditDraftColumn(column.id)}><Pencil size={14} /> Editar</button>
-                      <button type="button" className="icon-button danger" onClick={() => onRemoveDraftColumn(column.id)}><Trash2 size={14} /> Quitar</button>
-                    </div>
-                  </article>
-                ))}
-              </section>
-            )) : (
-              <div className="builder-empty-state compact-builder-empty-state">
-                <LayoutDashboard size={28} />
-                <div>
-                  <strong>Aún no agregas componentes</strong>
-                  <p>Usa el Studio de Componentes para construir tu tablero desde cero.</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {feedback ? <p className="inline-success-message">{feedback}</p> : null}
-        </section>
-
-        <aside className="board-builder-preview-panel">
-          <div className="board-preview-surface">
-            <div className="board-preview-head">
-              <div>
-                <span className="chip success">Vista previa en vivo</span>
-                <h4>{previewBoard.name || "Nuevo tablero"}</h4>
-                <p>{previewBoard.description}</p>
-              </div>
-              <div className="saved-board-list compact-preview-metrics">
-                <span className="chip">Campos: {(previewBoard.fields || []).length}</span>
-                <span className="chip">Secciones: {previewSections.length}</span>
-                <span className="chip">Filas demo: {previewRows.length}</span>
-              </div>
-            </div>
-
-            <div className="board-meta-inline board-meta-inline-preview">
-                      <span>Asociado principal · {userMap.get(previewBoard.ownerId)?.name || currentUser?.name || "Sin asignar"}</span>
-              {previewAccessNames.length ? <span>Acceso · {previewAccessNames.join(", ")}</span> : null}
-            </div>
-
-            {(previewBoard.fields || []).length ? (
-              <div className="table-wrap board-preview-table-wrap">
-                <table className="admin-table-clean board-preview-table">
-                  <thead>
-                    {previewSections.length ? (
-                      <tr>
-                        {previewSections.map((section) => (
-                          <th key={section.name} colSpan={section.span} className="board-section-header-cell" style={{ backgroundColor: section.color }}>
-                            {section.name}
-                          </th>
-                        ))}
-                        {previewBoard.settings?.showAssignee !== false ? <th className="board-section-header-cell board-section-header-static">Asociado</th> : null}
-                        <th className="board-section-header-cell board-section-header-static">Estado</th>
-                        {previewBoard.settings?.showDates !== false ? <th className="board-section-header-cell board-section-header-static">Tiempo</th> : null}
-                        {previewBoard.settings?.showWorkflow !== false ? <th className="board-section-header-cell board-section-header-static">Acciones</th> : null}
-                      </tr>
-                    ) : null}
-                    <tr>
-                      {(previewBoard.fields || []).map((field) => <th key={field.id}>{field.label}{field.required ? " *" : ""}</th>)}
-                      {previewBoard.settings?.showAssignee !== false ? <th>Asociado</th> : null}
-                      <th>Estado</th>
-                      {previewBoard.settings?.showDates !== false ? <th>Tiempo</th> : null}
-                      {previewBoard.settings?.showWorkflow !== false ? <th>Acciones</th> : null}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {previewRows.map((row) => (
-                      <tr key={row.id}>
-                        {(previewBoard.fields || []).map((field) => <td key={field.id} style={BOARD_FIELD_WIDTH_STYLES[field.width] || BOARD_FIELD_WIDTH_STYLES.md}>{formatBoardPreviewValue(row.values?.[field.id], field, userMap, inventoryItems)}</td>)}
-                        {previewBoard.settings?.showAssignee !== false ? <td>{userMap.get(row.responsibleId)?.name || currentUser?.name || "Asociado"}</td> : null}
-                        <td><span className="chip">{row.status || STATUS_PENDING}</span></td>
-                        {previewBoard.settings?.showDates !== false ? <td>{row.accumulatedSeconds ? `${Math.round(row.accumulatedSeconds / 60)} min` : "0 min"}</td> : null}
-                        {previewBoard.settings?.showWorkflow !== false ? <td><span className={row.status === STATUS_RUNNING ? "chip success" : "chip"}>Inicia · Pausa · Fin</span></td> : null}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="builder-preview-empty">
-                <LayoutDashboard size={32} />
-                <div>
-                  <strong>La estructura aparecerá aquí</strong>
-                  <p>Agrega componentes o previsualiza una plantilla para ver el tablero terminado antes de crearlo.</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </aside>
-      </div>
-    </Modal>
   );
 }
 
@@ -3662,7 +3308,7 @@ function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChange, onS
 
   function handleSaveIdentity() {
     if (!identityForm.name.trim() || !identityForm.email.trim() || !identityForm.area.trim() || !identityForm.jobTitle.trim()) {
-      setIdentityMessage("Captura nombre, correo, área y cargo para guardar el perfil del asociado.");
+      setIdentityMessage("Captura nombre, correo, área y cargo para guardar el perfil del player.");
       return;
     }
     const result = onUpdateIdentity({
@@ -3692,7 +3338,7 @@ function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChange, onS
     <Modal
       open
       className="profile-modal"
-      title="Perfil de asociado"
+      title="Perfil de player"
       confirmLabel="Cerrar"
       hideCancel
       onClose={onClose}
@@ -3713,7 +3359,7 @@ function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChange, onS
                   <input value={identityForm.name} onChange={(event) => {
                     setIdentityForm((current) => ({ ...current, name: event.target.value }));
                     setIdentityMessage("");
-                  }} placeholder="Nombre del asociado" />
+                  }} placeholder="Nombre del player" />
                 </label>
                 <label className="profile-summary-field">
                   <span>Correo</span>
@@ -3812,6 +3458,34 @@ function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChange, onS
   );
 }
 
+function ForcedPasswordChangeModal({ passwordForm, onPasswordChange, onSubmit }) {
+  return (
+    <Modal
+      open
+      title="Actualiza tu contraseña temporal"
+      confirmLabel="Guardar mi nueva contraseña"
+      hideCancel
+      onClose={() => {}}
+      onConfirm={onSubmit}
+      className="profile-modal"
+    >
+      <div className="modal-form-grid">
+        <p className="modal-footnote">Tu contraseña fue restablecida. Para continuar debes crear una contraseña nueva que solo tú conozcas.</p>
+        <label className="app-modal-field">
+          <span>Nueva contraseña</span>
+          <input type="password" value={passwordForm.password} onChange={(event) => onPasswordChange((current) => ({ ...current, password: event.target.value, message: "" }))} />
+        </label>
+        <label className="app-modal-field">
+          <span>Confirmar nueva contraseña</span>
+          <input type="password" value={passwordForm.confirmPassword} onChange={(event) => onPasswordChange((current) => ({ ...current, confirmPassword: event.target.value, message: "" }))} />
+        </label>
+        <p className="modal-footnote">La nueva contraseña definitiva sí debe incluir mayúscula, minúscula, número, símbolo y al menos 10 caracteres.</p>
+        {passwordForm.message ? <p className="validation-text">{passwordForm.message}</p> : null}
+      </div>
+    </Modal>
+  );
+}
+
 function App() {
   const [state, setState] = useState(loadState);
   const [page, setPage] = useState(INITIAL_ROUTE_STATE.page);
@@ -3823,7 +3497,7 @@ function App() {
       return DEFAULT_DASHBOARD_SECTION_STATE;
     }
   });
-  const [adminTab, setAdminTab] = useState(INITIAL_ROUTE_STATE.adminTab);
+  const [adminTab, setAdminTab] = useState(() => normalizeAdminTab(INITIAL_ROUTE_STATE.adminTab));
   const [selectedWeekId, setSelectedWeekId] = useState(() => {
     const initial = loadState();
     return INITIAL_ROUTE_STATE.selectedWeekId || initial.weeks.find((week) => week.isActive)?.id || initial.weeks[0]?.id || "";
@@ -3833,20 +3507,23 @@ function App() {
     return INITIAL_ROUTE_STATE.selectedHistoryWeekId || initial.weeks[0]?.id || "";
   });
   const [boardFilters, setBoardFilters] = useState({ responsibleId: "all", activityId: "all", status: "all" });
+  const [inventoryTab, setInventoryTab] = useState(INVENTORY_DOMAIN_BASE);
+  const [inventoryActionsMenuOpen, setInventoryActionsMenuOpen] = useState(false);
   const [inventorySearch, setInventorySearch] = useState("");
-  const [dashboardFilters, setDashboardFilters] = useState({ periodType: "week", periodKey: "all", responsibleId: "all", area: "all", source: "all" });
+  const [dashboardFilters, setDashboardFilters] = useState({ periodType: "week", periodKey: "all", responsibleId: "all", area: "all", source: "all", startDate: "", endDate: "" });
   const [pauseState, setPauseState] = useState({ open: false, activityId: null, reason: "", error: "" });
   const [boardPauseState, setBoardPauseState] = useState({ open: false, boardId: null, rowId: null, reason: "", error: "" });
-  const [catalogModal, setCatalogModal] = useState({ open: false, mode: "create", id: null, name: "", limit: "", mandatory: "true" });
+  const [catalogModal, setCatalogModal] = useState({ open: false, mode: "create", id: null, name: "", limit: "", mandatory: "true", frequency: "weekly" });
   const [editWeekId, setEditWeekId] = useState(null);
   const [editWeekActivityId, setEditWeekActivityId] = useState("");
   const [historyPauseActivityId, setHistoryPauseActivityId] = useState(null);
   const [userModal, setUserModal] = useState(() => createUserModalState());
   const [deleteUserId, setDeleteUserId] = useState(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
-  const [resetUserPasswordModal, setResetUserPasswordModal] = useState({ open: false, userId: null, password: "", message: "" });
+  const [resetUserPasswordModal, setResetUserPasswordModal] = useState({ open: false, userId: null, userName: "", password: "", message: "" });
   const [userSearch, setUserSearch] = useState("");
   const [userRoleFilter, setUserRoleFilter] = useState("Todos los roles");
+  const [usersViewTab, setUsersViewTab] = useState("table");
   const [passwordForm, setPasswordForm] = useState({ password: "", confirmPassword: "", message: "" });
   const [areaModal, setAreaModal] = useState({ open: false, target: "user", name: "", error: "" });
   const [controlBoardDraft, setControlBoardDraft] = useState(createEmptyBoardDraft);
@@ -3862,7 +3539,8 @@ function App() {
   const [boardRuntimeFeedback, setBoardRuntimeFeedback] = useState({ tone: "", message: "" });
   const [boardFinishConfirm, setBoardFinishConfirm] = useState({ open: false, boardId: null, rowId: null, message: "" });
   const [deleteBoardRowState, setDeleteBoardRowState] = useState({ open: false, boardId: null, rowId: null });
-  const [inventoryModal, setInventoryModal] = useState({ open: false, mode: "create", id: null, code: "", name: "", presentation: "", piecesPerBox: "", boxesPerPallet: "" });
+  const [inventoryModal, setInventoryModal] = useState(() => createInventoryModalState());
+  const [inventoryMovementModal, setInventoryMovementModal] = useState(() => createInventoryMovementModalState());
   const [inventoryImportFeedback, setInventoryImportFeedback] = useState({ tone: "", message: "" });
   const [permissionsFeedback, setPermissionsFeedback] = useState({ tone: "", message: "" });
   const [selectedPermissionUserId, setSelectedPermissionUserId] = useState("");
@@ -3877,7 +3555,7 @@ function App() {
   const [selectedPermissionBoardId, setSelectedPermissionBoardId] = useState("");
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [loginError, setLoginError] = useState("");
-  const [loginDirectory, setLoginDirectory] = useState(() => buildLoginDirectoryFromState(loadState()));
+  const [loginDirectory, setLoginDirectory] = useState(EMPTY_LOGIN_DIRECTORY);
   const [bootstrapLeadForm, setBootstrapLeadForm] = useState({ name: "", email: "", area: "", jobTitle: "", password: "" });
   const [bootstrapLeadError, setBootstrapLeadError] = useState("");
   const [auditFilters, setAuditFilters] = useState({ scope: "all", userId: "all", period: "all", search: "" });
@@ -3892,6 +3570,8 @@ function App() {
   const inventoryFileInputRef = useRef(null);
   const permissionFileInputRef = useRef(null);
   const customBoardActionsMenuRef = useRef(null);
+  const inventoryActionsMenuRef = useRef(null);
+  const sessionSnapshotRef = useRef({ userId: "", sessionVersion: 0 });
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -3921,6 +3601,19 @@ function App() {
   }, [customBoardActionsMenuOpen]);
 
   useEffect(() => {
+    if (!inventoryActionsMenuOpen) return undefined;
+
+    function handlePointerDown(event) {
+      if (!inventoryActionsMenuRef.current?.contains(event.target)) {
+        setInventoryActionsMenuOpen(false);
+      }
+    }
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => window.removeEventListener("pointerdown", handlePointerDown);
+  }, [inventoryActionsMenuOpen]);
+
+  useEffect(() => {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
 
@@ -3933,16 +3626,20 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const nextQuery = buildRouteQuery({
-      page,
-      adminTab,
-      selectedBoardId: selectedCustomBoardId,
-      selectedWeekId,
-      selectedHistoryWeekId,
-    });
-    const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}${window.location.hash || ""}`;
+    const shouldPersistRoute = Boolean(sessionUserId && sessionUserId !== BOOTSTRAP_MASTER_ID);
+    const nextQuery = shouldPersistRoute
+      ? buildRouteQuery({
+          page,
+          adminTab,
+          selectedBoardId: selectedCustomBoardId,
+          selectedWeekId,
+          selectedHistoryWeekId,
+        })
+      : "";
+    const nextPath = shouldPersistRoute ? buildRoutePath(page) : "/";
+    const nextUrl = `${nextPath}${nextQuery ? `?${nextQuery}` : ""}${window.location.hash || ""}`;
     window.history.replaceState(null, "", nextUrl);
-  }, [adminTab, page, selectedCustomBoardId, selectedHistoryWeekId, selectedWeekId]);
+  }, [adminTab, page, selectedCustomBoardId, selectedHistoryWeekId, selectedWeekId, sessionUserId]);
 
   useEffect(() => {
     let active = true;
@@ -3951,11 +3648,18 @@ function App() {
       try {
         const directory = await requestJson("/auth/login-options");
         if (active) {
-          setLoginDirectory(directory);
+          setLoginDirectory({
+            system: {
+              masterBootstrapEnabled: Boolean(directory?.system?.masterBootstrapEnabled),
+              masterUsername: directory?.system?.masterUsername || null,
+              showBootstrapMasterHint: Boolean(directory?.system?.showBootstrapMasterHint),
+            },
+            demoUsers: Array.isArray(directory?.demoUsers) ? directory.demoUsers : [],
+          });
         }
       } catch {
         if (active) {
-          setLoginDirectory(buildLoginDirectoryFromState(state));
+          setLoginDirectory(EMPTY_LOGIN_DIRECTORY);
         }
       }
 
@@ -4003,7 +3707,7 @@ function App() {
       } catch (error) {
         if (!active) return;
         if (error?.status === 401) {
-          setSessionUserId("");
+          invalidateClientSession("Tu sesión terminó. Vuelve a iniciar sesión.");
         }
         setSyncStatus("Modo local");
       } finally {
@@ -4018,10 +3722,23 @@ function App() {
         const payload = JSON.parse(event.data);
         if (payload.type !== "state" || !payload.state) return;
         const normalizedState = normalizeWarehouseState(payload.state);
+        const nextSessionUser = normalizedState.users.find((user) => user.id === sessionUserId) || null;
+        const shouldRevalidateSession = Boolean(
+          sessionUserId
+          && sessionUserId !== BOOTSTRAP_MASTER_ID
+          && (!nextSessionUser || Number(nextSessionUser.sessionVersion || 0) !== Number(sessionSnapshotRef.current.sessionVersion || 0)),
+        );
         skipNextSyncRef.current = true;
         setState(normalizedState);
         setLoginDirectory(buildLoginDirectoryFromState(normalizedState));
         setSyncStatus("Sincronizado");
+        if (shouldRevalidateSession) {
+          requestJson("/auth/session").catch((error) => {
+            if (error?.status === 401) {
+              invalidateClientSession("Tu sesión se cerró porque tu acceso cambió. Si te restablecieron la contraseña, entra con la clave temporal.");
+            }
+          });
+        }
       } catch {
         setSyncStatus("Sincronizado");
       }
@@ -4060,7 +3777,19 @@ function App() {
         setSyncStatus("Sincronizado");
       } catch (error) {
         if (error?.status === 401) {
-          setSessionUserId("");
+          invalidateClientSession("Tu sesión terminó. Vuelve a iniciar sesión.");
+        } else if (error?.status === 409) {
+          try {
+            const remoteState = await requestJson("/warehouse/state");
+            skipNextSyncRef.current = true;
+            const normalizedState = normalizeWarehouseState(remoteState);
+            setState(normalizedState);
+            setLoginDirectory(buildLoginDirectoryFromState(normalizedState));
+            setSyncStatus("Sincronizado");
+            return;
+          } catch {
+            // Ignore and fall back to local mode.
+          }
         }
         setSyncStatus("Modo local");
       }
@@ -4074,6 +3803,7 @@ function App() {
     [sessionUserId, state.users],
   );
   const isBootstrapMasterSession = sessionUserId === BOOTSTRAP_MASTER_ID && loginDirectory.system?.masterBootstrapEnabled;
+  const isForcedPasswordChange = Boolean(currentUser?.mustChangePassword && sessionUserId && !isBootstrapMasterSession);
   const catalogMap = useMemo(() => new Map(state.catalog.map((item) => [item.id, item])), [state.catalog]);
   const userMap = useMemo(() => new Map(state.users.map((item) => [item.id, item])), [state.users]);
   const activeWeek = useMemo(
@@ -4151,7 +3881,7 @@ function App() {
         label: getActivityLabel(activity, catalogMap),
         boardName: "Actividades semanales",
         responsibleId: activity.responsibleId || "",
-        responsibleName: responsibleUser?.name || "Sin asociado",
+        responsibleName: responsibleUser?.name || "Sin player",
         area: getUserArea(responsibleUser) || "Sin área",
         occurredAt: activity.endTime || activity.activityDate || activity.startTime || activity.lastResumedAt,
         status: activity.status || STATUS_PENDING,
@@ -4175,7 +3905,7 @@ function App() {
         label: board.name,
         boardName: board.name,
         responsibleId: row.responsibleId || board.ownerId || "",
-        responsibleName: responsibleUser?.name || userMap.get(board.ownerId)?.name || "Sin asociado",
+        responsibleName: responsibleUser?.name || userMap.get(board.ownerId)?.name || "Sin player",
         area: getUserArea(responsibleUser) || getUserArea(userMap.get(board.ownerId)) || "Sin área",
         occurredAt: row.endTime || row.createdAt || row.startTime || row.lastResumedAt,
         status: row.status || STATUS_PENDING,
@@ -4191,9 +3921,21 @@ function App() {
     return activityRecords.concat(boardRecords).filter((record) => Boolean(record.occurredAt));
   }, [activityPauseSummaryMap, catalogMap, dashboardVisibleControlBoards, now, state.activities, userMap, visibleDashboardActivities]);
 
+  const dateFilteredDashboardRecords = useMemo(() => {
+    const startDate = getDashboardFilterStartDate(dashboardFilters.startDate);
+    const endDate = getDashboardFilterEndDate(dashboardFilters.endDate);
+    return dashboardRecords.filter((record) => {
+      const occurredAt = new Date(record.occurredAt);
+      if (Number.isNaN(occurredAt.getTime())) return false;
+      const startOk = !startDate || occurredAt >= startDate;
+      const endOk = !endDate || occurredAt <= endDate;
+      return startOk && endOk;
+    });
+  }, [dashboardFilters.endDate, dashboardFilters.startDate, dashboardRecords]);
+
   const dashboardPeriodOptions = useMemo(() => {
     const optionsMap = new Map();
-    dashboardRecords.forEach((record) => {
+    dateFilteredDashboardRecords.forEach((record) => {
       const key = getDashboardPeriodKey(record.occurredAt, dashboardFilters.periodType);
       if (!key || optionsMap.has(key)) return;
       const range = getDashboardPeriodRange(record.occurredAt, dashboardFilters.periodType);
@@ -4207,7 +3949,7 @@ function App() {
     return [{ value: "all", label: `Todos los ${getDashboardPeriodTypeLabel(dashboardFilters.periodType).toLowerCase()}s` }].concat(
       Array.from(optionsMap.values()).sort((a, b) => b.sortTime - a.sortTime).map(({ value, label }) => ({ value, label })),
     );
-  }, [dashboardFilters.periodType, dashboardRecords]);
+  }, [dashboardFilters.periodType, dateFilteredDashboardRecords]);
 
   useEffect(() => {
     if (dashboardFilters.periodKey === "all") return;
@@ -4217,14 +3959,14 @@ function App() {
   }, [dashboardFilters.periodKey, dashboardPeriodOptions]);
 
   const filteredDashboardRecords = useMemo(() => {
-    return dashboardRecords.filter((record) => {
+    return dateFilteredDashboardRecords.filter((record) => {
       const periodOk = dashboardFilters.periodKey === "all" || getDashboardPeriodKey(record.occurredAt, dashboardFilters.periodType) === dashboardFilters.periodKey;
       const responsibleOk = dashboardFilters.responsibleId === "all" || record.responsibleId === dashboardFilters.responsibleId;
       const areaOk = dashboardFilters.area === "all" || record.area === dashboardFilters.area;
       const sourceOk = dashboardFilters.source === "all" || record.source === dashboardFilters.source;
       return periodOk && responsibleOk && areaOk && sourceOk;
     });
-  }, [dashboardFilters, dashboardRecords]);
+  }, [dashboardFilters, dateFilteredDashboardRecords]);
 
   const filteredDashboardActivities = useMemo(
     () => filteredDashboardRecords.filter((record) => record.source === "activity"),
@@ -4498,21 +4240,103 @@ function App() {
     [visibleUsers],
   );
 
+  const boardAssignmentsByUser = useMemo(() => {
+    const counts = new Map();
+    (state.controlBoards || []).forEach((board) => {
+      const relatedUserIds = new Set([board.createdById, board.ownerId, ...(board.accessUserIds || [])].filter(Boolean));
+      relatedUserIds.forEach((userId) => {
+        counts.set(userId, (counts.get(userId) || 0) + 1);
+      });
+    });
+    return counts;
+  }, [state.controlBoards]);
+
+  const usersCreatedByMap = useMemo(() => {
+    const counts = new Map();
+    (state.users || []).forEach((user) => {
+      if (!user.createdById) return;
+      counts.set(user.createdById, (counts.get(user.createdById) || 0) + 1);
+    });
+    return counts;
+  }, [state.users]);
+
+  const usersByAreaGroups = useMemo(() => {
+    const groups = new Map();
+    filteredUsers.forEach((user) => {
+      const area = getUserArea(user) || "Sin área";
+      if (!groups.has(area)) groups.set(area, []);
+      groups.get(area).push(user);
+    });
+
+    return Array.from(groups.entries())
+      .map(([area, users]) => ({ area, users: users.sort((left, right) => left.name.localeCompare(right.name)) }))
+      .sort((left, right) => left.area.localeCompare(right.area));
+  }, [filteredUsers]);
+
+  const usersByCreatorGroups = useMemo(() => {
+    const groups = new Map();
+    filteredUsers.forEach((user) => {
+      const creatorId = user.createdById || "unassigned";
+      if (!groups.has(creatorId)) groups.set(creatorId, []);
+      groups.get(creatorId).push(user);
+    });
+
+    return Array.from(groups.entries())
+      .map(([creatorId, users]) => ({
+        creatorId,
+        creatorName: creatorId === "unassigned" ? "Sin creador registrado" : userMap.get(creatorId)?.name || creatorId,
+        creatorArea: creatorId === "unassigned" ? "Sin área" : getUserArea(userMap.get(creatorId)) || "Sin área",
+        users: users.sort((left, right) => left.name.localeCompare(right.name)),
+      }))
+      .sort((left, right) => left.creatorName.localeCompare(right.creatorName));
+  }, [filteredUsers, userMap]);
+
   const canResetOtherPasswords = currentUser?.role === ROLE_LEAD || currentUser?.role === ROLE_SR;
 
   const inventoryItems = useMemo(() => {
-    return (state.inventoryItems || []).filter((item) => {
+    return (state.inventoryItems || []).map((item) => normalizeInventoryItemRecord(item)).filter((item) => {
       const term = inventorySearch.trim().toLowerCase();
       if (!term) return true;
-      return [item.code, item.name, item.presentation].some((value) => String(value || "").toLowerCase().includes(term));
+      return [item.code, item.name, item.presentation, item.storageLocation].some((value) => String(value || "").toLowerCase().includes(term));
     });
   }, [inventorySearch, state.inventoryItems]);
 
+  const inventoryItemsByDomain = useMemo(() => ({
+    [INVENTORY_DOMAIN_BASE]: inventoryItems.filter((item) => item.domain === INVENTORY_DOMAIN_BASE),
+    [INVENTORY_DOMAIN_CLEANING]: inventoryItems.filter((item) => item.domain === INVENTORY_DOMAIN_CLEANING),
+    [INVENTORY_DOMAIN_ORDERS]: inventoryItems.filter((item) => item.domain === INVENTORY_DOMAIN_ORDERS),
+  }), [inventoryItems]);
+
+  const currentInventoryItems = inventoryItemsByDomain[inventoryTab] || [];
+
+  const inventoryMovements = useMemo(
+    () => (state.inventoryMovements || []).slice().sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt)),
+    [state.inventoryMovements],
+  );
+
+  const currentInventoryMovements = useMemo(
+    () => inventoryMovements.filter((movement) => normalizeInventoryDomain(movement.domain) === inventoryTab),
+    [inventoryMovements, inventoryTab],
+  );
+
+  const lowStockInventoryItems = useMemo(
+    () => currentInventoryItems.filter((item) => Number(item.stockUnits || 0) <= Number(item.minStockUnits || 0)).sort((left, right) => (left.stockUnits - left.minStockUnits) - (right.stockUnits - right.minStockUnits)),
+    [currentInventoryItems],
+  );
+
+  const inventoryLinkedCleaningRows = useMemo(
+    () => inventoryItemsByDomain[INVENTORY_DOMAIN_CLEANING].filter((item) => item.activityCatalogIds.length > 0),
+    [inventoryItemsByDomain],
+  );
+
   const inventoryStats = useMemo(() => ({
-    total: (state.inventoryItems || []).length,
-    totalPiecesPerBox: (state.inventoryItems || []).reduce((sum, item) => sum + Number(item.piecesPerBox || 0), 0),
-    totalBoxesPerPallet: (state.inventoryItems || []).reduce((sum, item) => sum + Number(item.boxesPerPallet || 0), 0),
-  }), [state.inventoryItems]);
+    total: currentInventoryItems.length,
+    totalPiecesPerBox: currentInventoryItems.reduce((sum, item) => sum + Number(item.piecesPerBox || 0), 0),
+    totalBoxesPerPallet: currentInventoryItems.reduce((sum, item) => sum + Number(item.boxesPerPallet || 0), 0),
+    totalStockUnits: currentInventoryItems.reduce((sum, item) => sum + Number(item.stockUnits || 0), 0),
+    lowStockCount: lowStockInventoryItems.length,
+    movementCount: currentInventoryMovements.length,
+  }), [currentInventoryItems, currentInventoryMovements.length, lowStockInventoryItems.length]);
 
   const departmentOptions = useMemo(
     () => buildAreaCatalog(state.users, state.areaCatalog),
@@ -4523,6 +4347,45 @@ function App() {
     const actorArea = normalizeAreaOption(getUserArea(currentUser));
     return departmentOptions.filter((area) => area === actorArea);
   }, [currentUser, departmentOptions]);
+
+  const activeCatalogItems = useMemo(
+    () => (state.catalog || []).filter((item) => !item.isDeleted),
+    [state.catalog],
+  );
+
+  const catalogWeekGroups = useMemo(() => ([
+    {
+      key: "mandatory",
+      label: "Obligatorias",
+      description: "Actividades base que deberían estar presentes en la operación semanal.",
+      items: activeCatalogItems.filter((item) => item.isMandatory),
+    },
+    {
+      key: "optional",
+      label: "Ocasionales",
+      description: "Actividades de apoyo que puedes sumar según la carga de la semana.",
+      items: activeCatalogItems.filter((item) => !item.isMandatory),
+    },
+  ]), [activeCatalogItems]);
+
+  const weeklyAreaCoverageRows = useMemo(() => {
+    return (state.weeks || []).map((week) => {
+      const areaCounts = new Map();
+      (state.activities || [])
+        .filter((activity) => activity.weekId === week.id)
+        .forEach((activity) => {
+          const area = getUserArea(userMap.get(activity.responsibleId)) || "Sin área";
+          areaCounts.set(area, (areaCounts.get(area) || 0) + 1);
+        });
+
+      return {
+        ...week,
+        areas: Array.from(areaCounts.entries())
+          .map(([area, total]) => ({ area, total }))
+          .sort((left, right) => right.total - left.total),
+      };
+    });
+  }, [state.activities, state.weeks, userMap]);
 
   function handleAddAreaOption() {
     if (currentUser && currentUser.role !== ROLE_LEAD) {
@@ -4536,7 +4399,7 @@ function App() {
     setAreaModal({ open: true, target: "bootstrap", name: "", error: "" });
   }
 
-  function confirmAddArea() {
+  async function confirmAddArea() {
     const nextArea = normalizeAreaOption(areaModal.name);
     if (!nextArea) {
       setAreaModal((current) => ({ ...current, error: "Escribe el nombre del área." }));
@@ -4547,10 +4410,16 @@ function App() {
       return;
     }
 
-    setState((current) => ({
-      ...current,
-      areaCatalog: buildAreaCatalog(current.users, (current.areaCatalog || []).concat(nextArea)),
-    }));
+    try {
+      const result = await requestJson("/warehouse/areas", {
+        method: "POST",
+        body: JSON.stringify({ name: nextArea }),
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+    } catch (error) {
+      setAreaModal((current) => ({ ...current, error: error?.message || "No se pudo agregar el área." }));
+      return;
+    }
 
     if (areaModal.target === "bootstrap") {
       setBootstrapLeadForm((current) => ({ ...current, area: nextArea }));
@@ -4581,7 +4450,7 @@ function App() {
   }, [allowedPagesKey, currentUser?.role, page]);
 
   useEffect(() => {
-    if (adminTab === "permissions") {
+    if (adminTab === "permissions" || adminTab === "reports") {
       setAdminTab("catalog");
     }
   }, [adminTab]);
@@ -4629,6 +4498,9 @@ function App() {
     () => Object.fromEntries(ACTION_DEFINITIONS.map((item) => [item.id, canDoAction(currentUser, item.id, normalizedPermissions)])),
     [currentUser, normalizedPermissions],
   );
+
+  const currentInventoryManagePermission = actionPermissions[getInventoryManageActionId(inventoryTab)];
+  const currentInventoryImportPermission = actionPermissions[getInventoryImportActionId(inventoryTab)];
 
   const visibleControlBoards = useMemo(() => {
     if (!currentUser) return [];
@@ -4852,6 +4724,25 @@ function App() {
     });
   }, [distributionByUser, userMap]);
 
+  useEffect(() => {
+    sessionSnapshotRef.current = {
+      userId: currentUser?.id || "",
+      sessionVersion: Number(currentUser?.sessionVersion || 0),
+    };
+  }, [currentUser?.id, currentUser?.sessionVersion]);
+
+  useEffect(() => {
+    if (!isForcedPasswordChange) return;
+    setProfileModalOpen(false);
+  }, [isForcedPasswordChange]);
+
+  function invalidateClientSession(message) {
+    setSessionUserId("");
+    setProfileModalOpen(false);
+    setPasswordForm({ password: "", confirmPassword: "", message: "" });
+    setLoginError(message || "");
+  }
+
   async function handleCreateWeek() {
     if (!actionPermissions.createWeek) return;
     try {
@@ -4898,7 +4789,12 @@ function App() {
     }));
   }
 
-  function handleStart(activityId) {
+  async function handleStart(activityId) {
+    const activity = state.activities.find((item) => item.id === activityId);
+    const linkedCleaningItems = (state.inventoryItems || [])
+      .map((item) => normalizeInventoryItemRecord(item))
+      .filter((item) => item.domain === INVENTORY_DOMAIN_CLEANING && item.activityCatalogIds.includes(activity?.catalogActivityId) && Number(item.consumptionPerStart || 0) > 0);
+    const isFirstStart = Boolean(activity && !activity.startTime);
     const nowIso = new Date().toISOString();
     updateActivity(activityId, (activity) => ({
       ...activity,
@@ -4906,6 +4802,35 @@ function App() {
       startTime: activity.startTime || nowIso,
       lastResumedAt: nowIso,
     }));
+
+    if (!isFirstStart || !linkedCleaningItems.length || !actionPermissions.manageCleaningInventory) {
+      return;
+    }
+
+    try {
+      let latestInventoryState = null;
+      for (const item of linkedCleaningItems) {
+        const result = await requestJson("/warehouse/inventory/movements", {
+          method: "POST",
+          body: JSON.stringify({
+            itemId: item.id,
+            movementType: INVENTORY_MOVEMENT_CONSUME,
+            quantity: Number(item.consumptionPerStart || 0),
+            notes: `Consumo automático al iniciar ${getActivityLabel(activity, catalogMap)}`,
+            activityId: activity.id,
+            catalogActivityId: activity.catalogActivityId,
+            storageLocation: item.storageLocation,
+            unitLabel: item.unitLabel,
+          }),
+        });
+        latestInventoryState = result.data.state;
+      }
+      if (latestInventoryState) {
+        applyRemoteInventorySnapshot(latestInventoryState);
+      }
+    } catch (error) {
+      setInventoryImportFeedback({ tone: "danger", message: error?.message || "No se pudo descontar el insumo ligado a la actividad." });
+    }
   }
 
   function handleConfirmPause() {
@@ -4977,15 +4902,18 @@ function App() {
       return;
     }
 
-    const nowIso = new Date().toISOString();
-    updateBoardRow(boardPauseState.boardId, boardPauseState.rowId, (row) => ({
-      ...row,
-      status: STATUS_PAUSED,
-      accumulatedSeconds: updateElapsedForFinish(row, nowIso),
-      lastResumedAt: null,
-      lastPauseReason: boardPauseState.reason.trim(),
-    }));
-    setBoardPauseState({ open: false, boardId: null, rowId: null, reason: "", error: "" });
+    requestJson(`/warehouse/boards/${boardPauseState.boardId}/rows/${boardPauseState.rowId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        status: STATUS_PAUSED,
+        lastPauseReason: boardPauseState.reason.trim(),
+      }),
+    }).then((remoteState) => {
+      applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setBoardPauseState({ open: false, boardId: null, rowId: null, reason: "", error: "" });
+    }).catch((error) => {
+      setBoardPauseState((current) => ({ ...current, error: error?.message || "No se pudo pausar la fila." }));
+    });
   }
 
   function handleFinish(activityId) {
@@ -5001,7 +4929,7 @@ function App() {
   }
 
   function openCatalogCreate() {
-    setCatalogModal({ open: true, mode: "create", id: null, name: "", limit: "", mandatory: "true" });
+    setCatalogModal({ open: true, mode: "create", id: null, name: "", limit: "", mandatory: "true", frequency: "weekly" });
   }
 
   function openCatalogEdit(item) {
@@ -5012,36 +4940,45 @@ function App() {
       name: item.name,
       limit: String(item.timeLimitMinutes),
       mandatory: String(item.isMandatory),
+      frequency: normalizeActivityFrequency(item.frequency),
     });
   }
 
-  function submitCatalogModal() {
+  async function submitCatalogModal() {
     const payload = {
-      id: catalogModal.id || makeId("cat"),
       name: catalogModal.name.trim(),
       timeLimitMinutes: Number(catalogModal.limit || 0),
       isMandatory: catalogModal.mandatory === "true",
+      frequency: normalizeActivityFrequency(catalogModal.frequency),
       isDeleted: false,
     };
 
     if (!payload.name || payload.timeLimitMinutes <= 0) return;
 
-    setState((current) => ({
-      ...current,
-      catalog:
-        catalogModal.mode === "create"
-          ? current.catalog.concat(payload)
-          : current.catalog.map((item) => (item.id === payload.id ? { ...item, ...payload } : item)),
-    }));
-
-    setCatalogModal({ open: false, mode: "create", id: null, name: "", limit: "", mandatory: "true" });
+    try {
+      const result = await requestJson(
+        catalogModal.mode === "create" ? "/warehouse/catalog" : `/warehouse/catalog/${catalogModal.id}`,
+        {
+          method: catalogModal.mode === "create" ? "POST" : "PATCH",
+          body: JSON.stringify(payload),
+        },
+      );
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setCatalogModal({ open: false, mode: "create", id: null, name: "", limit: "", mandatory: "true", frequency: "weekly" });
+    } catch {
+      // Keep modal open if the save fails.
+    }
   }
 
-  function softDeleteCatalog(id) {
-    setState((current) => ({
-      ...current,
-      catalog: current.catalog.map((item) => (item.id === id ? { ...item, isDeleted: true } : item)),
-    }));
+  async function softDeleteCatalog(id) {
+    try {
+      const result = await requestJson(`/warehouse/catalog/${id}`, {
+        method: "DELETE",
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+    } catch {
+      // Ignore delete failures silently for now.
+    }
   }
 
   function addActivityToWeek() {
@@ -5050,22 +4987,11 @@ function App() {
     const catalogItem = state.catalog.find((item) => item.id === editWeekActivityId);
     const defaultResponsible = state.users.find((user) => user.isActive) || state.users[0] || null;
     if (!targetWeek || !catalogItem) return;
+    const generatedActivities = buildWeekActivitiesFromCatalogItem(editWeekId, catalogItem, new Date(targetWeek.startDate), defaultResponsible?.id || null);
 
     setState((current) => ({
       ...current,
-      activities: current.activities.concat({
-        id: makeId("act"),
-        weekId: editWeekId,
-        catalogActivityId: editWeekActivityId,
-        responsibleId: defaultResponsible?.id || null,
-        status: STATUS_PENDING,
-        activityDate: targetWeek.startDate,
-        startTime: null,
-        endTime: null,
-        accumulatedSeconds: 0,
-        lastResumedAt: null,
-        customName: catalogItem.name,
-      }),
+      activities: current.activities.concat(generatedActivities),
     }));
 
     setEditWeekActivityId("");
@@ -5082,7 +5008,7 @@ function App() {
   function buildUserRecordFromModalDraft(draft, fallbackId = "user-modal-preview") {
     return normalizeUserRecord({
       id: draft.id || fallbackId,
-      name: draft.name || "Nuevo asociado",
+      name: draft.name || "Nuevo player",
       email: draft.email || `${normalizeKey(draft.role || ROLE_JR) || "usuario"}@copmec.local`,
       role: draft.role,
       area: draft.area || getUserArea(currentUser),
@@ -5193,11 +5119,10 @@ function App() {
     });
   }
 
-  function submitUserModal() {
+  async function submitUserModal() {
     if (!currentUser || !actionPermissions.manageUsers || !canCreateRole(currentUser.role, userModal.role) && userModal.mode === "create") return;
     const trimmedPassword = userModal.password.trim();
     const payload = {
-      id: userModal.id || makeId("usr"),
       name: userModal.name.trim(),
       email: userModal.email.trim(),
       role: userModal.role,
@@ -5208,66 +5133,33 @@ function App() {
       managerId: userModal.managerId || currentUser?.id || null,
       createdById: userModal.mode === "create" ? currentUser?.id || null : userModal.managerId || currentUser?.id || null,
       ...(userModal.mode === "create" ? { selfIdentityEditCount: 0 } : {}),
+      permissionOverrides: userModal.permissionOverrides,
     };
 
-    if (!payload.name || !payload.email || !payload.area || !payload.jobTitle || (userModal.mode === "create" && !trimmedPassword)) return;
-    if (trimmedPassword) {
+    if (!payload.name || !payload.email || !payload.area || !payload.jobTitle) return;
+    if (userModal.mode === "create") {
+      if (!isTemporaryPassword(trimmedPassword)) return;
+      payload.password = trimmedPassword;
+    } else if (trimmedPassword) {
       payload.password = trimmedPassword;
     }
 
-    setState((current) => ({
-      ...(() => {
-        const nextUsers = userModal.mode === "create"
-          ? current.users.concat(payload)
-          : current.users.map((user) => (user.id === payload.id ? { ...user, ...payload } : user));
-        const currentOverrides = current.permissions?.userOverrides || {};
-        const remainingOverrides = Object.fromEntries(Object.entries(currentOverrides).filter(([userId]) => userId !== payload.id));
-        let nextPermissions = {
-          ...current.permissions,
-          userOverrides: remainingOverrides,
-        };
-        let nextState = {
-          ...current,
-          users: nextUsers,
-          permissions: nextPermissions,
-        };
-
-        if (supportsManagedPermissionOverrides(payload.role) && actionPermissions.managePermissions) {
-          const permissionUser = normalizeUserRecord(payload, payload.managerId || currentUser?.id || null);
-          const basePermissions = normalizePermissions({
-            ...current.permissions,
-            userOverrides: remainingOverrides,
-          });
-          const baseSelection = buildPermissionSelectionForUser(permissionUser, basePermissions);
-          const nextOverride = {
-            pages: Object.fromEntries(permissionPages
-              .map((item) => [item.id, userModal.permissionOverrides.pages?.[item.id]])
-              .filter(([pageId, value]) => typeof value === "boolean" && value !== baseSelection.pages[pageId])),
-            actions: Object.fromEntries(ACTION_DEFINITIONS
-              .map((item) => [item.id, userModal.permissionOverrides.actions?.[item.id]])
-              .filter(([actionId, value]) => typeof value === "boolean" && value !== baseSelection.actions[actionId])),
-          };
-          const hasDirectOverride = Object.keys(nextOverride.pages).length > 0 || Object.keys(nextOverride.actions).length > 0;
-          nextPermissions = {
-            ...current.permissions,
-            userOverrides: hasDirectOverride
-              ? { ...remainingOverrides, [payload.id]: nextOverride }
-              : remainingOverrides,
-          };
-          nextState = {
-            ...nextState,
-            permissions: nextPermissions,
-          };
-          nextState = appendAuditLog(nextState, buildAuditEntry(currentUser, "permissions", `${userModal.mode === "create" ? "Configuró" : "Actualizó"} permisos directos de ${payload.name}.`));
-        }
-
-        return nextState;
-      })(),
-    }));
-    closeUserModal();
+    try {
+      const result = await requestJson(
+        userModal.mode === "create" ? "/warehouse/users" : `/warehouse/users/${userModal.id}`,
+        {
+          method: userModal.mode === "create" ? "POST" : "PATCH",
+          body: JSON.stringify(payload),
+        },
+      );
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      closeUserModal();
+    } catch {
+      // The modal already exposes validation context; keep it open on failure.
+    }
   }
 
-  function updateCurrentUserIdentity(identityPatch) {
+  async function updateCurrentUserIdentity(identityPatch) {
     if (!currentUser) return;
     const trimmedPatch = {
       name: String(identityPatch.name || "").trim(),
@@ -5276,7 +5168,7 @@ function App() {
       jobTitle: String(identityPatch.jobTitle || "").trim(),
     };
     if (!trimmedPatch.name || !trimmedPatch.email || !trimmedPatch.area || !trimmedPatch.jobTitle) {
-      return { ok: false, message: "Captura nombre, correo, área y cargo para guardar el perfil del asociado." };
+      return { ok: false, message: "Captura nombre, correo, área y cargo para guardar el perfil del player." };
     }
     const hasChanges = [
       trimmedPatch.name !== String(currentUser.name || "").trim(),
@@ -5292,40 +5184,40 @@ function App() {
     if (!canBypassEditLimit && selfIdentityEditCount >= PROFILE_SELF_EDIT_LIMIT) {
       return { ok: false, message: "La autoedición ya fue utilizada. Pide apoyo a un Senior o Lead para corregir estos datos." };
     }
-    setState((current) => ({
-      ...current,
-      users: current.users.map((user) => user.id === currentUser.id ? {
-        ...user,
-        name: trimmedPatch.name,
-        email: trimmedPatch.email,
-        area: trimmedPatch.area,
-        department: trimmedPatch.area,
-        jobTitle: trimmedPatch.jobTitle,
-        selfIdentityEditCount: canBypassEditLimit ? user.selfIdentityEditCount : Number(user.selfIdentityEditCount ?? 0) + 1,
-      } : user),
-    }));
-    return { ok: true, message: "Datos del asociado actualizados." };
+    try {
+      const result = await requestJson("/warehouse/users/me/profile", {
+        method: "PATCH",
+        body: JSON.stringify(trimmedPatch),
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      return { ok: true, message: "Datos del player actualizados." };
+    } catch (error) {
+      return { ok: false, message: error?.message || "No se pudieron actualizar los datos del player." };
+    }
   }
 
-  function deleteUser(userId) {
+  async function deleteUser(userId) {
     if (!userId || userId === currentUser?.id || !actionPermissions.deleteUsers) return;
-    setState((current) => {
-      const remainingUsers = current.users.filter((user) => user.id !== userId);
-      return {
-        ...current,
-        users: remainingUsers,
-        activities: current.activities.map((activity) => (activity.responsibleId === userId ? { ...activity, responsibleId: null } : activity)),
-        currentUserId: current.currentUserId === userId ? remainingUsers[0]?.id || current.currentUserId : current.currentUserId,
-      };
-    });
-    setDeleteUserId(null);
+    try {
+      const result = await requestJson(`/warehouse/users/${userId}`, {
+        method: "DELETE",
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setDeleteUserId(null);
+    } catch {
+      // Keep confirmation state unchanged on failure.
+    }
   }
 
-  function toggleUserActive(userId) {
-    setState((current) => ({
-      ...current,
-      users: current.users.map((user) => (user.id === userId ? { ...user, isActive: !user.isActive } : user)),
-    }));
+  async function toggleUserActive(userId) {
+    try {
+      const result = await requestJson(`/warehouse/users/${userId}/active`, {
+        method: "PATCH",
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+    } catch {
+      // Ignore UI toggle failures silently for now.
+    }
   }
 
   function updateControlRow(rowId, key, value) {
@@ -5519,90 +5411,85 @@ function App() {
     });
   }
 
-  function savePermissionPanel() {
+  async function savePermissionPanel() {
     if (!selectedPermissionUser || !permissionEditorDraft || !actionPermissions.managePermissions) return;
 
-    setState((current) => {
-      const currentOverrides = current.permissions?.userOverrides || {};
-      const baseOverride = currentOverrides[selectedPermissionUser.id] || { pages: {}, actions: {} };
-      const nextOverride = {
-        pages: {
-          ...baseOverride.pages,
-          [permissionEditorDraft.pageId]: permissionEditorDraft.pageEnabled,
-        },
-        actions: {
-          ...baseOverride.actions,
-          ...permissionEditorDraft.actions,
-        },
-      };
-
-      return {
-        ...appendAuditLog(current, buildAuditEntry(currentUser, "permissions", `Actualizó permisos directos de ${selectedPermissionUser.name} en ${permissionEditorDraft.pageId}.`)),
-        permissions: {
-          ...current.permissions,
-          userOverrides: {
-            ...currentOverrides,
-            [selectedPermissionUser.id]: nextOverride,
+    try {
+      const result = await requestJson(`/warehouse/permissions/users/${selectedPermissionUser.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          pages: {
+            [permissionEditorDraft.pageId]: permissionEditorDraft.pageEnabled,
           },
-        },
-      };
-    });
-
-    setPermissionsFeedback({ tone: "success", message: `Permisos guardados para ${selectedPermissionUser.name}.` });
-    setOpenPermissionPageId("");
-    setPermissionEditorDraft(null);
+          actions: permissionEditorDraft.actions,
+        }),
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setPermissionsFeedback({ tone: "success", message: `Permisos guardados para ${selectedPermissionUser.name}.` });
+      setOpenPermissionPageId("");
+      setPermissionEditorDraft(null);
+    } catch (error) {
+      setPermissionsFeedback({ tone: "danger", message: error?.message || "No se pudieron guardar los permisos directos." });
+    }
   }
 
-  function updatePermissionEntry(scope, key, field, value) {
+  async function updatePermissionEntry(scope, key, field, value) {
     if (!actionPermissions.managePermissions) return;
-    const entry = buildAuditEntry(currentUser, "permissions", `Actualizó ${scope === "pages" ? "pestaña" : "acción"} ${key} en ${field}.`);
-    setState((current) => ({
-      ...appendAuditLog(current, entry),
-      permissions: {
-        ...current.permissions,
-        [scope]: {
-          ...current.permissions[scope],
-          [key]: {
-            ...(current.permissions[scope]?.[key] || { roles: [], userIds: [], departments: [] }),
-            [field]: value,
-          },
+    const nextPermissions = {
+      ...state.permissions,
+      [scope]: {
+        ...state.permissions[scope],
+        [key]: {
+          ...(state.permissions[scope]?.[key] || { roles: [], userIds: [], departments: [] }),
+          [field]: value,
         },
       },
-    }));
+    };
+    try {
+      const result = await requestJson("/warehouse/permissions", {
+        method: "PATCH",
+        body: JSON.stringify({ permissions: nextPermissions }),
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+    } catch (error) {
+      setPermissionsFeedback({ tone: "danger", message: error?.message || "No se pudo actualizar la regla de permisos." });
+    }
   }
 
-  function updateBoardAssignment(boardId, field, value) {
+  async function updateBoardAssignment(boardId, field, value) {
     if (!actionPermissions.managePermissions) return;
-    setState((current) => {
-      const board = current.controlBoards.find((item) => item.id === boardId);
-      if (!board) return current;
-      const normalizedAccessUserIds = field === "accessUserIds"
-        ? Array.from(new Set((value || []).filter((userId) => userId && userId !== board.ownerId)))
-        : Array.from(new Set((board.accessUserIds || []).filter((userId) => userId && userId !== value)));
-      const entry = buildAuditEntry(currentUser, "boards", `Actualizó la asignación del tablero ${board.name}.`);
-      return {
-        ...appendAuditLog(current, entry),
-        controlBoards: current.controlBoards.map((item) => (item.id === boardId
-          ? {
-              ...item,
-              ownerId: field === "ownerId" ? value : item.ownerId,
-              accessUserIds: field === "accessUserIds" ? normalizedAccessUserIds : normalizedAccessUserIds,
-            }
-          : item)),
-      };
-    });
+    const board = (state.controlBoards || []).find((item) => item.id === boardId);
+    if (!board) return;
+    const ownerId = field === "ownerId" ? value : board.ownerId;
+    const accessUserIds = field === "accessUserIds"
+      ? Array.from(new Set((value || []).filter((userId) => userId && userId !== ownerId)))
+      : Array.from(new Set((board.accessUserIds || []).filter((userId) => userId && userId !== ownerId)));
+    try {
+      const result = await requestJson(`/warehouse/boards/${boardId}/assignment`, {
+        method: "PATCH",
+        body: JSON.stringify({ ownerId, accessUserIds }),
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+    } catch (error) {
+      setPermissionsFeedback({ tone: "danger", message: error?.message || "No se pudo actualizar la asignación del tablero." });
+    }
   }
 
-  function applyPermissionPreset(presetId) {
+  async function applyPermissionPreset(presetId) {
     if (!actionPermissions.managePermissions) return;
     const preset = PERMISSION_PRESETS.find((item) => item.id === presetId);
     if (!preset) return;
     const nextPermissions = buildPermissionsFromPreset(presetId);
-    const entry = buildAuditEntry(currentUser, "permissions", `Aplicó el preset ${preset.label}.`);
-    setState((current) => ({
-      ...appendAuditLog(current, entry),
-      permissions: nextPermissions,
-    }));
+    try {
+      const result = await requestJson("/warehouse/permissions", {
+        method: "PATCH",
+        body: JSON.stringify({ permissions: nextPermissions }),
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setPermissionsFeedback({ tone: "success", message: `Se aplicó el preset ${preset.label}.` });
+    } catch (error) {
+      setPermissionsFeedback({ tone: "danger", message: error?.message || "No se pudo aplicar el preset de permisos." });
+    }
   }
 
   function exportPermissionRules() {
@@ -5647,14 +5534,14 @@ function App() {
           : [],
       );
 
-      setState((current) => ({
-        ...appendAuditLog(current, buildAuditEntry(currentUser, "permissions", `Importó reglas de permisos desde ${file.name}.`)),
-        permissions: nextPermissions,
-        controlBoards: current.controlBoards.map((board) => ({
-          ...board,
-          permissions: normalizeBoardPermissions(boardPermissionsMap.get(board.id) || board.permissions, nextPermissions, board),
-        })),
-      }));
+      const result = await requestJson("/warehouse/permissions", {
+        method: "PATCH",
+        body: JSON.stringify({
+          permissions: nextPermissions,
+          boardPermissions: Array.from(boardPermissionsMap.entries()).map(([boardId, permissions]) => ({ boardId, permissions })),
+        }),
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
       setPermissionsFeedback({ tone: "success", message: `Se importaron permisos desde ${file.name}.` });
     } catch {
       setPermissionsFeedback({ tone: "danger", message: "El archivo no es válido. Usa un JSON exportado desde el módulo de permisos." });
@@ -5669,18 +5556,16 @@ function App() {
     updatePermissionEntry(scope, key, "roles", nextRoles);
   }
 
-  function saveDraftAsBoardTemplate() {
+  async function saveDraftAsBoardTemplate() {
     if (!controlBoardDraft.name.trim() || !controlBoardDraft.columns.length || !actionPermissions.saveTemplate) {
       setControlBoardFeedback("Define nombre y al menos un componente antes de guardar una plantilla reutilizable.");
       return;
     }
 
     const templateName = controlBoardDraft.name.trim();
-    const templateDescription = controlBoardDraft.description.trim() || `Plantilla reutilizable para ${templateName}.`;
     const templatePayload = {
-      id: makeId("tpl"),
       name: templateName,
-      description: templateDescription,
+      description: controlBoardDraft.description.trim() || `Plantilla reutilizable para ${templateName}.`,
       category: "Personalizada",
       visibilityType: currentUser?.department ? "department" : "users",
       sharedDepartments: currentUser?.department ? [currentUser.department] : [],
@@ -5690,16 +5575,18 @@ function App() {
         ...column,
         templateKey: column.templateKey || column.id,
       })),
-      isCustom: true,
-      createdAt: new Date().toISOString(),
-      createdById: currentUser?.id || null,
     };
 
-    setState((current) => ({
-      ...appendAuditLog(current, buildAuditEntry(currentUser, "templates", `Guardó la plantilla ${templateName}.`)),
-      boardTemplates: [...(current.boardTemplates || []), templatePayload],
-    }));
-    setControlBoardFeedback(`Plantilla ${templateName} guardada para reutilizarla cuando quieras.`);
+    try {
+      const result = await requestJson("/warehouse/templates", {
+        method: "POST",
+        body: JSON.stringify(templatePayload),
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setControlBoardFeedback(`Plantilla ${templateName} guardada para reutilizarla cuando quieras.`);
+    } catch (error) {
+      setControlBoardFeedback(error?.message || "No se pudo guardar la plantilla.");
+    }
   }
 
   function openEditBoardTemplate(template) {
@@ -5716,125 +5603,86 @@ function App() {
     });
   }
 
-  function submitBoardTemplateEdit() {
+  async function submitBoardTemplateEdit() {
     if (!templateEditorModal.id || !templateEditorModal.name.trim() || !actionPermissions.editTemplate) {
       setControlBoardFeedback("La plantilla debe tener nombre para guardar los cambios.");
       return;
     }
 
-    setState((current) => ({
-      ...appendAuditLog(current, buildAuditEntry(currentUser, "templates", `Actualizó la plantilla ${templateEditorModal.name.trim()}.`)),
-      boardTemplates: (current.boardTemplates || []).map((template) => (
-        template.id === templateEditorModal.id
-          ? {
-              ...template,
-              name: templateEditorModal.name.trim(),
-              description: templateEditorModal.description.trim(),
-              category: templateEditorModal.category.trim() || "Personalizada",
-              visibilityType: templateEditorModal.visibilityType,
-              sharedDepartments: templateEditorModal.sharedDepartments,
-              sharedUserIds: templateEditorModal.sharedUserIds,
-            }
-          : template
-      )),
-    }));
-    setTemplateEditorModal({ open: false, id: null, name: "", description: "", category: "", visibilityType: "department", sharedDepartments: [], sharedUserIds: [] });
-    setControlBoardFeedback("Plantilla actualizada correctamente.");
+    try {
+      const result = await requestJson(`/warehouse/templates/${templateEditorModal.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: templateEditorModal.name.trim(),
+          description: templateEditorModal.description.trim(),
+          category: templateEditorModal.category.trim() || "Personalizada",
+          visibilityType: templateEditorModal.visibilityType,
+          sharedDepartments: templateEditorModal.sharedDepartments,
+          sharedUserIds: templateEditorModal.sharedUserIds,
+        }),
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setTemplateEditorModal({ open: false, id: null, name: "", description: "", category: "", visibilityType: "department", sharedDepartments: [], sharedUserIds: [] });
+      setControlBoardFeedback("Plantilla actualizada correctamente.");
+    } catch (error) {
+      setControlBoardFeedback(error?.message || "No se pudo actualizar la plantilla.");
+    }
   }
 
-  function deleteBoardTemplate(templateId) {
+  async function deleteBoardTemplate(templateId) {
     if (!actionPermissions.deleteTemplate) return;
-    setState((current) => ({
-      ...appendAuditLog(current, buildAuditEntry(currentUser, "templates", `Eliminó la plantilla ${current.boardTemplates.find((template) => template.id === templateId)?.name || templateId}.`)),
-      boardTemplates: (current.boardTemplates || []).filter((template) => template.id !== templateId),
-    }));
-    setControlBoardFeedback("Plantilla personalizada eliminada.");
+    try {
+      const result = await requestJson(`/warehouse/templates/${templateId}`, {
+        method: "DELETE",
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setControlBoardFeedback("Plantilla personalizada eliminada.");
+    } catch (error) {
+      setControlBoardFeedback(error?.message || "No se pudo eliminar la plantilla.");
+    }
   }
 
-  function saveControlBoard() {
+  async function saveControlBoard() {
     if (!currentUser || !actionPermissions.saveBoard || !controlBoardDraft.name.trim() || !controlBoardDraft.columns.length) {
       setControlBoardFeedback("Agrega nombre, dueño y al menos un campo para guardar el tablero.");
       return;
     }
     const isEditing = boardBuilderModal.mode === "edit" && boardBuilderModal.boardId;
-    const nextBoardId = isEditing ? boardBuilderModal.boardId : makeId("board");
 
-    setState((current) => {
-      const ownerId = controlBoardDraft.ownerId || currentUser.id;
-      const accessUserIds = Array.from(new Set((controlBoardDraft.accessUserIds || []).filter((userId) => userId && userId !== ownerId)));
+    const ownerId = controlBoardDraft.ownerId || currentUser.id;
+    const payload = {
+      name: controlBoardDraft.name.trim(),
+      description: controlBoardDraft.description.trim(),
+      ownerId,
+      accessUserIds: Array.from(new Set((controlBoardDraft.accessUserIds || []).filter((userId) => userId && userId !== ownerId))),
+      settings: { ...controlBoardDraft.settings },
+      columns: cloneDraftColumns(controlBoardDraft.columns || []),
+    };
 
-      if (isEditing) {
-        const existingBoard = current.controlBoards.find((board) => board.id === boardBuilderModal.boardId);
-        if (!existingBoard || !canEditBoard(currentUser, existingBoard)) return current;
-
-        const nextFields = cloneDraftColumns(controlBoardDraft.columns || []);
-        const updatedBoard = {
-          ...existingBoard,
-          name: controlBoardDraft.name.trim(),
-          description: controlBoardDraft.description.trim(),
-          ownerId,
-          accessUserIds,
-          settings: { ...controlBoardDraft.settings },
-          fields: nextFields,
-          rows: (existingBoard.rows || []).map((row) => ({
-            ...row,
-            values: nextFields.reduce((accumulator, field) => {
-              if (Object.prototype.hasOwnProperty.call(row.values || {}, field.id)) {
-                accumulator[field.id] = row.values[field.id];
-              } else {
-                accumulator[field.id] = getBoardFieldDefaultValue(field, row.responsibleId || ownerId || currentUser.id);
-              }
-              return accumulator;
-            }, {}),
-          })),
-        };
-
-        return {
-          ...current,
-          controlBoards: current.controlBoards.map((board) => (
-            board.id === existingBoard.id
-              ? {
-                  ...updatedBoard,
-                  permissions: normalizeBoardPermissions(existingBoard.permissions, current.permissions, updatedBoard),
-                }
-              : board
-          )),
-        };
-      }
-
-      const board = {
-        id: nextBoardId,
-        name: controlBoardDraft.name.trim(),
-        description: controlBoardDraft.description.trim(),
-        createdById: currentUser.id,
-        ownerId,
-        accessUserIds,
-        settings: { ...controlBoardDraft.settings },
-        fields: cloneDraftColumns(controlBoardDraft.columns || []),
-        rows: [],
-      };
-
-      return {
-        ...current,
-        controlBoards: current.controlBoards.concat({
-          ...board,
-          permissions: buildBoardPermissions(current.permissions, board),
-        }),
-      };
-    });
-
-    setSelectedCustomBoardId(nextBoardId);
-    setPage(PAGE_CUSTOM_BOARDS);
-    setBoardBuilderModal({ open: false, mode: "create", boardId: null });
-    setTemplatePreviewId(null);
-    setControlBoardDraft({ ...createEmptyBoardDraft(), ownerId: currentUser.id });
-    setControlBoardFeedback("");
-    setBoardRuntimeFeedback({
-      tone: "success",
-      message: isEditing
-        ? `Se actualizó ${controlBoardDraft.name.trim()} y ya quedó reflejado en Mis tableros.`
-        : `Se creó ${controlBoardDraft.name.trim()} y ya aparece en Mis tableros.`,
-    });
+    try {
+      const result = await requestJson(
+        isEditing ? `/warehouse/boards/${boardBuilderModal.boardId}` : "/warehouse/boards",
+        {
+          method: isEditing ? "PATCH" : "POST",
+          body: JSON.stringify(payload),
+        },
+      );
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setSelectedCustomBoardId(result.data.boardId || boardBuilderModal.boardId || "");
+      setPage(PAGE_CUSTOM_BOARDS);
+      setBoardBuilderModal({ open: false, mode: "create", boardId: null });
+      setTemplatePreviewId(null);
+      setControlBoardDraft({ ...createEmptyBoardDraft(), ownerId: currentUser.id });
+      setControlBoardFeedback("");
+      setBoardRuntimeFeedback({
+        tone: "success",
+        message: isEditing
+          ? `Se actualizó ${payload.name} y ya quedó reflejado en Mis tableros.`
+          : `Se creó ${payload.name} y ya aparece en Mis tableros.`,
+      });
+    } catch (error) {
+      setControlBoardFeedback(error?.message || "No se pudo guardar el tablero.");
+    }
   }
 
   function clearControlBoardDraft() {
@@ -5861,21 +5709,24 @@ function App() {
     setControlBoardFeedback("");
   }
 
-  function deleteControlBoard(boardId) {
+  async function deleteControlBoard(boardId) {
     if (!currentUser || !boardId) return;
     const boardToDelete = (state.controlBoards || []).find((board) => board.id === boardId);
     if (!actionPermissions.deleteBoard || !boardToDelete || !canEditBoard(currentUser, boardToDelete)) return;
 
-    const remainingVisibleBoards = visibleControlBoards.filter((board) => board.id !== boardId);
-
-    setState((current) => ({
-      ...appendAuditLog(current, buildAuditEntry(currentUser, "boards", `Eliminó el tablero ${boardToDelete.name}.`)),
-      controlBoards: (current.controlBoards || []).filter((board) => board.id !== boardId),
-    }));
-    setDeleteBoardId(null);
-    setCustomBoardActionsMenuOpen(false);
-    setSelectedCustomBoardId(remainingVisibleBoards[0]?.id || "");
-    setBoardRuntimeFeedback({ tone: "success", message: `Se eliminó el tablero ${boardToDelete.name}.` });
+    try {
+      const result = await requestJson(`/warehouse/boards/${boardId}`, {
+        method: "DELETE",
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      const remainingVisibleBoards = (result.data.state?.controlBoards || []).filter((board) => getBoardVisibleToUser(board, currentUser));
+      setDeleteBoardId(null);
+      setCustomBoardActionsMenuOpen(false);
+      setSelectedCustomBoardId(remainingVisibleBoards[0]?.id || "");
+      setBoardRuntimeFeedback({ tone: "success", message: `Se eliminó el tablero ${boardToDelete.name}.` });
+    } catch (error) {
+      setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo eliminar el tablero." });
+    }
   }
 
   function closeBoardBuilderModal() {
@@ -5885,51 +5736,94 @@ function App() {
     setControlBoardFeedback("");
   }
 
-  function openCreateInventoryItem() {
-    if (!actionPermissions.manageInventory) return;
+  function applyRemoteInventorySnapshot(remoteState) {
+    setState((current) => ({
+      ...current,
+      revision: remoteState?.revision ?? current.revision,
+      updatedAt: remoteState?.updatedAt ?? current.updatedAt,
+      inventoryItems: Array.isArray(remoteState?.inventoryItems) ? remoteState.inventoryItems : current.inventoryItems,
+      inventoryMovements: Array.isArray(remoteState?.inventoryMovements) ? remoteState.inventoryMovements : current.inventoryMovements,
+    }));
+  }
+
+  function openCreateInventoryItem(domain = inventoryTab) {
+    if (!actionPermissions[getInventoryManageActionId(domain)]) return;
     setInventoryImportFeedback({ tone: "", message: "" });
-    setInventoryModal({ open: true, mode: "create", id: null, code: "", name: "", presentation: "", piecesPerBox: "", boxesPerPallet: "" });
+    setInventoryModal({ ...createInventoryModalState("create", {}, domain), open: true });
   }
 
   function openEditInventoryItem(item) {
-    if (!actionPermissions.manageInventory) return;
-    setInventoryModal({
-      open: true,
-      mode: "edit",
-      id: item.id,
-      code: item.code,
-      name: item.name,
-      presentation: item.presentation,
-      piecesPerBox: String(item.piecesPerBox),
-      boxesPerPallet: String(item.boxesPerPallet),
-    });
+    if (!actionPermissions[getInventoryManageActionId(item?.domain)]) return;
+    setInventoryModal({ ...createInventoryModalState("edit", item, item.domain), open: true });
   }
 
-  function submitInventoryModal() {
-    if (!actionPermissions.manageInventory) return;
+  function openInventoryMovement(item, movementType = INVENTORY_MOVEMENT_RESTOCK) {
+    if (!actionPermissions[getInventoryManageActionId(item?.domain)]) return;
+    setInventoryMovementModal({ ...createInventoryMovementModalState(item, movementType, item?.domain || inventoryTab), open: true });
+  }
+
+  async function submitInventoryModal() {
+    if (!actionPermissions[getInventoryManageActionId(inventoryModal.domain)]) return;
     const payload = {
-      id: inventoryModal.id || makeId("inv"),
+      domain: inventoryModal.domain,
       code: inventoryModal.code.trim(),
       name: inventoryModal.name.trim(),
       presentation: inventoryModal.presentation.trim(),
       piecesPerBox: Number(inventoryModal.piecesPerBox || 0),
       boxesPerPallet: Number(inventoryModal.boxesPerPallet || 0),
+      stockUnits: inventoryModal.domain === INVENTORY_DOMAIN_BASE ? 0 : Number(inventoryModal.stockUnits || 0),
+      minStockUnits: inventoryModal.domain === INVENTORY_DOMAIN_BASE ? 0 : Number(inventoryModal.minStockUnits || 0),
+      storageLocation: inventoryModal.domain === INVENTORY_DOMAIN_BASE ? "" : inventoryModal.storageLocation.trim(),
+      unitLabel: inventoryModal.unitLabel.trim() || "pzas",
+      activityCatalogIds: inventoryModal.domain === INVENTORY_DOMAIN_CLEANING ? inventoryModal.activityCatalogIds : [],
+      consumptionPerStart: inventoryModal.domain === INVENTORY_DOMAIN_CLEANING ? Number(inventoryModal.consumptionPerStart || 0) : 0,
     };
 
     if (!payload.code || !payload.name) return;
 
-    setState((current) => ({
-      ...current,
-      inventoryItems:
-        inventoryModal.mode === "create"
-          ? [...(current.inventoryItems || []), payload]
-          : (current.inventoryItems || []).map((item) => (item.id === payload.id ? { ...item, ...payload } : item)),
-    }));
-    setInventoryModal({ open: false, mode: "create", id: null, code: "", name: "", presentation: "", piecesPerBox: "", boxesPerPallet: "" });
+    try {
+      const result = await requestJson(
+        inventoryModal.mode === "create" ? "/warehouse/inventory" : `/warehouse/inventory/${inventoryModal.id}`,
+        {
+          method: inventoryModal.mode === "create" ? "POST" : "PATCH",
+          body: JSON.stringify(payload),
+        },
+      );
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setInventoryModal(createInventoryModalState());
+      setInventoryImportFeedback({ tone: "success", message: inventoryModal.mode === "create" ? "Artículo agregado al inventario." : "Artículo actualizado correctamente." });
+    } catch (error) {
+      setInventoryImportFeedback({ tone: "danger", message: error?.message || "No se pudo guardar el artículo de inventario." });
+    }
+  }
+
+  async function submitInventoryMovementModal() {
+    if (!actionPermissions[getInventoryManageActionId(inventoryMovementModal.domain)] || !inventoryMovementModal.itemId) return;
+
+    try {
+      const result = await requestJson("/warehouse/inventory/movements", {
+        method: "POST",
+        body: JSON.stringify({
+          itemId: inventoryMovementModal.itemId,
+          movementType: inventoryMovementModal.movementType,
+          quantity: Number(inventoryMovementModal.quantity || 0),
+          notes: inventoryMovementModal.notes.trim(),
+          warehouse: inventoryMovementModal.warehouse.trim(),
+          recipientName: inventoryMovementModal.recipientName.trim(),
+          storageLocation: inventoryMovementModal.storageLocation.trim(),
+          unitLabel: inventoryMovementModal.unitLabel.trim() || "pzas",
+        }),
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setInventoryMovementModal(createInventoryMovementModalState());
+      setInventoryImportFeedback({ tone: "success", message: "Movimiento de inventario registrado." });
+    } catch (error) {
+      setInventoryImportFeedback({ tone: "danger", message: error?.message || "No se pudo registrar el movimiento." });
+    }
   }
 
   async function handleInventoryImport(event) {
-    if (!actionPermissions.importInventory) return;
+    if (!currentInventoryImportPermission) return;
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -5937,36 +5831,18 @@ function App() {
       const importedItems = await parseInventoryImportFile(file);
 
       if (!importedItems.length) {
-        setInventoryImportFeedback({ tone: "danger", message: "No se encontraron filas válidas. Usa columnas como codigo, nombre, presentacion, piezas_por_caja y cajas_por_tarima." });
+        setInventoryImportFeedback({ tone: "danger", message: "No se encontraron filas válidas. Usa columnas como codigo, dominio, nombre, stock_actual y stock_minimo." });
         return;
       }
 
-      const existingItems = state.inventoryItems || [];
-      const existingByCode = new Map(existingItems.map((item) => [normalizeKey(item.code), item]));
-      let createdCount = 0;
-      let updatedCount = 0;
-
-      const mergedByCode = new Map(existingItems.map((item) => [normalizeKey(item.code), item]));
-      importedItems.forEach((item) => {
-        const key = normalizeKey(item.code);
-        const currentItem = mergedByCode.get(key);
-        if (currentItem) {
-          updatedCount += 1;
-          mergedByCode.set(key, { ...currentItem, ...item, id: currentItem.id });
-          return;
-        }
-        createdCount += 1;
-        mergedByCode.set(key, { ...item, id: makeId("inv") });
+      const result = await requestJson("/warehouse/inventory/import", {
+        method: "POST",
+        body: JSON.stringify({ items: importedItems }),
       });
-
-      setState((current) => ({
-        ...current,
-        inventoryItems: Array.from(mergedByCode.values()),
-      }));
-
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
       setInventoryImportFeedback({
         tone: "success",
-        message: `Importacion completada. ${createdCount} nuevos y ${updatedCount} actualizados${existingByCode.size ? " por codigo" : ""}.`,
+        message: `Importacion completada. ${result.data.createdCount} nuevos y ${result.data.updatedCount} actualizados.`,
       });
     } catch (error) {
       setInventoryImportFeedback({ tone: "danger", message: `No se pudo importar el archivo. ${error instanceof Error ? error.message : "Revisa el formato del CSV o Excel."}` });
@@ -5976,7 +5852,7 @@ function App() {
   }
 
   async function downloadInventoryTemplate() {
-    if (!actionPermissions.importInventory) return;
+    if (!currentInventoryImportPermission) return;
     try {
       await downloadInventoryTemplateFile();
     } catch {
@@ -5984,13 +5860,19 @@ function App() {
     }
   }
 
-  function deleteInventoryItem(itemId) {
-    if (!itemId || !actionPermissions.manageInventory) return;
-    setState((current) => ({
-      ...current,
-      inventoryItems: (current.inventoryItems || []).filter((item) => item.id !== itemId),
-    }));
-    setDeleteInventoryId(null);
+  async function deleteInventoryItem(itemId) {
+    const item = (state.inventoryItems || []).find((entry) => entry.id === itemId);
+    if (!itemId || !actionPermissions[getInventoryManageActionId(item?.domain)]) return;
+    try {
+      const result = await requestJson(`/warehouse/inventory/${itemId}`, {
+        method: "DELETE",
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setDeleteInventoryId(null);
+      setInventoryImportFeedback({ tone: "success", message: "Artículo eliminado del inventario." });
+    } catch (error) {
+      setInventoryImportFeedback({ tone: "danger", message: error?.message || "No se pudo eliminar el artículo de inventario." });
+    }
   }
 
   function resetBoardFilters() {
@@ -6026,6 +5908,7 @@ function App() {
       skipNextSyncRef.current = true;
       setState(normalizedState);
       setLoginDirectory(buildLoginDirectoryFromState(normalizedState));
+      setPasswordForm({ password: "", confirmPassword: "", message: "" });
       const nextUser = normalizedState.users.find((user) => user.id === authResult.userId) || authResult.user;
       setPage(nextUser?.role === ROLE_JR ? PAGE_CUSTOM_BOARDS : PAGE_DASHBOARD);
       setSyncStatus("Sincronizado");
@@ -6043,13 +5926,18 @@ function App() {
     setSessionUserId("");
     setLoginForm({ email: "", password: "" });
     setLoginError("");
-    setLoginDirectory(buildLoginDirectoryFromState(state));
+    setLoginDirectory(EMPTY_LOGIN_DIRECTORY);
+    setPasswordForm({ password: "", confirmPassword: "", message: "" });
   }
 
   function handleCreateFirstLead(event) {
     event.preventDefault();
     if (!bootstrapLeadForm.name.trim() || !bootstrapLeadForm.email.trim() || !bootstrapLeadForm.area.trim() || !bootstrapLeadForm.jobTitle.trim() || !bootstrapLeadForm.password.trim()) {
       setBootstrapLeadError("Completa nombre, correo, área, cargo y contraseña para crear el primer Lead.");
+      return;
+    }
+    if (!isStrongPassword(bootstrapLeadForm.password)) {
+      setBootstrapLeadError("Usa una contraseña de al menos 10 caracteres con mayúscula, minúscula, número y símbolo.");
       return;
     }
 
@@ -6094,26 +5982,14 @@ function App() {
     const board = (state.controlBoards || []).find((item) => item.id === boardId);
     if (!canDoBoardAction(currentUser, board)) return;
     if (!board || !currentUser) return;
-    const defaultValues = (board.fields || []).reduce((accumulator, field) => {
-      accumulator[field.id] = getBoardFieldDefaultValue(field, currentUser.id);
-      return accumulator;
-    }, {});
-    const row = {
-      id: makeId("row"),
-      values: defaultValues,
-      responsibleId: currentUser.id,
-      status: STATUS_PENDING,
-      startTime: null,
-      endTime: null,
-      accumulatedSeconds: 0,
-      lastResumedAt: null,
-      createdAt: new Date().toISOString(),
-    };
-    setState((current) => ({
-      ...current,
-      controlBoards: current.controlBoards.map((item) => (item.id === boardId ? { ...item, rows: [...(item.rows || []), row] } : item)),
-    }));
-    setBoardRuntimeFeedback({ tone: "", message: "" });
+    requestJson(`/warehouse/boards/${boardId}/rows`, {
+      method: "POST",
+    }).then((remoteState) => {
+      applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setBoardRuntimeFeedback({ tone: "", message: "" });
+    }).catch((error) => {
+      setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo crear la fila." });
+    });
   }
 
   function updateBoardRow(boardId, rowId, updater) {
@@ -6137,29 +6013,33 @@ function App() {
       return;
     }
 
-    setState((current) => ({
-      ...current,
-      controlBoards: current.controlBoards.map((item) => (
-        item.id === boardId
-          ? { ...item, rows: (item.rows || []).filter((entry) => entry.id !== rowId) }
-          : item
-      )),
-    }));
-    setDeleteBoardRowState({ open: false, boardId: null, rowId: null });
-    setBoardRuntimeFeedback({ tone: "success", message: "La fila fue eliminada del tablero." });
+    requestJson(`/warehouse/boards/${boardId}/rows/${rowId}`, {
+      method: "DELETE",
+    }).then((remoteState) => {
+      applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setDeleteBoardRowState({ open: false, boardId: null, rowId: null });
+      setBoardRuntimeFeedback({ tone: "success", message: "La fila fue eliminada del tablero." });
+    }).catch((error) => {
+      setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo eliminar la fila." });
+    });
   }
 
   function updateBoardRowValue(boardId, rowId, field, rawValue) {
     const board = (state.controlBoards || []).find((item) => item.id === boardId);
     const row = board?.rows?.find((item) => item.id === rowId);
     if (!canEditBoardRowRecord(currentUser, board, row, normalizedPermissions)) return;
-    updateBoardRow(boardId, rowId, (row) => ({
-      ...row,
-      values: {
-        ...(row.values || {}),
-        [field.id]: rawValue,
-      },
-    }));
+    requestJson(`/warehouse/boards/${boardId}/rows/${rowId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        values: {
+          [field.id]: rawValue,
+        },
+      }),
+    }).then((remoteState) => {
+      applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+    }).catch((error) => {
+      setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo actualizar la fila." });
+    });
   }
 
   function getBoardExportRows(board) {
@@ -6182,7 +6062,7 @@ function App() {
       });
 
       if (board.settings?.showAssignee !== false) {
-        exportRow.Asociado = userMap.get(row.responsibleId)?.name || "";
+        exportRow.Player = userMap.get(row.responsibleId)?.name || "";
       }
 
       exportRow.Estado = row.status || STATUS_PENDING;
@@ -6196,42 +6076,23 @@ function App() {
     });
   }
 
-  function duplicateBoardRecord(board, includeRows = false) {
+  async function duplicateBoardRecord(board, includeRows = false) {
     if (!board || !currentUser) return;
     if (!canDoBoardAction(currentUser, board)) return;
     if (includeRows && !actionPermissions.duplicateBoardWithRows) return;
     if (!includeRows && !actionPermissions.duplicateBoard) return;
 
-    const { fields, idMap } = cloneBoardFieldBundle(board.fields || []);
-    const duplicatedBoardId = makeId("board");
-    const duplicatedBoard = {
-      ...board,
-      id: duplicatedBoardId,
-      name: `${board.name} copia${includeRows ? " con filas" : ""}`,
-      description: board.description || `Copia de ${board.name}.`,
-      createdById: currentUser.id,
-      fields,
-      rows: includeRows
-        ? (board.rows || []).map((row) => ({
-            ...row,
-            id: makeId("row"),
-            values: Object.entries(row.values || {}).reduce((accumulator, [fieldId, value]) => {
-              accumulator[idMap.get(fieldId) || fieldId] = value;
-              return accumulator;
-            }, {}),
-          }))
-        : [],
-    };
-
-    setState((current) => ({
-      ...current,
-      controlBoards: current.controlBoards.concat({
-        ...duplicatedBoard,
-        permissions: normalizeBoardPermissions(board.permissions, current.permissions, duplicatedBoard),
-      }),
-    }));
-    setSelectedCustomBoardId(duplicatedBoardId);
-    setBoardRuntimeFeedback({ tone: "success", message: `Se duplicó ${board.name} y ya quedó listo como ${duplicatedBoard.name}.` });
+    try {
+      const result = await requestJson(`/warehouse/boards/${board.id}/duplicate`, {
+        method: "POST",
+        body: JSON.stringify({ includeRows }),
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setSelectedCustomBoardId(result.data.boardId || "");
+      setBoardRuntimeFeedback({ tone: "success", message: `Se duplicó ${board.name} y ya quedó listo como ${result.data.boardName || "la copia"}.` });
+    } catch (error) {
+      setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo duplicar el tablero." });
+    }
   }
 
   function changeBoardRowStatus(boardId, rowId, status) {
@@ -6255,18 +6116,13 @@ function App() {
     }
 
     setBoardRuntimeFeedback({ tone: "", message: "" });
-    const nowIso = new Date().toISOString();
-    updateBoardRow(boardId, rowId, (row) => {
-      if (status === STATUS_RUNNING) {
-        return { ...row, status, startTime: row.startTime || nowIso, endTime: row.status === STATUS_FINISHED ? null : row.endTime, lastResumedAt: nowIso };
-      }
-      if (status === STATUS_PAUSED) {
-        return { ...row, status, accumulatedSeconds: updateElapsedForFinish(row, nowIso), lastResumedAt: null };
-      }
-      if (status === STATUS_FINISHED) {
-        return { ...row, status, endTime: nowIso, accumulatedSeconds: updateElapsedForFinish(row, nowIso), lastResumedAt: null };
-      }
-      return { ...row, status };
+    requestJson(`/warehouse/boards/${boardId}/rows/${rowId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }).then((remoteState) => {
+      applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+    }).catch((error) => {
+      setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo cambiar el estado de la fila." });
     });
   }
 
@@ -6443,16 +6299,26 @@ function App() {
     }) || null;
   }
 
-  function submitPasswordReset() {
+  async function submitPasswordReset() {
     if (!passwordForm.password || passwordForm.password !== passwordForm.confirmPassword) {
       setPasswordForm((current) => ({ ...current, message: "Las contraseñas no coinciden o están vacías." }));
       return;
     }
-    setState((current) => ({
-      ...current,
-      users: current.users.map((user) => (user.id === currentUser?.id ? { ...user, password: passwordForm.password } : user)),
-    }));
-    setPasswordForm({ password: "", confirmPassword: "", message: "Contraseña actualizada. Redirección lógica completada." });
+    if (!isStrongPassword(passwordForm.password)) {
+      setPasswordForm((current) => ({ ...current, message: "La contraseña debe incluir mayúscula, minúscula, número, símbolo y al menos 10 caracteres." }));
+      return;
+    }
+    try {
+      const requiresForcedChange = Boolean(currentUser?.mustChangePassword);
+      const result = await requestJson("/auth/password", {
+        method: "PATCH",
+        body: JSON.stringify({ password: passwordForm.password }),
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setPasswordForm({ password: "", confirmPassword: "", message: requiresForcedChange ? "" : "Contraseña actualizada." });
+    } catch (error) {
+      setPasswordForm((current) => ({ ...current, message: error?.message || "No se pudo actualizar la contraseña." }));
+    }
   }
 
   function openResetUserPassword(user) {
@@ -6460,41 +6326,277 @@ function App() {
     setResetUserPasswordModal({
       open: true,
       userId: user.id,
+      userName: user.name,
       password: "",
       message: "",
     });
   }
 
-  function submitUserPasswordReset() {
+  async function submitUserPasswordReset() {
     if (!canResetOtherPasswords || !actionPermissions.resetPasswords || !resetUserPasswordModal.userId || !resetUserPasswordModal.password.trim()) {
       setResetUserPasswordModal((current) => ({ ...current, message: "Escribe una contraseña válida." }));
       return;
     }
+    if (!isTemporaryPassword(resetUserPasswordModal.password.trim())) {
+      setResetUserPasswordModal((current) => ({ ...current, message: `Usa al menos ${TEMPORARY_PASSWORD_MIN_LENGTH} caracteres para la contraseña temporal.` }));
+      return;
+    }
 
-    setState((current) => ({
-      ...current,
-      users: current.users.map((user) => (user.id === resetUserPasswordModal.userId ? { ...user, password: resetUserPasswordModal.password.trim() } : user)),
-    }));
-    setResetUserPasswordModal({ open: false, userId: null, password: "", message: "" });
+    try {
+      const result = await requestJson(`/auth/users/${resetUserPasswordModal.userId}/password`, {
+        method: "PATCH",
+        body: JSON.stringify({ password: resetUserPasswordModal.password.trim() }),
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setResetUserPasswordModal({ open: false, userId: null, userName: "", password: "", message: "" });
+    } catch (error) {
+      setResetUserPasswordModal((current) => ({ ...current, message: error?.message || "No se pudo restablecer la contraseña." }));
+    }
   }
 
-  const pageTitle = {
-    [PAGE_BOARD]: "Tableros creados",
-    [PAGE_CUSTOM_BOARDS]: "Mis tableros",
-    [PAGE_ADMIN]: "Panel de administración",
-    [PAGE_DASHBOARD]: "Dashboard de métricas",
-    [PAGE_HISTORY]: "Historial de semanas",
-    [PAGE_INVENTORY]: "Inventario",
-    [PAGE_USERS]: "Administrador",
+  const pageTitle = NAV_ITEMS.find((item) => item.id === page)?.label || {
+    [PAGE_ADMIN]: "Creador de tableros",
     [PAGE_NOT_FOUND]: "Página no encontrada",
   }[page];
+
+  const contextoConstructor = {
+    BOARD_FIELD_TYPES,
+    BOARD_FIELD_WIDTHS,
+    BOARD_FIELD_WIDTH_STYLES,
+    COLOR_RULE_OPERATORS,
+    FORMULA_OPERATIONS,
+    INVENTORY_LOOKUP_LOGISTICS_FIELD,
+    INVENTORY_PROPERTIES,
+    OPTION_SOURCE_TYPES,
+    STATUS_PENDING,
+    STATUS_RUNNING,
+    formatBoardPreviewValue,
+    getBoardFieldTypeDescription,
+    getBoardSectionGroups,
+    renderBoardFieldLabel,
+  };
+
+  const paginasContexto = {
+    ACTION_DEFINITIONS,
+    AlertTriangle,
+    activeAssignableUsers,
+    activeWeek,
+    actionPermissions,
+    adminReportRows,
+    adminTab,
+    applyPermissionPreset,
+    applyRemoteWarehouseState,
+    ArrowUp,
+    auditFilters,
+    BarChart3,
+    boardAssignmentsByUser,
+    boardRuntimeFeedback,
+    buildSelectOptions,
+    CalendarDays,
+    canDoBoardAction,
+    canEditBoard,
+    canEditBoardRowRecord,
+    canOperateBoardRowRecord,
+    catalogMap,
+    catalogWeekGroups,
+    changeBoardRowStatus,
+    CircleCheckBig,
+    ClipboardList,
+    Clock3,
+    Copy,
+    creatableRoles,
+    createBoardRow,
+    currentInventoryImportPermission,
+    currentInventoryItems,
+    currentInventoryManagePermission,
+    currentInventoryMovements,
+    currentUser,
+    customBoardActionsMenuOpen,
+    customBoardActionsMenuRef,
+    customBoardMetrics,
+    customBoardSearch,
+    dashboardActivityRows,
+    dashboardAreaRows,
+    dashboardDistributionRows,
+    dashboardFilters,
+    dashboardIshikawaRows,
+    dashboardMetrics,
+    dashboardParetoRows,
+    dashboardPeriodOptions,
+    dashboardResponsibleRows,
+    dashboardSectionsOpen,
+    dashboardTrendRows,
+    DashboardBarRow,
+    DashboardCauseCard,
+    DashboardColumnChart,
+    DashboardIshikawaDiagram,
+    DashboardKpiCard,
+    DashboardParetoChart,
+    DashboardParetoRow,
+    DashboardPieChart,
+    DashboardProgressMetric,
+    DashboardRankItem,
+    DashboardSection,
+    departmentOptions,
+    downloadInventoryTemplate,
+    Download,
+    duplicateBoardRecord,
+    editableVisibleBoards,
+    exportPermissionRules,
+    exportSelectedBoardToExcel,
+    exportSelectedBoardToPdf,
+    filteredAuditLog,
+    filteredBoardTemplates,
+    filteredUsers,
+    filteredVisibleControlBoards,
+    formatDate,
+    formatDateTime,
+    formatDurationClock,
+    formatMetricNumber,
+    formatMinutes,
+    formatPercent,
+    formatTime,
+    Gauge,
+    getActivityLabel,
+    getActivityFrequencyLabel,
+    getBoardFieldCellStyle,
+    getBoardFieldValue,
+    getDashboardPeriodTypeLabel,
+    getElapsedSeconds,
+    getFieldColorRule,
+    getResponsibleVisual,
+    getRoleBadgeClass,
+    getTimeLimitMinutes,
+    getUserArea,
+    getUserJobTitle,
+    handleInventoryImport,
+    handlePermissionImport,
+    historyWeek,
+    inventoryActionsMenuOpen,
+    inventoryActionsMenuRef,
+    inventoryFileInputRef,
+    inventoryImportFeedback,
+    inventoryLinkedCleaningRows,
+    inventorySearch,
+    inventoryStats,
+    inventoryTab,
+    InventoryLookupInput,
+    InventoryStockBar,
+    INVENTORY_DOMAIN_BASE,
+    INVENTORY_DOMAIN_CLEANING,
+    INVENTORY_DOMAIN_ORDERS,
+    INVENTORY_MOVEMENT_RESTOCK,
+    INVENTORY_MOVEMENT_TRANSFER,
+    LayoutDashboard,
+    lowStockInventoryItems,
+    Menu,
+    MetricCard,
+    NAV_ITEMS,
+    ACTIVITY_FREQUENCY_OPTIONS,
+    normalizedPermissions,
+    now,
+    OctagonAlert,
+    openBoardPauseModal,
+    openCatalogCreate,
+    openCatalogEdit,
+    openCreateBoardBuilder,
+    openCreateInventoryItem,
+    openCreateUser,
+    openEditBoardBuilder,
+    openEditInventoryItem,
+    openEditUser,
+    openFinishBoardRowConfirm,
+    openInventoryMovement,
+    Package,
+    PAGE_CUSTOM_BOARDS,
+    PAGE_DASHBOARD,
+    page,
+    pauseAnalysis,
+    Pause,
+    PauseCircle,
+    Pencil,
+    permissionFileInputRef,
+    permissionsFeedback,
+    PERMISSION_PRESETS,
+    PieChart,
+    Play,
+    Plus,
+    requestJson,
+    ROLE_JR,
+    RotateCcw,
+    Search,
+    securityEvents,
+    securityEventsStatus,
+    selectedBoardActionPermissions,
+    selectedCustomBoard,
+    selectedCustomBoardSections,
+    selectedPermissionBoard,
+    setAdminTab,
+    setAuditFilters,
+    setBoardRuntimeFeedback,
+    setCustomBoardActionsMenuOpen,
+    setCustomBoardSearch,
+    setDashboardFilters,
+    setDashboardSectionsOpen,
+    setDeleteBoardId,
+    setDeleteBoardRowState,
+    setDeleteInventoryId,
+    setDeleteUserId,
+    setEditWeekId,
+    setHistoryPauseActivityId,
+    setInventoryActionsMenuOpen,
+    setInventorySearch,
+    setInventoryTab,
+    setLoginDirectory,
+    setPage,
+    setSelectedCustomBoardId,
+    setSelectedHistoryWeekId,
+    setSelectedPermissionBoardId,
+    setState,
+    setSyncStatus,
+    setUserRoleFilter,
+    setUserSearch,
+    setUsersViewTab,
+    Settings,
+    skipNextSyncRef,
+    softDeleteCatalog,
+    Square,
+    state,
+    StatTile,
+    STATUS_FINISHED,
+    STATUS_PAUSED,
+    STATUS_PENDING,
+    STATUS_RUNNING,
+    StatusBadge,
+    togglePermissionRole,
+    toggleUserActive,
+    Trash2,
+    updateBoardAssignment,
+    updateBoardRowValue,
+    updatePermissionEntry,
+    Upload,
+    userMap,
+    usersByAreaGroups,
+    usersByCreatorGroups,
+    usersCreatedByMap,
+    usersViewTab,
+    userRoleFilter,
+    userSearch,
+    userStats,
+    USER_ROLES,
+    Users,
+    visibleControlBoards,
+    visibleUsers,
+    weeklyAreaCoverageRows,
+    Zap,
+  };
 
   if (isBootstrapMasterSession) {
     return <BootstrapLeadSetup setupForm={bootstrapLeadForm} onChange={updateBootstrapLeadField} onSubmit={handleCreateFirstLead} error={bootstrapLeadError} areaOptions={departmentOptions} onAddArea={handleAddAreaToBootstrap} />;
   }
 
   if (!currentUser) {
-    return <LoginScreen loginForm={loginForm} onChange={updateLoginField} onSubmit={handleLogin} error={loginError} demoUsers={loginDirectory.system?.masterBootstrapEnabled ? [{ id: BOOTSTRAP_MASTER_ID, role: "Usuario maestro", email: loginDirectory.system?.masterUsername || MASTER_USERNAME }] : loginDirectory.demoUsers} />;
+    return <LoginScreen loginForm={loginForm} onChange={updateLoginField} onSubmit={handleLogin} error={loginError} demoUsers={loginDirectory.system?.showBootstrapMasterHint ? [{ id: BOOTSTRAP_MASTER_ID, role: "Usuario maestro", email: loginDirectory.system?.masterUsername || MASTER_USERNAME }] : loginDirectory.demoUsers} />;
   }
 
   return (
@@ -6530,1419 +6632,13 @@ function App() {
           </div>
         </header>
 
-        {page === PAGE_BOARD ? (
-          <section className="page-grid created-boards-page">
-            <article className="admin-hero-card full-width">
-              <div>
-                <h3>Tableros creados</h3>
-                <p>Consulta todos los tableros visibles, su dueño, su creador y entra directo a operarlos en Mis tableros.</p>
-              </div>
-              <span className="chip success">{visibleControlBoards.length} visibles</span>
-            </article>
-
-            <div className="created-board-grid full-width">
-              {visibleControlBoards.length ? visibleControlBoards.map((board) => (
-                <article key={board.id} className="created-board-card surface-card">
-                  <div>
-                    <strong>{board.name}</strong>
-                    <p>{board.description || "Sin descripción."}</p>
-                  </div>
-                  <div className="saved-board-list">
-                    <span className="chip primary">Campos: {(board.fields || []).length}</span>
-                    <span className="chip">Filas: {(board.rows || []).length}</span>
-                  </div>
-                  <div className="board-meta-inline">
-                    <span>Asociado principal · {userMap.get(board.ownerId)?.name || "N/A"}</span>
-                    <span>Creó · {userMap.get(board.createdById)?.name || "N/A"}</span>
-                    {(board.accessUserIds || []).length ? <span>Acceso · {(board.accessUserIds || []).map((userId) => userMap.get(userId)?.name || "N/A").join(", ")}</span> : null}
-                  </div>
-                  <div className="toolbar-actions">
-                    <button type="button" className="primary-button" onClick={() => {
-                      setSelectedCustomBoardId(board.id);
-                      setPage(PAGE_CUSTOM_BOARDS);
-                    }}>
-                      <LayoutDashboard size={16} /> Abrir en Mis tableros
-                    </button>
-                    {actionPermissions.duplicateBoard && canDoBoardAction(currentUser, board) ? (
-                      <button type="button" className="icon-button" onClick={() => duplicateBoardRecord(board)}>
-                        <Copy size={15} /> Duplicar
-                      </button>
-                    ) : null}
-                    {actionPermissions.duplicateBoardWithRows && canDoBoardAction(currentUser, board) ? (
-                      <button type="button" className="icon-button" onClick={() => duplicateBoardRecord(board, true)}>
-                        <Copy size={15} /> Duplicar con filas
-                      </button>
-                    ) : null}
-                    {actionPermissions.saveBoard && canEditBoard(currentUser, board) ? (
-                      <button type="button" className="icon-button" onClick={() => openEditBoardBuilder(board)}>
-                        <Pencil size={15} /> Editar tablero
-                      </button>
-                    ) : null}
-                    {actionPermissions.deleteBoard && canEditBoard(currentUser, board) ? (
-                      <button type="button" className="icon-button danger" onClick={() => setDeleteBoardId(board.id)}>
-                        <Trash2 size={15} /> Eliminar tablero
-                      </button>
-                    ) : null}
-                  </div>
-                </article>
-              )) : (
-                <article className="surface-card empty-state full-width">
-                  <LayoutDashboard size={44} />
-                  <h3>No hay tableros visibles</h3>
-                  <p>Crea un tablero desde el constructor o asigna acceso para empezar.</p>
-                </article>
-              )}
-            </div>
-          </section>
-        ) : null}
-
-        {page === PAGE_CUSTOM_BOARDS ? (
-          <section className="admin-page-layout">
-            {visibleControlBoards.length > 1 ? (
-              <article className="surface-card full-width board-selector-card">
-                <div className="builder-template-toolbar board-selector-toolbar">
-                  <label className="app-modal-field builder-card builder-card-wide">
-                    <span>Buscar tablero</span>
-                    <input value={customBoardSearch} onChange={(event) => setCustomBoardSearch(event.target.value)} placeholder="Nombre, descripción o dueño" />
-                  </label>
-                  <label className="board-top-select min-width">
-                    <span>Menú de tableros</span>
-                    <select value={selectedCustomBoard?.id || ""} onChange={(event) => setSelectedCustomBoardId(event.target.value)}>
-                      {filteredVisibleControlBoards.map((board) => <option key={board.id} value={board.id}>{board.name}</option>)}
-                    </select>
-                  </label>
-                </div>
-              </article>
-            ) : null}
-
-            {selectedCustomBoard ? (
-              <>
-                <div className="inventory-stat-grid custom-board-stat-grid">
-                  <StatTile label="Filas" value={customBoardMetrics?.totalRows || 0} className="custom-board-stat-tile" />
-                  <StatTile label="En curso" value={customBoardMetrics?.running || 0} tone="soft" className="custom-board-stat-tile" />
-                  <StatTile label="Terminadas" value={customBoardMetrics?.completed || 0} tone="success" className="custom-board-stat-tile" />
-                </div>
-
-                <article className="surface-card full-width table-card admin-surface-card">
-                  <div className="card-header-row">
-                    <div>
-                      <h3>{selectedCustomBoard.name}</h3>
-                    </div>
-                    <div className="toolbar-actions custom-board-toolbar-actions">
-                      {filteredVisibleControlBoards.length > 1 ? (
-                        <label className="board-top-select min-width">
-                          <span>Tablero</span>
-                          <select value={selectedCustomBoard.id} onChange={(event) => setSelectedCustomBoardId(event.target.value)}>
-                            {filteredVisibleControlBoards.map((board) => <option key={board.id} value={board.id}>{board.name}</option>)}
-                          </select>
-                        </label>
-                      ) : null}
-                      <div className="custom-board-actions-menu-shell" ref={customBoardActionsMenuRef}>
-                        <button
-                          type="button"
-                          className="primary-button custom-board-add-row-button"
-                          title="Nueva fila"
-                          aria-label="Nueva fila"
-                          onClick={() => createBoardRow(selectedCustomBoard.id)}
-                          disabled={!selectedBoardActionPermissions.createBoardRow}
-                        >
-                          <Plus size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          className="icon-button custom-board-menu-trigger"
-                          aria-label="Abrir acciones del tablero"
-                          aria-expanded={customBoardActionsMenuOpen}
-                          onClick={() => setCustomBoardActionsMenuOpen((current) => !current)}
-                        >
-                          <Menu size={16} />
-                        </button>
-                        {customBoardActionsMenuOpen ? (
-                          <div className="custom-board-actions-dropdown">
-                            <button type="button" className="custom-board-menu-item" onClick={() => { setCustomBoardActionsMenuOpen(false); exportSelectedBoardToExcel(); }} disabled={!selectedBoardActionPermissions.exportBoardExcel}>
-                              Exportar Excel
-                            </button>
-                            <button type="button" className="custom-board-menu-item" onClick={() => { setCustomBoardActionsMenuOpen(false); previewSelectedBoardPdf(); }} disabled={!selectedBoardActionPermissions.previewBoardPdf}>
-                              Vista PDF
-                            </button>
-                            <button type="button" className="custom-board-menu-item" onClick={() => { setCustomBoardActionsMenuOpen(false); exportSelectedBoardToPdf(); }} disabled={!selectedBoardActionPermissions.exportBoardPdf}>
-                              Exportar PDF
-                            </button>
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="board-meta-inline board-meta-inline-header">
-                    <span>Creó · {userMap.get(selectedCustomBoard.createdById)?.name || "N/A"}</span>
-                        <span>Asociado principal · {userMap.get(selectedCustomBoard.ownerId)?.name || "N/A"}</span>
-                    {(selectedCustomBoard.accessUserIds || []).length ? <span>Acceso · {(selectedCustomBoard.accessUserIds || []).map((userId) => userMap.get(userId)?.name || "N/A").join(", ")}</span> : null}
-                  </div>
-                  {boardRuntimeFeedback.message ? <p className={boardRuntimeFeedback.tone === "danger" ? "validation-text" : "inline-success-message"}>{boardRuntimeFeedback.message}</p> : null}
-                  <p className="required-legend"><span className="required-mark" aria-hidden="true">*</span> obligatorio</p>
-
-                  <div className="table-wrap">
-                    <table className="admin-table-clean">
-                      <thead>
-                        {selectedCustomBoardSections.length ? (
-                          <tr>
-                            {selectedCustomBoardSections.map((section) => (
-                              <th key={section.name} colSpan={section.span} className="board-section-header-cell" style={{ backgroundColor: section.color }}>
-                                {section.name}
-                              </th>
-                            ))}
-                            {selectedCustomBoard.settings?.showAssignee !== false ? <th className="board-section-header-cell board-section-header-static" colSpan={1}>Asociado</th> : null}
-                            <th className="board-section-header-cell board-section-header-static" colSpan={1}>Seguimiento</th>
-                            {selectedCustomBoard.settings?.showDates !== false ? <th className="board-section-header-cell board-section-header-static" colSpan={1}>Tiempo</th> : null}
-                            {selectedCustomBoard.settings?.showWorkflow !== false ? <th className="board-section-header-cell board-section-header-static" colSpan={1}>Acciones</th> : null}
-                          </tr>
-                        ) : null}
-                        <tr>
-                          {(selectedCustomBoard.fields || []).map((field) => <th key={field.id} title={`${field.helpText || field.label}${field.required ? " · Obligatorio" : ""}`}>{renderBoardFieldLabel(field.label, field.required)}</th>)}
-                          {selectedCustomBoard.settings?.showAssignee !== false ? <th>Asociado</th> : null}
-                          <th>Estado</th>
-                          {selectedCustomBoard.settings?.showDates !== false ? <th>Tiempo</th> : null}
-                          {selectedCustomBoard.settings?.showWorkflow !== false ? <th>Acciones</th> : null}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(selectedCustomBoard.rows || []).map((row) => {
-                          const rowCaptureEnabled = canEditBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions);
-                          const rowWorkflowEnabled = canOperateBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions);
-                          const rowDeleteEnabled = row.status !== STATUS_FINISHED && canEditBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions);
-                          const isFinishedRow = row.status === STATUS_FINISHED;
-                          const canStartRow = row.status === STATUS_PENDING || row.status === STATUS_PAUSED;
-                          const canPauseRow = row.status === STATUS_RUNNING;
-                          const canFinishRow = row.status === STATUS_RUNNING;
-                          return (
-                          <tr key={row.id}>
-                            {(selectedCustomBoard.fields || []).map((field) => {
-                              const value = getBoardFieldValue(selectedCustomBoard, row, field);
-                              const rule = getFieldColorRule(field, value);
-                              const style = rule ? { ...getBoardFieldCellStyle(field), backgroundColor: rule.color, color: rule.textColor || "inherit", borderRadius: "0.75rem", padding: "0.45rem 0.6rem", display: "inline-flex" } : getBoardFieldCellStyle(field);
-                              const options = buildSelectOptions(field, state);
-
-                              if (field.type === "inventoryLookup") {
-                                return (
-                                  <td key={field.id}>
-                                    <InventoryLookupInput
-                                      inventoryItems={state.inventoryItems || []}
-                                      value={row.values?.[field.id] || ""}
-                                      onChange={(nextValue) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, nextValue)}
-                                      placeholder={field.placeholder || "Buscar por código o nombre"}
-                                      style={getBoardFieldCellStyle(field)}
-                                      title={field.helpText || field.label}
-                                      disabled={!rowCaptureEnabled || isFinishedRow}
-                                    />
-                                  </td>
-                                );
-                              }
-
-                              if (field.type === "select") {
-                                return (
-                                  <td key={field.id}>
-                                    <select value={row.values?.[field.id] || ""} onChange={(event) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, event.target.value)} style={getBoardFieldCellStyle(field)} title={field.helpText || field.label} disabled={!rowCaptureEnabled}>
-                                      <option value="">Seleccionar...</option>
-                                      {options.map((option) => <option key={option} value={option}>{option}</option>)}
-                                    </select>
-                                  </td>
-                                );
-                              }
-
-                              if (field.type === "number") {
-                                return <td key={field.id}><input type="number" value={row.values?.[field.id] || ""} onChange={(event) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, Number(event.target.value || 0))} placeholder={field.placeholder || "Escribe un valor"} style={getBoardFieldCellStyle(field)} title={field.helpText || field.label} disabled={!rowCaptureEnabled} /></td>;
-                              }
-
-                              if (field.type === "textarea") {
-                                return <td key={field.id}><input value={row.values?.[field.id] || ""} onChange={(event) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, event.target.value)} placeholder={field.placeholder || "Escribe una nota"} style={getBoardFieldCellStyle(field)} title={field.helpText || field.label} disabled={!rowCaptureEnabled} /></td>;
-                              }
-
-                              if (field.type === "date") {
-                                return <td key={field.id}><input type="date" value={row.values?.[field.id] || ""} onChange={(event) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, event.target.value)} style={getBoardFieldCellStyle(field)} title={field.helpText || field.label} disabled={!rowCaptureEnabled} /></td>;
-                              }
-
-                              if (field.type === "boolean") {
-                                return (
-                                  <td key={field.id}>
-                                    <select value={row.values?.[field.id] || "No"} onChange={(event) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, event.target.value)} style={getBoardFieldCellStyle(field)} title={field.helpText || field.label} disabled={!rowCaptureEnabled}>
-                                      <option value="Si">Sí</option>
-                                      <option value="No">No</option>
-                                    </select>
-                                  </td>
-                                );
-                              }
-
-                              if (field.type === "status") {
-                                return (
-                                  <td key={field.id}>
-                                    <select value={row.values?.[field.id] || STATUS_PENDING} onChange={(event) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, event.target.value)} style={getBoardFieldCellStyle(field)} title={field.helpText || field.label} disabled={!rowCaptureEnabled}>
-                                      <option value={STATUS_PENDING}>{STATUS_PENDING}</option>
-                                      <option value={STATUS_RUNNING}>{STATUS_RUNNING}</option>
-                                      <option value={STATUS_PAUSED}>{STATUS_PAUSED}</option>
-                                      <option value={STATUS_FINISHED}>{STATUS_FINISHED}</option>
-                                    </select>
-                                  </td>
-                                );
-                              }
-
-                              if (field.type === "user") {
-                                return (
-                                  <td key={field.id}>
-                                    <select value={row.values?.[field.id] || row.responsibleId || ""} onChange={(event) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, event.target.value)} style={getBoardFieldCellStyle(field)} title={field.helpText || field.label} disabled={!rowCaptureEnabled}>
-                                      <option value="">Seleccionar usuario...</option>
-                                      {visibleUsers.filter((user) => user.isActive).map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
-                                    </select>
-                                  </td>
-                                );
-                              }
-
-                              if (field.type === "formula" || field.type === "inventoryProperty") {
-                                return <td key={field.id}><span style={style}>{String(value || 0)}</span></td>;
-                              }
-
-                              return <td key={field.id}><input value={row.values?.[field.id] || ""} onChange={(event) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, event.target.value)} placeholder={field.placeholder || "Captura un valor"} style={rule ? { ...getBoardFieldCellStyle(field), backgroundColor: rule.color, color: rule.textColor || "inherit" } : getBoardFieldCellStyle(field)} title={field.helpText || field.label} disabled={!rowCaptureEnabled} /></td>;
-                            })}
-                            {selectedCustomBoard.settings?.showAssignee !== false ? (
-                              <td>
-                                <select value={row.responsibleId || ""} onChange={(event) => {
-                                  if (!rowCaptureEnabled) return;
-                                  updateBoardRow(selectedCustomBoard.id, row.id, (current) => ({ ...current, responsibleId: event.target.value }));
-                                }} disabled={!rowCaptureEnabled}>
-                                  {visibleUsers.filter((user) => user.isActive).map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
-                                </select>
-                              </td>
-                            ) : null}
-                            <td><StatusBadge status={row.status || STATUS_PENDING} /></td>
-                            {selectedCustomBoard.settings?.showDates !== false ? <td>{formatDurationClock(getElapsedSeconds(row, now))}</td> : null}
-                            {selectedCustomBoard.settings?.showWorkflow !== false ? (
-                              <td className="board-workflow-cell">
-                                <div className="row-actions compact board-workflow-actions">
-                                  {canStartRow ? (
-                                    <button type="button" className="board-action-button start icon-only" title={row.status === STATUS_PAUSED ? "Reanudar" : "Iniciar"} aria-label={row.status === STATUS_PAUSED ? "Reanudar" : "Iniciar"} onClick={() => changeBoardRowStatus(selectedCustomBoard.id, row.id, STATUS_RUNNING)} disabled={!rowWorkflowEnabled}>
-                                      <Play size={13} />
-                                    </button>
-                                  ) : null}
-                                  {canPauseRow ? (
-                                    <button type="button" className="board-action-button pause icon-only" title="Pausar" aria-label="Pausar" onClick={() => openBoardPauseModal(selectedCustomBoard.id, row.id)} disabled={!rowWorkflowEnabled}>
-                                      <PauseCircle size={13} />
-                                    </button>
-                                  ) : null}
-                                  {canFinishRow ? (
-                                    <button type="button" className="board-action-button finish icon-only" title="Finalizar" aria-label="Finalizar" onClick={() => openFinishBoardRowConfirm(selectedCustomBoard.id, row.id)} disabled={!rowWorkflowEnabled}>
-                                      <Square size={13} />
-                                    </button>
-                                  ) : null}
-                                  {isFinishedRow ? (
-                                    <button type="button" className="board-action-button finish icon-only static" title="Terminado" aria-label="Terminado" disabled>
-                                      <Square size={13} />
-                                    </button>
-                                  ) : null}
-                                  <button type="button" className={`board-action-button delete icon-only ${rowDeleteEnabled ? "enabled" : "locked"}`.trim()} title={rowDeleteEnabled ? "Eliminar fila" : "Las filas terminadas no se pueden eliminar"} aria-label={rowDeleteEnabled ? "Eliminar fila" : "Las filas terminadas no se pueden eliminar"} onClick={() => {
-                                    if (!rowDeleteEnabled) return;
-                                    setDeleteBoardRowState({ open: true, boardId: selectedCustomBoard.id, rowId: row.id });
-                                  }} disabled={!rowDeleteEnabled}>
-                                    <Trash2 size={13} />
-                                  </button>
-                                </div>
-                              </td>
-                            ) : null}
-                          </tr>
-                        );})}
-                      </tbody>
-                    </table>
-                  </div>
-                </article>
-              </>
-            ) : (
-              <article className="surface-card empty-state">
-                <LayoutDashboard size={44} />
-                <h3>{visibleControlBoards.length ? "No se encontró un tablero con ese filtro" : "No tienes tableros asignados"}</h3>
-                <p>{visibleControlBoards.length ? "Prueba con otro nombre en el buscador o limpia el filtro." : currentUser.role === ROLE_JR ? "Tu líder aún no te asigna un tablero." : "Crea un tablero desde el constructor para comenzar."}</p>
-              </article>
-            )}
-          </section>
-        ) : null}
-
-        {page === PAGE_ADMIN ? (
-          <section className="admin-page-layout">
-            <article className="admin-hero-card">
-              <div>
-                <h3>Panel de Administración</h3>
-                <p>Gestión central del catálogo, semanas, reportes y control operativo.</p>
-              </div>
-              <span className="chip success">Modo administrador</span>
-            </article>
-
-            <div className="admin-stat-strip">
-              <StatTile label="Actividades activas" value={state.catalog.filter((item) => !item.isDeleted).length} />
-              <StatTile label="Semanas registradas" value={state.weeks.length} tone="soft" />
-              <StatTile label="Excesos detectados" value={adminReportRows.reduce((sum, row) => sum + row.excessCount, 0)} tone="danger" />
-              <StatTile label="Tableros operativos" value={state.controlBoards.length} tone="success" />
-            </div>
-
-            <article className="surface-card admin-tabs full-width admin-tabs-shell">
-              <div className="tab-strip">
-                <button type="button" className={adminTab === "catalog" ? "tab active" : "tab"} onClick={() => setAdminTab("catalog")}>Catálogo de actividades</button>
-                <button type="button" className={adminTab === "weeks" ? "tab active" : "tab"} onClick={() => setAdminTab("weeks")}>Gestión de semanas</button>
-                <button type="button" className={adminTab === "reports" ? "tab active" : "tab"} onClick={() => setAdminTab("reports")}>Reportes avanzados</button>
-                <button type="button" className={adminTab === "control" ? "tab active" : "tab"} onClick={() => setAdminTab("control")}>Control operativo</button>
-              </div>
-            </article>
-
-            {adminTab === "catalog" ? (
-              <article className="surface-card full-width table-card admin-surface-card">
-                <div className="card-header-row">
-                  <div>
-                    <h3>Catálogo maestro de actividades</h3>
-                    <p>Actividades reutilizables para semanas nuevas y reportes.</p>
-                  </div>
-                  <button type="button" className="primary-button" onClick={openCatalogCreate} disabled={!actionPermissions.manageCatalog}>
-                    <Plus size={16} /> Agregar actividad
-                  </button>
-                </div>
-                <div className="table-wrap">
-                  <table className="admin-table-clean">
-                    <thead>
-                      <tr>
-                        <th>Actividad</th>
-                        <th>Tiempo límite</th>
-                        <th>Tipo</th>
-                        <th>Estado</th>
-                        <th>Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {state.catalog.filter((item) => !item.isDeleted).map((item) => (
-                        <tr key={item.id}>
-                          <td>{item.name}</td>
-                          <td>{item.timeLimitMinutes} min</td>
-                          <td>{item.isMandatory ? "Obligatoria" : "Ocasional"}</td>
-                          <td><span className="chip success">Activa</span></td>
-                          <td>
-                            <div className="row-actions compact">
-                              <button type="button" className="icon-button" onClick={() => openCatalogEdit(item)} disabled={!actionPermissions.manageCatalog}><Pencil size={15} /> Editar</button>
-                              <button type="button" className="icon-button danger" onClick={() => softDeleteCatalog(item.id)} disabled={!actionPermissions.manageCatalog}><Trash2 size={15} /> Eliminar</button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </article>
-            ) : null}
-
-            {adminTab === "weeks" ? (
-              <article className="surface-card full-width table-card admin-surface-card">
-                <div className="card-header-row">
-                  <div>
-                    <h3>Gestión de semanas</h3>
-                    <p>Agrega actividades extra y depura cada semana operativa.</p>
-                  </div>
-                </div>
-                <div className="table-wrap">
-                  <table className="admin-table-clean">
-                    <thead>
-                      <tr>
-                        <th>Semana</th>
-                        <th>Fechas</th>
-                        <th>Actividades</th>
-                        <th>Estado</th>
-                        <th>Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {state.weeks.map((week) => (
-                        <tr key={week.id}>
-                          <td>{week.name}</td>
-                          <td>{formatDate(week.startDate)} - {formatDate(week.endDate)}</td>
-                          <td>{state.activities.filter((activity) => activity.weekId === week.id).length} actividades</td>
-                          <td><span className={week.isActive ? "chip success" : "chip"}>{week.isActive ? "Activa" : "Cerrada"}</span></td>
-                          <td>
-                            <button type="button" className="icon-button" onClick={() => setEditWeekId(week.id)} disabled={!actionPermissions.manageWeeks}>
-                              <Pencil size={15} /> Editar semana
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </article>
-            ) : null}
-
-            {adminTab === "control" ? (
-              <>
-                <article className="surface-card board-builder-launch-card full-width admin-surface-card">
-                  <div className="card-header-row">
-                    <div>
-                      <h3>Studio de tableros</h3>
-                      <p>Crea o edita tableros en un modal amplio con vista previa en vivo. Solo el creador o un Lead pueden editar un tablero ya creado.</p>
-                    </div>
-                    <button type="button" className="primary-button" onClick={openCreateBoardBuilder} disabled={!actionPermissions.saveBoard}>
-                      <Plus size={16} /> Nuevo tablero
-                    </button>
-                  </div>
-                  <div className="saved-board-list">
-                    <span className="chip primary">Editables por ti: {editableVisibleBoards.length}</span>
-                    <span className="chip">Plantillas visibles: {filteredBoardTemplates.length}</span>
-                  </div>
-                  <div className="saved-board-list board-builder-launch-list">
-                    {editableVisibleBoards.slice(0, 8).map((board) => (
-                      <button key={board.id} type="button" className="icon-button" onClick={() => openEditBoardBuilder(board)}>
-                        <Pencil size={14} /> {board.name}
-                      </button>
-                    ))}
-                  </div>
-                </article>
-              </>
-            ) : null}
-
-            {adminTab === "__legacy_permissions__" && actionPermissions.managePermissions ? (
-              <>
-                <article className="surface-card full-width table-card admin-surface-card permissions-card">
-                  <div className="card-header-row">
-                    <div>
-                      <h3>Presets rápidos</h3>
-                      <p>Aplica una base completa y luego afina usuarios o departamentos si lo necesitas.</p>
-                    </div>
-                  </div>
-                  <div className="saved-board-list permissions-preset-list">
-                    {PERMISSION_PRESETS.map((preset) => (
-                      <button key={preset.id} type="button" className="icon-button" onClick={() => applyPermissionPreset(preset.id)}>
-                        <Settings size={15} /> {preset.label}
-                      </button>
-                    ))}
-                  </div>
-                </article>
-
-                <article className="surface-card full-width table-card admin-surface-card permissions-card">
-                  <div className="card-header-row">
-                    <div>
-                      <h3>Respaldo de reglas</h3>
-                      <p>Exporta permisos globales y por tablero para moverlos o restaurarlos cuando lo necesites.</p>
-                    </div>
-                    <div className="toolbar-actions">
-                      <input ref={permissionFileInputRef} type="file" accept="application/json,.json" className="inventory-file-input" onChange={handlePermissionImport} />
-                      <button type="button" className="icon-button" onClick={exportPermissionRules}>
-                        <Download size={15} /> Exportar JSON
-                      </button>
-                      <button type="button" className="icon-button" onClick={() => permissionFileInputRef.current?.click()}>
-                        <Upload size={15} /> Importar JSON
-                      </button>
-                    </div>
-                  </div>
-                  {permissionsFeedback.message ? <p className={permissionsFeedback.tone === "danger" ? "validation-text" : "inline-success-message"}>{permissionsFeedback.message}</p> : null}
-                </article>
-
-                <article className="surface-card full-width table-card admin-surface-card permissions-card">
-                  <div className="card-header-row">
-                    <div>
-                      <h3>Matriz rápida por rol</h3>
-                      <p>Activa o desactiva acceso por rol sin entrar al detalle fino de usuarios o departamentos.</p>
-                    </div>
-                  </div>
-                  <div className="table-wrap permissions-matrix-wrap">
-                    <table className="admin-table-clean permissions-matrix-table">
-                      <thead>
-                        <tr>
-                          <th>Pestaña</th>
-                          {USER_ROLES.map((role) => <th key={role}>{role}</th>)}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {NAV_ITEMS.map((item) => (
-                          <tr key={item.id}>
-                            <td>
-                              <strong>{item.label}</strong>
-                            </td>
-                            {USER_ROLES.map((role) => (
-                              <td key={role}>
-                                <input type="checkbox" checked={(normalizedPermissions.pages[item.id]?.roles || []).includes(role)} onChange={() => togglePermissionRole("pages", item.id, role)} />
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="table-wrap permissions-matrix-wrap">
-                    <table className="admin-table-clean permissions-matrix-table">
-                      <thead>
-                        <tr>
-                          <th>Acción</th>
-                          {USER_ROLES.map((role) => <th key={role}>{role}</th>)}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {ACTION_DEFINITIONS.map((item) => (
-                          <tr key={item.id}>
-                            <td>
-                              <strong>{item.label}</strong>
-                              <span className="subtle-line">{item.category}</span>
-                            </td>
-                            {USER_ROLES.map((role) => (
-                              <td key={role}>
-                                <input type="checkbox" checked={(normalizedPermissions.actions[item.id]?.roles || []).includes(role)} onChange={() => togglePermissionRole("actions", item.id, role)} />
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </article>
-
-                <article className="surface-card full-width table-card admin-surface-card permissions-card">
-                  <div className="card-header-row">
-                    <div>
-                      <h3>Ajustes finos por pestaña</h3>
-                      <p>Define quién puede ver cada área usando roles, asociados específicos o áreas completas.</p>
-                    </div>
-                  </div>
-                  <div className="permissions-grid">
-                    {NAV_ITEMS.map((item) => (
-                      <article key={item.id} className="permission-entry-card">
-                        <div>
-                          <strong>{item.label}</strong>
-                          <p>{item.id}</p>
-                        </div>
-                        <label className="app-modal-field">
-                          <span>Roles</span>
-                          <select multiple value={normalizedPermissions.pages[item.id]?.roles || []} onChange={(event) => updatePermissionEntry("pages", item.id, "roles", Array.from(event.target.selectedOptions).map((option) => option.value))}>
-                            {USER_ROLES.map((role) => <option key={role} value={role}>{role}</option>)}
-                          </select>
-                        </label>
-                        <label className="app-modal-field">
-                          <span>Asociados</span>
-                          <select multiple value={normalizedPermissions.pages[item.id]?.userIds || []} onChange={(event) => updatePermissionEntry("pages", item.id, "userIds", Array.from(event.target.selectedOptions).map((option) => option.value))}>
-                            {state.users.filter((user) => user.isActive).map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
-                          </select>
-                        </label>
-                        <label className="app-modal-field">
-                          <span>Áreas</span>
-                          <select multiple value={normalizedPermissions.pages[item.id]?.departments || []} onChange={(event) => updatePermissionEntry("pages", item.id, "departments", Array.from(event.target.selectedOptions).map((option) => option.value))}>
-                            {departmentOptions.map((department) => <option key={department} value={department}>{department}</option>)}
-                          </select>
-                        </label>
-                      </article>
-                    ))}
-                  </div>
-                </article>
-
-                <article className="surface-card full-width table-card admin-surface-card permissions-card">
-                  <div className="card-header-row">
-                    <div>
-                      <h3>Ajustes finos por acción</h3>
-                      <p>Controla qué acciones puede ejecutar cada asociado sin depender sólo del rol.</p>
-                    </div>
-                  </div>
-                  <div className="permissions-grid">
-                    {ACTION_DEFINITIONS.map((item) => (
-                      <article key={item.id} className="permission-entry-card">
-                        <div>
-                          <strong>{item.label}</strong>
-                          <p>{item.category}</p>
-                        </div>
-                        <label className="app-modal-field">
-                          <span>Roles</span>
-                          <select multiple value={normalizedPermissions.actions[item.id]?.roles || []} onChange={(event) => updatePermissionEntry("actions", item.id, "roles", Array.from(event.target.selectedOptions).map((option) => option.value))}>
-                            {USER_ROLES.map((role) => <option key={role} value={role}>{role}</option>)}
-                          </select>
-                        </label>
-                        <label className="app-modal-field">
-                          <span>Asociados</span>
-                          <select multiple value={normalizedPermissions.actions[item.id]?.userIds || []} onChange={(event) => updatePermissionEntry("actions", item.id, "userIds", Array.from(event.target.selectedOptions).map((option) => option.value))}>
-                            {state.users.filter((user) => user.isActive).map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
-                          </select>
-                        </label>
-                        <label className="app-modal-field">
-                          <span>Áreas</span>
-                          <select multiple value={normalizedPermissions.actions[item.id]?.departments || []} onChange={(event) => updatePermissionEntry("actions", item.id, "departments", Array.from(event.target.selectedOptions).map((option) => option.value))}>
-                            {departmentOptions.map((department) => <option key={department} value={department}>{department}</option>)}
-                          </select>
-                        </label>
-                      </article>
-                    ))}
-                  </div>
-                </article>
-
-                <article className="surface-card full-width table-card admin-surface-card permissions-card">
-                  <div className="card-header-row">
-                    <div>
-                      <h3>Asignación por tablero</h3>
-                      <p>Selecciona qué asociados quedan asignados. Los asociados asignados pueden hacer todo dentro de ese tablero.</p>
-                    </div>
-                    {selectedPermissionBoard ? <span className="chip primary">{1 + (selectedPermissionBoard.accessUserIds || []).length} persona(s) con control</span> : null}
-                  </div>
-                  {selectedPermissionBoard ? (
-                    <div className="permissions-board-shell">
-                      <div className="builder-template-toolbar permissions-board-toolbar">
-                        <label className="app-modal-field builder-card">
-                          <span>Tablero</span>
-                          <select value={selectedPermissionBoard.id} onChange={(event) => setSelectedPermissionBoardId(event.target.value)}>
-                            {(state.controlBoards || []).map((board) => <option key={board.id} value={board.id}>{board.name}</option>)}
-                          </select>
-                        </label>
-                        <label className="app-modal-field builder-card permissions-toggle-card">
-                          <span>Asociado principal</span>
-                          <select value={selectedPermissionBoard.ownerId || ""} onChange={(event) => updateBoardAssignment(selectedPermissionBoard.id, "ownerId", event.target.value)}>
-                            {activeAssignableUsers.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
-                          </select>
-                        </label>
-                      </div>
-
-                      <div className="permissions-grid">
-                        <article className="permission-entry-card">
-                          <div>
-                            <strong>Personas asignadas</strong>
-                            <p>Quien aparezca aquí podrá ver, capturar, editar, exportar y mover el flujo de este tablero.</p>
-                          </div>
-                          <label className="app-modal-field">
-                            <span>Asociados con acceso total</span>
-                            <select multiple value={selectedPermissionBoard.accessUserIds || []} onChange={(event) => updateBoardAssignment(selectedPermissionBoard.id, "accessUserIds", Array.from(event.target.selectedOptions).map((option) => option.value))}>
-                              {activeAssignableUsers.filter((user) => user.id !== selectedPermissionBoard.ownerId).map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
-                            </select>
-                          </label>
-                          <div className="saved-board-list">
-                            <span className="chip primary">Asociado principal: {userMap.get(selectedPermissionBoard.ownerId)?.name || "Sin asociado"}</span>
-                            {(selectedPermissionBoard.accessUserIds || []).map((userId) => <span key={userId} className="chip success">Acceso total: {userMap.get(userId)?.name || "N/A"}</span>)}
-                          </div>
-                        </article>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="inline-message">Aún no hay tableros guardados para asignar personas.</p>
-                  )}
-                </article>
-
-                <article className="surface-card full-width table-card admin-surface-card permissions-card">
-                  <div className="card-header-row">
-                    <div>
-                      <h3>Auditoría reciente</h3>
-                      <p>Revisa quién cambió permisos o plantillas y en qué momento lo hizo.</p>
-                    </div>
-                    <span className="chip primary">{filteredAuditLog.length} de {(state.auditLog || []).length} eventos</span>
-                  </div>
-                  <div className="builder-template-toolbar permissions-audit-toolbar">
-                    <label className="app-modal-field builder-card">
-                      <span>Usuario</span>
-                      <select value={auditFilters.userId} onChange={(event) => setAuditFilters((current) => ({ ...current, userId: event.target.value }))}>
-                        <option value="all">Todos</option>
-                        {state.users.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
-                      </select>
-                    </label>
-                    <label className="app-modal-field builder-card">
-                      <span>Ámbito</span>
-                      <select value={auditFilters.scope} onChange={(event) => setAuditFilters((current) => ({ ...current, scope: event.target.value }))}>
-                        <option value="all">Todos</option>
-                        {Array.from(new Set((state.auditLog || []).map((entry) => entry.scope).filter(Boolean))).map((scope) => <option key={scope} value={scope}>{scope}</option>)}
-                      </select>
-                    </label>
-                    <label className="app-modal-field builder-card">
-                      <span>Periodo</span>
-                      <select value={auditFilters.period} onChange={(event) => setAuditFilters((current) => ({ ...current, period: event.target.value }))}>
-                        <option value="all">Todo el historial</option>
-                        <option value="7d">Últimos 7 días</option>
-                        <option value="30d">Últimos 30 días</option>
-                      </select>
-                    </label>
-                    <label className="app-modal-field builder-card builder-card-wide">
-                      <span>Buscar detalle</span>
-                      <input value={auditFilters.search} onChange={(event) => setAuditFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Usuario, acción o detalle" />
-                    </label>
-                  </div>
-                  <div className="table-wrap permissions-matrix-wrap">
-                    <table className="admin-table-clean permissions-matrix-table">
-                      <thead>
-                        <tr>
-                          <th>Fecha</th>
-                          <th>Usuario</th>
-                          <th>Ámbito</th>
-                          <th>Detalle</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredAuditLog.slice(0, 40).map((entry) => (
-                          <tr key={entry.id}>
-                            <td>{formatDateTime(entry.createdAt)}</td>
-                            <td>{entry.userName || userMap.get(entry.userId)?.name || "Sistema"}</td>
-                            <td><span className="chip">{entry.scope}</span></td>
-                            <td>{entry.message}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </article>
-
-                <article className="surface-card full-width table-card admin-surface-card permissions-card">
-                  <div className="card-header-row">
-                    <div>
-                      <h3>Eventos de seguridad</h3>
-                      <p>Registro técnico de autenticación, accesos bloqueados y operaciones sensibles del backend.</p>
-                    </div>
-                    <span className="chip primary">{securityEvents.length} eventos</span>
-                  </div>
-                  {securityEventsStatus === "loading" ? <p className="inline-message">Cargando eventos de seguridad...</p> : null}
-                  {securityEventsStatus === "error" ? <p className="validation-text">No se pudieron cargar los eventos de seguridad.</p> : null}
-                  {securityEvents.length ? (
-                    <div className="table-wrap permissions-matrix-wrap">
-                      <table className="admin-table-clean permissions-matrix-table">
-                        <thead>
-                          <tr>
-                            <th>Fecha</th>
-                            <th>Evento</th>
-                            <th>Usuario</th>
-                            <th>Ruta</th>
-                            <th>Detalle</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {securityEvents.slice(0, 60).map((entry, index) => (
-                            <tr key={`${entry.timestamp || "evt"}-${entry.eventType || index}-${index}`}>
-                              <td>{entry.timestamp ? formatDateTime(entry.timestamp) : "N/A"}</td>
-                              <td><span className="chip">{entry.eventType || "evento"}</span></td>
-                              <td>{entry.userId ? userMap.get(entry.userId)?.name || entry.userId : entry.authType || "anónimo"}</td>
-                              <td>{entry.method || ""} {entry.path || ""}</td>
-                              <td>{Object.entries(entry.details || {}).map(([key, value]) => `${key}: ${value}`).join(" · ") || entry.origin || entry.ip || "Sin detalle"}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : securityEventsStatus === "ready" ? <p className="inline-message">Aún no hay eventos de seguridad registrados.</p> : null}
-                </article>
-              </>
-            ) : null}
-          </section>
-        ) : null}
-
-        {page === PAGE_DASHBOARD ? (
-          <section className="dashboard-page">
-            <div className="dashboard-topbar">
-              <div>
-                <h3>Dashboard COPMEC</h3>
-                    <p>Vista ejecutiva consolidada por semana, quincena o mes, con lectura por asociado y por área.</p>
-              </div>
-              <div className="dashboard-topbar-actions">
-                <button type="button" className="icon-button" onClick={() => setDashboardSectionsOpen({ executive: true, people: true, trends: true, causes: true, alerts: true })}>Expandir todo</button>
-                <button type="button" className="icon-button" onClick={() => setDashboardSectionsOpen({ executive: false, people: false, trends: false, causes: false, alerts: false })}>Contraer todo</button>
-              </div>
-              <div className="dashboard-filter-panel">
-                <div className="dashboard-filter-row">
-                <label className="dashboard-filter-field">
-                  <span>Periodo</span>
-                  <select value={dashboardFilters.periodType} onChange={(event) => setDashboardFilters((current) => ({ ...current, periodType: event.target.value, periodKey: "all" }))}>
-                    <option value="week">Semana</option>
-                    <option value="fortnight">Quincena</option>
-                    <option value="month">Mes</option>
-                  </select>
-                </label>
-                <label className="dashboard-filter-field">
-                  <span>Rango</span>
-                  <select value={dashboardFilters.periodKey} onChange={(event) => setDashboardFilters((current) => ({ ...current, periodKey: event.target.value }))}>
-                    {dashboardPeriodOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                  </select>
-                </label>
-                <label className="dashboard-filter-field">
-                  <span>Asociado</span>
-                  <select value={dashboardFilters.responsibleId} onChange={(event) => setDashboardFilters((current) => ({ ...current, responsibleId: event.target.value }))}>
-                    <option value="all">Todos los asociados</option>
-                    {visibleUsers.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
-                  </select>
-                </label>
-                <label className="dashboard-filter-field">
-                  <span>Área</span>
-                  <select value={dashboardFilters.area} onChange={(event) => setDashboardFilters((current) => ({ ...current, area: event.target.value }))}>
-                    <option value="all">Todas las áreas</option>
-                    {departmentOptions.map((department) => <option key={department} value={department}>{department}</option>)}
-                  </select>
-                </label>
-                <label className="dashboard-filter-field">
-                  <span>Fuente</span>
-                  <select value={dashboardFilters.source} onChange={(event) => setDashboardFilters((current) => ({ ...current, source: event.target.value }))}>
-                    <option value="all">Todo el flujo</option>
-                    <option value="activity">Actividades semanales</option>
-                    <option value="board">Tableros operativos</option>
-                  </select>
-                </label>
-                </div>
-              </div>
-            </div>
-
-            <DashboardSection title="Resumen ejecutivo" subtitle="KPIs principales para una lectura rápida del periodo filtrado." summary={`${dashboardMetrics.total} registros · ${dashboardMetrics.completed} cerrados · ${dashboardMetrics.areaCount} áreas`} icon={Gauge} open={dashboardSectionsOpen.executive} onToggle={() => setDashboardSectionsOpen((current) => ({ ...current, executive: !current.executive }))}>
-              <div className="dashboard-kpi-grid dashboard-kpi-grid-main">
-                <DashboardKpiCard title="Registros analizados" value={String(dashboardMetrics.total)} subtitle="actividades y filas dentro del filtro" tone="cyan" icon={ClipboardList} />
-                <DashboardKpiCard title="Cerrados" value={String(dashboardMetrics.completed)} subtitle="registros terminados" tone="green" icon={CircleCheckBig} />
-                <DashboardKpiCard title="En curso" value={String(dashboardMetrics.running)} subtitle="operaciones activas" tone="amber" icon={Play} />
-                <DashboardKpiCard title="Pausados" value={String(dashboardMetrics.paused)} subtitle="registros detenidos" tone="red" icon={PauseCircle} />
-              </div>
-
-              <div className="dashboard-kpi-grid dashboard-kpi-grid-secondary dashboard-kpi-grid-wide">
-                <DashboardKpiCard title="Tiempo promedio" value={formatMetricNumber(dashboardMetrics.averageMinutes, 2)} subtitle="minutos promedio de cierre" tone="cyan" icon={Gauge} />
-                <DashboardKpiCard title="Mediana" value={formatMetricNumber(dashboardMetrics.medianMinutes, 2)} subtitle="punto medio del tiempo de ciclo" tone="slate" icon={Clock3} />
-                <DashboardKpiCard title="Horas efectivas" value={formatMetricNumber(dashboardMetrics.totalHours, 1)} subtitle="tiempo completado acumulado" tone="green" icon={CalendarDays} />
-                <DashboardKpiCard title="Cumplimiento SLA" value={formatMetricNumber(dashboardMetrics.withinPercent, 1)} subtitle="porcentaje dentro del límite" tone="lime" icon={Zap} />
-              </div>
-
-              <div className="dashboard-kpi-grid dashboard-kpi-grid-secondary dashboard-kpi-grid-wide">
-                <DashboardKpiCard title="Fuera de SLA" value={formatMetricNumber(dashboardMetrics.outsidePercent, 1)} subtitle="proporción fuera del objetivo" tone="amber" icon={AlertTriangle} />
-                <DashboardKpiCard title="Pausas registradas" value={String(dashboardMetrics.pauseCount)} subtitle="interrupciones con log" tone="slate" icon={Pause} />
-                <DashboardKpiCard title="Horas en pausa" value={formatMetricNumber(dashboardMetrics.pauseHours, 1)} subtitle="tiempo no productivo" tone="red" icon={OctagonAlert} />
-                <DashboardKpiCard title="Áreas activas" value={String(dashboardMetrics.areaCount)} subtitle="áreas con movimiento operativo" tone="cyan" icon={Users} />
-              </div>
-            </DashboardSection>
-
-            <DashboardSection title="Análisis por asociado" subtitle="Desempeño individual, carga y cumplimiento por persona." summary={`${dashboardResponsibleRows.length} asociados con métricas`} icon={Users} open={dashboardSectionsOpen.people} onToggle={() => setDashboardSectionsOpen((current) => ({ ...current, people: !current.people }))}>
-              <div className="dashboard-main-grid">
-                <article className="dashboard-panel dashboard-panel-wide">
-                  <div className="dashboard-panel-header">
-                    <h3>Tiempo Promedio por Asociado</h3>
-                    <BarChart3 size={18} />
-                  </div>
-                  <div className="dashboard-bars-list">
-                    {dashboardResponsibleRows.map((item) => (
-                      <DashboardBarRow key={item.responsibleId} label={item.label} value={item.averageMinutes} max={item.max} color={item.color} trailing={`${Math.round(item.averageMinutes)} min · ${item.totalRecords} cierres`} initial={item.initial} />
-                    ))}
-                  </div>
-                </article>
-
-                <aside className="dashboard-panel dashboard-panel-rank">
-                  <div className="dashboard-panel-header">
-                    <h3>Ranking de Desempeño</h3>
-                    <Clock3 size={18} />
-                  </div>
-                  <ol className="dashboard-rank-list">
-                    {dashboardResponsibleRows.map((item, index) => (
-                      <DashboardRankItem key={item.responsibleId} index={index + 1} label={item.label} value={`${Math.round(item.averageMinutes)} min prom. · ${item.totalRecords} cierres`} color={getResponsibleVisual(item.label).badge} highlighted={index === 0} />
-                    ))}
-                  </ol>
-                </aside>
-              </div>
-
-              <div className="dashboard-main-grid dashboard-lower-middle-grid">
-                <article className="dashboard-panel dashboard-panel-half">
-                  <div className="dashboard-panel-header">
-                    <h3>Actividad vs. Tiempo Objetivo</h3>
-                    <AlertTriangle size={18} />
-                  </div>
-                  <div className="dashboard-progress-list">
-                    {dashboardActivityRows.map((item) => (
-                      <DashboardProgressMetric key={item.label} label={item.label} valueText={`${Math.round(item.averageMinutes)} / ${item.limitMinutes} min`} percent={item.percent} color={item.color} />
-                    ))}
-                  </div>
-                </article>
-
-                <article className="dashboard-panel dashboard-panel-half">
-                  <div className="dashboard-panel-header">
-                    <h3>Distribución de Carga</h3>
-                    <PieChart size={18} />
-                  </div>
-                  <DashboardPieChart rows={dashboardDistributionRows} />
-                  <div className="dashboard-progress-list dashboard-distribution-list">
-                    {dashboardDistributionRows.map((item) => (
-                      <DashboardProgressMetric key={item.responsibleId} label={item.label} valueText={`${item.count} registros · ${Math.round(item.percent)}%`} percent={item.percent} color={item.color} />
-                    ))}
-                  </div>
-                </article>
-              </div>
-            </DashboardSection>
-
-            <DashboardSection title="Tendencias y áreas" subtitle="Evolución del flujo y consolidado por área para comparar capacidad y carga." summary={`${dashboardTrendRows.length} periodos · ${dashboardAreaRows.length} áreas`} icon={BarChart3} open={dashboardSectionsOpen.trends} onToggle={() => setDashboardSectionsOpen((current) => ({ ...current, trends: !current.trends }))}>
-              <div className="dashboard-main-grid dashboard-lower-middle-grid">
-                <article className="dashboard-panel dashboard-panel-half">
-                  <div className="dashboard-panel-header">
-                    <h3>Tendencia General por {getDashboardPeriodTypeLabel(dashboardFilters.periodType)}</h3>
-                    <BarChart3 size={18} />
-                  </div>
-                  <DashboardColumnChart
-                    rows={dashboardTrendRows.map((item) => ({
-                      key: item.key,
-                      label: item.label,
-                      value: item.total,
-                      valueLabel: `${item.completed}/${item.total}`,
-                      tooltip: `${item.completed}/${item.total} cierres · ${formatMetricNumber(item.totalSeconds / 3600, 1)} h`,
-                      color: "linear-gradient(180deg, #0ea5e9 0%, #34d399 100%)",
-                    }))}
-                    emptyLabel="No hay tendencia disponible para el periodo seleccionado."
-                  />
-                  <div className="dashboard-progress-list">
-                    {dashboardTrendRows.map((item) => (
-                      <DashboardProgressMetric key={item.key} label={item.label} valueText={`${item.completed}/${item.total} cierres · ${formatMetricNumber(item.totalSeconds / 3600, 1)} h`} percent={item.total ? (item.completed / item.total) * 100 : 0} color="linear-gradient(90deg, #0ea5e9 0%, #34d399 100%)" />
-                    ))}
-                  </div>
-                </article>
-
-                <article className="dashboard-panel dashboard-panel-half">
-                  <div className="dashboard-panel-header">
-                    <h3>Resumen Consolidado por Área</h3>
-                    <Users size={18} />
-                  </div>
-                  <DashboardColumnChart
-                    rows={dashboardAreaRows.slice(0, 6).map((item) => ({
-                      key: item.area,
-                      label: item.area,
-                      value: item.total,
-                      valueLabel: `${item.total}`,
-                      tooltip: `${item.total} registros · ${item.boardCount} tableros`,
-                      color: "linear-gradient(180deg, #14b8a6 0%, #84cc16 100%)",
-                    }))}
-                    emptyLabel="No hay áreas con datos para mostrar."
-                  />
-                  <div className="dashboard-bars-list">
-                    {dashboardAreaRows.map((item) => (
-                      <DashboardBarRow key={item.area} label={item.area} value={item.total} max={Math.max(...dashboardAreaRows.map((row) => row.total), 1)} color="linear-gradient(90deg, #14b8a6 0%, #84cc16 100%)" trailing={`${item.total} reg · ${item.boardCount} tableros`} initial={item.area.charAt(0).toUpperCase()} />
-                    ))}
-                  </div>
-                </article>
-              </div>
-            </DashboardSection>
-
-            <DashboardSection title="Incidencias y causa raíz" subtitle="Pareto de impacto y análisis Ishikawa para aislar las causas más pesadas." summary={`${dashboardParetoRows.length} incidencias priorizadas · ${dashboardIshikawaRows.length} categorías`} icon={Search} open={dashboardSectionsOpen.causes} onToggle={() => setDashboardSectionsOpen((current) => ({ ...current, causes: !current.causes }))}>
-              <div className="dashboard-main-grid dashboard-lower-middle-grid">
-                <article className="dashboard-panel dashboard-panel-half">
-                  <div className="dashboard-panel-header">
-                    <h3>Pareto de Incidencias e Impacto</h3>
-                    <BarChart3 size={18} />
-                  </div>
-                  <DashboardParetoChart rows={dashboardParetoRows} />
-                  <div className="dashboard-pareto-list">
-                    {dashboardParetoRows.map((item, index) => (
-                      <DashboardParetoRow key={item.label} label={item.label} percent={item.percent} cumulativePercent={item.cumulativePercent} impactText={`${Math.round(item.impactSeconds / 60)} min · ${item.count} evento(s)`} highlight={index < 3 || item.cumulativePercent <= 80} />
-                    ))}
-                  </div>
-                </article>
-
-                <article className="dashboard-panel dashboard-panel-half">
-                  <div className="dashboard-panel-header">
-                    <h3>Ishikawa Operativo</h3>
-                    <Search size={18} />
-                  </div>
-                  <DashboardIshikawaDiagram rows={dashboardIshikawaRows} />
-                  <div className="dashboard-cause-grid">
-                    {dashboardIshikawaRows.map((item) => (
-                      <DashboardCauseCard key={item.category} title={item.category} share={item.impact} count={item.count} examples={item.examples} />
-                    ))}
-                  </div>
-                </article>
-              </div>
-            </DashboardSection>
-
-            <DashboardSection title="Alertas y tablas ejecutivas" subtitle="Excepciones, pausas críticas y consolidado por área para revisión puntual." summary={`${dashboardMetrics.exceeded.length} alertas · ${pauseAnalysis.length} causas de pausa`} icon={OctagonAlert} open={dashboardSectionsOpen.alerts} onToggle={() => setDashboardSectionsOpen((current) => ({ ...current, alerts: !current.alerts }))}>
-              <div className="dashboard-main-grid dashboard-bottom-grid">
-                <article className="dashboard-panel dashboard-panel-wide">
-                  <div className="dashboard-panel-header with-badge">
-                    <div>
-                      <h3>Registros que Excedieron el Límite</h3>
-                      <p>Tiempo real vs. límite objetivo en actividades semanales</p>
-                    </div>
-                    <span className="dashboard-alert-pill">{dashboardMetrics.exceeded.length} alertas</span>
-                  </div>
-                  <div className="dashboard-table-wrap">
-                    <table className="dashboard-table-clean">
-                      <thead>
-                        <tr>
-                          <th>Operación</th>
-                          <th>Fuente</th>
-                          <th>Asociado</th>
-                          <th>Tiempo Real</th>
-                          <th>Límite</th>
-                          <th>Exceso</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {dashboardMetrics.exceeded.map((record) => {
-                          const excess = record.durationSeconds / 60 - record.limitMinutes;
-                          return (
-                            <tr key={record.id}>
-                              <td>{record.label.toUpperCase()}</td>
-                              <td>{record.sourceLabel}</td>
-                              <td>{record.responsibleName}</td>
-                              <td className="dashboard-number-warning">{formatMinutes(record.durationSeconds / 60)}</td>
-                              <td>{record.limitMinutes} min</td>
-                              <td>{Math.max(0, Math.round(excess))}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </article>
-
-                <aside className="dashboard-panel dashboard-panel-rank dashboard-pause-panel">
-                  <div className="dashboard-panel-header">
-                    <div>
-                      <h3>Top de Pausas</h3>
-                      <p>Causas más frecuentes de interrupción por impacto</p>
-                    </div>
-                    <PauseCircle size={18} />
-                  </div>
-                  <div className="dashboard-pause-list">
-                    {pauseAnalysis.map((item) => (
-                      <div key={item.reason} className="dashboard-pause-card">
-                        <span className="dashboard-pause-icon" />
-                        <div>
-                          <strong>{item.reason}</strong>
-                          <small>{item.count} pausas · {Math.round(item.totalSeconds / 60)} min</small>
-                        </div>
-                        <span className="dashboard-pause-dot">{Math.round(item.percent)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </aside>
-              </div>
-
-              <article className="dashboard-panel dashboard-panel-wide">
-                <div className="dashboard-panel-header with-badge">
-                  <div>
-                    <h3>Tabla Ejecutiva por Área</h3>
-                    <p>Resumen general consolidado aunque existan múltiples tableros y fuentes operativas.</p>
-                  </div>
-                  <span className="dashboard-alert-pill">{dashboardAreaRows.length} áreas</span>
-                </div>
-                <div className="dashboard-table-wrap">
-                  <table className="dashboard-table-clean">
-                    <thead>
-                      <tr>
-                        <th>Área</th>
-                        <th>Registros</th>
-                        <th>Cerrados</th>
-                        <th>Promedio</th>
-                        <th>SLA</th>
-                        <th>Tableros / Fuentes</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dashboardAreaRows.map((item) => (
-                        <tr key={item.area}>
-                          <td>{item.area}</td>
-                          <td>{item.total}</td>
-                          <td>{item.completed}</td>
-                          <td>{formatMinutes(item.averageMinutes)}</td>
-                          <td>{formatPercent(item.slaPercent)}</td>
-                          <td>{item.boardCount}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </article>
-            </DashboardSection>
-          </section>
-        ) : null}
-
-        {page === PAGE_HISTORY ? (
-          <section className="history-page-layout">
-            <article className="history-summary-card">
-              <div>
-                <h3>Historial de Semanas</h3>
-                <p>Consulta semanas cerradas y revisa sus actividades sin editar información.</p>
-              </div>
-              <span className="chip">{state.weeks.length} semanas</span>
-            </article>
-
-            <div className="history-stat-strip">
-              <StatTile label="Semanas activas" value={state.weeks.filter((week) => week.isActive).length} />
-              <StatTile label="Semanas cerradas" value={state.weeks.filter((week) => !week.isActive).length} tone="soft" />
-              <StatTile label="Actividades históricas" value={state.activities.filter((item) => item.weekId !== activeWeek?.id).length} tone="success" />
-            </div>
-
-            <section className="page-grid history-grid">
-            <article className="surface-card table-card history-surface-card">
-              <div className="card-header-row">
-                <div>
-                  <h3>Todas las semanas</h3>
-                  <p>Consulta de solo lectura del histórico operativo.</p>
-                </div>
-                <span className="chip">{state.weeks.length} semanas registradas</span>
-              </div>
-              <div className="table-wrap">
-                <table className="history-table-clean">
-                  <thead>
-                    <tr>
-                      <th>Semana</th>
-                      <th>Fechas</th>
-                      <th>Actividades</th>
-                      <th>Completadas</th>
-                      <th>Estado</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {state.weeks.map((week) => {
-                      const weekRows = state.activities.filter((activity) => activity.weekId === week.id);
-                      const completed = weekRows.filter((activity) => activity.status === STATUS_FINISHED).length;
-                      return (
-                        <tr key={week.id}>
-                          <td>{week.name}</td>
-                          <td>{formatDate(week.startDate)} - {formatDate(week.endDate)}</td>
-                          <td>{weekRows.length}</td>
-                          <td>{completed}</td>
-                          <td><span className={week.isActive ? "chip success" : "chip"}>{week.isActive ? "Activa" : "Histórica"}</span></td>
-                          <td><button type="button" className="icon-button" onClick={() => setSelectedHistoryWeekId(week.id)}><Search size={15} /> Ver detalle</button></td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </article>
-
-            <article className="surface-card table-card detail-panel history-detail-card">
-              <div className="card-header-row">
-                <div>
-                  <h3>{historyWeek?.name || "Selecciona una semana"}</h3>
-                  <p>Vista de solo lectura del desempeño semanal.</p>
-                </div>
-              </div>
-              {historyWeek ? (
-                <>
-                  <div className="metric-grid three-up">
-                    <MetricCard label="Tiempo total efectivo" value={formatMinutes(state.activities.filter((item) => item.weekId === historyWeek.id).reduce((sum, item) => sum + item.accumulatedSeconds, 0) / 60)} hint="Suma total de la semana" />
-                    <MetricCard label="Actividades completadas" value={String(state.activities.filter((item) => item.weekId === historyWeek.id && item.status === STATUS_FINISHED).length)} hint="Terminadas en la semana" />
-                    <MetricCard label="Fuera de tiempo límite" value={String(state.activities.filter((item) => item.weekId === historyWeek.id && item.accumulatedSeconds > getTimeLimitMinutes(item, catalogMap) * 60).length)} hint="Desviaciones detectadas" tone="danger" />
-                  </div>
-
-                  <div className="table-wrap compact-table">
-                    <table className="history-table-clean">
-                      <thead>
-                        <tr>
-                          <th>Fecha</th>
-                          <th>Actividad</th>
-                          <th>Asociado</th>
-                          <th>Estado</th>
-                          <th>Inicio</th>
-                          <th>Fin</th>
-                          <th>Tiempo</th>
-                          <th>Límite</th>
-                          <th>Pausas</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {state.activities.filter((item) => item.weekId === historyWeek.id).map((activity) => (
-                          <tr key={activity.id}>
-                            <td>{formatDate(activity.activityDate)}</td>
-                            <td>{getActivityLabel(activity, catalogMap)}</td>
-                            <td title={userMap.get(activity.responsibleId)?.name || "Sin asociado"}>{userMap.get(activity.responsibleId)?.name || "Sin asociado"}</td>
-                            <td><StatusBadge status={activity.status} /></td>
-                            <td>{formatTime(activity.startTime)}</td>
-                            <td>{formatTime(activity.endTime)}</td>
-                            <td>{formatDurationClock(activity.accumulatedSeconds)}</td>
-                            <td>{getTimeLimitMinutes(activity, catalogMap)} min</td>
-                            <td><button type="button" className="icon-button" onClick={() => setHistoryPauseActivityId(activity.id)}>Ver pausas</button></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              ) : null}
-            </article>
-          </section>
-          </section>
-        ) : null}
-
-        {page === PAGE_INVENTORY ? (
-          <section className="inventory-page-layout">
-            <article className="inventory-hero-card">
-              <div>
-                <h3>Inventario</h3>
-                <p>Catálogo base de producto y presentación para operación y logística.</p>
-              </div>
-              <div className="inventory-hero-actions">
-                <input ref={inventoryFileInputRef} type="file" accept=".csv,.xlsx,.xls" className="inventory-file-input" onChange={handleInventoryImport} />
-                <button type="button" className="icon-button" onClick={downloadInventoryTemplate} disabled={!actionPermissions.importInventory}><Upload size={15} /> Plantilla Excel</button>
-                <button type="button" className="icon-button" onClick={() => inventoryFileInputRef.current?.click()} disabled={!actionPermissions.importInventory}><Upload size={15} /> Importar CSV / Excel</button>
-                <button type="button" className="primary-button" onClick={openCreateInventoryItem} disabled={!actionPermissions.manageInventory}><Plus size={16} /> Agregar artículo</button>
-              </div>
-            </article>
-
-            {inventoryImportFeedback.message ? <p className={`inventory-import-feedback ${inventoryImportFeedback.tone}`}>{inventoryImportFeedback.message}</p> : null}
-
-            <div className="inventory-stat-grid">
-              <StatTile label="Artículos registrados" value={inventoryStats.total} />
-              <StatTile label="Piezas por caja" value={inventoryStats.totalPiecesPerBox} tone="soft" />
-              <StatTile label="Cajas por tarima" value={inventoryStats.totalBoxesPerPallet} tone="success" />
-            </div>
-
-            <article className="surface-card inventory-surface-card">
-              <div className="card-header-row">
-                <div>
-                  <h3>Base de inventario</h3>
-                  <p>Código, presentación y conversión logística por artículo.</p>
-                </div>
-                <label className="users-search-field inventory-search-field">
-                  <span>Buscar</span>
-                  <div className="users-search-input-wrap">
-                    <Search size={16} />
-                    <input value={inventorySearch} onChange={(event) => setInventorySearch(event.target.value)} placeholder="Buscar por código o nombre..." />
-                  </div>
-                </label>
-                {inventorySearch ? (
-                  <button type="button" className="icon-button" onClick={() => setInventorySearch("")}>
-                    <RotateCcw size={15} /> Limpiar búsqueda
-                  </button>
-                ) : null}
-              </div>
-
-              {!inventoryItems.length ? (
-                <div className="empty-state inventory-empty-state">
-                  <Package size={42} />
-                  <h3>No hay coincidencias en inventario</h3>
-                  <p>Ajusta la búsqueda o registra un artículo nuevo para continuar.</p>
-                  <button type="button" className="primary-button" onClick={openCreateInventoryItem}>
-                    <Plus size={16} /> Agregar artículo
-                  </button>
-                </div>
-              ) : (
-                <div className="table-wrap">
-                  <table className="inventory-table-clean">
-                    <thead>
-                      <tr>
-                        <th>Código</th>
-                        <th>Nombre</th>
-                        <th>Presentación</th>
-                        <th>Piezas por caja</th>
-                        <th>Cajas por tarima</th>
-                        <th>Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {inventoryItems.map((item) => (
-                        <tr key={item.id}>
-                          <td><span className="inventory-code-badge">{item.code}</span></td>
-                          <td>{item.name}</td>
-                          <td>{item.presentation}</td>
-                          <td>{item.piecesPerBox}</td>
-                          <td>{item.boxesPerPallet}</td>
-                          <td>
-                            <div className="row-actions compact">
-                              <button type="button" className="icon-button" onClick={() => openEditInventoryItem(item)} disabled={!actionPermissions.manageInventory}><Pencil size={15} /> Editar</button>
-                              <button type="button" className="icon-button danger" onClick={() => setDeleteInventoryId(item.id)} disabled={!actionPermissions.manageInventory}><Trash2 size={15} /> Eliminar</button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </article>
-          </section>
-        ) : null}
-
-        {page === PAGE_USERS ? (
-          <section className="users-page-layout">
-            <article className="users-hero-card">
-              <div>
-                <h3>Administrador</h3>
-                <p>Gestiona asociados, accesos y permisos directos por persona desde un solo lugar.</p>
-              </div>
-              {creatableRoles.length ? <button type="button" className="primary-button" onClick={openCreateUser} disabled={!actionPermissions.manageUsers}><Plus size={16} /> Crear asociado</button> : null}
-            </article>
-
-          <section className="page-grid">
-            <div className="users-stat-grid full-width">
-              <StatTile label="Total asociados" value={userStats.total} />
-              <StatTile label="Asociados activos" value={userStats.active} tone="success" />
-              <StatTile label="Administradores" value={userStats.admins} tone="soft" />
-              <StatTile label="Inactivos" value={userStats.inactive} tone="danger" />
-            </div>
-
-            <article className="surface-card full-width table-card users-surface-card">
-              <div className="card-header-row">
-                <div>
-                  <h3>Asociados bajo tu control</h3>
-                  <p>Crea y administra únicamente los perfiles que tu rol interno puede delegar.</p>
-                </div>
-                <span className="chip primary">{filteredUsers.length} visibles</span>
-              </div>
-
-              <div className="filter-bar inline-toolbar users-toolbar">
-                <label className="users-search-field">
-                  <span>Buscar</span>
-                  <div className="users-search-input-wrap">
-                    <Search size={16} />
-                    <input value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="Buscar asociado..." />
-                  </div>
-                </label>
-                <label>
-                  <span>Rol interno</span>
-                  <select value={userRoleFilter} onChange={(event) => setUserRoleFilter(event.target.value)}>
-                    <option>Todos los roles</option>
-                    {USER_ROLES.map((role) => <option key={role}>{role}</option>)}
-                  </select>
-                </label>
-              </div>
-
-              <div className="table-wrap">
-                <table className="users-table-clean">
-                  <thead>
-                    <tr>
-                      <th>Nombre</th>
-                      <th>Cargo</th>
-                      <th>Área</th>
-                      <th>Rol interno</th>
-                      <th>Reporta a</th>
-                      <th>Estado</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredUsers.map((user) => (
-                      <tr key={user.id}>
-                        <td>
-                          <div className="user-name-cell">
-                            <span className="avatar-circle">{user.name.charAt(0).toUpperCase()}</span>
-                            <div>
-                              <strong>{user.name.toUpperCase()}</strong>
-                              <span className="subtle-line">{user.email}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td>{getUserJobTitle(user) || "Sin cargo"}</td>
-                        <td>{getUserArea(user) || "Sin área"}</td>
-                        <td><span className={`user-role-badge ${getRoleBadgeClass(user.role)}`}>{user.role}</span></td>
-                        <td>{userMap.get(user.managerId)?.name || "Sin líder"}</td>
-                        <td>
-                          <button type="button" className={user.isActive ? "user-status-toggle active" : "user-status-toggle"} onClick={() => toggleUserActive(user.id)}>
-                            <span className="user-status-dot" />
-                            {user.isActive ? "Activo" : "Inactivo"}
-                          </button>
-                        </td>
-                        <td>
-                          <div className="row-actions compact">
-                            <button type="button" className="user-row-button" onClick={() => openEditUser(user)} disabled={!actionPermissions.manageUsers}><Pencil size={15} /> Editar</button>
-                            <button type="button" className="user-row-button danger" onClick={() => setDeleteUserId(user.id)} disabled={!actionPermissions.deleteUsers}><Trash2 size={15} /> Eliminar</button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="users-table-footer">
-                <span>Mostrando asociados visibles para tu jerarquía</span>
-                <span>{currentUser.role} · Control delegado</span>
-              </div>
-            </article>
-          </section>
-          </section>
-        ) : null}
-
-        {page === PAGE_NOT_FOUND ? (
-          <section className="page-grid narrow-page">
-            <article className="surface-card form-card not-found-card">
-              <h3>404</h3>
-              <p>Página no encontrada</p>
-              <span>Lo sentimos, la página que busca no existe o se ha movido.</span>
-              <button type="button" className="primary-button" onClick={() => setPage(PAGE_DASHBOARD)}>Ir a casa</button>
-            </article>
-          </section>
-        ) : null}
+        {page === PAGE_BOARD || page === PAGE_ADMIN ? <TablerosCreados contexto={paginasContexto} /> : null}
+        {page === PAGE_CUSTOM_BOARDS ? <MisTableros contexto={paginasContexto} /> : null}
+        {page === PAGE_DASHBOARD ? <PanelIndicadores contexto={paginasContexto} /> : null}
+        {page === PAGE_HISTORY ? <HistorialSemanas contexto={paginasContexto} /> : null}
+        {page === PAGE_INVENTORY ? <GestionInventario contexto={paginasContexto} /> : null}
+        {page === PAGE_USERS ? <GestionUsuarios contexto={paginasContexto} /> : null}
+        {page === PAGE_NOT_FOUND ? <PaginaNoEncontrada contexto={paginasContexto} /> : null}
       </section>
 
       <Modal open={pauseState.open} title="Actividad en pausa" confirmLabel="Confirmar pausa" cancelLabel="Cancelar" onClose={() => setPauseState({ open: false, activityId: null, reason: "", error: "" })} onConfirm={handleConfirmPause}>
@@ -7981,7 +6677,7 @@ function App() {
         </div>
       </Modal>
 
-      <Modal open={catalogModal.open} title={catalogModal.mode === "create" ? "Nueva actividad" : "Editar actividad"} confirmLabel={catalogModal.mode === "create" ? "Guardar" : "Guardar cambios"} cancelLabel="Cancelar" onClose={() => setCatalogModal({ open: false, mode: "create", id: null, name: "", limit: "", mandatory: "true" })} onConfirm={submitCatalogModal}>
+      <Modal open={catalogModal.open} title={catalogModal.mode === "create" ? "Nueva actividad" : "Editar actividad"} confirmLabel={catalogModal.mode === "create" ? "Guardar" : "Guardar cambios"} cancelLabel="Cancelar" onClose={() => setCatalogModal({ open: false, mode: "create", id: null, name: "", limit: "", mandatory: "true", frequency: "weekly" })} onConfirm={submitCatalogModal}>
         <div className="modal-form-grid">
           <label className="app-modal-field">
             <span>Nombre de la actividad</span>
@@ -7996,6 +6692,12 @@ function App() {
             <select value={catalogModal.mandatory} onChange={(event) => setCatalogModal((current) => ({ ...current, mandatory: event.target.value }))}>
               <option value="true">Obligatoria</option>
               <option value="false">Ocasional</option>
+            </select>
+          </label>
+          <label className="app-modal-field">
+            <span>Frecuencia</span>
+            <select value={catalogModal.frequency} onChange={(event) => setCatalogModal((current) => ({ ...current, frequency: event.target.value }))}>
+              {ACTIVITY_FREQUENCY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </label>
         </div>
@@ -8036,7 +6738,7 @@ function App() {
         </div>
       </Modal>
 
-      <Modal open={userModal.open} className="user-management-modal" title={userModal.mode === "create" ? "Crear nuevo asociado" : "Editar asociado"} confirmLabel={userModal.mode === "create" ? "Guardar asociado" : "Guardar cambios"} cancelLabel="Cancelar" onClose={closeUserModal} onConfirm={submitUserModal}>
+      <Modal open={userModal.open} className="user-management-modal" title={userModal.mode === "create" ? "Crear nuevo player" : "Editar player"} confirmLabel={userModal.mode === "create" ? "Guardar player" : "Guardar cambios"} cancelLabel="Cancelar" onClose={closeUserModal} onConfirm={submitUserModal}>
         <div className="modal-form-grid">
           <div className="user-modal-grid">
             <label className="app-modal-field">
@@ -8079,16 +6781,31 @@ function App() {
                 {activeAssignableUsers.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
               </select>
             </label>
-            <label className="app-modal-field">
-              <span>Contraseña</span>
-              <input value={userModal.password} onChange={(event) => setUserModal((current) => ({ ...current, password: event.target.value }))} />
-            </label>
-            <label className="app-modal-field">
+            {userModal.mode === "create" ? (
+              <label className="app-modal-field">
+                <span>Contraseña temporal</span>
+                <input
+                  type="password"
+                  value={userModal.password}
+                  onChange={(event) => setUserModal((current) => ({ ...current, password: event.target.value }))}
+                  placeholder="Mínimo 4 caracteres"
+                />
+              </label>
+            ) : null}
+            <label className="app-modal-field user-status-switch-field">
               <span>Estado inicial</span>
-              <select value={userModal.isActive} onChange={(event) => setUserModal((current) => ({ ...current, isActive: event.target.value }))}>
-                <option value="true">Activo</option>
-                <option value="false">Inactivo</option>
-              </select>
+              <div className="user-status-switch-row">
+                <button
+                  type="button"
+                  className={`switch-button ${userModal.isActive === "true" ? "on" : ""}`}
+                  onClick={() => setUserModal((current) => ({ ...current, isActive: current.isActive === "true" ? "false" : "true" }))}
+                  aria-pressed={userModal.isActive === "true"}
+                  aria-label="Cambiar estado inicial del player"
+                >
+                  <span className="switch-thumb" />
+                </button>
+                <strong>{userModal.isActive === "true" ? "Activo" : "Inactivo"}</strong>
+              </div>
             </label>
           </div>
 
@@ -8097,7 +6814,7 @@ function App() {
               <div className="builder-section-head">
                 <div>
                   <h4>Permisos directos</h4>
-                  <p>Configura aquí los accesos puntuales de este asociado sin salir del modal.</p>
+                  <p>Configura aquí los accesos puntuales de este player sin salir del modal.</p>
                 </div>
                 <span className="chip primary">{permissionPages.filter((item) => userModal.permissionOverrides.pages?.[item.id]).length} pestañas activas</span>
               </div>
@@ -8171,7 +6888,7 @@ function App() {
           {!supportsManagedPermissionOverrides(userModal.role) ? (
             <article className="user-permission-note">
               <strong>{userModal.role === ROLE_SSR ? "Semi-Senior con alcance operativo" : "Acceso operativo por tablero"}</strong>
-              <p>{userModal.role === ROLE_SSR ? "Semi-Senior solo puede crear asociados Junior y trabajar con los tableros que tenga asignados." : "Junior solo entra a Mis tableros y verá únicamente los tableros que le asignen."}</p>
+              <p>{userModal.role === ROLE_SSR ? "Semi-Senior solo puede crear players Junior y trabajar con los tableros que tenga asignados." : "Junior solo entra a Mis tableros y verá únicamente los tableros que le asignen."}</p>
             </article>
           ) : null}
         </div>
@@ -8191,7 +6908,7 @@ function App() {
             <span>Compartir con</span>
             <select value={templateEditorModal.visibilityType} onChange={(event) => setTemplateEditorModal((current) => ({ ...current, visibilityType: event.target.value }))}>
               <option value="department">Departamento</option>
-                        <option value="users">Asociados específicos</option>
+                        <option value="users">Players específicos</option>
               <option value="all">Todos</option>
             </select>
           </label>
@@ -8205,7 +6922,7 @@ function App() {
           ) : null}
           {templateEditorModal.visibilityType === "users" ? (
             <label className="app-modal-field">
-                        <span>Asociados con acceso</span>
+                        <span>Players con acceso</span>
               <select multiple value={templateEditorModal.sharedUserIds} onChange={(event) => setTemplateEditorModal((current) => ({ ...current, sharedUserIds: Array.from(event.target.selectedOptions).map((option) => option.value) }))}>
                 {activeAssignableUsers.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
               </select>
@@ -8249,27 +6966,37 @@ function App() {
         currentUser={currentUser}
         userMap={userMap}
         inventoryItems={state.inventoryItems}
+        contextoConstructor={contextoConstructor}
         canSaveTemplate={actionPermissions.saveTemplate}
         canSaveBoard={actionPermissions.saveBoard}
       />
 
-      <BoardComponentStudioModal open={componentStudioOpen} mode={editingDraftColumnId ? "edit" : "create"} draft={controlBoardDraft} onChange={setControlBoardDraft} onClose={() => { setComponentStudioOpen(false); setEditingDraftColumnId(null); setControlBoardDraft((current) => ({ ...current, ...createEmptyFieldDraft() })); }} onConfirm={addDraftColumn} catalog={state.catalog} inventoryItems={state.inventoryItems} visibleUsers={visibleUsers} />
+      <BoardComponentStudioModal open={componentStudioOpen} mode={editingDraftColumnId ? "edit" : "create"} draft={controlBoardDraft} onChange={setControlBoardDraft} onClose={() => { setComponentStudioOpen(false); setEditingDraftColumnId(null); setControlBoardDraft((current) => ({ ...current, ...createEmptyFieldDraft() })); }} onConfirm={addDraftColumn} catalog={state.catalog} inventoryItems={state.inventoryItems} visibleUsers={visibleUsers} contextoConstructor={contextoConstructor} />
 
       {profileModalOpen ? <EmployeeProfileModal currentUser={currentUser} passwordForm={passwordForm} onPasswordChange={setPasswordForm} onSubmit={submitPasswordReset} onUpdateIdentity={updateCurrentUserIdentity} onClose={() => { setProfileModalOpen(false); setPasswordForm({ password: "", confirmPassword: "", message: "" }); }} onLogout={() => { setProfileModalOpen(false); setPasswordForm({ password: "", confirmPassword: "", message: "" }); handleLogout(); }} /> : null}
 
-      <Modal open={resetUserPasswordModal.open} title="Restablecer contraseña" confirmLabel="Guardar nueva clave" cancelLabel="Cancelar" onClose={() => setResetUserPasswordModal({ open: false, userId: null, password: "", message: "" })} onConfirm={submitUserPasswordReset}>
+      {isForcedPasswordChange ? <ForcedPasswordChangeModal passwordForm={passwordForm} onPasswordChange={setPasswordForm} onSubmit={submitPasswordReset} /> : null}
+
+      <Modal open={resetUserPasswordModal.open} title="Restablecer contraseña" confirmLabel="Guardar contraseña temporal" cancelLabel="Cancelar" onClose={() => setResetUserPasswordModal({ open: false, userId: null, userName: "", password: "", message: "" })} onConfirm={submitUserPasswordReset}>
         <div className="modal-form-grid">
+          <p className="modal-footnote">La sesión activa de {resetUserPasswordModal.userName || "este player"} se cerrará y en su siguiente acceso deberá capturar una contraseña nueva.</p>
           <label className="app-modal-field">
-            <span>Nueva contraseña</span>
+            <span>Contraseña temporal</span>
             <input type="password" value={resetUserPasswordModal.password} onChange={(event) => setResetUserPasswordModal((current) => ({ ...current, password: event.target.value, message: "" }))} />
           </label>
           {resetUserPasswordModal.message ? <p className="validation-text">{resetUserPasswordModal.message}</p> : null}
-                  <p className="modal-footnote">Solo Lead y Senior pueden restablecer la contraseña de otros asociados.</p>
+          <p className="modal-footnote">Solo Lead y Senior pueden restablecer la contraseña de otros players. La contraseña temporal puede tener desde {TEMPORARY_PASSWORD_MIN_LENGTH} caracteres.</p>
         </div>
       </Modal>
 
-      <Modal open={inventoryModal.open} title={inventoryModal.mode === "create" ? "Agregar artículo" : "Editar artículo"} confirmLabel={inventoryModal.mode === "create" ? "Guardar artículo" : "Guardar cambios"} cancelLabel="Cancelar" onClose={() => setInventoryModal({ open: false, mode: "create", id: null, code: "", name: "", presentation: "", piecesPerBox: "", boxesPerPallet: "" })} onConfirm={submitInventoryModal}>
+      <Modal open={inventoryModal.open} title={inventoryModal.mode === "create" ? "Agregar artículo" : "Editar artículo"} confirmLabel={inventoryModal.mode === "create" ? "Guardar artículo" : "Guardar cambios"} cancelLabel="Cancelar" onClose={() => setInventoryModal(createInventoryModalState())} onConfirm={submitInventoryModal}>
         <div className="modal-form-grid">
+          <label className="app-modal-field">
+            <span>Dominio</span>
+            <select value={inventoryModal.domain} onChange={(event) => setInventoryModal((current) => ({ ...current, domain: event.target.value }))}>
+              {INVENTORY_DOMAIN_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>
           <label className="app-modal-field">
             <span>Código</span>
             <input value={inventoryModal.code} onChange={(event) => setInventoryModal((current) => ({ ...current, code: event.target.value }))} />
@@ -8290,12 +7017,99 @@ function App() {
             <span>Cajas por tarima</span>
             <input type="number" value={inventoryModal.boxesPerPallet} onChange={(event) => setInventoryModal((current) => ({ ...current, boxesPerPallet: event.target.value }))} />
           </label>
+          {inventoryModal.domain !== INVENTORY_DOMAIN_BASE ? (
+            <>
+              <label className="app-modal-field">
+                <span>Stock actual</span>
+                <input type="number" value={inventoryModal.stockUnits} onChange={(event) => setInventoryModal((current) => ({ ...current, stockUnits: event.target.value }))} />
+              </label>
+              <label className="app-modal-field">
+                <span>Stock mínimo</span>
+                <input type="number" value={inventoryModal.minStockUnits} onChange={(event) => setInventoryModal((current) => ({ ...current, minStockUnits: event.target.value }))} />
+              </label>
+              <label className="app-modal-field">
+                <span>Unidad</span>
+                <input value={inventoryModal.unitLabel} onChange={(event) => setInventoryModal((current) => ({ ...current, unitLabel: event.target.value }))} placeholder="Ej: pzas, rollos, bidones" />
+              </label>
+              <label className="app-modal-field">
+                <span>Ubicación / resguardo</span>
+                <input value={inventoryModal.storageLocation} onChange={(event) => setInventoryModal((current) => ({ ...current, storageLocation: event.target.value }))} placeholder="Ej: Nave 2 · Estante 4" />
+              </label>
+            </>
+          ) : null}
+          {inventoryModal.domain === INVENTORY_DOMAIN_CLEANING ? (
+            <>
+              <label className="app-modal-field">
+                <span>Consumo por inicio</span>
+                <input type="number" value={inventoryModal.consumptionPerStart} onChange={(event) => setInventoryModal((current) => ({ ...current, consumptionPerStart: event.target.value }))} />
+              </label>
+              <div className="app-modal-field">
+                <span>Actividades ligadas</span>
+                <div className="saved-board-list board-builder-launch-list">
+                  {activeCatalogItems.map((item) => (
+                    <label key={item.id} className="chip" style={{ cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={inventoryModal.activityCatalogIds.includes(item.id)}
+                        onChange={(event) => setInventoryModal((current) => ({
+                          ...current,
+                          activityCatalogIds: event.target.checked
+                            ? Array.from(new Set(current.activityCatalogIds.concat(item.id)))
+                            : current.activityCatalogIds.filter((catalogId) => catalogId !== item.id),
+                        }))}
+                      />
+                      {item.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : null}
         </div>
       </Modal>
 
-      <Modal open={Boolean(deleteUserId)} title="Eliminar asociado" confirmLabel="Eliminar asociado" cancelLabel="Cancelar" onClose={() => setDeleteUserId(null)} onConfirm={() => deleteUser(deleteUserId)}>
+      <Modal open={inventoryMovementModal.open} title="Registrar movimiento" confirmLabel="Guardar movimiento" cancelLabel="Cancelar" onClose={() => setInventoryMovementModal(createInventoryMovementModalState())} onConfirm={submitInventoryMovementModal}>
+        <div className="modal-form-grid">
+          <label className="app-modal-field">
+            <span>Artículo</span>
+            <input value={inventoryMovementModal.itemName} readOnly />
+          </label>
+          <label className="app-modal-field">
+            <span>Tipo de movimiento</span>
+            <select value={inventoryMovementModal.movementType} onChange={(event) => setInventoryMovementModal((current) => ({ ...current, movementType: event.target.value }))}>
+              {INVENTORY_MOVEMENT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+          <label className="app-modal-field">
+            <span>Cantidad</span>
+            <input type="number" value={inventoryMovementModal.quantity} onChange={(event) => setInventoryMovementModal((current) => ({ ...current, quantity: event.target.value }))} />
+          </label>
+          <label className="app-modal-field">
+            <span>Ubicación / resguardo</span>
+            <input value={inventoryMovementModal.storageLocation} onChange={(event) => setInventoryMovementModal((current) => ({ ...current, storageLocation: event.target.value }))} />
+          </label>
+          {inventoryMovementModal.domain === INVENTORY_DOMAIN_ORDERS || inventoryMovementModal.movementType === INVENTORY_MOVEMENT_TRANSFER ? (
+            <>
+              <label className="app-modal-field">
+                <span>Nave / destino</span>
+                <input value={inventoryMovementModal.warehouse} onChange={(event) => setInventoryMovementModal((current) => ({ ...current, warehouse: event.target.value }))} placeholder="Ej: Nave 1" />
+              </label>
+              <label className="app-modal-field">
+                <span>Quién tomó el material</span>
+                <input value={inventoryMovementModal.recipientName} onChange={(event) => setInventoryMovementModal((current) => ({ ...current, recipientName: event.target.value }))} placeholder="Nombre del responsable" />
+              </label>
+            </>
+          ) : null}
+          <label className="app-modal-field">
+            <span>Notas</span>
+            <input value={inventoryMovementModal.notes} onChange={(event) => setInventoryMovementModal((current) => ({ ...current, notes: event.target.value }))} placeholder="Detalle del movimiento" />
+          </label>
+        </div>
+      </Modal>
+
+      <Modal open={Boolean(deleteUserId)} title="Eliminar player" confirmLabel="Eliminar player" cancelLabel="Cancelar" onClose={() => setDeleteUserId(null)} onConfirm={() => deleteUser(deleteUserId)}>
         <p>Esta acción no se puede deshacer.</p>
-        <p>Se perderá el acceso y los registros asociados quedarán sin responsabilidad asignada.</p>
+        <p>Se perderá el acceso y los registros del player quedarán sin responsabilidad asignada.</p>
       </Modal>
 
       <Modal open={Boolean(deleteInventoryId)} title="Eliminar artículo" confirmLabel="Eliminar artículo" cancelLabel="Cancelar" onClose={() => setDeleteInventoryId(null)} onConfirm={() => deleteInventoryItem(deleteInventoryId)}>

@@ -1,5 +1,5 @@
 {
-  "revision": 1548,
+  "revision": 1647,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro"
@@ -18,7 +18,10 @@
       "area": "ESTO",
       "jobTitle": "Encargado de Mejora Conitua",
       "selfIdentityEditCount": 0,
-      "passwordHash": "scrypt$4eaf57ab7084be09683241bd94122f70$df9c9dd170f22161dafb274aa2516e3c6133fc93e417793e84fcf61d06c63a9f388fb60969b85d021f9c811b3dc853eaf294477e82ff6835bfa127e1f421a02e"
+      "passwordHash": "scrypt$83760299b6d0bf4d368f00503249a640$5b55f94a03de1a1b7cc77927bb62a9e2f6892445aa1e379e6f5ba196de29a28ac90dd6942ef514c7d283d960ce650c7dc7155923f26aa76129d8e2124a2c3d78",
+      "sessionVersion": 2,
+      "mustChangePassword": false,
+      "temporaryPasswordIssuedAt": null
     },
     {
       "id": "usr-a2hd8qtb",
@@ -32,7 +35,44 @@
       "managerId": "usr-lead-nu7wt83h",
       "createdById": "usr-lead-nu7wt83h",
       "selfIdentityEditCount": 0,
-      "passwordHash": "scrypt$b5fe7f026efd828ca39d3c27260e86f6$9a5e22f8548c1a770204e3481c54d19cc9ed834f35793f43ea56da36924587462621507d2f6eaf069675e2ec330b2faa7e2a0a1cf12f55031015642ac566b6f6"
+      "passwordHash": "scrypt$182d5e96b8fca80cefd9b85276f1dc16$7b5fabf9bc6e6095e7675e20ba2b17a0e3c825982f3a1e13bd4236a691ea23510326e91a1e7e0700cda03e6ef831cf0803dca71d20ed69f207743fd93bc3954d",
+      "sessionVersion": 8,
+      "mustChangePassword": false,
+      "temporaryPasswordIssuedAt": "2026-04-12T17:35:08.270Z"
+    },
+    {
+      "id": "usr-sqtdyayn",
+      "name": "Tmp User",
+      "email": "tmp.user@copmec.local",
+      "role": "Semi-Senior (Ssr)",
+      "area": "ESTO",
+      "department": "ESTO",
+      "jobTitle": "Coordinador de operación",
+      "isActive": true,
+      "managerId": "usr-lead-nu7wt83h",
+      "createdById": "usr-lead-nu7wt83h",
+      "selfIdentityEditCount": 0,
+      "mustChangePassword": false,
+      "temporaryPasswordIssuedAt": null,
+      "passwordHash": "scrypt$77677875862961476831d633902794a8$7cf406ab11e69474026753f85093507f26b6c7fe2234fa22b82398869e3e5bb7662c1bbb07f80c3b6b00074887d9c5653136f154f6347acefdb1365452d9c9ce",
+      "sessionVersion": 2
+    },
+    {
+      "id": "usr-06t9ibth",
+      "name": "Tmp User 2",
+      "email": "tmp.user2@copmec.local",
+      "role": "Junior (Jr)",
+      "area": "ESTO",
+      "department": "ESTO",
+      "jobTitle": "Player operativo",
+      "isActive": true,
+      "managerId": "usr-lead-nu7wt83h",
+      "createdById": "usr-lead-nu7wt83h",
+      "selfIdentityEditCount": 0,
+      "passwordHash": "scrypt$89be8677ac4dd3e745f44dfb6e6a0550$0ef5fa8c5f5a379fb808dad582405c37a85869089635a4c0ba1b91b6d240a9b1cf0d58a0d18addd01854cf51aee75b3524ff1a239c4bbf96077dd6c9ace582e0",
+      "mustChangePassword": false,
+      "temporaryPasswordIssuedAt": null,
+      "sessionVersion": 1
     }
   ],
   "weeks": [
@@ -57,35 +97,40 @@
       "name": "Piso producción",
       "timeLimitMinutes": 50,
       "isMandatory": true,
-      "isDeleted": false
+      "isDeleted": false,
+      "frequency": "weekly"
     },
     {
       "id": "cat-banos",
       "name": "Lavado de baños",
       "timeLimitMinutes": 40,
       "isMandatory": true,
-      "isDeleted": false
+      "isDeleted": false,
+      "frequency": "weekly"
     },
     {
       "id": "cat-inspeccion",
       "name": "Inspección nave",
       "timeLimitMinutes": 75,
       "isMandatory": true,
-      "isDeleted": false
+      "isDeleted": false,
+      "frequency": "weekly"
     },
     {
       "id": "cat-oficinas",
       "name": "Limpieza oficinas",
       "timeLimitMinutes": 50,
       "isMandatory": true,
-      "isDeleted": false
+      "isDeleted": false,
+      "frequency": "weekly"
     },
     {
       "id": "cat-comedor",
       "name": "Comedor",
       "timeLimitMinutes": 50,
       "isMandatory": true,
-      "isDeleted": false
+      "isDeleted": false,
+      "frequency": "weekly"
     }
   ],
   "inventoryItems": [
@@ -95,7 +140,14 @@
       "name": "200 Billion Probiotics",
       "presentation": "120 Cápsulas",
       "piecesPerBox": 126,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-2fd7c952",
@@ -103,7 +155,14 @@
       "name": "200 Billion Probiotics",
       "presentation": "120 Cápsulas",
       "piecesPerBox": 126,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-uedj3bs4",
@@ -111,7 +170,14 @@
       "name": "200 Billion Probiotics",
       "presentation": "60 Cápsulas",
       "piecesPerBox": 168,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-4n0dwn7n",
@@ -119,7 +185,14 @@
       "name": "3 Mag Blend",
       "presentation": "100 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-ammofvq7",
@@ -127,7 +200,14 @@
       "name": "3 Mag Blend",
       "presentation": "200 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-ssle5epu",
@@ -135,7 +215,14 @@
       "name": "3 Mag Blend",
       "presentation": "200 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-g819ahar",
@@ -143,7 +230,14 @@
       "name": "3 Mag Blend",
       "presentation": "200 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-8rgct5pt",
@@ -151,7 +245,14 @@
       "name": "3 Mag Blend",
       "presentation": "200 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-2eyg6glv",
@@ -159,7 +260,14 @@
       "name": "3 Mag Platinum",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-269d0pxa",
@@ -167,7 +275,14 @@
       "name": "4 Mag Element",
       "presentation": "60 Cápsulas",
       "piecesPerBox": 58,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-ev8a1yni",
@@ -175,7 +290,14 @@
       "name": "60 Billion Probiotics",
       "presentation": "120 Cápsulas",
       "piecesPerBox": 126,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-1cfqot3o",
@@ -183,7 +305,14 @@
       "name": "60 Billion Probiotics",
       "presentation": "120 Cápsulas",
       "piecesPerBox": 126,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-egj3a22w",
@@ -191,7 +320,14 @@
       "name": "60 Billion Probiotics",
       "presentation": "120 Cápsulas",
       "piecesPerBox": 126,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-4s76rp9o",
@@ -199,7 +335,14 @@
       "name": "60 Billion Probiotics",
       "presentation": "60 Cápsulas",
       "piecesPerBox": 156,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-clh1oeno",
@@ -207,7 +350,14 @@
       "name": "60 Billion Women Probiotics",
       "presentation": "120 Cápsulas",
       "piecesPerBox": 126,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-un8aclfa",
@@ -215,7 +365,14 @@
       "name": "80 Billion Probiotics",
       "presentation": "120 Cápsulas",
       "piecesPerBox": 126,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-4z3iipat",
@@ -223,7 +380,14 @@
       "name": "80 Billion Probiotics",
       "presentation": "120 Cápsulas",
       "piecesPerBox": 126,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-ml5la680",
@@ -231,7 +395,14 @@
       "name": "80 Billion Probiotics",
       "presentation": "60 Cápsulas",
       "piecesPerBox": 156,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-6asc8kpa",
@@ -239,7 +410,14 @@
       "name": "9 Mag Platinum",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-as8i8vqz",
@@ -247,7 +425,14 @@
       "name": "A Blend",
       "presentation": "300 Cápsulas",
       "piecesPerBox": 96,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-f73liric",
@@ -255,7 +440,14 @@
       "name": "AKG Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-w3mkkeay",
@@ -263,7 +455,14 @@
       "name": "Ally Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-aqb617ti",
@@ -271,7 +470,14 @@
       "name": "Aloe Vera",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-8x59qw8s",
@@ -279,7 +485,14 @@
       "name": "Alpha Lipoic Acid",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-gpm1ljny",
@@ -287,7 +500,14 @@
       "name": "Apple Cider Vinegar",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-bh5lqnc6",
@@ -295,7 +515,14 @@
       "name": "Apple Cider Vinegar",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-ev7lsmjr",
@@ -303,7 +530,14 @@
       "name": "Ashwagandha Root Powder",
       "presentation": "200 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-l2zndfwc",
@@ -311,7 +545,14 @@
       "name": "Ashwagandha Root Powder",
       "presentation": "200 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-zwne3sdl",
@@ -319,7 +560,14 @@
       "name": "Astaxanthin Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-wjm0368e",
@@ -327,7 +575,14 @@
       "name": "B Yest Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-h450pdbk",
@@ -335,7 +590,14 @@
       "name": "B Yest Blend",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-wik2bygj",
@@ -343,7 +605,14 @@
       "name": "BPS",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-0q0ijpjj",
@@ -351,7 +620,14 @@
       "name": "BPS",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-9tvgecjp",
@@ -359,7 +635,14 @@
       "name": "BSS Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-nz0cgvwf",
@@ -367,7 +650,14 @@
       "name": "BSS Blend",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-rum5zfq7",
@@ -375,7 +665,14 @@
       "name": "Beef Liver Grassfed",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-nc40rt9e",
@@ -383,7 +680,14 @@
       "name": "C Blend",
       "presentation": "120 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-sadwxrlz",
@@ -391,7 +695,14 @@
       "name": "C Blend",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-310unog8",
@@ -399,7 +710,14 @@
       "name": "C Liposomal",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-hryx6tou",
@@ -407,7 +725,14 @@
       "name": "CO Q-10 Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-5av6gefh",
@@ -415,7 +740,14 @@
       "name": "Caffeine Blend",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-yz08uqei",
@@ -423,7 +755,14 @@
       "name": "Calcium & D3",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-9zj3208k",
@@ -431,7 +770,14 @@
       "name": "Caltrato & D3",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-8i92cyhn",
@@ -439,7 +785,14 @@
       "name": "Carnitine Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-sxukn5u5",
@@ -447,7 +800,14 @@
       "name": "Chloride Mag",
       "presentation": "100 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-kn1e75aa",
@@ -455,7 +815,14 @@
       "name": "Chloride Mag",
       "presentation": "200 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-zfph2epv",
@@ -463,7 +830,14 @@
       "name": "Chromium Blend",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-glslu5pj",
@@ -471,7 +845,14 @@
       "name": "Citrate MG",
       "presentation": "60 Cápsulas",
       "piecesPerBox": 80,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-58sr3qzk",
@@ -479,7 +860,14 @@
       "name": "Citrate Mag",
       "presentation": "120 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-ivk4ap6w",
@@ -487,7 +875,14 @@
       "name": "Citrate Mag",
       "presentation": "120 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-bv28fwn3",
@@ -495,7 +890,14 @@
       "name": "Citrate Mag",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-qecvnbas",
@@ -503,7 +905,14 @@
       "name": "Citrate Mag",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-sb9awqci",
@@ -511,7 +920,14 @@
       "name": "Citrate Mag",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-dw73kcas",
@@ -519,7 +935,14 @@
       "name": "Citrate Mag",
       "presentation": "500 Cápsulas",
       "piecesPerBox": 16,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-65laluje",
@@ -527,7 +950,14 @@
       "name": "Clarity Platinum",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-9oubq1ur",
@@ -535,7 +965,14 @@
       "name": "Clarity Platinum",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-lhyxq7rj",
@@ -543,7 +980,14 @@
       "name": "Clear Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-9hocyo54",
@@ -551,7 +995,14 @@
       "name": "Clear Blend",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-o7jy2h8e",
@@ -559,7 +1010,14 @@
       "name": "Coconut Oil D3+K2",
       "presentation": "300 Cápsulas",
       "piecesPerBox": 56,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-srwlfuot",
@@ -567,7 +1025,14 @@
       "name": "Coconut Oil D3+K2",
       "presentation": "60 Cápsulas",
       "piecesPerBox": 80,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-yet0b9yy",
@@ -575,7 +1040,14 @@
       "name": "Col On Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-0qib726x",
@@ -583,7 +1055,14 @@
       "name": "Col On Blend",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-ois5eyo0",
@@ -591,7 +1070,14 @@
       "name": "Collagen Bio",
       "presentation": "100 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-61kw9913",
@@ -599,7 +1085,14 @@
       "name": "Collagen Bio",
       "presentation": "200 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-x37d3ry1",
@@ -607,7 +1100,14 @@
       "name": "Collagen Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-20ysmb27",
@@ -615,7 +1115,14 @@
       "name": "Collagen Blend",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-ofwt1qlj",
@@ -623,7 +1130,14 @@
       "name": "Collagen Blend I II III V X",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-8r52knjr",
@@ -631,7 +1145,14 @@
       "name": "Collagen Blend I II III V X",
       "presentation": "400 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-l4s1nnaq",
@@ -639,7 +1160,14 @@
       "name": "Collagen Blend I II III V X",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-8mrb5t6e",
@@ -647,7 +1175,14 @@
       "name": "Colostrum",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-vbvsju16",
@@ -655,7 +1190,14 @@
       "name": "Cranberry Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-gldp4hy1",
@@ -663,7 +1205,14 @@
       "name": "Creatine Monohydrate",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-mxur6mgw",
@@ -671,7 +1220,14 @@
       "name": "D3",
       "presentation": "300 Cápsulas",
       "piecesPerBox": 100,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-c1jmfbip",
@@ -679,7 +1235,14 @@
       "name": "DTox Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-fkth30e4",
@@ -687,7 +1250,14 @@
       "name": "Dim Blend",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-udqcbe26",
@@ -695,7 +1265,14 @@
       "name": "Down Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-autw31oy",
@@ -703,7 +1280,14 @@
       "name": "Echinacea Garlic",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-gvbmpvar",
@@ -711,7 +1295,14 @@
       "name": "Electroly Blend",
       "presentation": "150 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-dllbbke1",
@@ -719,7 +1310,14 @@
       "name": "Enzym Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-h2hxijvr",
@@ -727,7 +1325,14 @@
       "name": "Enzym Blend",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-7uuwwcks",
@@ -735,7 +1340,14 @@
       "name": "Evening Primrose",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-q5isn50y",
@@ -743,7 +1355,14 @@
       "name": "Fenugreek",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-rmh03tzv",
@@ -751,7 +1370,14 @@
       "name": "Ferty Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-fi05grxq",
@@ -759,7 +1385,14 @@
       "name": "Fire Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-jutgp8u1",
@@ -767,7 +1400,14 @@
       "name": "Folic Acid Blend",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-7h5s7gck",
@@ -775,7 +1415,14 @@
       "name": "Gas Relief",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-upp63wyd",
@@ -783,7 +1430,14 @@
       "name": "Ginseng Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-zuevuiqo",
@@ -791,7 +1445,14 @@
       "name": "Glutathione Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-98ddbd6j",
@@ -799,7 +1460,14 @@
       "name": "Glycinate MG",
       "presentation": "60 Cápsulas",
       "piecesPerBox": 66,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-hm0lpn28",
@@ -807,7 +1475,14 @@
       "name": "Glycinate Mag",
       "presentation": "120 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-5pzmpt08",
@@ -815,7 +1490,14 @@
       "name": "Glycinate Mag",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-j7v9wagz",
@@ -823,7 +1505,14 @@
       "name": "Glycinate Mag",
       "presentation": "400 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-p7l222vn",
@@ -831,7 +1520,14 @@
       "name": "Gomitas DFN Kids",
       "presentation": "180 Gomitas",
       "piecesPerBox": 16,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-taxutjac",
@@ -839,7 +1535,14 @@
       "name": "Gomitas Mult Blend Kids",
       "presentation": "180 Gomitas",
       "piecesPerBox": 16,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-b457c4yz",
@@ -847,7 +1550,14 @@
       "name": "Green Coffe",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-to8mc2zx",
@@ -855,7 +1565,14 @@
       "name": "Green Coffee",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-p1i1zidy",
@@ -863,7 +1580,14 @@
       "name": "Greens Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-xpvxhg21",
@@ -871,7 +1595,14 @@
       "name": "Hawthorn Root",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-1983rudx",
@@ -879,7 +1610,14 @@
       "name": "Icelandi Krill Oil",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-xzsqvms1",
@@ -887,7 +1625,14 @@
       "name": "Icelandic Krill Oil",
       "presentation": "150 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-wub182hn",
@@ -895,7 +1640,14 @@
       "name": "Immun Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-jywydjua",
@@ -903,7 +1655,14 @@
       "name": "Immun Blend",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-hp31v5mz",
@@ -911,7 +1670,14 @@
       "name": "Inositol Blend",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 80,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-loh6q8ha",
@@ -919,7 +1685,14 @@
       "name": "Inositol Blend Platinum",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-nwvh848q",
@@ -927,7 +1700,14 @@
       "name": "Iron Blend",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-5eeuzuy6",
@@ -935,7 +1715,14 @@
       "name": "Joint Blend",
       "presentation": "100 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-l0yg32x9",
@@ -943,7 +1730,14 @@
       "name": "Joint Blend",
       "presentation": "200 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-t2fpax85",
@@ -951,7 +1745,14 @@
       "name": "Levadura De Cerveza B12+",
       "presentation": "200 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-4v8u98ec",
@@ -959,7 +1760,14 @@
       "name": "Lions Mane Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-sagkjhgn",
@@ -967,7 +1775,14 @@
       "name": "Lions Mane Blend",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-oo6nc6nv",
@@ -975,7 +1790,14 @@
       "name": "Lungs Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-o1fozpwr",
@@ -983,7 +1805,14 @@
       "name": "MLK Thistle Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-4na2jnqc",
@@ -991,7 +1820,14 @@
       "name": "MLK Thistle Blend",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-7l6kgtad",
@@ -999,7 +1835,14 @@
       "name": "Maca Blend",
       "presentation": "100 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-6sloyypd",
@@ -1007,7 +1850,14 @@
       "name": "Maca Blend",
       "presentation": "200 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-4o16nakz",
@@ -1015,7 +1865,14 @@
       "name": "Mag+Pot Citrate",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-84gax29l",
@@ -1023,7 +1880,14 @@
       "name": "Marine Mag",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-plmaoza8",
@@ -1031,7 +1895,14 @@
       "name": "Mens Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-3myur9a0",
@@ -1039,7 +1910,14 @@
       "name": "Mens Blend",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-9zkusesn",
@@ -1047,7 +1925,14 @@
       "name": "Mens HR",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-w4t7w1g9",
@@ -1055,7 +1940,14 @@
       "name": "Mens HR",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-6jjs7wn3",
@@ -1063,7 +1955,14 @@
       "name": "Mens Mult Matur",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-4esrvz01",
@@ -1071,7 +1970,14 @@
       "name": "Mens Mult Matur",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-huaqbrx3",
@@ -1079,7 +1985,14 @@
       "name": "Mens T",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-9i0i5p10",
@@ -1087,7 +2000,14 @@
       "name": "Mens T",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-35x9k62o",
@@ -1095,7 +2015,14 @@
       "name": "Mens T Platinum",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-yj5tbxaw",
@@ -1103,7 +2030,14 @@
       "name": "Methyl Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-stemgzzp",
@@ -1111,7 +2045,14 @@
       "name": "Mushroom Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-gnu8nxr1",
@@ -1119,7 +2060,14 @@
       "name": "Mushroom Blend",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-w62egaor",
@@ -1127,7 +2075,14 @@
       "name": "Myo & D-Chiro Inositol Platinum",
       "presentation": "120 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-xrrt07u4",
@@ -1135,7 +2090,14 @@
       "name": "Myo & D-Chiro Inositol Platinum",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-4eq0m9ri",
@@ -1143,7 +2105,14 @@
       "name": "Myo & D-Chiro Inositol Platinum",
       "presentation": "400 Cápsulas",
       "piecesPerBox": 16,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-jnzgcysi",
@@ -1151,7 +2120,14 @@
       "name": "Myo Inositol",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-amqw8vlq",
@@ -1159,7 +2135,14 @@
       "name": "Myo Inositol",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-rfwzgueg",
@@ -1167,7 +2150,14 @@
       "name": "N-Acetyl Cysteine",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-12xw8ewb",
@@ -1175,7 +2165,14 @@
       "name": "NMN Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-rw0bl9cr",
@@ -1183,7 +2180,14 @@
       "name": "Nad+Synergy",
       "presentation": "50 Cápsulas",
       "piecesPerBox": 60,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-lzrct70p",
@@ -1191,7 +2195,14 @@
       "name": "Nadh Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-wy2h1qgo",
@@ -1199,7 +2210,14 @@
       "name": "Night Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-8x2yzqka",
@@ -1207,7 +2225,14 @@
       "name": "Night Blend",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-axzufmqm",
@@ -1215,7 +2240,14 @@
       "name": "OM Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-gd9ey1l2",
@@ -1223,7 +2255,14 @@
       "name": "Omega 3 Fish Oil",
       "presentation": "220 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-bd13dgd3",
@@ -1231,7 +2270,14 @@
       "name": "Omega 3 Flaxseed Oil",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-x2h5wyyf",
@@ -1239,7 +2285,14 @@
       "name": "Omega 3 Platinum",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-bxth9jpp",
@@ -1247,7 +2300,14 @@
       "name": "Omega 3 Platinum",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 56,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-cp1fuil1",
@@ -1255,7 +2315,14 @@
       "name": "Omega 3 Salmon Oil",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-knj0cwe7",
@@ -1263,7 +2330,14 @@
       "name": "Omega 3 Salmon Oil",
       "presentation": "360 Cápsulas",
       "piecesPerBox": 15,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-i2w8hl9h",
@@ -1271,7 +2345,14 @@
       "name": "Omega 3 Salmon Oil",
       "presentation": "60 Cápsulas",
       "piecesPerBox": 80,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-1e1eyrbq",
@@ -1279,7 +2360,14 @@
       "name": "Omega 3 Salmon Oil",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 56,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-b56yzogy",
@@ -1287,7 +2375,14 @@
       "name": "Omega 3-6-9",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-55uic2pd",
@@ -1295,7 +2390,14 @@
       "name": "Omega 3-6-9",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 56,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-rt7ets45",
@@ -1303,7 +2405,14 @@
       "name": "Oregano Oil",
       "presentation": "150 Cápsulas",
       "piecesPerBox": 96,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-moad1hl5",
@@ -1311,7 +2420,14 @@
       "name": "Oregano Oil",
       "presentation": "300 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-yrs0viof",
@@ -1319,7 +2435,14 @@
       "name": "Organic Apple Vinegar Platinum",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-t5x80s2q",
@@ -1327,7 +2450,14 @@
       "name": "Organic Ashwagandha",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-9s9371ji",
@@ -1335,7 +2465,14 @@
       "name": "Organic Lions Mane",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-uc3002px",
@@ -1343,7 +2480,14 @@
       "name": "Organic Spirulina",
       "presentation": "150 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-sep9zc8e",
@@ -1351,7 +2495,14 @@
       "name": "Organic Spirulina",
       "presentation": "300 Cápsulas",
       "piecesPerBox": 20,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-bmuc3gc3",
@@ -1359,7 +2510,14 @@
       "name": "Pot Citrate",
       "presentation": "60 Cápsulas",
       "piecesPerBox": 80,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-ax9km4aa",
@@ -1367,7 +2525,14 @@
       "name": "Potassium Citrate",
       "presentation": "120 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-7gzblz2x",
@@ -1375,7 +2540,14 @@
       "name": "Potassium Citrate",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-non0outi",
@@ -1383,7 +2555,14 @@
       "name": "Pre Nat Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-i0jyflfu",
@@ -1391,7 +2570,14 @@
       "name": "Prebiotic Blend",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-oimpgyra",
@@ -1399,7 +2585,14 @@
       "name": "Pros Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-nexp90q1",
@@ -1407,7 +2600,14 @@
       "name": "Pros Blend",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-vctoegxd",
@@ -1415,7 +2615,14 @@
       "name": "Pros Platinum",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-rsz4wioe",
@@ -1423,7 +2630,14 @@
       "name": "Psyllium Husk Fiber",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-c4frtbmf",
@@ -1431,7 +2645,14 @@
       "name": "Pure Argine",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-zdmbyuza",
@@ -1439,7 +2660,14 @@
       "name": "Pure Artichoke",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-3d24wg7x",
@@ -1447,7 +2675,14 @@
       "name": "Pure Berberine",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-8q5ss69m",
@@ -1455,7 +2690,14 @@
       "name": "Pure Berberine",
       "presentation": "60 Cápsulas",
       "piecesPerBox": 80,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-7avhgz71",
@@ -1463,7 +2705,14 @@
       "name": "Pure Berberine",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-dgkbd60k",
@@ -1471,7 +2720,14 @@
       "name": "Pure Curcumin",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-yfrwc0be",
@@ -1479,7 +2735,14 @@
       "name": "Pure Gaba",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-p36hmgm2",
@@ -1487,7 +2750,14 @@
       "name": "Pure Lysine",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-iyalogl2",
@@ -1495,7 +2765,14 @@
       "name": "Pure Shatavari",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-gj22v3ev",
@@ -1503,7 +2780,14 @@
       "name": "Pure Shilajit",
       "presentation": "120 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-xj6bl320",
@@ -1511,7 +2795,14 @@
       "name": "Pure Tryptophan",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-8jp83sps",
@@ -1519,7 +2810,14 @@
       "name": "Quercetin Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-pnfqoygx",
@@ -1527,7 +2825,14 @@
       "name": "Reishi Blend",
       "presentation": "100 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-myh14125",
@@ -1535,7 +2840,14 @@
       "name": "Reishi Blend",
       "presentation": "200 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-rdz70089",
@@ -1543,7 +2855,14 @@
       "name": "Resveratrol",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-s1xq6ma8",
@@ -1551,7 +2870,14 @@
       "name": "Resveratrol",
       "presentation": "400 Cápsulas",
       "piecesPerBox": 16,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-eewkrxou",
@@ -1559,7 +2885,14 @@
       "name": "Resveratrol",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-vit68h4t",
@@ -1567,7 +2900,14 @@
       "name": "Resveratrol",
       "presentation": "60 Cápsulas",
       "piecesPerBox": 80,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-we8ce0bv",
@@ -1575,7 +2915,14 @@
       "name": "SKN Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-rd6f0lvp",
@@ -1583,7 +2930,14 @@
       "name": "Safflower Oil D3 Blend",
       "presentation": "300 Cápsulas",
       "piecesPerBox": 96,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-1j7w5gil",
@@ -1591,7 +2945,14 @@
       "name": "Selem Blend",
       "presentation": "120 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-4h2smbt8",
@@ -1599,7 +2960,14 @@
       "name": "Selem Blend",
       "presentation": "240 Cáspsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-l1j3lrb1",
@@ -1607,7 +2975,14 @@
       "name": "Soy Lecithin",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-0a5er9yy",
@@ -1615,7 +2990,14 @@
       "name": "Sunflower Lecithin",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-svuw9hgz",
@@ -1623,7 +3005,14 @@
       "name": "Suplemento E&B",
       "presentation": "200 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-8s2xtaq0",
@@ -1631,7 +3020,14 @@
       "name": "T Boost",
       "presentation": "60 Cápsulas",
       "piecesPerBox": 80,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-njhq2i6b",
@@ -1639,7 +3035,14 @@
       "name": "Threonate Mag",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-sidf566i",
@@ -1647,7 +3050,14 @@
       "name": "Thyr Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-tuy4mklk",
@@ -1655,7 +3065,14 @@
       "name": "Tongkat Ali",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-cvjltwgx",
@@ -1663,7 +3080,14 @@
       "name": "Tribulus Terrestris",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-93mu2ohl",
@@ -1671,7 +3095,14 @@
       "name": "Turmeric + Ginger",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-2q1rxetr",
@@ -1679,7 +3110,14 @@
       "name": "Turmeric + Ginger",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-9h9f1lwh",
@@ -1687,7 +3125,14 @@
       "name": "U Tonic",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-a868se8v",
@@ -1695,7 +3140,14 @@
       "name": "U Tonic",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-n0qtbxjj",
@@ -1703,7 +3155,14 @@
       "name": "Up Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-dy6nyqa9",
@@ -1711,7 +3170,14 @@
       "name": "Venflow Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-dcgqfkzj",
@@ -1719,7 +3185,14 @@
       "name": "Venflow Blend",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-hmusfps4",
@@ -1727,7 +3200,14 @@
       "name": "Venflow Platinum",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-sjm09r95",
@@ -1735,7 +3215,14 @@
       "name": "Vsion Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-uwjl4dzu",
@@ -1743,7 +3230,14 @@
       "name": "Vsion Blend",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-1hwh0f4k",
@@ -1751,7 +3245,14 @@
       "name": "Womens Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-n7nred2z",
@@ -1759,7 +3260,14 @@
       "name": "Womens Blend",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-2nzpnu43",
@@ -1767,7 +3275,14 @@
       "name": "Womens HR",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-iq4df75i",
@@ -1775,7 +3290,14 @@
       "name": "Womens HR",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-g9ykajne",
@@ -1783,7 +3305,14 @@
       "name": "Womens Mult Matur",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-17unapcg",
@@ -1791,7 +3320,14 @@
       "name": "Womens Mult Matur",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-hxoelxrc",
@@ -1799,7 +3335,14 @@
       "name": "Womens Zen",
       "presentation": "150 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-85wlgxft",
@@ -1807,7 +3350,14 @@
       "name": "Womens Zen",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-v0ebsg2a",
@@ -1815,7 +3365,14 @@
       "name": "Z Blend",
       "presentation": "100 Cápsulas",
       "piecesPerBox": 108,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-ewrn49p5",
@@ -1823,7 +3380,14 @@
       "name": "Z Blend",
       "presentation": "200 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-tq7wneg2",
@@ -1831,7 +3395,14 @@
       "name": "Zma Blend",
       "presentation": "150 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-uli3kne5",
@@ -1839,7 +3410,14 @@
       "name": "Ally Blend Kids",
       "presentation": "60 ml",
       "piecesPerBox": 40,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-zgiv4h0h",
@@ -1847,7 +3425,14 @@
       "name": "C Blend Drops",
       "presentation": "60 ml",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-6wa3xo5k",
@@ -1855,7 +3440,14 @@
       "name": "DFN Blend",
       "presentation": "60 ml",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-p4h3lgy5",
@@ -1863,7 +3455,14 @@
       "name": "Defence Kids",
       "presentation": "60 ml",
       "piecesPerBox": 40,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-4k0y38fz",
@@ -1871,7 +3470,14 @@
       "name": "Kids Probiotics",
       "presentation": "60 ml",
       "piecesPerBox": 40,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-jutyik30",
@@ -1879,7 +3485,14 @@
       "name": "Mag Kids",
       "presentation": "60 ml",
       "piecesPerBox": 40,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-5qaa1dab",
@@ -1887,7 +3500,14 @@
       "name": "Mtls DTox",
       "presentation": "60 ml",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-jj5n2783",
@@ -1895,7 +3515,14 @@
       "name": "Olive Oil D3 Kids",
       "presentation": "10 ml",
       "piecesPerBox": 40,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-y1d7m6yn",
@@ -1903,7 +3530,14 @@
       "name": "Z Blend Drops",
       "presentation": "60 ml",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-jho31eg2",
@@ -1911,7 +3545,14 @@
       "name": "Arroz Blanco Orgánico",
       "presentation": "2 Kg",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-eim9cmmu",
@@ -1919,7 +3560,14 @@
       "name": "Arroz Integral Orgánico",
       "presentation": "2 Kg",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-an1yg8os",
@@ -1927,7 +3575,14 @@
       "name": "Avena Orgánica Grano Entero",
       "presentation": "2 Kg",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-4ivqhy4d",
@@ -1935,7 +3590,14 @@
       "name": "Café Puro Orgánico Tostado en Grano",
       "presentation": "1 Kg",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-2c4p2lde",
@@ -1943,7 +3605,14 @@
       "name": "Café Puro Orgánico Tostado y Molido",
       "presentation": "1 Kg",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-alk719su",
@@ -1951,7 +3620,14 @@
       "name": "Frijol Orgánico",
       "presentation": "2 Kg",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-2iua8r5r",
@@ -1959,7 +3635,14 @@
       "name": "Linaza Orgánica",
       "presentation": "1kg",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-6waa7kj9",
@@ -1967,7 +3650,14 @@
       "name": "BCAAs+Glutamine",
       "presentation": "60 Porciones 558 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-pnk2phny",
@@ -1975,7 +3665,14 @@
       "name": "Beta Alanine",
       "presentation": "200 Porciones 400g",
       "piecesPerBox": 16,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-ke8q2w7b",
@@ -1983,7 +3680,14 @@
       "name": "Citrate Mag",
       "presentation": "60 Porciones 600 g",
       "piecesPerBox": 32,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-iybvpgu8",
@@ -1991,7 +3695,14 @@
       "name": "Collagen Dark",
       "presentation": "60 Porciones 720 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-bnwc14et",
@@ -1999,7 +3710,14 @@
       "name": "Collagen Powder Blend",
       "presentation": "60 Porciones 612 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-ywfaziu6",
@@ -2007,7 +3725,14 @@
       "name": "Creatine Monohydrate",
       "presentation": "120 Porciones 600g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-9oi3eh6k",
@@ -2015,7 +3740,14 @@
       "name": "Creatine Monohydrate",
       "presentation": "200 Porciones 1 Kg",
       "piecesPerBox": 18,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-6htvwsig",
@@ -2023,7 +3755,14 @@
       "name": "Creatine Monohydrate",
       "presentation": "60 Porciones 300 g",
       "piecesPerBox": 20,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-11h329xb",
@@ -2031,7 +3770,14 @@
       "name": "Creatine Monohydrate",
       "presentation": "90 Porciones 450 g",
       "piecesPerBox": 32,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-z0usl9t9",
@@ -2039,7 +3785,14 @@
       "name": "Electro Blend + Creatina",
       "presentation": "45 Sobres de 11 g c-u",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-t2chpocb",
@@ -2047,7 +3800,14 @@
       "name": "Electro Blend Lemonade",
       "presentation": "60 Porciones 360 g",
       "piecesPerBox": 16,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-7c2dzuvm",
@@ -2055,7 +3815,14 @@
       "name": "Electro Blend Mix de Frutas",
       "presentation": "45 Sobres de 6 g c-u",
       "piecesPerBox": 8,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-xbbqwn8i",
@@ -2063,7 +3830,14 @@
       "name": "Electro Blend Orange",
       "presentation": "60 Porciones 360 g",
       "piecesPerBox": 16,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-5qsh9cxw",
@@ -2071,7 +3845,14 @@
       "name": "Electro Blend Raspberry",
       "presentation": "60 Porciones 360 g",
       "piecesPerBox": 16,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-lt7w1uqn",
@@ -2079,7 +3860,14 @@
       "name": "Electrolytes Blend Sabor Fruit Punch",
       "presentation": "60 Porciones 390 g",
       "piecesPerBox": 16,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-m2krw50o",
@@ -2087,7 +3875,14 @@
       "name": "Electrolytes Blend Sabor Limon",
       "presentation": "60 Porciones 390 g",
       "piecesPerBox": 16,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-rxelkwxx",
@@ -2095,7 +3890,14 @@
       "name": "Glycinate Mag",
       "presentation": "60 Porciones 600 g",
       "piecesPerBox": 32,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-i5qzz57u",
@@ -2103,7 +3905,14 @@
       "name": "Myo & D-Chiro Inositol Platinum",
       "presentation": "120 Porciones 492 g",
       "piecesPerBox": 16,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-au1f51kr",
@@ -2111,7 +3920,14 @@
       "name": "Myo & D-Chiro Inositol Platinum",
       "presentation": "60 Porciones 246 g",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-fgeqn91e",
@@ -2119,7 +3935,14 @@
       "name": "Organic Matcha",
       "presentation": "150 Porciones 300 g",
       "piecesPerBox": 20,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-21m1mk0p",
@@ -2127,7 +3950,14 @@
       "name": "Organic Vegan Protein Chocolate",
       "presentation": "38 Porciones 1.361 Kg",
       "piecesPerBox": 8,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-9k9dgx06",
@@ -2135,7 +3965,14 @@
       "name": "Organic Vegan Protein Vainilla",
       "presentation": "38 Porciones 1.361 Kg",
       "piecesPerBox": 8,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-erkp1nft",
@@ -2143,7 +3980,14 @@
       "name": "Pure Glutamine",
       "presentation": "120 Porciones 600 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-fu4k8ro1",
@@ -2151,7 +3995,14 @@
       "name": "Digestive Prebiotics",
       "presentation": "116 Porciones 350 g",
       "piecesPerBox": 28,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-pk1lzn1t",
@@ -2159,7 +4010,14 @@
       "name": "Joint Force",
       "presentation": "116 Porciones 350 g",
       "piecesPerBox": 28,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-zvj7bea6",
@@ -2167,7 +4025,14 @@
       "name": "Omega Balance",
       "presentation": "100 Porciones 500 ml",
       "piecesPerBox": 24,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-7mgb9u64",
@@ -2175,7 +4040,14 @@
       "name": "Relax & Calm",
       "presentation": "116 Porciones 350 g",
       "piecesPerBox": 28,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-tob802ne",
@@ -2183,7 +4055,14 @@
       "name": "Skin Support",
       "presentation": "116 Porciones 350 g",
       "piecesPerBox": 36,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-5dxaf1p8",
@@ -2191,7 +4070,14 @@
       "name": "Strong Growth",
       "presentation": "116 Porciones 350 g",
       "piecesPerBox": 36,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-mr0b185b",
@@ -2199,7 +4085,14 @@
       "name": "Vitamin Support",
       "presentation": "116 Porciones 350 g",
       "piecesPerBox": 28,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-240h0mbk",
@@ -2207,7 +4100,14 @@
       "name": "Golden Monk Fruit Blend",
       "presentation": "1.8 Kg",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-yy3ph024",
@@ -2215,7 +4115,14 @@
       "name": "Monk Fruit",
       "presentation": "500 g",
       "piecesPerBox": 20,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-h0b6qscg",
@@ -2223,7 +4130,14 @@
       "name": "Monk Fruit Blend",
       "presentation": "1.8 Kg",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-262b7xqo",
@@ -2231,7 +4145,14 @@
       "name": "2 Pares de Plantillas",
       "presentation": "Talla L-30.5cm",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-54gfovi9",
@@ -2239,7 +4160,14 @@
       "name": "2 Pares de Plantillas",
       "presentation": "Talla M-28.5 cm",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-tgn5614d",
@@ -2247,7 +4175,14 @@
       "name": "2 Pares de Plantillas",
       "presentation": "Talla S-25.5 cm",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-uyz380tq",
@@ -2255,7 +4190,14 @@
       "name": "2 Pares de Plantillas",
       "presentation": "Talla XS-24 cm",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-i4x8pgaz",
@@ -2263,7 +4205,14 @@
       "name": "After Bite Balm",
       "presentation": "2 Piezas 226 g c-u",
       "piecesPerBox": 12,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-2kzx75w8",
@@ -2271,7 +4220,14 @@
       "name": "Almohada Relajante Para Cuello",
       "presentation": "1 Pieza",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-c9cd2tsr",
@@ -2279,7 +4235,14 @@
       "name": "Aloe Natural Conditioner",
       "presentation": "800 ml",
       "piecesPerBox": 24,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-b2saxcgb",
@@ -2287,7 +4250,14 @@
       "name": "Aloe Natural Shampoo",
       "presentation": "800 ml",
       "piecesPerBox": 24,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-5l7cjymg",
@@ -2295,7 +4265,14 @@
       "name": "Antifaz Para Dormir",
       "presentation": "10 Piezas",
       "piecesPerBox": 15,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-5w3pvyqe",
@@ -2303,7 +4280,14 @@
       "name": "Baby Sleep Cream",
       "presentation": "113 g",
       "piecesPerBox": 24,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-w5v52frc",
@@ -2311,7 +4295,14 @@
       "name": "Bamboo Toothbrush",
       "presentation": "10 pz",
       "piecesPerBox": 20,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-bboxuxut",
@@ -2319,7 +4310,14 @@
       "name": "Bamboo Toothbrush",
       "presentation": "20 pz",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-omi01kc6",
@@ -2327,7 +4325,14 @@
       "name": "Bandas Anti Ronquidos",
       "presentation": "50 Bandas",
       "piecesPerBox": 56,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-7wu2b2s3",
@@ -2335,7 +4340,14 @@
       "name": "Beard Balm",
       "presentation": "150 g",
       "piecesPerBox": 56,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-hw6pluug",
@@ -2343,7 +4355,14 @@
       "name": "Bug Free Balm",
       "presentation": "2 Piezas 226 g c-u",
       "piecesPerBox": 12,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-atrxcses",
@@ -2351,7 +4370,14 @@
       "name": "Corrector de Postura",
       "presentation": "Talla CH - 2 Piezas",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-ypmv6ith",
@@ -2359,7 +4385,14 @@
       "name": "Corrector de Postura",
       "presentation": "Talla L 2 pz",
       "piecesPerBox": 8,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-kh4rx6qu",
@@ -2367,7 +4400,14 @@
       "name": "Corrector de Postura",
       "presentation": "Talla M - 2 Piezas",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-0zmp5nxs",
@@ -2375,7 +4415,14 @@
       "name": "Day Cream",
       "presentation": "90 ml",
       "piecesPerBox": 48,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-ic30ogv6",
@@ -2383,7 +4430,14 @@
       "name": "Day Serum",
       "presentation": "60 ml",
       "piecesPerBox": 48,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-hex7zmxl",
@@ -2391,7 +4445,14 @@
       "name": "Dead Sea Mud Mask",
       "presentation": "350 ml",
       "piecesPerBox": 48,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-xfsv1p5c",
@@ -2399,7 +4460,14 @@
       "name": "Dispositivo Anti Ronquidos",
       "presentation": "2 Piezas",
       "piecesPerBox": 68,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-8b5j7ssn",
@@ -2407,7 +4475,14 @@
       "name": "Eye Cream",
       "presentation": "90 ml",
       "piecesPerBox": 48,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-siticq29",
@@ -2415,7 +4490,14 @@
       "name": "Eye Serum",
       "presentation": "30 ml",
       "piecesPerBox": 48,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-64l9m45z",
@@ -2423,7 +4505,14 @@
       "name": "Face Tonic",
       "presentation": "500 ml",
       "piecesPerBox": 12,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-8y9f16w5",
@@ -2431,7 +4520,14 @@
       "name": "Face Wash",
       "presentation": "250 ml",
       "piecesPerBox": 48,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-bo6tnplt",
@@ -2439,7 +4535,14 @@
       "name": "Feet Dtx Para",
       "presentation": "40 Pares",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-336t81c4",
@@ -2447,7 +4550,14 @@
       "name": "Gorra Anti Migraña",
       "presentation": "Talla G 4 Piezas",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-qq7up21i",
@@ -2455,7 +4565,14 @@
       "name": "Gorra Anti Migraña",
       "presentation": "Talla M 4 Piezas",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-0slaq96q",
@@ -2463,7 +4580,14 @@
       "name": "HairFill Kit Capilar",
       "presentation": "Castaño Claro",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-e2e7dwel",
@@ -2471,7 +4595,14 @@
       "name": "HairFill Kit Capilar",
       "presentation": "Castaño Medio",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-czuv4mq0",
@@ -2479,7 +4610,14 @@
       "name": "HairFill Kit Capilar",
       "presentation": "Castaño Oscuro",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-4jo0geiz",
@@ -2487,7 +4625,14 @@
       "name": "HairFill Kit Capilar",
       "presentation": "Negro",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-rgduwdup",
@@ -2495,7 +4640,14 @@
       "name": "HairFill Polvo Capilar",
       "presentation": "Castaño Medio",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-gltayi84",
@@ -2503,7 +4655,14 @@
       "name": "HairFill Polvo Capilar",
       "presentation": "Castaño Oscuro",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-19rpg6vn",
@@ -2511,7 +4670,14 @@
       "name": "HairFill Polvo Capilar",
       "presentation": "Negro",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-zmlqbin7",
@@ -2519,7 +4685,14 @@
       "name": "Kids Bamboo Toothbrush",
       "presentation": "12 pz",
       "piecesPerBox": 15,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-7f0w9o3z",
@@ -2527,7 +4700,14 @@
       "name": "Kids Bamboo Toothbrush",
       "presentation": "6 pz",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-3pyc63k3",
@@ -2535,7 +4715,14 @@
       "name": "Kit Bug-Itch Free Balm",
       "presentation": "2 Piezas 226 g c-u",
       "piecesPerBox": 12,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-2ng1d1kc",
@@ -2543,7 +4730,14 @@
       "name": "Kit Day-Night  Cream",
       "presentation": "2 Piezas de 90 ml c-u",
       "piecesPerBox": 24,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-kvijmt4g",
@@ -2551,7 +4745,14 @@
       "name": "Kit Day-Nigt serum",
       "presentation": "2 Piezas de 60 ml c-u",
       "piecesPerBox": 48,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-y5vf13uz",
@@ -2559,7 +4760,14 @@
       "name": "Kit Natural Hand Cream",
       "presentation": "3 Cremas de 80 ml c-u",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-tvyew76y",
@@ -2567,7 +4775,14 @@
       "name": "Kit de Acondicionador y Shampoo",
       "presentation": "2 pz 800 ml c-u",
       "piecesPerBox": 12,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-118onuky",
@@ -2575,7 +4790,14 @@
       "name": "Kit de Compresas",
       "presentation": "5 pz",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-mf2grw8r",
@@ -2583,7 +4805,14 @@
       "name": "Kit de Toallas Rosa-Morada",
       "presentation": "5 Piezas 40*80 cm",
       "piecesPerBox": 20,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-45ihgai2",
@@ -2591,7 +4820,14 @@
       "name": "Moisturizing Cream",
       "presentation": "90 ml",
       "piecesPerBox": 48,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-vp6ul60s",
@@ -2599,7 +4835,14 @@
       "name": "Muscle Aceite Corporal",
       "presentation": "800 ml",
       "piecesPerBox": 24,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-w2bhx5fg",
@@ -2607,7 +4850,14 @@
       "name": "Muscle Comfort Cream",
       "presentation": "113 g",
       "piecesPerBox": 48,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-o5k4snic",
@@ -2615,7 +4865,14 @@
       "name": "Natural Body Cream",
       "presentation": "1 pz 1L-1 pz 100 ml",
       "piecesPerBox": 12,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-1fzvnqfz",
@@ -2623,7 +4880,14 @@
       "name": "Natural Castor Oil",
       "presentation": "120 ml",
       "piecesPerBox": 24,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-kn4c2w36",
@@ -2631,7 +4895,14 @@
       "name": "Natural Hand Cream Lavanda",
       "presentation": "3 Cremas de 80 ml c-u",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-897ais3a",
@@ -2639,7 +4910,14 @@
       "name": "Natural Hand Cream Madreselva",
       "presentation": "3 Cremas de 80 ml c-u",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-yry9qaz3",
@@ -2647,7 +4925,14 @@
       "name": "Natural Hand Cream Vainilla",
       "presentation": "3 Cremas de 80 ml c-u",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-9m1wqr1i",
@@ -2655,7 +4940,14 @@
       "name": "Natural Intimate Soap",
       "presentation": "750 ml",
       "piecesPerBox": 24,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-1l633y5a",
@@ -2663,7 +4955,14 @@
       "name": "Natural Lip Balm",
       "presentation": "6 Balsamos de 3.5 g c-u",
       "piecesPerBox": 25,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-bxt2vtrz",
@@ -2671,7 +4970,14 @@
       "name": "Natural Liquid Soap",
       "presentation": "800 ml",
       "piecesPerBox": 24,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-qsw2l1b2",
@@ -2679,7 +4985,14 @@
       "name": "Natural Sensual Lubricant",
       "presentation": "500 ml",
       "piecesPerBox": 24,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-e2tnjsmx",
@@ -2687,7 +5000,14 @@
       "name": "Natural Sensual Lubricant",
       "presentation": "800 ml",
       "piecesPerBox": 24,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-v7ebb346",
@@ -2695,7 +5015,14 @@
       "name": "Natural Tooth Paste",
       "presentation": "2 Piezas 148 ml c-u",
       "piecesPerBox": 24,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-o449rni0",
@@ -2703,7 +5030,14 @@
       "name": "Natural Tooth Paste",
       "presentation": "4 Piezas 148 ml c-u",
       "piecesPerBox": 20,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-3pnjnfs3",
@@ -2711,7 +5045,14 @@
       "name": "Natural Tooth Paste",
       "presentation": "6 Piezas 148 ml c-u",
       "piecesPerBox": 16,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-m7revae9",
@@ -2719,7 +5060,14 @@
       "name": "Naturetone Kit capilar",
       "presentation": "Castaño Claro",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-wyv9rk2e",
@@ -2727,7 +5075,14 @@
       "name": "Naturetone Kit capilar",
       "presentation": "Castaño Medio",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-x0exgn70",
@@ -2735,7 +5090,14 @@
       "name": "Naturetone Kit capilar",
       "presentation": "Castaño Oscuro",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-lkfdug98",
@@ -2743,7 +5105,14 @@
       "name": "Naturetone Kit capilar",
       "presentation": "Chocolate",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-u1ul3lwv",
@@ -2751,7 +5120,14 @@
       "name": "Naturetone Kit capilar",
       "presentation": "Negro",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-4a1f10iz",
@@ -2759,7 +5135,14 @@
       "name": "Naturetone Kit capilar",
       "presentation": "Negro Azulado",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-vf1op6hr",
@@ -2767,7 +5150,14 @@
       "name": "Naturetone Kit capilar",
       "presentation": "Rubio Cenizo",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-60wamn2i",
@@ -2775,7 +5165,14 @@
       "name": "Naturetone Kit capilar",
       "presentation": "Rubio Natural",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-d2o3itvz",
@@ -2783,7 +5180,14 @@
       "name": "Naturetone Kit capilar",
       "presentation": "Rubio Oscuro",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-10zkyegi",
@@ -2791,7 +5195,14 @@
       "name": "Night Cream",
       "presentation": "90 ml",
       "piecesPerBox": 48,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-gbplplx3",
@@ -2799,7 +5210,14 @@
       "name": "Night Serum",
       "presentation": "60 ml",
       "piecesPerBox": 48,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-z1fp6nxo",
@@ -2807,7 +5225,14 @@
       "name": "Pastillero 21 Compartimentos",
       "presentation": "Estandar",
       "piecesPerBox": 100,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-oxawuz0y",
@@ -2815,7 +5240,14 @@
       "name": "Pastillero 21 compartimentos",
       "presentation": "Premium",
       "piecesPerBox": 70,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-th94s90n",
@@ -2823,7 +5255,14 @@
       "name": "Playera de Hombre B Life",
       "presentation": "Talla Chica",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-vxgyx1ep",
@@ -2831,7 +5270,14 @@
       "name": "Playera de Hombre B Life",
       "presentation": "Talla Grande",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-eqh0h6t8",
@@ -2839,7 +5285,14 @@
       "name": "Playera de Hombre B Life",
       "presentation": "Talla Mediana",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-8olyajhu",
@@ -2847,7 +5300,14 @@
       "name": "Playera de Mujer B Life",
       "presentation": "Talla Chica",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-pbbeh1gi",
@@ -2855,7 +5315,14 @@
       "name": "Playera de Mujer B Life",
       "presentation": "Talla Grande",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-sxhbtdzg",
@@ -2863,7 +5330,14 @@
       "name": "Playera de Mujer B Life",
       "presentation": "Talla Mediana",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-don6bwu1",
@@ -2871,7 +5345,14 @@
       "name": "Scrub",
       "presentation": "120 ml",
       "piecesPerBox": 48,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-c66ip3vm",
@@ -2879,7 +5360,14 @@
       "name": "Sensual Aceite Corporal",
       "presentation": "800 ml",
       "piecesPerBox": 24,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-3rv516os",
@@ -2887,7 +5375,14 @@
       "name": "kit de Toallas Negra-Gris",
       "presentation": "5 Piezas de 40*80 cm",
       "piecesPerBox": 20,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-49mff39m",
@@ -2895,7 +5390,14 @@
       "name": "Aceite Esencial de Begamota",
       "presentation": "120 ml",
       "piecesPerBox": 20,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-dylaxm4q",
@@ -2903,7 +5405,14 @@
       "name": "Aceite Esencial de Bergamota",
       "presentation": "5 ml",
       "piecesPerBox": 25,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-3s19q738",
@@ -2911,7 +5420,14 @@
       "name": "Aceite Esencial de Canela",
       "presentation": "50 ml",
       "piecesPerBox": 25,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-5czjrpso",
@@ -2919,7 +5435,14 @@
       "name": "Aceite Esencial de Cedro",
       "presentation": "50 ml",
       "piecesPerBox": 25,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-nlmf8lrv",
@@ -2927,7 +5450,14 @@
       "name": "Aceite Esencial de Citronela",
       "presentation": "120 ml",
       "piecesPerBox": 20,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-37pxo45c",
@@ -2935,7 +5465,14 @@
       "name": "Aceite Esencial de Citronela",
       "presentation": "50 ml",
       "piecesPerBox": 25,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-qvezie23",
@@ -2943,7 +5480,14 @@
       "name": "Aceite Esencial de Clavo",
       "presentation": "50 ml",
       "piecesPerBox": 25,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-rmn3kxuk",
@@ -2951,7 +5495,14 @@
       "name": "Aceite Esencial de Eucalipto",
       "presentation": "50 ml",
       "piecesPerBox": 25,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-raq5toi6",
@@ -2959,7 +5510,14 @@
       "name": "Aceite Esencial de Lavanda",
       "presentation": "120 ml",
       "piecesPerBox": 20,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-9tgr4fr5",
@@ -2967,7 +5525,14 @@
       "name": "Aceite Esencial de Lavanda",
       "presentation": "50 ml",
       "piecesPerBox": 25,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-v1l7vss6",
@@ -2975,7 +5540,14 @@
       "name": "Aceite Esencial de Mandarina",
       "presentation": "50 ml",
       "piecesPerBox": 25,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-7u0okkqv",
@@ -2983,7 +5555,14 @@
       "name": "Aceite Esencial de Menta",
       "presentation": "120 ml",
       "piecesPerBox": 20,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-dj3iww3u",
@@ -2991,7 +5570,14 @@
       "name": "Aceite Esencial de Menta",
       "presentation": "50 ml",
       "piecesPerBox": 25,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-tbgppi0y",
@@ -2999,7 +5585,14 @@
       "name": "Aceite Esencial de Naranja",
       "presentation": "50 ml",
       "piecesPerBox": 25,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-ldc9sqtm",
@@ -3007,7 +5600,14 @@
       "name": "Aceite Esencial de Orégano",
       "presentation": "50 ml",
       "piecesPerBox": 25,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-5bdder6x",
@@ -3015,7 +5615,14 @@
       "name": "Aceite Esencial de Pachulí",
       "presentation": "50 ml",
       "piecesPerBox": 25,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-m9u23l1h",
@@ -3023,7 +5630,14 @@
       "name": "Aceite Esencial de Sándalo",
       "presentation": "50 ml",
       "piecesPerBox": 25,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-ju4430kk",
@@ -3031,7 +5645,14 @@
       "name": "Aceite Esencial de Tomillo",
       "presentation": "50 ml",
       "piecesPerBox": 25,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-l12hj92c",
@@ -3039,7 +5660,14 @@
       "name": "Aceite Esencial de Toronja",
       "presentation": "50 ml",
       "piecesPerBox": 25,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-vuvm0pgk",
@@ -3047,7 +5675,14 @@
       "name": "Aceite Esencial de Varios",
       "presentation": "50 ml",
       "piecesPerBox": 25,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-oofet5dl",
@@ -3055,7 +5690,14 @@
       "name": "Aceite Esencial de Ylang Ylang",
       "presentation": "50 ml",
       "piecesPerBox": 25,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-kwvzos84",
@@ -3063,7 +5705,14 @@
       "name": "Aceite Esencial de Árbol de Té",
       "presentation": "120 ml",
       "piecesPerBox": 20,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-i9992rb7",
@@ -3071,7 +5720,14 @@
       "name": "Aceite Esencial de Árbol de Té",
       "presentation": "50 ml",
       "piecesPerBox": 25,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-nehmmpqb",
@@ -3079,7 +5735,14 @@
       "name": "Roll On Blend Antistress",
       "presentation": "3 Piezas de 10 ml c-u",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-h098tsln",
@@ -3087,7 +5750,14 @@
       "name": "Roll On Blend Headaches",
       "presentation": "3 Piezas de 10 ml c-u",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-gapu5o3p",
@@ -3095,7 +5765,14 @@
       "name": "Roll On Blend Relax Kit",
       "presentation": "3 Piezas de 10 ml c-u",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-eqiky5c7",
@@ -3103,7 +5780,14 @@
       "name": "Roll On Blend Sleep",
       "presentation": "3 Piezas de 10 ml c-u",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-rjocbwgu",
@@ -3111,7 +5795,14 @@
       "name": "Active Band",
       "presentation": "3 Piezas 76*8 cm",
       "piecesPerBox": 20,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-p79uemgw",
@@ -3119,7 +5810,14 @@
       "name": "Cinta Kinesiológica",
       "presentation": "4 Rollos Negra",
       "piecesPerBox": 15,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-hr7457l2",
@@ -3127,7 +5825,14 @@
       "name": "Cinta Kinesiológica",
       "presentation": "4 Rollos Nude",
       "piecesPerBox": 15,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-4trz023w",
@@ -3135,7 +5840,14 @@
       "name": "Cinta Kinesiológica",
       "presentation": "4 Rollos Rojo",
       "piecesPerBox": 15,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-1raldr1y",
@@ -3143,7 +5855,14 @@
       "name": "Cinta Kinesiológica",
       "presentation": "4 Rollos Rosa",
       "piecesPerBox": 15,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-o02fsgu4",
@@ -3151,7 +5870,14 @@
       "name": "Stretch Band",
       "presentation": "1 pz 140*4 cm",
       "piecesPerBox": 20,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-6yonn8h7",
@@ -3159,7 +5885,14 @@
       "name": "Yoga Block",
       "presentation": "2 pz",
       "piecesPerBox": 20,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-zgm1qoiy",
@@ -3167,7 +5900,14 @@
       "name": "Yoga Tapete",
       "presentation": "1 pz",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-qqujpojn",
@@ -3175,7 +5915,14 @@
       "name": "Blue Paradise Cera de Soya",
       "presentation": "600 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-3493qyqw",
@@ -3183,7 +5930,14 @@
       "name": "Caramel Popcorn Cera de Soya",
       "presentation": "600 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-yk918af8",
@@ -3191,7 +5945,14 @@
       "name": "Chai Tea Cera de Soya",
       "presentation": "600 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-auj0drrw",
@@ -3199,7 +5960,14 @@
       "name": "Chocolate Candy Cera de soya",
       "presentation": "600 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-5xfqausy",
@@ -3207,7 +5975,14 @@
       "name": "Christmas Tree Cera de Soya",
       "presentation": "600 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-znn2usiv",
@@ -3215,7 +5990,14 @@
       "name": "Cinnamon Stick Cera de soya",
       "presentation": "600 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-2jcohilt",
@@ -3223,7 +6005,14 @@
       "name": "Coconut Wood Cera de Soya",
       "presentation": "600 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-snc961k2",
@@ -3231,7 +6020,14 @@
       "name": "Coffee Time Cera de Soya",
       "presentation": "600 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-eukwjrzr",
@@ -3239,7 +6035,14 @@
       "name": "Creamy Mango Cera de Soya",
       "presentation": "600 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-prbcarqd",
@@ -3247,7 +6050,14 @@
       "name": "Eucalyptus Mint Cera de soya",
       "presentation": "600 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-cu57u286",
@@ -3255,7 +6065,14 @@
       "name": "Green Apple Cera de Soya",
       "presentation": "600 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-hmi1s5ly",
@@ -3263,7 +6080,14 @@
       "name": "Hazelnut Caramel Cera de Soya",
       "presentation": "600 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-byra52i1",
@@ -3271,7 +6095,14 @@
       "name": "Kit de Velas Enchanted Scents",
       "presentation": "6 Velas de 160g c-u",
       "piecesPerBox": 6,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-he6tzgk7",
@@ -3279,7 +6110,14 @@
       "name": "Kit de Velas Harmony Fusion",
       "presentation": "6 Piezas de 160g c-u",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-v4c37tj8",
@@ -3287,7 +6125,14 @@
       "name": "Kit de Velas Summer Dreams",
       "presentation": "3 Velas de 250g c-u",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-5ztve6uu",
@@ -3295,7 +6140,14 @@
       "name": "Kit de Velas Sweet Delight",
       "presentation": "3 Velas de 250g c-u",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-7haaz4db",
@@ -3303,7 +6155,14 @@
       "name": "Kit de Velas Warm Wishes",
       "presentation": "3 Velas de 250g c-u",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-lpiuoh9q",
@@ -3311,7 +6170,14 @@
       "name": "Lemongrass Tea Cera de Soya",
       "presentation": "600 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-hf4gun9s",
@@ -3319,7 +6185,14 @@
       "name": "Orange Vainilla Cera de Soya",
       "presentation": "600 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-pj8xcu2e",
@@ -3327,7 +6200,14 @@
       "name": "Pumpkin Spiced Cera de Soya",
       "presentation": "600 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-6s9p1y05",
@@ -3335,7 +6215,14 @@
       "name": "Rose Petal Cera de Soya",
       "presentation": "600 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-gvdf040v",
@@ -3343,7 +6230,14 @@
       "name": "Rustic Wood Cera de Soya",
       "presentation": "600 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-o0jfphmy",
@@ -3351,7 +6245,14 @@
       "name": "Strawberry Ice Cream Cera de Soya",
       "presentation": "600g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-jqinujo9",
@@ -3359,7 +6260,14 @@
       "name": "Tropical Sunset Cera de soya",
       "presentation": "600 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-dfzoyiee",
@@ -3367,7 +6275,14 @@
       "name": "Vainilla Cupcake Cera de Soya",
       "presentation": "600 g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-csjn3lc4",
@@ -3375,7 +6290,14 @@
       "name": "Vela Aromatica de Citronela",
       "presentation": "2 Piezas de 260g c-u",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-aung2z09",
@@ -3383,7 +6305,14 @@
       "name": "Botella Calabacín",
       "presentation": "16 oz-473 ml",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-6grfvpat",
@@ -3391,7 +6320,14 @@
       "name": "Botella Cebollín",
       "presentation": "16 oz-473 ml",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-zvqaa7kt",
@@ -3399,7 +6335,14 @@
       "name": "Botella Electro Blend+Sport Towell",
       "presentation": "2 pz",
       "piecesPerBox": 10,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-zdql3b7h",
@@ -3407,7 +6350,14 @@
       "name": "Botella Motivacional",
       "presentation": "Azul 1Lt-13 pz",
       "piecesPerBox": 19,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-nx9y36kz",
@@ -3415,7 +6365,14 @@
       "name": "Botella Motivacional",
       "presentation": "Blanca 1Lt-13 pz",
       "piecesPerBox": 19,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-cthuzndq",
@@ -3423,7 +6380,14 @@
       "name": "Botella Motivacional",
       "presentation": "Negra 1 Lt-13 Piezas",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-v7zyf1bw",
@@ -3431,7 +6395,14 @@
       "name": "Botella Motivacional",
       "presentation": "Rosa 1Lt-13 pz",
       "piecesPerBox": 19,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-lgis1fvb",
@@ -3439,7 +6410,14 @@
       "name": "Botella Motivacional",
       "presentation": "Violeta 1Lt-13 pz",
       "piecesPerBox": 19,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-5s4hpivn",
@@ -3447,7 +6425,14 @@
       "name": "Botella Peluchina",
       "presentation": "16 oz - 473 ml",
       "piecesPerBox": 4,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-99y5qal9",
@@ -3455,7 +6440,14 @@
       "name": "Botella Tomatín",
       "presentation": "16 oz-473 ml",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-y6c5jhfv",
@@ -3463,7 +6455,14 @@
       "name": "Botella Térmica",
       "presentation": "Blanca B Healthy 1Lt",
       "piecesPerBox": 20,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-nzal4c9f",
@@ -3471,7 +6470,14 @@
       "name": "Botella Térmica",
       "presentation": "Blanca B Healthy 2 Lt",
       "piecesPerBox": 12,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-fgi8avm2",
@@ -3479,7 +6485,14 @@
       "name": "Botella Térmica",
       "presentation": "Morada B Strong 1 Lt",
       "piecesPerBox": 20,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-8hpsgxqr",
@@ -3487,7 +6500,14 @@
       "name": "Botella Térmica",
       "presentation": "Morada B Strong 2 Lt",
       "piecesPerBox": 12,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-414m751m",
@@ -3495,7 +6515,14 @@
       "name": "Botella Térmica",
       "presentation": "Negra B Active 1 LT",
       "piecesPerBox": 20,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-zhfr1eml",
@@ -3503,7 +6530,14 @@
       "name": "Botella Térmica",
       "presentation": "Negra B Active 2 Lt",
       "piecesPerBox": 12,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-rkpvbap2",
@@ -3511,7 +6545,14 @@
       "name": "Botella Térmica",
       "presentation": "Rosa B Confident 1 Lt",
       "piecesPerBox": 20,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-6v5ivls1",
@@ -3519,7 +6560,14 @@
       "name": "Botella Térmica",
       "presentation": "Rosa B Confident 2 Lt",
       "piecesPerBox": 12,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-s22fa8a4",
@@ -3527,7 +6575,14 @@
       "name": "Botella Térmica",
       "presentation": "Verde B Yourself 1 Lt",
       "piecesPerBox": 20,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-ptjsst4k",
@@ -3535,7 +6590,14 @@
       "name": "Botella Térmica",
       "presentation": "Verde B Yourself 2 Lt",
       "piecesPerBox": 12,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-06u32w8g",
@@ -3543,7 +6605,14 @@
       "name": "Botella Térmica Chanchito",
       "presentation": "18 oz-535 ml",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-437hpnep",
@@ -3551,7 +6620,14 @@
       "name": "Botella Térmica Dinosaurio",
       "presentation": "12 oz-355 ml",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-factyk21",
@@ -3559,7 +6635,14 @@
       "name": "Botella Térmica Gatito",
       "presentation": "12 oz-355 ml",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-82thjztw",
@@ -3567,7 +6650,14 @@
       "name": "Botella Térmica Gatito",
       "presentation": "18 oz-535 ml",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-3kp66leq",
@@ -3575,7 +6665,14 @@
       "name": "Botella Térmica Oso Polar",
       "presentation": "12 oz-355 ml",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-5oxaju1x",
@@ -3583,7 +6680,14 @@
       "name": "Botella Térmica Oso Polar",
       "presentation": "18 oz-535 ml",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-rvgxe6l8",
@@ -3591,7 +6695,14 @@
       "name": "Botella Térmica Perrito",
       "presentation": "12 oz-355 ml",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-a3kns1c1",
@@ -3599,7 +6710,14 @@
       "name": "Botella Térmica Perrito",
       "presentation": "18 oz-535 ml",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-rlw824o5",
@@ -3607,7 +6725,14 @@
       "name": "Botella Térmica Ranita",
       "presentation": "12 oz-355 ml",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-58x1odhu",
@@ -3615,7 +6740,14 @@
       "name": "Botella Térmica Ranita",
       "presentation": "18 oz-535 ml",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-qztnm740",
@@ -3623,7 +6755,14 @@
       "name": "Botella Térmica Unicornio",
       "presentation": "18 oz-535 ml",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-fc0vwj06",
@@ -3631,7 +6770,14 @@
       "name": "Botella térmica Canchito",
       "presentation": "12 oz 355 ml",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-znorn1r4",
@@ -3639,7 +6785,14 @@
       "name": "Natural Leaf Tableware",
       "presentation": "100 pz",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-2xpgthh6",
@@ -3647,7 +6800,14 @@
       "name": "Natural Leaf Tableware",
       "presentation": "200 pz",
       "piecesPerBox": 5,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-cesg0vga",
@@ -3655,7 +6815,14 @@
       "name": "Enzym Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-u9hdqiku",
@@ -3663,7 +6830,14 @@
       "name": "Icelandic Krill Oil",
       "presentation": "150 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-nds7vdzz",
@@ -3671,7 +6845,14 @@
       "name": "Coconut Oil D3+K2",
       "presentation": "300 Cápsulas",
       "piecesPerBox": 56,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-3s48ng1m",
@@ -3679,7 +6860,14 @@
       "name": "Omega 3 Salmon Oil",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-qwzbznww",
@@ -3687,7 +6875,14 @@
       "name": "Womens Blend",
       "presentation": "180 Cápsulas",
       "piecesPerBox": 50,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-qghopbu6",
@@ -3695,7 +6890,14 @@
       "name": "Creatine Monohydrate",
       "presentation": "90 Porciones 450 g",
       "piecesPerBox": 32,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-2rdbgqqt",
@@ -3703,7 +6905,14 @@
       "name": "Creatine Monohydrate",
       "presentation": "120 Porciones 600g",
       "piecesPerBox": 9,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-zkq4xsqf",
@@ -3711,7 +6920,14 @@
       "name": "Myo Inositol",
       "presentation": "90 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     },
     {
       "id": "inv-nncvwr8p",
@@ -3719,7 +6935,14 @@
       "name": "Myo & D-Chiro Inositol Platinum",
       "presentation": "240 Cápsulas",
       "piecesPerBox": 30,
-      "boxesPerPallet": 0
+      "boxesPerPallet": 0,
+      "domain": "base",
+      "stockUnits": 0,
+      "minStockUnits": 0,
+      "storageLocation": "",
+      "unitLabel": "pzas",
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     }
   ],
   "activities": [
@@ -3787,6 +7010,19 @@
       "accumulatedSeconds": 0,
       "lastResumedAt": null,
       "customName": "Comedor"
+    },
+    {
+      "id": "act-xt5al4ez",
+      "weekId": "week-active",
+      "catalogActivityId": "cat-piso",
+      "responsibleId": "usr-lead-nu7wt83h",
+      "status": "Pendiente",
+      "activityDate": "2026-04-06T06:00:00.000Z",
+      "startTime": null,
+      "endTime": null,
+      "accumulatedSeconds": 0,
+      "lastResumedAt": null,
+      "customName": "Piso producción"
     }
   ],
   "pauseLogs": [],
@@ -3801,7 +7037,7 @@
     }
   ],
   "controlBoards": [],
-  "updatedAt": "2026-04-11T15:04:00.647Z",
+  "updatedAt": "2026-04-12T20:31:17.161Z",
   "permissions": {
     "pages": {
       "index": {
@@ -3891,15 +7127,6 @@
         "userIds": [],
         "departments": []
       },
-      "viewReports": {
-        "roles": [
-          "Lead",
-          "Senior (Sr)",
-          "Semi-Senior (Ssr)"
-        ],
-        "userIds": [],
-        "departments": []
-      },
       "managePermissions": {
         "roles": [
           "Lead"
@@ -3948,7 +7175,47 @@
         "userIds": [],
         "departments": []
       },
+      "manageCleaningInventory": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "importCleaningInventory": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "manageOrderInventory": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "importOrderInventory": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
       "saveBoard": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "deleteBoard": {
         "roles": [
           "Lead",
           "Senior (Sr)"
@@ -3994,6 +7261,15 @@
           "Senior (Sr)",
           "Semi-Senior (Ssr)",
           "Junior (Jr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "editFinishedBoardRow": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)"
         ],
         "userIds": [],
         "departments": []
@@ -4073,5 +7349,6 @@
     "REGULATORIO",
     "RETAIL",
     "TRANSPORTE"
-  ]
+  ],
+  "inventoryMovements": []
 }

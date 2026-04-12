@@ -2,6 +2,8 @@ import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 
 const HASH_PREFIX = "scrypt";
 const KEY_LENGTH = 64;
+export const STRONG_PASSWORD_MIN_LENGTH = 10;
+export const TEMPORARY_PASSWORD_MIN_LENGTH = 4;
 
 export function isPasswordHash(value) {
   return String(value || "").startsWith(`${HASH_PREFIX}$`);
@@ -30,4 +32,14 @@ export function verifyPassword(password, storedValue) {
 
   const candidateHash = scryptSync(String(password || ""), salt, KEY_LENGTH).toString("hex");
   return timingSafeEqual(Buffer.from(candidateHash, "hex"), Buffer.from(originalHash, "hex"));
+}
+
+export function isTemporaryPassword(password) {
+  const value = String(password || "").trim();
+  return value.length >= TEMPORARY_PASSWORD_MIN_LENGTH;
+}
+
+export function isStrongPassword(password) {
+  const value = String(password || "");
+  return value.length >= STRONG_PASSWORD_MIN_LENGTH && /[A-Z]/.test(value) && /[a-z]/.test(value) && /\d/.test(value) && /[^A-Za-z0-9]/.test(value);
 }

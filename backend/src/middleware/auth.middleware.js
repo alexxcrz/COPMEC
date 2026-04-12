@@ -45,6 +45,13 @@ export function attachAuthSession(req, res, next) {
       return;
     }
 
+    if (Number(payload.sessionVersion) !== Number(user.sessionVersion || 1)) {
+      clearSessionCookie(res);
+      req.auth = null;
+      next();
+      return;
+    }
+
     req.auth = { type: "user", userId: user.id, role: user.role, user };
     next();
   } catch {
@@ -146,9 +153,27 @@ export function requireWarehouseStateWriteAccess(req, res, next) {
   }
 
   auditSecurityEvent("forbidden_state_mutation", req, result);
-  res.status(result.reason === "auth_required" ? 401 : 403).json({
+  res.status(
+    result.reason === "auth_required"
+      ? 401
+      : result.reason === "stale_revision"
+        ? 409
+        : result.reason === "legacy_section_blocked"
+          ? 400
+        : result.reason === "weak_password" || result.reason === "password_hash_injection"
+          ? 400
+          : 403,
+  ).json({
     ok: false,
-    message: "No tienes permisos para actualizar este estado del sistema.",
+    message: result.reason === "stale_revision"
+      ? "Tu estado local está desactualizado. Recarga la información antes de guardar."
+      : result.reason === "legacy_section_blocked"
+        ? `La sección ${result.section} ya no admite guardado por estado completo. Usa el endpoint dedicado.`
+      : result.reason === "weak_password"
+        ? "La contraseña debe tener al menos 10 caracteres e incluir mayúscula, minúscula, número y símbolo."
+        : result.reason === "password_hash_injection"
+          ? "No se permite enviar hashes de contraseña desde el cliente."
+      : "No tienes permisos para actualizar este estado del sistema.",
   });
 }
 

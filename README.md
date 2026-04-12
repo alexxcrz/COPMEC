@@ -25,9 +25,27 @@ Plataforma de gestion de datos relacionales y multimedia para reemplazar multipl
 
 ## Scripts raiz
 
-- `npm run dev`: levanta frontend y backend en paralelo
+- `npm run dev`: levanta frontend y backend con verificacion de puertos fijos (`5173` y `4000`) y reutiliza servicios ya encendidos
+- `npm run dev:raw`: levanta frontend y backend en paralelo sin verificaciones extra
+- `npm run status`: muestra el estado sincronizado de frontend (`5173`), backend (`4000`) y PostgreSQL local (`5432`)
+- `npm run stop`: detiene frontend y backend; deja PostgreSQL local intacto porque es una dependencia externa del entorno local
+- `npm run stop:all`: intenta detener frontend, backend y PostgreSQL local; detener PostgreSQL puede requerir una terminal con permisos de administrador
 - `npm run build`: construye frontend
 - `npm run start`: ejecuta backend en modo produccion
+
+## Arranque local
+
+- `iniciar_copmec.bat`: inicia COPMEC desde Windows con el mismo flujo estable de `npm run dev`
+- Frontend local: `http://localhost:5173/`
+- Backend local: `http://localhost:4000/api/health`
+- PostgreSQL local: `5432` como servicio de Windows separado del runner de desarrollo
+
+## Render
+
+- Render no usa estos scripts locales de orquestacion.
+- `copmec-api` se despliega desde `backend/` con `npm start` segun [render.yaml](C:\Users\alexx\Desktop\COPMEC\render.yaml).
+- `copmec-web` se construye desde `frontend/` como sitio estatico segun [render.yaml](C:\Users\alexx\Desktop\COPMEC\render.yaml).
+- La base en Render es `copmec-db`, administrada por Render y separada del PostgreSQL local en `5432`.
 
 ## Seguridad aplicada
 

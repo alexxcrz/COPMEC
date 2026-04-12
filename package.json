@@ -3,7 +3,11 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "dev": "node scripts/dev-runner.mjs",
+    "dev:raw": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "status": "node scripts/local-stack.mjs status",
+    "stop": "node scripts/local-stack.mjs stop",
+    "stop:all": "node scripts/local-stack.mjs stop --with-db",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npm run build --prefix frontend",
     "start": "npm run start --prefix backend"
