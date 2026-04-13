@@ -58,6 +58,7 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||
   `${window.location.protocol}//${window.location.hostname}:4000/api`;
+const ENABLE_LEGACY_WHOLE_STATE_SYNC = /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
 const PAGE_BOARD = "index";
 const PAGE_CUSTOM_BOARDS = "customBoards";
 const PAGE_ADMIN = "admin";
@@ -3771,6 +3772,7 @@ function App() {
   }, [sessionUserId]);
 
   useEffect(() => {
+    if (!ENABLE_LEGACY_WHOLE_STATE_SYNC) return;
     if (!sessionUserId) return;
     if (!isHydratedRef.current) return;
     if (skipNextSyncRef.current) {
