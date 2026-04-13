@@ -30,6 +30,8 @@ import {
   Square,
   Trash2,
   Upload,
+  Eye,
+  EyeOff,
   X,
   UserRound,
   Users,
@@ -3033,6 +3035,8 @@ function InventoryLookupInput({ inventoryItems, value, onChange, placeholder, di
 }
 
 function LoginScreen({ loginForm, onChange, onSubmit, error, demoUsers }) {
+  const [showPassword, setShowPassword] = useState(false);
+
   return (
     <main className="login-shell">
       <div className="login-aurora login-aurora-one" />
@@ -3117,7 +3121,17 @@ function LoginScreen({ loginForm, onChange, onSubmit, error, demoUsers }) {
             </label>
             <label className="app-modal-field login-field">
               <span>Contraseña</span>
-              <input type="password" value={loginForm.password} onChange={(event) => onChange("password", event.target.value)} placeholder="Contraseña" />
+              <div className="login-password-field">
+                <input type={showPassword ? "text" : "password"} value={loginForm.password} onChange={(event) => onChange("password", event.target.value)} placeholder="Contraseña" />
+                <button
+                  type="button"
+                  className="login-password-toggle"
+                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  onClick={() => setShowPassword((current) => !current)}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </label>
             {error ? <p className="validation-text">{error}</p> : null}
             <button type="submit" className="primary-button login-submit-button">Continuar</button>
@@ -5892,17 +5906,25 @@ function App() {
   async function handleLogin(event) {
     event.preventDefault();
     setLoginError("");
+
+    let authResult = null;
     try {
-      const authResult = await requestJson("/auth/login", {
+      authResult = await requestJson("/auth/login", {
         method: "POST",
         body: JSON.stringify({ email: loginForm.email, password: loginForm.password }),
       });
-      setSessionUserId(authResult.userId || "");
-      if (authResult.isBootstrapMaster) {
-        setPage(PAGE_DASHBOARD);
-        return;
-      }
+    } catch (error) {
+      setLoginError(error?.message || "Credenciales inválidas.");
+      return;
+    }
 
+    setSessionUserId(authResult.userId || "");
+    if (authResult.isBootstrapMaster) {
+      setPage(PAGE_DASHBOARD);
+      return;
+    }
+
+    try {
       const remoteState = await requestJson("/warehouse/state");
       const normalizedState = normalizeWarehouseState(remoteState);
       skipNextSyncRef.current = true;
@@ -5913,7 +5935,11 @@ function App() {
       setPage(nextUser?.role === ROLE_JR ? PAGE_CUSTOM_BOARDS : PAGE_DASHBOARD);
       setSyncStatus("Sincronizado");
     } catch (error) {
-      setLoginError(error?.message || "Credenciales inválidas.");
+      if (error?.status === 401) {
+        setLoginError("Se validaron tus credenciales, pero no se pudo guardar la sesión. Revisa CORS_ALLOWED_ORIGINS y SESSION_COOKIE_SAMESITE en Render.");
+        return;
+      }
+      setLoginError(error?.message || "No se pudo iniciar sesión.");
     }
   }
 
