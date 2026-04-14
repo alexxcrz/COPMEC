@@ -98,7 +98,7 @@ export function WarehouseHistoryPage(props) {
                     <tr>
                       <th>Fecha</th>
                       <th>Actividad</th>
-                      <th>Asociado</th>
+                      <th>Player</th>
                       <th>Estado</th>
                       <th>Inicio</th>
                       <th>Fin</th>
@@ -112,7 +112,7 @@ export function WarehouseHistoryPage(props) {
                       <tr key={activity.id}>
                         <td>{formatDate(activity.activityDate)}</td>
                         <td>{activity.customName || catalogMap.get(activity.catalogActivityId)?.name || "Actividad sin nombre"}</td>
-                        <td title={userMap.get(activity.responsibleId)?.name || "Sin asociado"}>{userMap.get(activity.responsibleId)?.name || "Sin asociado"}</td>
+                        <td title={userMap.get(activity.responsibleId)?.name || "Sin player"}>{userMap.get(activity.responsibleId)?.name || "Sin player"}</td>
                         <td><StatusBadge status={activity.status} /></td>
                         <td>{formatTime(activity.startTime)}</td>
                         <td>{formatTime(activity.endTime)}</td>

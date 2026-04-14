@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const DASHBOARD_WEEKDAY_LABELS = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sa", "Do"];
 
@@ -169,6 +169,8 @@ export default function PanelIndicadores({ contexto }) {
     DashboardRankItem,
     getResponsibleVisual,
     dashboardActivityRows,
+    dashboardCatalogFrequencyRows,
+    dashboardCatalogTypeRows,
     DashboardProgressMetric,
     PieChart,
     dashboardDistributionRows,
@@ -187,6 +189,7 @@ export default function PanelIndicadores({ contexto }) {
     pauseAnalysis,
     formatMinutes,
     formatPercent,
+    getActivityFrequencyLabel,
     Download,
   } = contexto;
 
@@ -194,47 +197,135 @@ export default function PanelIndicadores({ contexto }) {
   const dashboardExportRef = useRef(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
+  const dashboardAreaTabOptions = useMemo(() => {
+    const uniqueAreas = Array.from(new Set(
+      departmentOptions
+        .concat(dashboardAreaRows.map((item) => item.area))
+        .map((item) => String(item || "").trim())
+        .filter(Boolean),
+    ));
+
+    return [{ value: "all", label: "General" }].concat(
+      uniqueAreas.sort((left, right) => left.localeCompare(right, "es-MX")).map((area) => ({ value: area, label: area })),
+    );
+  }, [dashboardAreaRows, departmentOptions]);
+
+  const activeAreaLabel = dashboardFilters.area === "all" ? "General" : dashboardFilters.area;
+
   async function exportDashboardToPdf() {
-    if (!dashboardExportRef.current || isExportingPdf) return;
+    if (isExportingPdf) return;
 
     try {
       setIsExportingPdf(true);
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
-      const canvas = await html2canvas(dashboardExportRef.current, {
-        scale: 2,
-        backgroundColor: "#f3f6f4",
-        useCORS: true,
-        logging: false,
-        windowWidth: dashboardExportRef.current.scrollWidth,
-        windowHeight: dashboardExportRef.current.scrollHeight,
-      });
-      const imageData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+      const [{ jsPDF }, autoTableModule] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
+      const autoTable = autoTableModule.default || autoTableModule.autoTable;
+      const pdf = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+      const marginX = 28;
       const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 24;
-      const renderWidth = pageWidth - margin * 2;
-      const renderHeight = (canvas.height * renderWidth) / canvas.width;
-      let remainingHeight = renderHeight;
-      let offsetY = 0;
+      const printableWidth = pageWidth - marginX * 2;
+      const filterSummaryRows = [
+        ["Área", activeAreaLabel],
+        ["Player", dashboardFilters.responsibleId === "all" ? "Todos los players" : visibleUsers.find((user) => user.id === dashboardFilters.responsibleId)?.name || "Player filtrado"],
+        ["Fuente", dashboardFilters.source === "all" ? "Todo el flujo" : dashboardFilters.source === "activity" ? "Actividades semanales" : "Tableros operativos"],
+        ["Periodo", dashboardFilters.periodKey === "all" ? "Todos los periodos" : dashboardFilters.periodKey],
+        ["Rango", dashboardFilters.startDate || dashboardFilters.endDate ? `${dashboardFilters.startDate || "inicio"} a ${dashboardFilters.endDate || "fin"}` : "Sin filtro por fecha"],
+      ];
+      const executiveRows = [
+        ["Registros analizados", String(dashboardMetrics.total), "actividades y filas dentro del filtro"],
+        ["Cerrados", String(dashboardMetrics.completed), "registros terminados"],
+        ["En curso", String(dashboardMetrics.running), "operaciones activas"],
+        ["Pausados", String(dashboardMetrics.paused), "registros detenidos"],
+        ["Tiempo promedio", formatMetricNumber(dashboardMetrics.averageMinutes, 2), "minutos promedio de cierre"],
+        ["Mediana", formatMetricNumber(dashboardMetrics.medianMinutes, 2), "punto medio del tiempo de ciclo"],
+        ["Horas efectivas", formatMetricNumber(dashboardMetrics.totalHours, 1), "tiempo completado acumulado"],
+        ["Cumplimiento SLA", `${formatMetricNumber(dashboardMetrics.withinPercent, 1)}%`, "porcentaje dentro del límite"],
+        ["Fuera de SLA", `${formatMetricNumber(dashboardMetrics.outsidePercent, 1)}%`, "proporción fuera del objetivo"],
+        ["Pausas registradas", String(dashboardMetrics.pauseCount), "interrupciones con log"],
+        ["Horas en pausa", formatMetricNumber(dashboardMetrics.pauseHours, 1), "tiempo no productivo"],
+        ["Áreas activas", String(dashboardMetrics.areaCount), "áreas con movimiento operativo"],
+        ["Catálogo activo", String(dashboardMetrics.catalogActiveCount), "actividades disponibles"],
+        ["Obligatorias", String(dashboardMetrics.catalogMandatoryCount), "actividades base"],
+        ["Ocasionales", String(dashboardMetrics.catalogOptionalCount), "actividades complementarias"],
+        ["Frecuencias activas", String(dashboardMetrics.catalogFrequencyTypes), "tipos de periodicidad en uso"],
+      ];
 
-      pdf.addImage(imageData, "PNG", margin, margin, renderWidth, renderHeight, undefined, "FAST");
-      remainingHeight -= pageHeight - margin * 2;
+      const drawSectionTable = (title, head, body, options = {}) => {
+        const startY = (pdf.lastAutoTable?.finalY || 92) + 18;
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(11);
+        pdf.setTextColor(24, 54, 47);
+        pdf.text(title, marginX, startY);
+        autoTable(pdf, {
+          startY: startY + 8,
+          head: [head],
+          body,
+          margin: { left: marginX, right: marginX },
+          tableWidth: printableWidth,
+          styles: { fontSize: 8, cellPadding: 5, lineColor: [220, 228, 224], lineWidth: 0.4, textColor: [38, 48, 58] },
+          headStyles: { fillColor: [22, 107, 87], textColor: [255, 255, 255], fontSize: 8.5 },
+          alternateRowStyles: { fillColor: [247, 250, 248] },
+          ...options,
+        });
+      };
 
-      while (remainingHeight > 0) {
-        offsetY -= pageHeight - margin * 2;
-        pdf.addPage();
-        pdf.addImage(imageData, "PNG", margin, margin + offsetY, renderWidth, renderHeight, undefined, "FAST");
-        remainingHeight -= pageHeight - margin * 2;
+      pdf.setFillColor(17, 75, 62);
+      pdf.rect(0, 0, pageWidth, 62, "F");
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(18);
+      pdf.text(`Dashboard COPMEC · ${activeAreaLabel}`, marginX, 28);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+      pdf.text("Reporte exportado con datos estructurados del dashboard filtrado.", marginX, 46);
+
+      drawSectionTable("Filtros aplicados", ["Filtro", "Valor"], filterSummaryRows, { columnStyles: { 0: { cellWidth: 120 }, 1: { cellWidth: printableWidth - 120 } } });
+      drawSectionTable("Resumen ejecutivo", ["Indicador", "Valor", "Detalle"], executiveRows);
+      drawSectionTable("Desempeño por player", ["Player", "Promedio (min)", "Cierres"], dashboardResponsibleRows.map((item) => [item.label, formatMetricNumber(item.averageMinutes, 2), String(item.totalRecords)]));
+      drawSectionTable("Actividad vs tiempo objetivo", ["Actividad", "Promedio", "Límite", "Cumplimiento"], dashboardActivityRows.map((item) => [item.label, `${formatMetricNumber(item.averageMinutes, 1)} min`, `${item.limitMinutes} min`, item.exceeded ? "Excedido" : "Dentro de límite"]));
+      drawSectionTable("Distribución de carga", ["Player", "Registros", "Participación"], dashboardDistributionRows.map((item) => [item.label, String(item.count), `${formatMetricNumber(item.percent, 1)}%`]));
+      drawSectionTable("Catálogo por tipo", ["Tipo", "Actividades"], dashboardCatalogTypeRows.map((item) => [item.label, String(item.value)]));
+      drawSectionTable("Catálogo por frecuencia", ["Frecuencia", "Actividades"], dashboardCatalogFrequencyRows.map((item) => [item.label, String(item.value)]));
+      drawSectionTable("Tendencia", ["Periodo", "Registros", "Cerrados", "Horas"], dashboardTrendRows.map((item) => [item.label, String(item.total), String(item.completed), formatMetricNumber(item.totalSeconds / 3600, 1)]));
+      drawSectionTable("Resumen por área", ["Área", "Registros", "Cerrados", "Promedio", "SLA", "Tableros"], dashboardAreaRows.map((item) => [item.area, String(item.total), String(item.completed), `${formatMetricNumber(item.averageMinutes, 1)} min`, `${formatMetricNumber(item.slaPercent, 1)}%`, String(item.boardCount)]));
+      drawSectionTable("Pareto de incidencias", ["Incidencia", "Impacto", "Eventos", "%", "% acumulado"], dashboardParetoRows.map((item) => [item.label, `${Math.round(item.impactSeconds / 60)} min`, String(item.count), `${formatMetricNumber(item.percent, 1)}%`, `${formatMetricNumber(item.cumulativePercent, 1)}%`]));
+      drawSectionTable("Ishikawa operativo", ["Categoría", "Impacto", "Eventos", "Ejemplos"], dashboardIshikawaRows.map((item) => [item.category, `${formatMetricNumber(item.impact, 1)}%`, String(item.count), (item.examples || []).join(" · ")]));
+      drawSectionTable("Registros fuera de SLA", ["Operación", "Fuente", "Player", "Tiempo real", "Límite", "Exceso"], dashboardMetrics.exceeded.map((record) => [record.label, record.sourceLabel, record.responsibleName, formatMinutes(record.durationSeconds / 60), `${record.limitMinutes} min`, `${Math.max(0, Math.round(record.durationSeconds / 60 - record.limitMinutes))} min`]));
+      drawSectionTable("Top de pausas", ["Motivo", "Pausas", "Minutos", "Impacto"], pauseAnalysis.map((item) => [item.reason || "Sin motivo", String(item.count), String(Math.round(item.totalSeconds / 60)), `${formatMetricNumber(item.percent, 1)}%`]));
+
+      const totalPages = pdf.getNumberOfPages();
+      for (let pageIndex = 1; pageIndex <= totalPages; pageIndex += 1) {
+        pdf.setPage(pageIndex);
+        pdf.setFontSize(8);
+        pdf.setTextColor(116, 128, 143);
+        pdf.text(`Página ${pageIndex} de ${totalPages}`, pageWidth - marginX - 58, pdf.internal.pageSize.getHeight() - 16);
       }
 
       const hasDateRange = dashboardFilters.startDate || dashboardFilters.endDate;
-      const fileSuffix = hasDateRange ? `${dashboardFilters.startDate || "inicio"}-${dashboardFilters.endDate || "fin"}` : "visible";
+      const fileSuffix = hasDateRange ? `${dashboardFilters.startDate || "inicio"}-${dashboardFilters.endDate || "fin"}` : activeAreaLabel.toLowerCase().replaceAll(/\s+/g, "-");
       pdf.save(`dashboard-copmec-${fileSuffix}.pdf`);
     } finally {
       setIsExportingPdf(false);
     }
   }
+
+  const executiveKpiCards = [
+    { title: "Registros analizados", value: String(dashboardMetrics.total), subtitle: "actividades y filas dentro del filtro", tone: "cyan", icon: ClipboardList },
+    { title: "Cerrados", value: String(dashboardMetrics.completed), subtitle: "registros terminados", tone: "green", icon: CircleCheckBig },
+    { title: "En curso", value: String(dashboardMetrics.running), subtitle: "operaciones activas", tone: "amber", icon: Play },
+    { title: "Pausados", value: String(dashboardMetrics.paused), subtitle: "registros detenidos", tone: "red", icon: PauseCircle },
+    { title: "Tiempo promedio", value: formatMetricNumber(dashboardMetrics.averageMinutes, 2), subtitle: "minutos promedio de cierre", tone: "cyan", icon: Gauge },
+    { title: "Mediana", value: formatMetricNumber(dashboardMetrics.medianMinutes, 2), subtitle: "punto medio del tiempo de ciclo", tone: "slate", icon: Clock3 },
+    { title: "Horas efectivas", value: formatMetricNumber(dashboardMetrics.totalHours, 1), subtitle: "tiempo completado acumulado", tone: "green", icon: CalendarDays },
+    { title: "Cumplimiento SLA", value: formatMetricNumber(dashboardMetrics.withinPercent, 1), subtitle: "porcentaje dentro del límite", tone: "lime", icon: Zap },
+    { title: "Fuera de SLA", value: formatMetricNumber(dashboardMetrics.outsidePercent, 1), subtitle: "proporción fuera del objetivo", tone: "amber", icon: AlertTriangle },
+    { title: "Pausas registradas", value: String(dashboardMetrics.pauseCount), subtitle: "interrupciones con log", tone: "slate", icon: Pause },
+    { title: "Horas en pausa", value: formatMetricNumber(dashboardMetrics.pauseHours, 1), subtitle: "tiempo no productivo", tone: "red", icon: OctagonAlert },
+    { title: "Áreas activas", value: String(dashboardMetrics.areaCount), subtitle: "áreas con movimiento operativo", tone: "cyan", icon: Users },
+    { title: "Catálogo activo", value: String(dashboardMetrics.catalogActiveCount), subtitle: "actividades disponibles", tone: "slate", icon: ClipboardList },
+    { title: "Obligatorias", value: String(dashboardMetrics.catalogMandatoryCount), subtitle: "actividades base", tone: "green", icon: CircleCheckBig },
+    { title: "Ocasionales", value: String(dashboardMetrics.catalogOptionalCount), subtitle: "actividades complementarias", tone: "amber", icon: PauseCircle },
+    { title: "Frecuencias activas", value: String(dashboardMetrics.catalogFrequencyTypes), subtitle: "tipos de periodicidad en uso", tone: "cyan", icon: CalendarDays },
+  ];
 
   return (
     <section ref={dashboardExportRef} className="dashboard-page">
@@ -242,24 +333,6 @@ export default function PanelIndicadores({ contexto }) {
         <div>
           <h3>Dashboard COPMEC</h3>
           <p>Vista ejecutiva consolidada por semana, quincena o mes, con lectura por player y por área.</p>
-        </div>
-        <div className="dashboard-topbar-actions">
-          <button type="button" className="icon-button" onClick={exportDashboardToPdf} disabled={isExportingPdf}>
-            <Download size={15} /> {isExportingPdf ? "Exportando PDF..." : "Exportar PDF"}
-          </button>
-          <button
-            type="button"
-            className="icon-button"
-            onClick={() => setDashboardSectionsOpen({
-              executive: !areAllSectionsOpen,
-              people: !areAllSectionsOpen,
-              trends: !areAllSectionsOpen,
-              causes: !areAllSectionsOpen,
-              alerts: !areAllSectionsOpen,
-            })}
-          >
-            {areAllSectionsOpen ? "Contraer todo" : "Expandir todo"}
-          </button>
         </div>
         <div className="dashboard-filter-panel">
           <div className="dashboard-filter-row">
@@ -280,9 +353,9 @@ export default function PanelIndicadores({ contexto }) {
             </label>
             <label className="dashboard-filter-field">
               <span>Área</span>
-              <select value={dashboardFilters.area} onChange={(event) => setDashboardFilters((current) => ({ ...current, area: event.target.value }))}>
+              <select value={dashboardFilters.area} onChange={(event) => setDashboardFilters((current) => ({ ...current, area: event.target.value, responsibleId: "all" }))}>
                 <option value="all">Todas las áreas</option>
-                {departmentOptions.map((department) => <option key={department} value={department}>{department}</option>)}
+                {dashboardAreaTabOptions.filter((item) => item.value !== "all").map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
               </select>
             </label>
             <label className="dashboard-filter-field">
@@ -293,30 +366,50 @@ export default function PanelIndicadores({ contexto }) {
                 <option value="board">Tableros operativos</option>
               </select>
             </label>
+            <div className="dashboard-filter-actions" role="group" aria-label="Acciones del dashboard">
+              <button
+                type="button"
+                className="icon-button dashboard-filter-icon-button"
+                onClick={exportDashboardToPdf}
+                disabled={isExportingPdf}
+                title={isExportingPdf ? "Exportando PDF de datos" : "Exportar PDF"}
+                aria-label={isExportingPdf ? "Exportando PDF de datos" : "Exportar PDF"}
+              >
+                <Download size={16} />
+              </button>
+              <button
+                type="button"
+                className="icon-button dashboard-filter-icon-button"
+                onClick={() => setDashboardSectionsOpen({
+                  executive: !areAllSectionsOpen,
+                  people: !areAllSectionsOpen,
+                  trends: !areAllSectionsOpen,
+                  causes: !areAllSectionsOpen,
+                  alerts: !areAllSectionsOpen,
+                })}
+                title={areAllSectionsOpen ? "Contraer todo" : "Expandir todo"}
+                aria-label={areAllSectionsOpen ? "Contraer todo" : "Expandir todo"}
+                aria-pressed={areAllSectionsOpen}
+              >
+                {areAllSectionsOpen ? <PauseCircle size={16} /> : <Play size={16} />}
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       <DashboardSection title="Resumen ejecutivo" subtitle="KPIs principales para una lectura rápida del periodo filtrado." summary={`${dashboardMetrics.total} registros · ${dashboardMetrics.completed} cerrados · ${dashboardMetrics.areaCount} áreas`} icon={Gauge} open={dashboardSectionsOpen.executive} onToggle={() => setDashboardSectionsOpen((current) => ({ ...current, executive: !current.executive }))}>
-        <div className="dashboard-kpi-grid dashboard-kpi-grid-main">
-          <DashboardKpiCard title="Registros analizados" value={String(dashboardMetrics.total)} subtitle="actividades y filas dentro del filtro" tone="cyan" icon={ClipboardList} />
-          <DashboardKpiCard title="Cerrados" value={String(dashboardMetrics.completed)} subtitle="registros terminados" tone="green" icon={CircleCheckBig} />
-          <DashboardKpiCard title="En curso" value={String(dashboardMetrics.running)} subtitle="operaciones activas" tone="amber" icon={Play} />
-          <DashboardKpiCard title="Pausados" value={String(dashboardMetrics.paused)} subtitle="registros detenidos" tone="red" icon={PauseCircle} />
-        </div>
-
-        <div className="dashboard-kpi-grid dashboard-kpi-grid-secondary dashboard-kpi-grid-wide">
-          <DashboardKpiCard title="Tiempo promedio" value={formatMetricNumber(dashboardMetrics.averageMinutes, 2)} subtitle="minutos promedio de cierre" tone="cyan" icon={Gauge} />
-          <DashboardKpiCard title="Mediana" value={formatMetricNumber(dashboardMetrics.medianMinutes, 2)} subtitle="punto medio del tiempo de ciclo" tone="slate" icon={Clock3} />
-          <DashboardKpiCard title="Horas efectivas" value={formatMetricNumber(dashboardMetrics.totalHours, 1)} subtitle="tiempo completado acumulado" tone="green" icon={CalendarDays} />
-          <DashboardKpiCard title="Cumplimiento SLA" value={formatMetricNumber(dashboardMetrics.withinPercent, 1)} subtitle="porcentaje dentro del límite" tone="lime" icon={Zap} />
-        </div>
-
-        <div className="dashboard-kpi-grid dashboard-kpi-grid-secondary dashboard-kpi-grid-wide">
-          <DashboardKpiCard title="Fuera de SLA" value={formatMetricNumber(dashboardMetrics.outsidePercent, 1)} subtitle="proporción fuera del objetivo" tone="amber" icon={AlertTriangle} />
-          <DashboardKpiCard title="Pausas registradas" value={String(dashboardMetrics.pauseCount)} subtitle="interrupciones con log" tone="slate" icon={Pause} />
-          <DashboardKpiCard title="Horas en pausa" value={formatMetricNumber(dashboardMetrics.pauseHours, 1)} subtitle="tiempo no productivo" tone="red" icon={OctagonAlert} />
-          <DashboardKpiCard title="Áreas activas" value={String(dashboardMetrics.areaCount)} subtitle="áreas con movimiento operativo" tone="cyan" icon={Users} />
+        <div className="dashboard-kpi-grid dashboard-kpi-grid-executive">
+          {executiveKpiCards.map((item) => (
+            <DashboardKpiCard
+              key={item.title}
+              title={item.title}
+              value={item.value}
+              subtitle={item.subtitle}
+              tone={item.tone}
+              icon={item.icon}
+            />
+          ))}
         </div>
       </DashboardSection>
 
@@ -369,6 +462,70 @@ export default function PanelIndicadores({ contexto }) {
             <div className="dashboard-progress-list dashboard-distribution-list">
               {dashboardDistributionRows.map((item) => (
                 <DashboardProgressMetric key={item.responsibleId} label={item.label} valueText={`${item.count} registros · ${Math.round(item.percent)}%`} percent={item.percent} color={item.color} />
+              ))}
+            </div>
+          </article>
+        </div>
+
+        <div className="dashboard-main-grid dashboard-lower-middle-grid">
+          <article className="dashboard-panel dashboard-panel-half">
+            <div className="dashboard-panel-header">
+              <h3>Tipo de Actividades (Catálogo)</h3>
+              <PieChart size={18} />
+            </div>
+            <DashboardColumnChart
+              rows={dashboardCatalogTypeRows.map((item) => ({
+                key: item.id,
+                label: item.label,
+                value: item.value,
+                valueLabel: `${item.value}`,
+                tooltip: `${item.value} actividades ${item.label.toLowerCase()}`,
+                color: item.id === "mandatory"
+                  ? "linear-gradient(180deg, #16a34a 0%, #86efac 100%)"
+                  : "linear-gradient(180deg, #f59e0b 0%, #fde68a 100%)",
+              }))}
+              emptyLabel="No hay actividades en catálogo para este análisis."
+            />
+            <div className="dashboard-progress-list">
+              {dashboardCatalogTypeRows.map((item) => (
+                <DashboardProgressMetric
+                  key={item.id}
+                  label={item.label}
+                  valueText={`${item.value} actividades`}
+                  percent={dashboardMetrics.catalogActiveCount ? (item.value / dashboardMetrics.catalogActiveCount) * 100 : 0}
+                  color={item.id === "mandatory" ? "linear-gradient(90deg, #16a34a 0%, #86efac 100%)" : "linear-gradient(90deg, #f59e0b 0%, #fde68a 100%)"}
+                />
+              ))}
+            </div>
+          </article>
+
+          <article className="dashboard-panel dashboard-panel-half">
+            <div className="dashboard-panel-header">
+              <h3>Frecuencia de Actividades (Catálogo)</h3>
+              <Clock3 size={18} />
+            </div>
+            <DashboardColumnChart
+              rows={dashboardCatalogFrequencyRows.map((item) => ({
+                key: item.id,
+                label: item.label,
+                value: item.value,
+                valueLabel: `${item.value}`,
+                tooltip: `${item.value} actividades con frecuencia ${item.label.toLowerCase()}`,
+                color: "linear-gradient(180deg, #0ea5e9 0%, #22d3ee 100%)",
+              }))}
+              emptyLabel="No hay frecuencias registradas en el catálogo."
+            />
+            <div className="dashboard-bars-list">
+              {dashboardCatalogFrequencyRows.map((item) => (
+                <DashboardBarRow
+                  key={item.id}
+                  label={getActivityFrequencyLabel(item.id)}
+                  value={item.value}
+                  max={Math.max(...dashboardCatalogFrequencyRows.map((row) => row.value), 1)}
+                  color="linear-gradient(90deg, #0ea5e9 0%, #22d3ee 100%)"
+                  trailing={`${item.value} actividades`}
+                  initial={item.label.charAt(0).toUpperCase()}
+                />
               ))}
             </div>
           </article>
@@ -471,7 +628,7 @@ export default function PanelIndicadores({ contexto }) {
                   <tr>
                     <th>Operación</th>
                     <th>Fuente</th>
-                    <th>Asociado</th>
+                    <th>Player</th>
                     <th>Tiempo Real</th>
                     <th>Límite</th>
                     <th>Exceso</th>

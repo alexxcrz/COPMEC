@@ -38,7 +38,7 @@ export function WarehouseCreatedBoardsPage(props) {
               <span className="chip">Filas: {(board.rows || []).length}</span>
             </div>
             <div className="board-meta-inline">
-              <span>Asociado principal · {userMap.get(board.ownerId)?.name || "N/A"}</span>
+              <span>Player principal · {userMap.get(board.ownerId)?.name || "N/A"}</span>
               <span>Creó · {userMap.get(board.createdById)?.name || "N/A"}</span>
               {(board.accessUserIds || []).length ? <span>Acceso · {(board.accessUserIds || []).map((userId) => userMap.get(userId)?.name || "N/A").join(", ")}</span> : null}
             </div>

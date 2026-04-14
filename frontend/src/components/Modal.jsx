@@ -33,6 +33,15 @@ export function Modal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose, onConfirm]);
 
+  useEffect(() => {
+    if (!open) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
   if (!open) return null;
 
   return (
@@ -45,7 +54,7 @@ export function Modal({
         onClick={(event) => event.stopPropagation()}
       >
         <h3>{title}</h3>
-        <div>{children}</div>
+        <div className="sicfla-modal-body">{children}</div>
         <footer className="sicfla-modal-actions">
           {footerActions}
           {hideCancel ? null : (

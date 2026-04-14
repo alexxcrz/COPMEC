@@ -20,9 +20,12 @@ export function BoardComponentStudioModal({
   catalog,
   inventoryItems,
   visibleUsers,
+  sectionOptions,
+  activityCategoryOptions,
   contextoConstructor,
 }) {
   const {
+    BOARD_ACTIVITY_LIST_FIELD,
     BOARD_FIELD_TYPES,
     BOARD_FIELD_WIDTHS,
     COLOR_RULE_OPERATORS,
@@ -37,12 +40,19 @@ export function BoardComponentStudioModal({
     { title: "Tipo", subtitle: "Qué componente necesitas" },
     { title: "Base", subtitle: "Nombre y estructura" },
     { title: "Reglas", subtitle: "Automatización y color" },
-    { title: "Resumen", subtitle: "Revisión final" },
   ];
   const [currentStep, setCurrentStep] = useState(0);
   const selectedType = draft.fieldType;
   const selectedTypeOption = BOARD_FIELD_TYPES.find((type) => type.value === selectedType);
+  const normalizedActivityCategoryOptions = Array.from(new Set((activityCategoryOptions || []).map((option) => String(option || "").trim()).filter(Boolean)));
+  const trimmedActivityCategory = String(draft.optionCatalogCategory || "").trim();
+  const matchedActivityCategory = normalizedActivityCategoryOptions.find((option) => option.toLowerCase() === trimmedActivityCategory.toLowerCase()) || "";
+  const hasCustomActivityCategory = Boolean(trimmedActivityCategory) && !matchedActivityCategory;
+  const activityCategorySelectionValue = hasCustomActivityCategory ? "__custom__" : matchedActivityCategory || "";
   const showOptionSource = selectedType === "select";
+  const showManualOptions = showOptionSource && draft.optionSource === "manual";
+  const showActivityListSelector = selectedType === BOARD_ACTIVITY_LIST_FIELD;
+  const showCustomActivityCategoryInput = showActivityListSelector && activityCategorySelectionValue === "__custom__";
   const showInventoryProperty = selectedType === "inventoryProperty";
   const showFormulaFields = selectedType === "formula";
   const showColorRules = selectedType !== "formula";
@@ -55,20 +65,106 @@ export function BoardComponentStudioModal({
     : getBoardFieldTypeDescription(selectedType);
   const colorOperatorNeedsValue = !["isEmpty", "isNotEmpty", "isTrue", "isFalse"].includes(draft.colorOperator);
   const colorValueUsesBooleanSelect = selectedType === "boolean" && ["equals", "notEquals"].includes(draft.colorOperator);
+  const [feedback, setFeedback] = useState({ type: "", message: "" });
 
   useEffect(() => {
     if (open) {
       setCurrentStep(0);
+      setFeedback({ type: "", message: "" });
     }
   }, [open, mode]);
 
   const isLastStep = currentStep === studioSteps.length - 1;
+  const availableBoardFieldTypes = BOARD_FIELD_TYPES.filter((type) => type.value !== INVENTORY_LOOKUP_LOGISTICS_FIELD);
+  const inventorySourceFields = (draft.columns || []).filter((column) => ["inventoryLookup", INVENTORY_LOOKUP_LOGISTICS_FIELD].includes(column.type));
+  const resolvedInventorySourceFieldId = inventorySourceFields.some((column) => column.id === draft.sourceFieldId)
+    ? draft.sourceFieldId
+    : inventorySourceFields[inventorySourceFields.length - 1]?.id || "";
+  const selectedInventorySourceField = inventorySourceFields.find((column) => column.id === resolvedInventorySourceFieldId) || null;
+
+  useEffect(() => {
+    if (!open || selectedType !== "inventoryProperty") return;
+    if ((draft.sourceFieldId || "") === resolvedInventorySourceFieldId) return;
+    onChange((current) => ({
+      ...current,
+      sourceFieldId: resolvedInventorySourceFieldId,
+    }));
+  }, [draft.sourceFieldId, onChange, open, resolvedInventorySourceFieldId, selectedType]);
+
+  function formatInventorySourceFieldLabel(column) {
+    const sectionLabel = String(column?.groupName || "").trim();
+    return sectionLabel ? `${column.label} · ${sectionLabel}` : column?.label || "Buscador";
+  }
+
+  function validateField() {
+    if (!draft.fieldLabel.trim()) {
+      setFeedback({ type: "error", message: "Escribe una etiqueta para el campo antes de continuar." });
+      return false;
+    }
+    if (selectedType === BOARD_ACTIVITY_LIST_FIELD && !trimmedActivityCategory) {
+      setFeedback({ type: "error", message: "Selecciona una lista existente o escribe una nueva para este componente." });
+      return false;
+    }
+    if (selectedType === "inventoryProperty" && !inventorySourceFields.length) {
+      setFeedback({ type: "error", message: "Agrega primero un Buscador de inventario antes de crear un dato derivado." });
+      return false;
+    }
+    if (selectedType === "inventoryProperty" && !resolvedInventorySourceFieldId) {
+      setFeedback({ type: "error", message: "Selecciona el buscador de inventario que alimentará este dato." });
+      return false;
+    }
+    setFeedback({ type: "", message: "" });
+    return true;
+  }
+
+  function handleTypeSelection(nextType) {
+    onChange((current) => {
+      const nextDraft = { ...current, fieldType: nextType };
+      if (nextType === BOARD_ACTIVITY_LIST_FIELD) {
+        nextDraft.optionSource = "catalogByCategory";
+        if (!String(current.optionCatalogCategory || "").trim()) {
+          nextDraft.optionCatalogCategory = normalizedActivityCategoryOptions[0] || "";
+        }
+        return nextDraft;
+      }
+      if (nextType === "inventoryProperty") {
+        const sourceFields = (current.columns || []).filter((column) => ["inventoryLookup", INVENTORY_LOOKUP_LOGISTICS_FIELD].includes(column.type));
+        const fallbackSourceFieldId = sourceFields.some((column) => column.id === current.sourceFieldId)
+          ? current.sourceFieldId
+          : sourceFields[sourceFields.length - 1]?.id || "";
+        nextDraft.sourceFieldId = fallbackSourceFieldId;
+        nextDraft.inventoryProperty = current.inventoryProperty || "code";
+        return nextDraft;
+      }
+      if (nextType === "select") {
+        nextDraft.optionSource = current.optionSource && current.optionSource !== "catalogByCategory" ? current.optionSource : "manual";
+      }
+      return nextDraft;
+    });
+  }
+
+  function handleActivityCategorySelection(nextValue) {
+    onChange((current) => {
+      if (nextValue === "__custom__") {
+        return {
+          ...current,
+          optionCatalogCategory: hasCustomActivityCategory ? trimmedActivityCategory : "",
+        };
+      }
+      return {
+        ...current,
+        optionCatalogCategory: nextValue,
+      };
+    });
+  }
 
   function handleStepConfirm() {
     if (!isLastStep) {
       setCurrentStep((step) => Math.min(step + 1, studioSteps.length - 1));
+      setFeedback({ type: "", message: "" });
       return;
     }
+    if (!validateField()) return;
     onConfirm();
   }
 
@@ -108,6 +204,12 @@ export function BoardComponentStudioModal({
       ) : <div className="component-studio-footer-progress">Paso 1 de {studioSteps.length}</div>}
     >
       <div className="component-studio-shell">
+        {feedback.message ? (
+          <div className={`feedback-banner feedback-${feedback.type}`}>
+            <strong>{feedback.type === "error" ? "Atención" : "Confirmado"}</strong>
+            <p>{feedback.message}</p>
+          </div>
+        ) : null}
         <div className="component-studio-intro">
           <span className="chip primary">{mode === "edit" ? "Edición guiada" : "Diseño guiado"}</span>
           <p>{mode === "edit" ? "Actualiza este componente sin perder orden ni claridad en el tablero." : "Ahora el alta va por pasos para que primero elijas qué necesitas y después configures solo lo importante."}</p>
@@ -132,22 +234,7 @@ export function BoardComponentStudioModal({
 
         {currentStep === 0 ? (
           <>
-            <section className="component-studio-section">
-              <div className="component-studio-section-head">
-                <h4>1. Tipo de componente</h4>
-                <p>Elige qué tipo de dato capturará o calculará esta celda.</p>
-              </div>
-              <div className="component-type-grid">
-                {BOARD_FIELD_TYPES.map((type) => (
-                  <button key={type.value} type="button" className={draft.fieldType === type.value ? "component-type-card active" : "component-type-card"} onClick={() => onChange((current) => ({ ...current, fieldType: type.value }))}>
-                    <strong>{type.label}</strong>
-                    <span>{getBoardFieldTypeDescription(type.value)}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            <section className="component-studio-section component-studio-spotlight">
+            <section className="component-studio-section component-studio-spotlight component-studio-spotlight-compact">
               <div>
                 <span className="chip primary">Para qué sirve</span>
                 <strong>{selectedTypeOption?.label || "Componente"}</strong>
@@ -162,61 +249,84 @@ export function BoardComponentStudioModal({
                 </div>
               ) : null}
             </section>
+
+            <section className="component-studio-section">
+              <div className="component-studio-section-head">
+                <h4>1. Tipo de componente</h4>
+                <p>Elige qué tipo de dato capturará o calculará esta celda.</p>
+              </div>
+              <div className="component-type-grid">
+                {availableBoardFieldTypes.map((type) => (
+                  <button key={type.value} type="button" className={draft.fieldType === type.value ? "component-type-card active" : "component-type-card"} onClick={() => handleTypeSelection(type.value)}>
+                    <strong>{type.label}</strong>
+                  </button>
+                ))}
+              </div>
+            </section>
           </>
         ) : null}
 
         {currentStep === 1 ? (
           <section className="component-studio-section component-studio-config-grid">
-            <div className="component-studio-section-head component-studio-field-span-2">
+            <div className="component-studio-section-head component-studio-field-span-full">
               <div>
                 <h4>2. Datos base</h4>
                 <p>Define el nombre, la sección y la ayuda visual del componente.</p>
               </div>
             </div>
-            <label className="app-modal-field">
-              <span>Sección</span>
-              <input value={draft.groupName} onChange={(event) => onChange((current) => ({ ...current, groupName: event.target.value }))} placeholder="Ej: Identificación, Validación, Cierre" />
+            <label className="app-modal-field component-studio-field-span-2">
+              <span>Sección<span className="required-mark" aria-hidden="true"> *</span></span>
+              <select value={draft.groupName} onChange={(event) => onChange((current) => ({ ...current, groupName: event.target.value }))}>
+                {(sectionOptions || ["General"]).map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
               <small className="builder-help-text">Agrupa componentes relacionados para mantener el tablero ordenado.</small>
             </label>
-            <label className="app-modal-field">
+            <label className="app-modal-field component-studio-color-field">
               <span>Color de sección</span>
               <input type="color" value={draft.groupColor} onChange={(event) => onChange((current) => ({ ...current, groupColor: event.target.value }))} />
-              <small className="builder-help-text">Color visual rápido para identificar este bloque de columnas.</small>
             </label>
             <label className="app-modal-field component-studio-field-span-2">
-              <span>Nombre visible</span>
+              <span>Nombre visible<span className="required-mark" aria-hidden="true"> *</span></span>
               <input value={draft.fieldLabel} onChange={(event) => onChange((current) => ({ ...current, fieldLabel: event.target.value }))} placeholder="Ej: SKU, Piezas surtidas, Fecha de corte" />
               <small className="builder-help-text">Es el nombre que verá el equipo en la cabecera del tablero.</small>
             </label>
             <label className="app-modal-field component-studio-field-span-2">
               <span>Ayuda corta</span>
               <input value={draft.fieldHelp} onChange={(event) => onChange((current) => ({ ...current, fieldHelp: event.target.value }))} placeholder="Ej: Selecciona el producto para autollenar datos" />
-              <small className="builder-help-text">Sirve para explicar rápido qué debe capturarse aquí.</small>
             </label>
             <label className="app-modal-field component-studio-field-span-2">
               <span>Placeholder</span>
               <input value={draft.placeholder} onChange={(event) => onChange((current) => ({ ...current, placeholder: event.target.value }))} placeholder="Ej: Escribe el folio o el comentario" />
-              <small className="builder-help-text">Texto guía dentro de la celda antes de capturar algo.</small>
             </label>
             <label className="app-modal-field">
               <span>Valor inicial</span>
               <input value={draft.defaultValue} onChange={(event) => onChange((current) => ({ ...current, defaultValue: event.target.value }))} placeholder="Ej: Pendiente, 0, No o una fecha" />
               <small className="builder-help-text">Se coloca automáticamente cuando se crea una fila nueva.</small>
             </label>
-            <label className="app-modal-field">
-              <span>Ancho</span>
+            <label className="app-modal-field component-studio-field-compact">
+              <span>Ancho<span className="required-mark" aria-hidden="true"> *</span></span>
               <select value={draft.fieldWidth} onChange={(event) => onChange((current) => ({ ...current, fieldWidth: event.target.value }))}>
                 {BOARD_FIELD_WIDTHS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
-              <small className="builder-help-text">Controla cuánto espacio visual ocupará la columna.</small>
             </label>
-            <label className="app-modal-field">
+            <label className="app-modal-field component-studio-field-compact">
               <span>Campo obligatorio</span>
               <select value={draft.isRequired} onChange={(event) => onChange((current) => ({ ...current, isRequired: event.target.value }))}>
                 <option value="false">No</option>
                 <option value="true">Sí</option>
               </select>
-              <small className="builder-help-text">Marca la columna como clave para la operación.</small>
+            </label>
+            <label className="app-modal-field component-studio-field-span-2 component-studio-manual-width-field">
+              <span>Ancho manual (px)</span>
+              <input
+                type="range"
+                min="90"
+                max="520"
+                step="10"
+                value={draft.fieldWidthPx || "180"}
+                onChange={(event) => onChange((current) => ({ ...current, fieldWidthPx: event.target.value }))}
+              />
+              <small className="builder-help-text">{draft.fieldWidthPx || "180"} px</small>
             </label>
           </section>
         ) : null}
@@ -238,51 +348,82 @@ export function BoardComponentStudioModal({
               </section>
             ) : null}
 
+            {showActivityListSelector ? (
+              <section className="component-studio-section three-columns component-studio-short-grid">
+                <label className="app-modal-field">
+                  <span>Lista de actividades<span className="required-mark" aria-hidden="true"> *</span></span>
+                  <select value={activityCategorySelectionValue} onChange={(event) => handleActivityCategorySelection(event.target.value)}>
+                    <option value="">Seleccionar lista...</option>
+                    {normalizedActivityCategoryOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                    <option value="__custom__">Crear nueva lista...</option>
+                  </select>
+                  <small className="builder-help-text">Selecciona una lista existente o crea aquí mismo el nombre de una nueva para este tablero.</small>
+                </label>
+                {showCustomActivityCategoryInput ? (
+                  <label className="app-modal-field">
+                    <span>Nueva lista<span className="required-mark" aria-hidden="true"> *</span></span>
+                    <input value={draft.optionCatalogCategory} onChange={(event) => onChange((current) => ({ ...current, optionCatalogCategory: event.target.value }))} placeholder="Ej: Arranque de turno" />
+                    <small className="builder-help-text">Si aún no tiene actividades, podrás usar este mismo nombre después en el catálogo.</small>
+                  </label>
+                ) : <div className="component-rule-hint compact-surface-card"><strong>Tablero precargado</strong><p>Cada actividad de la lista elegida se convertirá en una fila del tablero.</p></div>}
+                <div className="component-rule-hint compact-surface-card"><strong>No es un desplegable</strong><p>Si necesitas un menú dentro de cada fila, usa el tipo Menú desplegable.</p></div>
+              </section>
+            ) : null}
+
             {showOptionSource ? (
               <section className="component-studio-section three-columns component-studio-short-grid">
                 <label className="app-modal-field">
-                  <span>Fuente de menú</span>
+                  <span>Origen de datos<span className="required-mark" aria-hidden="true"> *</span></span>
                   <select value={draft.optionSource} onChange={(event) => onChange((current) => ({ ...current, optionSource: event.target.value }))}>
                     {OPTION_SOURCE_TYPES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                   </select>
-                  <small className="builder-help-text">Define de dónde saldrán las opciones que verá el usuario.</small>
+                  <small className="builder-help-text">Define si el menú tomará sus opciones de forma manual, desde players, inventario o catálogo.</small>
                 </label>
-                <label className="app-modal-field">
-                  <span>Opciones manuales</span>
-                  <input value={draft.optionsText} onChange={(event) => onChange((current) => ({ ...current, optionsText: event.target.value }))} placeholder="Ej: Alta, Media, Baja" />
-                  <small className="builder-help-text">Escribe opciones separadas por coma si no vienen de otro catálogo.</small>
-                </label>
+                {showManualOptions ? (
+                  <label className="app-modal-field">
+                    <span>Opciones manuales</span>
+                    <input value={draft.optionsText} onChange={(event) => onChange((current) => ({ ...current, optionsText: event.target.value }))} placeholder="Ej: Alta, Media, Baja" />
+                    <small className="builder-help-text">Escribe opciones separadas por coma si no vienen de otro catálogo.</small>
+                  </label>
+                ) : <div className="component-rule-hint compact-surface-card"><strong>Origen conectado</strong><p>Las opciones del menú se llenarán automáticamente desde {OPTION_SOURCE_TYPES.find((option) => option.value === draft.optionSource)?.label || "otra fuente"}.</p></div>}
+                <div className="component-rule-hint compact-surface-card"><strong>Desplegable real</strong><p>Este componente sí muestra un menú dentro de cada fila del tablero.</p></div>
               </section>
             ) : null}
 
             {showInventoryProperty ? (
-              <section className="component-studio-section three-columns component-studio-short-grid">
-                <label className="app-modal-field">
-                  <span>Campo origen</span>
-                  <select value={draft.sourceFieldId} onChange={(event) => onChange((current) => ({ ...current, sourceFieldId: event.target.value }))}>
-                    <option value="">Seleccionar...</option>
-                    {draft.columns.map((column) => <option key={column.id} value={column.id}>{column.label}</option>)}
-                  </select>
-                  <small className="builder-help-text">Elige el buscador de inventario del que se tomará la información.</small>
-                </label>
-                <label className="app-modal-field">
-                  <span>Dato de inventario</span>
-                  <select value={draft.inventoryProperty} onChange={(event) => onChange((current) => ({ ...current, inventoryProperty: event.target.value }))}>
-                    {INVENTORY_PROPERTIES.map((property) => <option key={property.value} value={property.value}>{property.label}</option>)}
-                  </select>
-                  <small className="builder-help-text">Trae automáticamente código, nombre, presentación o conversiones.</small>
-                </label>
-                <div className="component-rule-hint compact-surface-card">
-                  <strong>Atajo visual</strong>
-                  <p>Estos selectores cortos quedan alineados en una sola fila para capturar más rápido.</p>
-                </div>
-              </section>
+              inventorySourceFields.length ? (
+                <section className="component-studio-section three-columns component-studio-short-grid">
+                  <label className="app-modal-field">
+                    <span>Campo origen</span>
+                    <select value={resolvedInventorySourceFieldId} onChange={(event) => onChange((current) => ({ ...current, sourceFieldId: event.target.value }))}>
+                      {inventorySourceFields.map((column) => <option key={column.id} value={column.id}>{formatInventorySourceFieldLabel(column)}</option>)}
+                    </select>
+                    <small className="builder-help-text">Elige el buscador de inventario del que se tomará la información.</small>
+                  </label>
+                  <label className="app-modal-field">
+                    <span>Dato de inventario</span>
+                    <select value={draft.inventoryProperty} onChange={(event) => onChange((current) => ({ ...current, inventoryProperty: event.target.value }))}>
+                      {INVENTORY_PROPERTIES.map((property) => <option key={property.value} value={property.value}>{property.label}</option>)}
+                    </select>
+                    <small className="builder-help-text">Trae automáticamente código, nombre, presentación o conversiones.</small>
+                  </label>
+                  <div className="component-rule-hint compact-surface-card">
+                    <strong>Enlace automático</strong>
+                    <p>{selectedInventorySourceField ? `Quedará ligado a ${formatInventorySourceFieldLabel(selectedInventorySourceField)} y puedes cambiarlo aquí cuando lo necesites.` : "Se ligará en automático al último buscador de inventario disponible."}</p>
+                  </div>
+                </section>
+              ) : (
+                <section className="component-studio-section component-studio-empty">
+                  <strong>Falta un buscador de inventario</strong>
+                  <p>Primero agrega un componente Buscador de inventario y después crea el dato derivado para que siempre tenga una fuente válida.</p>
+                </section>
+              )
             ) : null}
 
             {showFormulaFields ? (
               <section className="component-studio-section three-columns">
                 <label className="app-modal-field">
-                  <span>Operando izquierdo</span>
+                  <span>Operando izquierdo<span className="required-mark" aria-hidden="true"> *</span></span>
                   <select value={draft.formulaLeftFieldId} onChange={(event) => onChange((current) => ({ ...current, formulaLeftFieldId: event.target.value }))}>
                     <option value="">Seleccionar...</option>
                     {draft.columns.map((column) => <option key={column.id} value={column.id}>{column.label}</option>)}
@@ -290,14 +431,14 @@ export function BoardComponentStudioModal({
                   <small className="builder-help-text">Primer valor que participa en la operación.</small>
                 </label>
                 <label className="app-modal-field">
-                  <span>Operación</span>
+                  <span>Operación<span className="required-mark" aria-hidden="true"> *</span></span>
                   <select value={draft.formulaOperation} onChange={(event) => onChange((current) => ({ ...current, formulaOperation: event.target.value }))}>
                     {FORMULA_OPERATIONS.map((operation) => <option key={operation.value} value={operation.value}>{operation.label}</option>)}
                   </select>
                   <small className="builder-help-text">Define cómo se calculará el resultado final.</small>
                 </label>
                 <label className="app-modal-field">
-                  <span>Operando derecho</span>
+                  <span>Operando derecho<span className="required-mark" aria-hidden="true"> *</span></span>
                   <select value={draft.formulaRightFieldId} onChange={(event) => onChange((current) => ({ ...current, formulaRightFieldId: event.target.value }))}>
                     <option value="">Seleccionar...</option>
                     {draft.columns.map((column) => <option key={column.id} value={column.id}>{column.label}</option>)}
@@ -353,33 +494,10 @@ export function BoardComponentStudioModal({
             {!showOptionSource && !showInventoryProperty && !showFormulaFields && !showColorRules ? (
               <section className="component-studio-section component-studio-empty">
                 <strong>Sin reglas adicionales</strong>
-                <p>Este tipo de componente no necesita configuración extra. Puedes pasar al resumen final.</p>
+                <p>Este tipo de componente no necesita configuración extra. Puedes agregarlo directamente desde aquí.</p>
               </section>
             ) : null}
           </div>
-        ) : null}
-
-        {currentStep === 3 ? (
-          <section className="component-studio-section component-studio-summary">
-            <div>
-              <strong>{draft.fieldLabel || "Nuevo componente"}</strong>
-              <span>{selectedTypeUsage}</span>
-            </div>
-            <div className="component-studio-summary-list">
-              <div className="saved-board-list">
-                <span className="chip primary">Tipo: {selectedTypeOption?.label}</span>
-                <span className="chip">Sección: {draft.groupName || "General"}</span>
-                <span className="chip">Ancho: {BOARD_FIELD_WIDTHS.find((item) => item.value === draft.fieldWidth)?.label}</span>
-                {draft.isRequired === "true" ? <span className="chip danger">Obligatorio</span> : null}
-                {draft.defaultValue ? <span className="chip success">Valor inicial</span> : null}
-              </div>
-              {autoGeneratedFieldLabels.length ? (
-                <div className="saved-board-list">
-                  {autoGeneratedFieldLabels.map((label) => <span key={label} className="chip">Auto: {label}</span>)}
-                </div>
-              ) : null}
-            </div>
-          </section>
         ) : null}
       </div>
     </Modal>
@@ -394,11 +512,13 @@ export function BoardBuilderModal({
   onClose,
   onConfirm,
   onOpenComponentStudio,
+  onImportFromExcel,
   onClear,
   feedback,
   previewBoard,
   draftColumnGroups,
   onMoveDraftColumn,
+  onReorderDraftColumn,
   onDuplicateDraftColumn,
   onEditDraftColumn,
   onRemoveDraftColumn,
@@ -409,29 +529,50 @@ export function BoardBuilderModal({
   contextoConstructor,
 }) {
   const {
+    BOARD_AUX_COLUMN_DEFINITIONS,
     BOARD_FIELD_TYPES,
     BOARD_FIELD_WIDTH_STYLES,
     STATUS_PENDING,
     STATUS_RUNNING,
     formatBoardPreviewValue,
+    getBoardFieldDisplayType,
     getBoardFieldTypeDescription,
+    getNormalizedBoardColumnOrder,
+    getOrderedBoardColumns,
     getBoardSectionGroups,
+    reorderBoardColumnOrderTokens,
     renderBoardFieldLabel,
+    sortBoardFieldsByColumnOrder,
   } = contextoConstructor;
 
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [accessMenuOpen, setAccessMenuOpen] = useState(false);
   const [accessSearch, setAccessSearch] = useState("");
   const [pendingAccessUserIds, setPendingAccessUserIds] = useState([]);
+  const [draggingColumnToken, setDraggingColumnToken] = useState("");
+  const [resizingToken, setResizingToken] = useState("");
   const actionMenuRef = useRef(null);
   const accessMenuRef = useRef(null);
+  const resizeStateRef = useRef({ kind: "", id: "", startX: 0, startWidth: 0 });
   const previewSections = getBoardSectionGroups(previewBoard);
   const previewRows = previewBoard?.rows?.slice(0, 2) || [];
+  const orderedPreviewColumns = getOrderedBoardColumns(previewBoard || { fields: draft.columns, settings: draft.settings });
   const previewAccessNames = (previewBoard?.accessUserIds || []).map((userId) => userMap.get(userId)?.name).filter(Boolean);
   const availableOperationalUsers = visibleUsers.filter((user) => user.isActive && user.id !== draft.ownerId);
   const selectedOperationalNames = (draft.accessUserIds || []).map((userId) => userMap.get(userId)?.name).filter(Boolean);
   const filteredOperationalUsers = availableOperationalUsers.filter((user) => user.name.toLowerCase().includes(accessSearch.trim().toLowerCase()));
   const selectedPlayersLabel = `${draft.accessUserIds?.length || 0} player${(draft.accessUserIds?.length || 0) === 1 ? "" : "s"} asignado${(draft.accessUserIds?.length || 0) === 1 ? "" : "s"}`;
+  const defaultAuxWidths = Object.fromEntries(Object.values(BOARD_AUX_COLUMN_DEFINITIONS).map((item) => [item.id, item.defaultWidth]));
+  const fieldTypeMinWidths = {
+    inventoryLookup: 210,
+    inventoryLookupLogistics: 210,
+    select: 190,
+    user: 190,
+    status: 150,
+    time: 130,
+    date: 140,
+  };
+  const auxMinWidths = Object.fromEntries(Object.values(BOARD_AUX_COLUMN_DEFINITIONS).map((item) => [item.id, item.minWidth]));
 
   useEffect(() => {
     if (!actionMenuOpen) return undefined;
@@ -476,6 +617,135 @@ export function BoardBuilderModal({
     setAccessMenuOpen(false);
   }
 
+  function handlePreviewColumnDrop(targetToken) {
+    if (!draggingColumnToken || !targetToken || draggingColumnToken === targetToken) return;
+    onChange((current) => {
+      const currentOrder = getNormalizedBoardColumnOrder({ fields: current.columns || [], settings: current.settings || {} });
+      const nextOrder = reorderBoardColumnOrderTokens(currentOrder, draggingColumnToken, targetToken);
+      return {
+        ...current,
+        columns: sortBoardFieldsByColumnOrder(current.columns || [], nextOrder),
+        settings: {
+          ...current.settings,
+          columnOrder: nextOrder,
+        },
+      };
+    });
+    setDraggingColumnToken("");
+  }
+
+  function resolveFieldWidthPx(field) {
+    const typeMinimum = fieldTypeMinWidths[field?.type] || 120;
+    const manualWidth = Number(field?.widthPx || 0);
+    if (Number.isFinite(manualWidth) && manualWidth >= 90) {
+      return Math.max(typeMinimum, Math.round(manualWidth));
+    }
+    const fallbackWidth = BOARD_FIELD_WIDTH_STYLES[field?.width]?.minWidth || BOARD_FIELD_WIDTH_STYLES.md?.minWidth || "180px";
+    const parsed = Number.parseInt(String(fallbackWidth).replace("px", ""), 10);
+    const normalized = Number.isFinite(parsed) ? parsed : 180;
+    return Math.max(typeMinimum, normalized);
+  }
+
+  function resolveAuxWidthPx(auxId) {
+    const configuredWidth = Number((previewBoard?.settings?.auxColumnWidths || draft?.settings?.auxColumnWidths || {})[auxId] || 0);
+    if (Number.isFinite(configuredWidth) && configuredWidth >= 90) {
+      return Math.max(auxMinWidths[auxId] || 120, Math.round(configuredWidth));
+    }
+    return Math.max(auxMinWidths[auxId] || 120, defaultAuxWidths[auxId] || 160);
+  }
+
+  function getPreviewCellStyle(field) {
+    const widthPx = resolveFieldWidthPx(field);
+    return { minWidth: `${widthPx}px`, width: `${widthPx}px` };
+  }
+
+  function getPreviewAuxCellStyle(auxId) {
+    const widthPx = resolveAuxWidthPx(auxId);
+    return { minWidth: `${widthPx}px`, width: `${widthPx}px` };
+  }
+
+  function persistFieldWidth(fieldId, widthPx) {
+    const targetField = (draft.columns || []).find((column) => column.id === fieldId);
+    const minimum = fieldTypeMinWidths[targetField?.type] || 120;
+    const boundedWidth = Math.max(minimum, Math.min(800, Math.round(widthPx)));
+    onChange((current) => ({
+      ...current,
+      columns: (current.columns || []).map((column) => (column.id === fieldId ? { ...column, widthPx: boundedWidth } : column)),
+    }));
+  }
+
+  function persistAuxWidth(auxId, widthPx) {
+    const boundedWidth = Math.max(auxMinWidths[auxId] || 120, Math.min(800, Math.round(widthPx)));
+    onChange((current) => ({
+      ...current,
+      settings: {
+        ...current.settings,
+        auxColumnWidths: {
+          ...(current.settings?.auxColumnWidths || {}),
+          [auxId]: boundedWidth,
+        },
+      },
+    }));
+  }
+
+  function handleFieldResizeStart(field, event) {
+    event.preventDefault();
+    event.stopPropagation();
+    const currentWidth = resolveFieldWidthPx(field);
+    resizeStateRef.current = {
+      kind: "field",
+      id: field.id,
+      startX: event.clientX,
+      startWidth: currentWidth,
+    };
+    setResizingToken(`field:${field.id}`);
+
+    const handleMouseMove = (moveEvent) => {
+      const delta = moveEvent.clientX - resizeStateRef.current.startX;
+      const nextWidth = resizeStateRef.current.startWidth + delta;
+      persistFieldWidth(field.id, nextWidth);
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      setResizingToken("");
+      resizeStateRef.current = { kind: "", id: "", startX: 0, startWidth: 0 };
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  }
+
+  function handleAuxResizeStart(auxId, event) {
+    event.preventDefault();
+    event.stopPropagation();
+    const currentWidth = resolveAuxWidthPx(auxId);
+    resizeStateRef.current = {
+      kind: "aux",
+      id: auxId,
+      startX: event.clientX,
+      startWidth: currentWidth,
+    };
+    setResizingToken(`aux:${auxId}`);
+
+    const handleMouseMove = (moveEvent) => {
+      const delta = moveEvent.clientX - resizeStateRef.current.startX;
+      const nextWidth = resizeStateRef.current.startWidth + delta;
+      persistAuxWidth(auxId, nextWidth);
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      setResizingToken("");
+      resizeStateRef.current = { kind: "", id: "", startX: 0, startWidth: 0 };
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  }
+
   return (
     <Modal
       open={open}
@@ -487,7 +757,7 @@ export function BoardBuilderModal({
       onConfirm={onConfirm}
     >
       <div className="board-builder-modal-shell">
-        <section className="board-builder-workbench">
+        <section className="board-builder-workbench" aria-hidden="true">
           <div className="builder-settings-grid board-builder-settings-grid board-builder-short-select-grid">
             <div className="builder-card compact-builder-card board-builder-switch-row">
               <div>
@@ -551,10 +821,10 @@ export function BoardBuilderModal({
                       <article key={column.id} className="builder-component-card compact-component-card">
                         <div>
                           <strong>{renderBoardFieldLabel(column.label, column.required)}</strong>
-                          <p>{column.helpText || getBoardFieldTypeDescription(column.type)}</p>
+                          <p>{column.helpText || getBoardFieldTypeDescription(getBoardFieldDisplayType(draft.columns, column))}</p>
                         </div>
                         <div className="saved-board-list compact-component-actions">
-                          <span className="chip primary">{BOARD_FIELD_TYPES.find((item) => item.value === column.type)?.label || column.type}</span>
+                          <span className="chip primary">{BOARD_FIELD_TYPES.find((item) => item.value === getBoardFieldDisplayType(draft.columns, column))?.label || getBoardFieldDisplayType(draft.columns, column)}</span>
                           <button type="button" className="icon-button" onClick={() => onMoveDraftColumn(column.id, "up")}><ArrowUp size={14} /> Subir</button>
                           <button type="button" className="icon-button" onClick={() => onMoveDraftColumn(column.id, "down")}><ArrowDown size={14} /> Bajar</button>
                           <button type="button" className="icon-button" onClick={() => onDuplicateDraftColumn(column.id)}><Copy size={14} /> Duplicar</button>
@@ -583,7 +853,7 @@ export function BoardBuilderModal({
                 </div>
                 <div className="board-preview-inline-fields">
                   <label className="app-modal-field board-preview-edit-field">
-                    <span>Nombre del tablero</span>
+                    <span>Nombre del tablero<span className="required-mark" aria-hidden="true"> *</span></span>
                     <input value={draft.name} onChange={(event) => onChange((current) => ({ ...current, name: event.target.value }))} placeholder="Nuevo tablero" />
                   </label>
                   <label className="app-modal-field board-preview-edit-field board-preview-description-field">
@@ -644,6 +914,9 @@ export function BoardBuilderModal({
                       <button type="button" className="board-builder-menu-item" onClick={() => { setActionMenuOpen(false); onOpenComponentStudio(); }}>
                         Agregar componente
                       </button>
+                      <button type="button" className="board-builder-menu-item" onClick={() => { setActionMenuOpen(false); onImportFromExcel?.(); }}>
+                        Importar desde Excel
+                      </button>
                       <button type="button" className="board-builder-menu-item danger" onClick={() => { setActionMenuOpen(false); onClear(); }}>
                         Limpiar
                       </button>
@@ -664,33 +937,64 @@ export function BoardBuilderModal({
                   <thead>
                     {previewSections.length ? (
                       <tr>
-                        {previewSections.map((section) => (
-                          <th key={section.name} colSpan={section.span} className="board-section-header-cell" style={{ backgroundColor: section.color }}>
+                        {previewSections.map((section, index) => (
+                          <th key={`${section.name}-${index}`} colSpan={section.span} className="board-section-header-cell" style={{ backgroundColor: section.color }}>
                             {section.name}
                           </th>
                         ))}
-                        {previewBoard.settings?.showAssignee !== false ? <th className="board-section-header-cell board-section-header-static">Player</th> : null}
-                        <th className="board-section-header-cell board-section-header-static">Estado</th>
-                        {previewBoard.settings?.showDates !== false ? <th className="board-section-header-cell board-section-header-static">Tiempo</th> : null}
-                        {previewBoard.settings?.showWorkflow !== false ? <th className="board-section-header-cell board-section-header-static">Acciones</th> : null}
                       </tr>
                     ) : null}
                     <tr>
-                      {(previewBoard.fields || []).map((field) => <th key={field.id}>{field.label}{field.required ? " *" : ""}</th>)}
-                      {previewBoard.settings?.showAssignee !== false ? <th>Player</th> : null}
-                      <th>Estado</th>
-                      {previewBoard.settings?.showDates !== false ? <th>Tiempo</th> : null}
-                      {previewBoard.settings?.showWorkflow !== false ? <th>Acciones</th> : null}
+                      {orderedPreviewColumns.map((column) => (
+                        <th
+                          key={column.token}
+                          draggable={!resizingToken}
+                          onDragStart={() => {
+                            if (resizingToken) return;
+                            setDraggingColumnToken(column.token);
+                          }}
+                          onDragEnd={() => setDraggingColumnToken("")}
+                          onDragOver={(event) => event.preventDefault()}
+                          onDrop={() => handlePreviewColumnDrop(column.token)}
+                          className={[
+                            "board-preview-field-heading",
+                            draggingColumnToken === column.token ? "dragging" : "",
+                            resizingToken === `${column.kind}:${column.id}` ? "is-resizing" : "",
+                          ].filter(Boolean).join(" ")}
+                          title="Arrastra para reordenar"
+                          style={column.kind === "field" ? getPreviewCellStyle(column.field) : getPreviewAuxCellStyle(column.id)}
+                        >
+                          <span className="board-preview-field-label">{column.kind === "field" ? `${column.field.label}${column.field.required ? " *" : ""}` : column.label}</span>
+                          <button
+                            type="button"
+                            className="board-preview-resize-handle"
+                            onMouseDown={(event) => {
+                              if (column.kind === "field") {
+                                handleFieldResizeStart(column.field, event);
+                                return;
+                              }
+                              handleAuxResizeStart(column.id, event);
+                            }}
+                            onClick={(event) => event.preventDefault()}
+                            aria-label={`Ajustar ancho de ${column.kind === "field" ? column.field.label : column.label}`}
+                            title="Arrastra para ajustar ancho"
+                          />
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
                     {previewRows.map((row) => (
                       <tr key={row.id}>
-                        {(previewBoard.fields || []).map((field) => <td key={field.id} style={BOARD_FIELD_WIDTH_STYLES[field.width] || BOARD_FIELD_WIDTH_STYLES.md}>{formatBoardPreviewValue(row.values?.[field.id], field, userMap, inventoryItems)}</td>)}
-                        {previewBoard.settings?.showAssignee !== false ? <td>{userMap.get(row.responsibleId)?.name || currentUser?.name || "Player"}</td> : null}
-                        <td><span className="chip">{row.status || STATUS_PENDING}</span></td>
-                        {previewBoard.settings?.showDates !== false ? <td>{row.accumulatedSeconds ? `${Math.round(row.accumulatedSeconds / 60)} min` : "0 min"}</td> : null}
-                        {previewBoard.settings?.showWorkflow !== false ? <td><span className={row.status === STATUS_RUNNING ? "chip success" : "chip"}>Inicia · Pausa · Fin</span></td> : null}
+                        {orderedPreviewColumns.map((column) => {
+                          if (column.kind === "field") {
+                            return <td key={`${row.id}-${column.token}`} style={getPreviewCellStyle(column.field)}>{formatBoardPreviewValue(row.values?.[column.field.id], column.field, userMap, inventoryItems)}</td>;
+                          }
+                          if (column.id === "assignee") return <td key={`${row.id}-${column.token}`} style={getPreviewAuxCellStyle(column.id)}>{userMap.get(row.responsibleId)?.name || currentUser?.name || "Player"}</td>;
+                          if (column.id === "status") return <td key={`${row.id}-${column.token}`} style={getPreviewAuxCellStyle(column.id)}><span className="chip">{row.status || STATUS_PENDING}</span></td>;
+                          if (column.id === "time") return <td key={`${row.id}-${column.token}`} style={getPreviewAuxCellStyle(column.id)}>{row.accumulatedSeconds ? `${Math.round(row.accumulatedSeconds / 60)} min` : "0 min"}</td>;
+                          return <td key={`${row.id}-${column.token}`} style={getPreviewAuxCellStyle(column.id)}><span className={row.status === STATUS_RUNNING ? "chip success" : "chip"}>Inicia · Pausa · Fin</span></td>;
+                        })}
                       </tr>
                     ))}
                   </tbody>
@@ -705,6 +1009,26 @@ export function BoardBuilderModal({
                 </div>
               </div>
             )}
+
+            <section className="board-inline-components">
+              <div className="builder-section-head board-builder-section-head">
+                <div>
+                  <h4>Componentes dentro del constructor</h4>
+                  <p>Arrastra cualquier encabezado en la tabla, incluido Estado, Tiempo, Acciones y Player, para acomodar todo libremente.</p>
+                </div>
+                <span className="chip primary">{draft.columns.length} componente(s)</span>
+              </div>
+              <div className="saved-board-list board-inline-components-list">
+                {(previewBoard.fields || []).map((field) => (
+                  <div key={field.id} className="board-inline-component-chip">
+                    <span className="chip primary">{field.label}</span>
+                    <button type="button" className="icon-button" onClick={() => onEditDraftColumn(field.id)}><Pencil size={14} /> Editar</button>
+                    <button type="button" className="icon-button danger" onClick={() => onRemoveDraftColumn(field.id)}><Trash2 size={14} /> Quitar</button>
+                  </div>
+                ))}
+              </div>
+              {feedback ? <p className="inline-success-message">{feedback}</p> : null}
+            </section>
           </div>
         </aside>
       </div>

@@ -58,7 +58,7 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||
   `${window.location.protocol}//${window.location.hostname}:4000/api`;
-const ENABLE_LEGACY_WHOLE_STATE_SYNC = /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
+const ENABLE_LEGACY_WHOLE_STATE_SYNC = false;
 const PAGE_BOARD = "index";
 const PAGE_CUSTOM_BOARDS = "customBoards";
 const PAGE_ADMIN = "admin";
@@ -135,7 +135,26 @@ const ROLE_LEVEL = {
 const TEMPORARY_PASSWORD_MIN_LENGTH = 4;
 const PROFILE_SELF_EDIT_LIMIT = 1;
 const DEFAULT_AREA_OPTIONS = ["ESTO", "TRANSPORTE", "REGULATORIO", "CALIDAD", "INVENTARIO", "PEDIDOS", "RETAIL"];
+const DEFAULT_BOARD_SECTION_OPTIONS = [
+  "General",
+  "Base",
+  "Captura",
+  "Producto",
+  "Inventario",
+  "Operación",
+  "Control",
+  "Validación",
+  "Calidad",
+  "Seguimiento",
+  "Tiempos",
+  "Logística",
+  "Evidencia",
+  "Observaciones",
+  "Autorización",
+  "Cierre",
+];
 const INVENTORY_LOOKUP_LOGISTICS_FIELD = "inventoryLookupLogistics";
+const BOARD_ACTIVITY_LIST_FIELD = "activityList";
 const DEFAULT_JOB_TITLE_BY_ROLE = {
   [ROLE_LEAD]: "Encargado de área",
   [ROLE_SR]: "Supervisor senior",
@@ -195,10 +214,17 @@ const INITIAL_ROUTE_STATE = getInitialRouteState();
 
 const BOARD_FIELD_TYPES = [
   { value: "text", label: "Texto libre" },
+  { value: "email", label: "Correo electrónico" },
+  { value: "phone", label: "Teléfono" },
+  { value: "url", label: "Enlace / URL" },
   { value: "number", label: "Número medible" },
+  { value: "currency", label: "Monto ($)" },
+  { value: "percentage", label: "Porcentaje (%)" },
+  { value: "time", label: "Hora" },
   { value: "inventoryLookup", label: "Buscador de inventario" },
   { value: INVENTORY_LOOKUP_LOGISTICS_FIELD, label: "Buscador de inventario + empaque" },
   { value: "inventoryProperty", label: "Dato derivado de inventario" },
+  { value: BOARD_ACTIVITY_LIST_FIELD, label: "Lista de actividades" },
   { value: "select", label: "Menú desplegable" },
   { value: "formula", label: "Fórmula" },
   { value: "user", label: "Player" },
@@ -210,11 +236,18 @@ const BOARD_FIELD_TYPES = [
 
 const BOARD_FIELD_TYPE_DETAILS = {
   text: "Captura texto corto como SKU, folio o nombre interno.",
+  email: "Guarda correos electrónicos con validación de formato.",
+  phone: "Captura números telefónicos para contacto operativo.",
+  url: "Guarda enlaces de referencia, evidencias o documentos.",
   number: "Guarda cantidades, cajas, piezas, pesos o métricas.",
+  currency: "Registra montos monetarios para costos, gastos o ventas.",
+  percentage: "Captura porcentajes como avance, merma o cumplimiento.",
+  time: "Registra horas específicas dentro de la operación.",
   inventoryLookup: "Busca un artículo del inventario y lo vincula a la fila.",
   [INVENTORY_LOOKUP_LOGISTICS_FIELD]: "Duplica el buscador de inventario y agrega piezas por caja y cajas por tarima como campos editables.",
   inventoryProperty: "Trae un dato automático del inventario ya vinculado.",
-  select: "Muestra una lista rápida de opciones para elegir.",
+  [BOARD_ACTIVITY_LIST_FIELD]: "Toma una lista de actividades y genera una fila por cada actividad dentro del tablero.",
+  select: "Muestra un menú desplegable real con opciones manuales o conectadas a otros datos.",
   formula: "Calcula un resultado con otros campos del tablero.",
   user: "Asigna un player sin escribirlo manualmente.",
   status: "Controla el estado operativo de la fila.",
@@ -253,6 +286,176 @@ const BOARD_FIELD_WIDTH_STYLES = {
   md: { minWidth: "180px" },
   lg: { minWidth: "240px" },
 };
+
+const BOARD_FIELD_MIN_WIDTH_BY_TYPE = {
+  inventoryLookup: 210,
+  inventoryLookupLogistics: 210,
+  select: 190,
+  user: 190,
+  status: 150,
+  time: 130,
+  date: 140,
+};
+
+const DEFAULT_BOARD_AUX_COLUMNS_ORDER = ["status", "time", "workflow", "assignee"];
+const BOARD_AUX_COLUMN_DEFINITIONS = {
+  status: {
+    id: "status",
+    label: "Estado",
+    sectionName: "Estado",
+    sectionColor: "#eef5ef",
+    defaultWidth: 150,
+    minWidth: 140,
+  },
+  time: {
+    id: "time",
+    label: "Tiempo",
+    sectionName: "Tiempo",
+    sectionColor: "#f3f5f8",
+    defaultWidth: 130,
+    minWidth: 120,
+  },
+  workflow: {
+    id: "workflow",
+    label: "Acciones",
+    sectionName: "Acciones",
+    sectionColor: "#f7f1e8",
+    defaultWidth: 190,
+    minWidth: 160,
+  },
+  assignee: {
+    id: "assignee",
+    label: "Player",
+    sectionName: "Player",
+    sectionColor: "#eef2ff",
+    defaultWidth: 220,
+    minWidth: 190,
+  },
+};
+const BOARD_AUX_COLUMN_IDS = Object.keys(BOARD_AUX_COLUMN_DEFINITIONS);
+
+function toBoardAuxColumnToken(auxId) {
+  return `aux:${auxId}`;
+}
+
+function isBoardAuxColumnToken(token) {
+  return String(token || "").startsWith("aux:");
+}
+
+function getBoardAuxColumnIdFromToken(token) {
+  return isBoardAuxColumnToken(token) ? String(token).slice(4) : "";
+}
+
+function getBoardFields(board) {
+  if (Array.isArray(board?.fields)) return board.fields;
+  if (Array.isArray(board?.columns)) return board.columns;
+  return [];
+}
+
+function getBoardVisibleAuxColumnIds(settings = {}) {
+  const visible = [];
+  if (settings?.showWorkflow !== false) visible.push("status");
+  if (settings?.showDates !== false) visible.push("time");
+  if (settings?.showWorkflow !== false) visible.push("workflow");
+  if (settings?.showAssignee !== false) visible.push("assignee");
+  return visible;
+}
+
+function getBoardAuxColumnOrder(settings = {}) {
+  const configured = Array.isArray(settings?.auxColumnsOrder) && settings.auxColumnsOrder.length
+    ? settings.auxColumnsOrder.filter((auxId) => BOARD_AUX_COLUMN_DEFINITIONS[auxId])
+    : DEFAULT_BOARD_AUX_COLUMNS_ORDER.filter((auxId) => BOARD_AUX_COLUMN_DEFINITIONS[auxId]);
+  return configured.concat(BOARD_AUX_COLUMN_IDS.filter((auxId) => !configured.includes(auxId)));
+}
+
+function getNormalizedBoardColumnOrder(board) {
+  const fields = getBoardFields(board);
+  const settings = board?.settings || {};
+  const fieldIds = fields.map((field) => field.id).filter(Boolean);
+  const validFieldIds = new Set(fieldIds);
+  const fallbackOrder = fieldIds.concat(getBoardAuxColumnOrder(settings).map((auxId) => toBoardAuxColumnToken(auxId)));
+  const storedOrder = Array.isArray(settings?.columnOrder) ? settings.columnOrder : [];
+  const normalizedStoredOrder = storedOrder.filter((token) => {
+    if (isBoardAuxColumnToken(token)) {
+      return BOARD_AUX_COLUMN_DEFINITIONS[getBoardAuxColumnIdFromToken(token)];
+    }
+    return validFieldIds.has(token);
+  });
+  return normalizedStoredOrder.concat(fallbackOrder.filter((token) => !normalizedStoredOrder.includes(token)));
+}
+
+function sortBoardFieldsByColumnOrder(fields = [], columnOrder = []) {
+  const fieldOrder = columnOrder.filter((token) => !isBoardAuxColumnToken(token));
+  const indexByFieldId = new Map(fieldOrder.map((fieldId, index) => [fieldId, index]));
+  return [...fields].sort((left, right) => {
+    const leftIndex = indexByFieldId.get(left.id);
+    const rightIndex = indexByFieldId.get(right.id);
+    if (leftIndex === undefined && rightIndex === undefined) return 0;
+    if (leftIndex === undefined) return 1;
+    if (rightIndex === undefined) return -1;
+    return leftIndex - rightIndex;
+  });
+}
+
+function syncBoardFieldOrderIntoColumnOrder(fields = [], settings = {}) {
+  const normalizedOrder = getNormalizedBoardColumnOrder({ fields, settings });
+  const fieldIds = fields.map((field) => field.id).filter(Boolean);
+  let fieldCursor = 0;
+  return normalizedOrder.map((token) => {
+    if (isBoardAuxColumnToken(token)) return token;
+    const nextFieldId = fieldIds[fieldCursor];
+    fieldCursor += 1;
+    return nextFieldId || token;
+  });
+}
+
+function reorderBoardColumnOrderTokens(columnOrder = [], sourceToken, targetToken) {
+  if (!sourceToken || !targetToken || sourceToken === targetToken) return columnOrder;
+  const nextOrder = [...columnOrder];
+  const sourceIndex = nextOrder.indexOf(sourceToken);
+  const targetIndex = nextOrder.indexOf(targetToken);
+  if (sourceIndex === -1 || targetIndex === -1) return columnOrder;
+  const [movedToken] = nextOrder.splice(sourceIndex, 1);
+  nextOrder.splice(targetIndex, 0, movedToken);
+  return nextOrder;
+}
+
+function getOrderedBoardColumns(board) {
+  const fields = getBoardFields(board);
+  const fieldMap = new Map(fields.map((field) => [field.id, field]));
+  const visibleAuxIds = new Set(getBoardVisibleAuxColumnIds(board?.settings || {}));
+
+  return getNormalizedBoardColumnOrder(board).flatMap((token) => {
+    if (isBoardAuxColumnToken(token)) {
+      const auxId = getBoardAuxColumnIdFromToken(token);
+      if (!visibleAuxIds.has(auxId)) return [];
+      const meta = BOARD_AUX_COLUMN_DEFINITIONS[auxId];
+      if (!meta) return [];
+      return [{
+        token,
+        kind: "aux",
+        id: auxId,
+        label: meta.label,
+        sectionName: meta.sectionName,
+        sectionColor: meta.sectionColor,
+        defaultWidth: meta.defaultWidth,
+        minWidth: meta.minWidth,
+      }];
+    }
+
+    const field = fieldMap.get(token);
+    if (!field) return [];
+    return [{
+      token,
+      kind: "field",
+      id: field.id,
+      field,
+      label: field.label,
+      sectionName: field.groupName || "General",
+      sectionColor: field.groupColor || "#e2f4ec",
+    }];
+  });
+}
 
 const BOARD_TEMPLATES = [
   {
@@ -440,6 +643,33 @@ function normalizeInventoryDomain(value) {
   return INVENTORY_DOMAIN_BASE;
 }
 
+function normalizeInventoryMovementType(value) {
+  const key = normalizeKey(value);
+  if (["consume", "consumo", "usage", "uso"].includes(key)) return INVENTORY_MOVEMENT_CONSUME;
+  if (["transfer", "transferencia", "traslado"].includes(key)) return INVENTORY_MOVEMENT_TRANSFER;
+  return INVENTORY_MOVEMENT_RESTOCK;
+}
+
+function buildInventoryTransferTargetKey(warehouse = "", storageLocation = "") {
+  const normalizedWarehouse = normalizeKey(warehouse) || "sin-destino";
+  const normalizedStorage = normalizeKey(storageLocation) || "sin-resguardo";
+  return `${normalizedWarehouse}::${normalizedStorage}`;
+}
+
+function normalizeInventoryTransferTargetRecord(target, fallbackUnitLabel = "pzas") {
+  const warehouse = String(target?.warehouse || "").trim();
+  const storageLocation = String(target?.storageLocation || "").trim();
+  return {
+    destinationKey: buildInventoryTransferTargetKey(warehouse, storageLocation),
+    warehouse,
+    storageLocation,
+    recipientName: String(target?.recipientName || "").trim(),
+    unitLabel: String(target?.unitLabel || fallbackUnitLabel || "pzas").trim() || "pzas",
+    availableUnits: Math.max(0, Number(target?.availableUnits ?? target?.stockUnits ?? 0)),
+    updatedAt: target?.updatedAt || target?.createdAt || "",
+  };
+}
+
 function normalizeInventoryItemRecord(item) {
   const domain = normalizeInventoryDomain(item?.domain);
   return {
@@ -449,9 +679,78 @@ function normalizeInventoryItemRecord(item) {
     minStockUnits: domain === INVENTORY_DOMAIN_BASE ? 0 : Math.max(0, Number(item?.minStockUnits || 0)),
     storageLocation: domain === INVENTORY_DOMAIN_BASE ? "" : String(item?.storageLocation || "").trim(),
     unitLabel: String(item?.unitLabel || "pzas").trim() || "pzas",
+    transferTargets: domain === INVENTORY_DOMAIN_ORDERS
+      ? (Array.isArray(item?.transferTargets) ? item.transferTargets : []).map((target) => normalizeInventoryTransferTargetRecord(target, item?.unitLabel || "pzas")).filter((target) => target.warehouse || target.storageLocation || target.availableUnits > 0)
+      : [],
     activityCatalogIds: domain === INVENTORY_DOMAIN_CLEANING ? (Array.isArray(item?.activityCatalogIds) ? item.activityCatalogIds.filter(Boolean) : typeof item?.activityCatalogIds === "string" ? item.activityCatalogIds.split(/[;,]/).map((entry) => entry.trim()).filter(Boolean) : []) : [],
     consumptionPerStart: domain === INVENTORY_DOMAIN_CLEANING ? Math.max(0, Number(item?.consumptionPerStart || 0)) : 0,
   };
+}
+
+function normalizeInventoryMovementRecord(movement) {
+  const warehouse = String(movement?.warehouse || "").trim();
+  const storageLocation = String(movement?.storageLocation || "").trim();
+  const remainingUnits = movement?.remainingUnits;
+  const destinationBalanceUnits = movement?.destinationBalanceUnits;
+  const destinationKey = warehouse || storageLocation
+    ? buildInventoryTransferTargetKey(warehouse, storageLocation)
+    : String(movement?.destinationKey || "").trim() || buildInventoryTransferTargetKey(warehouse, storageLocation);
+  return {
+    ...movement,
+    domain: normalizeInventoryDomain(movement?.domain),
+    movementType: normalizeInventoryMovementType(movement?.movementType),
+    quantity: Math.max(0, Number(movement?.quantity || 0)),
+    warehouse,
+    recipientName: String(movement?.recipientName || "").trim(),
+    storageLocation,
+    unitLabel: String(movement?.unitLabel || "pzas").trim() || "pzas",
+    remainingUnits: remainingUnits === undefined || remainingUnits === null || String(remainingUnits).trim() === "" ? null : Math.max(0, Number(remainingUnits || 0)),
+    destinationBalanceUnits: destinationBalanceUnits === undefined || destinationBalanceUnits === null || String(destinationBalanceUnits).trim() === "" ? null : Math.max(0, Number(destinationBalanceUnits || 0)),
+    destinationKey,
+  };
+}
+
+function findInventoryTransferTarget(item, warehouse = "", storageLocation = "") {
+  const destinationKey = buildInventoryTransferTargetKey(warehouse, storageLocation);
+  return (item?.transferTargets || []).find((target) => target.destinationKey === destinationKey) || null;
+}
+
+function sumInventoryTransferTargetUnits(targets = []) {
+  return (Array.isArray(targets) ? targets : []).reduce((sum, target) => sum + Math.max(0, Number(target?.availableUnits || 0)), 0);
+}
+
+function hasInventoryBalanceInput(value) {
+  return !(value === undefined || value === null || String(value).trim() === "");
+}
+
+function getInventoryAllocatedUnits(item) {
+  return sumInventoryTransferTargetUnits(item?.transferTargets || []);
+}
+
+function getInventoryAvailableToTransfer(item, remainingUnits = null, destinationKey = "") {
+  const normalizedItem = normalizeInventoryItemRecord(item);
+  if (normalizedItem.domain !== INVENTORY_DOMAIN_ORDERS) {
+    return Math.max(0, Number(normalizedItem.stockUnits || 0));
+  }
+
+  const transferTargets = normalizedItem.transferTargets || [];
+  if (!destinationKey || !hasInventoryBalanceInput(remainingUnits)) {
+    return Math.max(0, Number(normalizedItem.stockUnits || 0) - getInventoryAllocatedUnits(normalizedItem));
+  }
+
+  const parsedRemainingUnits = Math.max(0, Number(remainingUnits || 0));
+  if (Number.isNaN(parsedRemainingUnits)) {
+    return Math.max(0, Number(normalizedItem.stockUnits || 0) - getInventoryAllocatedUnits(normalizedItem));
+  }
+
+  const currentTarget = transferTargets.find((target) => target.destinationKey === destinationKey) || null;
+  if (!currentTarget) {
+    return Math.max(0, Number(normalizedItem.stockUnits || 0) - getInventoryAllocatedUnits(normalizedItem));
+  }
+
+  const otherAllocatedUnits = sumInventoryTransferTargetUnits(transferTargets.filter((target) => target.destinationKey !== destinationKey));
+  const reconciledStockUnits = Number(normalizedItem.stockUnits || 0) + (parsedRemainingUnits - Number(currentTarget.availableUnits || 0));
+  return Math.max(0, reconciledStockUnits - otherAllocatedUnits - parsedRemainingUnits);
 }
 
 function getInventoryManageActionId(domain) {
@@ -489,9 +788,11 @@ function createInventoryModalState(mode = "create", item = {}, fallbackDomain = 
 
 function createInventoryMovementModalState(item = null, movementType = INVENTORY_MOVEMENT_RESTOCK, fallbackDomain = INVENTORY_DOMAIN_BASE) {
   const normalizedItem = item ? normalizeInventoryItemRecord(item) : null;
+  const isTransferContext = normalizedItem?.domain === INVENTORY_DOMAIN_ORDERS || fallbackDomain === INVENTORY_DOMAIN_ORDERS || movementType === INVENTORY_MOVEMENT_TRANSFER;
   return {
     open: false,
     itemId: normalizedItem?.id || null,
+    itemCode: normalizedItem?.code || "",
     itemName: normalizedItem?.name || "",
     domain: normalizedItem?.domain || fallbackDomain,
     movementType,
@@ -499,7 +800,9 @@ function createInventoryMovementModalState(item = null, movementType = INVENTORY
     notes: "",
     warehouse: "",
     recipientName: "",
-    storageLocation: normalizedItem?.storageLocation || "",
+    storageLocation: isTransferContext ? "" : normalizedItem?.storageLocation || "",
+    remainingUnits: "",
+    transferTargetKey: "",
     unitLabel: normalizedItem?.unitLabel || "pzas",
   };
 }
@@ -510,7 +813,7 @@ const NAV_ITEMS = [
   { id: PAGE_BOARD, label: "Creador de tableros", icon: ClipboardList, roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
   { id: PAGE_HISTORY, label: "Historial", icon: CalendarDays, roles: [ROLE_LEAD, ROLE_SR] },
   { id: PAGE_INVENTORY, label: "Inventario", icon: Package, roles: [ROLE_LEAD, ROLE_SR] },
-  { id: PAGE_USERS, label: "Administrador", icon: Users, roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
+  { id: PAGE_USERS, label: "Players", icon: Users, roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
 ];
 
 const ACTION_DEFINITIONS = [
@@ -865,6 +1168,11 @@ async function requestJson(path, options = {}) {
   return response.json();
 }
 
+function isSessionRequiredError(error) {
+  const message = String(error?.message || "").toLowerCase();
+  return error?.status === 401 || (error?.status === 400 && message.includes("sesi"));
+}
+
 function applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus) {
   skipNextSyncRef.current = true;
   const normalizedState = normalizeWarehouseState(remoteState);
@@ -919,6 +1227,7 @@ function normalizeCatalogItemRecord(item = {}) {
   return {
     ...item,
     frequency: normalizeActivityFrequency(item.frequency),
+    category: String(item.category || "General").trim() || "General",
   };
 }
 
@@ -971,6 +1280,152 @@ function startOfWeek(date) {
 
 function endOfWeek(date) {
   return addDays(startOfWeek(date), 6);
+}
+
+function getBoardWeekStart(date) {
+  const base = startOfWeek(date);
+  return new Date(date).getDay() === 0 ? addDays(base, 7) : base;
+}
+
+function getBoardWeekEnd(date) {
+  return addDays(getBoardWeekStart(date), 5);
+}
+
+function formatBoardWeekKey(date) {
+  const target = getBoardWeekStart(date);
+  return `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}-${String(target.getDate()).padStart(2, "0")}`;
+}
+
+function parseBoardWeekKey(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) return null;
+  const parsed = new Date(`${normalized}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : getBoardWeekStart(parsed);
+}
+
+function getBoardWeekLabel(value) {
+  const weekStart = parseBoardWeekKey(value) || getBoardWeekStart(new Date(value || Date.now()));
+  return `Semana ${formatDate(weekStart)} - ${formatDate(getBoardWeekEnd(weekStart))}`;
+}
+
+function normalizeBoardWeeklyCycle(cycle, referenceDate = new Date()) {
+  const weekStart = getBoardWeekStart(referenceDate);
+  const activeWeekKey = String(cycle?.activeWeekKey || "").trim() || formatBoardWeekKey(weekStart);
+  const parsedStart = parseBoardWeekKey(activeWeekKey) || weekStart;
+  return {
+    activeWeekKey: formatBoardWeekKey(parsedStart),
+    activeWeekStartDate: cycle?.activeWeekStartDate || parsedStart.toISOString(),
+    activeWeekEndDate: cycle?.activeWeekEndDate || getBoardWeekEnd(parsedStart).toISOString(),
+    updatedAt: cycle?.updatedAt || new Date().toISOString(),
+  };
+}
+
+function cloneBoardRowSnapshot(row) {
+  return {
+    ...row,
+    values: { ...(row?.values || {}) },
+  };
+}
+
+function normalizeBoardHistorySnapshot(snapshot) {
+  const weekKey = String(snapshot?.weekKey || "").trim() || formatBoardWeekKey(new Date(snapshot?.startDate || Date.now()));
+  const weekStart = parseBoardWeekKey(weekKey) || getBoardWeekStart(new Date(snapshot?.startDate || Date.now()));
+  return {
+    id: snapshot?.id || makeId("boardhist"),
+    boardId: String(snapshot?.boardId || "").trim(),
+    boardName: String(snapshot?.boardName || snapshot?.name || "Tablero").trim() || "Tablero",
+    description: String(snapshot?.description || "").trim(),
+    createdById: snapshot?.createdById ?? snapshot?.ownerId ?? null,
+    ownerId: snapshot?.ownerId ?? snapshot?.createdById ?? null,
+    accessUserIds: Array.isArray(snapshot?.accessUserIds) ? snapshot.accessUserIds : [],
+    weekKey,
+    weekName: String(snapshot?.weekName || "").trim() || getBoardWeekLabel(weekKey),
+    startDate: snapshot?.startDate || weekStart.toISOString(),
+    endDate: snapshot?.endDate || getBoardWeekEnd(weekStart).toISOString(),
+    archivedAt: snapshot?.archivedAt || new Date().toISOString(),
+    settings: {
+      showWorkflow: true,
+      showMetrics: true,
+      showAssignee: true,
+      showDates: true,
+      ...(snapshot?.settings || {}),
+    },
+    fields: Array.isArray(snapshot?.fields)
+      ? snapshot.fields.map((field) => ({ ...field, colorRules: field.colorRules || [] }))
+      : [],
+    rows: Array.isArray(snapshot?.rows) ? snapshot.rows.map((row) => cloneBoardRowSnapshot(row)) : [],
+  };
+}
+
+function buildBoardHistorySnapshot(board, weekKey, archivedAt = new Date().toISOString()) {
+  const weekStart = parseBoardWeekKey(weekKey) || getBoardWeekStart(new Date());
+  return normalizeBoardHistorySnapshot({
+    id: makeId("boardhist"),
+    boardId: board.id,
+    boardName: board.name,
+    description: board.description || "",
+    createdById: board.createdById,
+    ownerId: board.ownerId,
+    accessUserIds: board.accessUserIds || [],
+    weekKey,
+    weekName: getBoardWeekLabel(weekKey),
+    startDate: weekStart.toISOString(),
+    endDate: getBoardWeekEnd(weekStart).toISOString(),
+    archivedAt,
+    settings: { ...(board.settings || {}) },
+    fields: (board.fields || []).map((field) => ({ ...field, colorRules: field.colorRules || [] })),
+    rows: (board.rows || []).map((row) => cloneBoardRowSnapshot(row)),
+  });
+}
+
+function advanceBoardWeekKey(weekKey) {
+  const current = parseBoardWeekKey(weekKey) || getBoardWeekStart(new Date());
+  return formatBoardWeekKey(addDays(current, 7));
+}
+
+function applyBoardWeeklyCutToState(state, referenceDate = new Date()) {
+  const currentWeekStart = getBoardWeekStart(referenceDate);
+  const currentWeekKey = formatBoardWeekKey(currentWeekStart);
+  const normalizedCycle = normalizeBoardWeeklyCycle(state?.boardWeeklyCycle, referenceDate);
+  let activeWeekKey = normalizedCycle.activeWeekKey;
+  let nextBoards = (state?.controlBoards || []).map((board) => ({ ...board, rows: Array.isArray(board.rows) ? board.rows : [] }));
+  let nextHistory = Array.isArray(state?.boardWeekHistory) ? [...state.boardWeekHistory] : [];
+  let changed = false;
+
+  while (activeWeekKey < currentWeekKey) {
+    const archivedAt = new Date().toISOString();
+    const existingKeys = new Set(nextHistory.map((snapshot) => `${snapshot.boardId}|${snapshot.weekKey}`));
+    nextBoards.forEach((board) => {
+      const snapshotKey = `${board.id}|${activeWeekKey}`;
+      if (existingKeys.has(snapshotKey)) return;
+      nextHistory.push(buildBoardHistorySnapshot(board, activeWeekKey, archivedAt));
+      existingKeys.add(snapshotKey);
+      changed = true;
+    });
+    nextBoards = nextBoards.map((board) => ({ ...board, rows: [] }));
+    activeWeekKey = advanceBoardWeekKey(activeWeekKey);
+  }
+
+  const nextCycle = {
+    activeWeekKey: currentWeekKey,
+    activeWeekStartDate: currentWeekStart.toISOString(),
+    activeWeekEndDate: getBoardWeekEnd(currentWeekStart).toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (!changed && normalizedCycle.activeWeekKey === nextCycle.activeWeekKey) {
+    return { state, changed: false };
+  }
+
+  return {
+    changed: true,
+    state: {
+      ...state,
+      controlBoards: nextBoards,
+      boardWeekHistory: nextHistory,
+      boardWeeklyCycle: nextCycle,
+    },
+  };
 }
 
 function startOfMonth(date) {
@@ -1083,6 +1538,7 @@ function formatTime(value) {
   return new Intl.DateTimeFormat("es-MX", {
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   }).format(new Date(value));
 }
 
@@ -1124,6 +1580,36 @@ function normalizeKey(value) {
 
 function normalizeImportHeader(value) {
   return normalizeKey(value).replace(/[^a-z0-9]/g, "");
+}
+
+function normalizeTimeValue24h(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^\d{2}:\d{2}$/.test(raw)) return raw;
+
+  const compact = raw.toLowerCase().replace(/\s+/g, "").replace(/\./g, "");
+  const ampmMatch = compact.match(/^(\d{1,2}):(\d{2})(am|pm)$/);
+  if (ampmMatch) {
+    const hourValue = Number.parseInt(ampmMatch[1], 10);
+    const minuteValue = Number.parseInt(ampmMatch[2], 10);
+    if (Number.isFinite(hourValue) && Number.isFinite(minuteValue)) {
+      const normalizedHour = ampmMatch[3] === "pm"
+        ? hourValue === 12 ? 12 : hourValue + 12
+        : hourValue === 12 ? 0 : hourValue;
+      return `${String(Math.max(0, Math.min(23, normalizedHour))).padStart(2, "0")}:${String(Math.max(0, Math.min(59, minuteValue))).padStart(2, "0")}`;
+    }
+  }
+
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime())) {
+    return new Intl.DateTimeFormat("es-MX", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(parsed);
+  }
+
+  return raw;
 }
 
 function isEmptyRuleValue(value) {
@@ -1184,6 +1670,20 @@ function isInventoryLookupFieldType(type) {
   return ["inventoryLookup", INVENTORY_LOOKUP_LOGISTICS_FIELD].includes(type);
 }
 
+function getInventoryLookupSourceFields(fields = [], excludedFieldIds = []) {
+  const blockedIds = new Set((Array.isArray(excludedFieldIds) ? excludedFieldIds : [excludedFieldIds]).filter(Boolean));
+  return (fields || []).filter((field) => field && isInventoryLookupFieldType(field.type) && !blockedIds.has(field.id));
+}
+
+function resolveInventoryPropertySourceFieldId(fields = [], preferredSourceFieldId = "", excludedFieldIds = []) {
+  const sourceFields = getInventoryLookupSourceFields(fields, excludedFieldIds);
+  if (!sourceFields.length) return "";
+  if (preferredSourceFieldId && sourceFields.some((field) => field.id === preferredSourceFieldId)) {
+    return preferredSourceFieldId;
+  }
+  return sourceFields[sourceFields.length - 1]?.id || "";
+}
+
 function getInventoryBundleEditableFields(fields, lookupFieldId) {
   return (fields || []).filter((field) => field.bundleParentId === lookupFieldId && field.bundleType === INVENTORY_LOOKUP_LOGISTICS_FIELD);
 }
@@ -1198,6 +1698,15 @@ function inferInventoryBundleFieldType(fields, column) {
   return column.type || "text";
 }
 
+function isBoardActivityListField(field) {
+  return field?.type === BOARD_ACTIVITY_LIST_FIELD || (field?.type === "select" && field?.optionSource === "catalogByCategory");
+}
+
+function getBoardFieldDisplayType(fields, column) {
+  if (isBoardActivityListField(column)) return BOARD_ACTIVITY_LIST_FIELD;
+  return inferInventoryBundleFieldType(fields, column);
+}
+
 function buildInventoryBundleFields(draft, preservedLookupId = null) {
   const baseLabel = draft.fieldLabel.trim() || "Producto";
   const groupName = draft.groupName.trim() || "General";
@@ -1210,6 +1719,7 @@ function buildInventoryBundleFields(draft, preservedLookupId = null) {
     label: baseLabel,
     type: "inventoryLookup",
     optionSource: "manual",
+    optionCatalogCategory: "",
     options: [],
     inventoryProperty: "code",
     sourceFieldId: null,
@@ -1220,6 +1730,7 @@ function buildInventoryBundleFields(draft, preservedLookupId = null) {
     placeholder: draft.placeholder.trim() || "Buscar por nombre o presentación",
     defaultValue: "",
     width: draft.fieldWidth,
+    widthPx: draft.fieldWidthPx ? Number(draft.fieldWidthPx) : null,
     required: draft.isRequired === "true",
     groupName,
     groupColor: draft.groupColor,
@@ -1237,6 +1748,7 @@ function buildInventoryBundleFields(draft, preservedLookupId = null) {
       label: `${baseLabel} · Piezas por caja`,
       type: "number",
       optionSource: "manual",
+      optionCatalogCategory: "",
       options: [],
       inventoryProperty: "code",
       sourceFieldId: null,
@@ -1260,6 +1772,7 @@ function buildInventoryBundleFields(draft, preservedLookupId = null) {
       label: `${baseLabel} · Cajas por tarima`,
       type: "number",
       optionSource: "manual",
+      optionCatalogCategory: "",
       options: [],
       inventoryProperty: "code",
       sourceFieldId: null,
@@ -1298,6 +1811,7 @@ function createEmptyFieldDraft() {
     fieldLabel: "",
     fieldType: "text",
     optionSource: "manual",
+    optionCatalogCategory: "",
     optionsText: "",
     inventoryProperty: "code",
     sourceFieldId: "",
@@ -1312,6 +1826,7 @@ function createEmptyFieldDraft() {
     placeholder: "",
     defaultValue: "",
     fieldWidth: "md",
+    fieldWidthPx: "",
     isRequired: "false",
     groupName: "General",
     groupColor: "#e2f4ec",
@@ -1324,7 +1839,15 @@ function createEmptyBoardDraft() {
     description: "",
     ownerId: "",
     accessUserIds: [],
-    settings: { showWorkflow: true, showMetrics: true, showAssignee: true, showDates: true },
+    settings: {
+      showWorkflow: true,
+      showMetrics: true,
+      showAssignee: true,
+      showDates: true,
+      auxColumnsOrder: [...DEFAULT_BOARD_AUX_COLUMNS_ORDER],
+      columnOrder: [],
+      auxColumnWidths: {},
+    },
     columns: [],
     ...createEmptyFieldDraft(),
   };
@@ -1349,6 +1872,7 @@ function createBoardDraftFromBoard(board) {
       showMetrics: true,
       showAssignee: true,
       showDates: true,
+      auxColumnsOrder: [...DEFAULT_BOARD_AUX_COLUMNS_ORDER],
       ...(board?.settings || {}),
     },
     columns: cloneDraftColumns(board?.fields || []),
@@ -1358,12 +1882,13 @@ function createBoardDraftFromBoard(board) {
 
 function getPreviewFieldSeedValue(field, currentUserId, sampleInventory, variant = 0) {
   if (field.defaultValue !== undefined && field.defaultValue !== null && String(field.defaultValue).trim() !== "") {
-    if (field.type === "number") return Number(field.defaultValue || 0);
+    if (["number", "currency", "percentage"].includes(field.type)) return Number(field.defaultValue || 0);
     if (field.type === "boolean") return String(field.defaultValue).toLowerCase() === "si" ? "Si" : field.defaultValue;
     return field.defaultValue;
   }
 
-  if (field.type === "number") return variant === 0 ? 12 : 18;
+  if (["number", "currency", "percentage"].includes(field.type)) return variant === 0 ? 12 : 18;
+  if (isBoardActivityListField(field)) return variant === 0 ? "Actividad 1" : "Actividad 2";
   if (field.type === "select") return field.options?.[variant] || field.options?.[0] || "Opción";
   if (isInventoryLookupFieldType(field.type)) return sampleInventory?.id || "preview-inventory";
   if (field.type === "status") return variant === 0 ? STATUS_PENDING : STATUS_RUNNING;
@@ -1372,10 +1897,11 @@ function getPreviewFieldSeedValue(field, currentUserId, sampleInventory, variant
     nextDate.setDate(nextDate.getDate() + variant);
     return nextDate.toISOString().slice(0, 10);
   }
+  if (field.type === "time") return variant === 0 ? "08:00" : "09:30";
   if (field.type === "boolean") return variant === 0 ? "Si" : "No";
   if (field.type === "user") return currentUserId || "";
   if (field.type === "textarea") return variant === 0 ? (field.placeholder || "Notas rápidas de ejemplo") : "Seguimiento validado en vista previa";
-  if (field.type === "text") return variant === 0 ? (field.placeholder || field.label || "Dato") : `${field.label || "Dato"} 2`;
+  if (["text", "email", "phone", "url"].includes(field.type)) return variant === 0 ? (field.placeholder || field.label || "Dato") : `${field.label || "Dato"} 2`;
   return field.placeholder || field.label || "Dato";
 }
 
@@ -1390,7 +1916,8 @@ function buildPreviewRowValues(fields, currentUserId, inventoryItems, variant = 
 
   fields.forEach((field) => {
     if (field.type !== "inventoryProperty") return;
-    const lookupId = values[field.sourceFieldId];
+    const resolvedSourceFieldId = resolveInventoryPropertySourceFieldId(fields, field.sourceFieldId, field.id);
+    const lookupId = values[resolvedSourceFieldId];
     const selectedInventory = (inventoryItems || []).find((item) => item.id === lookupId) || sampleInventory;
     values[field.id] = selectedInventory?.[field.inventoryProperty] ?? "Auto";
   });
@@ -1445,6 +1972,7 @@ function buildBoardPreviewModel(baseBoard, currentUserId, inventoryItems) {
       showMetrics: true,
       showAssignee: true,
       showDates: true,
+      auxColumnsOrder: [...DEFAULT_BOARD_AUX_COLUMNS_ORDER],
       ...(baseBoard?.settings || {}),
     },
     fields,
@@ -1485,6 +2013,12 @@ function formatBoardPreviewValue(value, field, userMap, inventoryItems) {
   if (field.type === "date" && value) {
     return formatDate(value);
   }
+  if (field.type === "currency") {
+    return value ? `$${Number(value).toFixed(2)}` : "$0.00";
+  }
+  if (field.type === "percentage") {
+    return value ? `${Number(value)}%` : "0%";
+  }
   if (field.type === "boolean") {
     return value === "Si" ? "Sí" : "No";
   }
@@ -1517,6 +2051,7 @@ function buildTemplateColumns(template) {
       label: column.label,
       type: column.type,
       optionSource: column.optionSource || "manual",
+      optionCatalogCategory: column.optionCatalogCategory || "",
       options: column.options || [],
       inventoryProperty: column.inventoryProperty || "code",
       sourceFieldId: column.sourceFieldId || null,
@@ -1527,6 +2062,7 @@ function buildTemplateColumns(template) {
       placeholder: column.placeholder || "",
       defaultValue: column.defaultValue ?? "",
       width: column.width || "md",
+      widthPx: column.widthPx ? Number(column.widthPx) : null,
       required: Boolean(column.required),
       groupName: column.groupName || "General",
       groupColor: column.groupColor || "#e2f4ec",
@@ -1612,6 +2148,9 @@ function getTemplateFieldGroups(template) {
 }
 
 function getTemplateFieldDetail(field) {
+  if (isBoardActivityListField(field)) {
+    return `Lista: ${field.optionCatalogCategory || "Sin definir"} · cada actividad genera una fila del tablero`;
+  }
   if (field.type === "select") {
     return field.optionSource === "manual"
       ? `Opciones: ${(field.options || []).join(", ") || "Sin opciones"}`
@@ -1633,7 +2172,7 @@ function getTemplateFieldDetail(field) {
 }
 
 function isBoardFieldValueFilled(value, fieldType) {
-  if (fieldType === "number") return value !== "" && value !== null && value !== undefined && Number.isFinite(Number(value));
+  if (["number", "currency", "percentage"].includes(fieldType)) return value !== "" && value !== null && value !== undefined && Number.isFinite(Number(value));
   if (fieldType === "boolean") return value === "Si" || value === "No";
   if (fieldType === "formula") return value !== null && value !== undefined;
   return String(value ?? "").trim() !== "";
@@ -1643,10 +2182,10 @@ function getBoardSectionGroups(board) {
   const groups = [];
   let current = null;
 
-  (board?.fields || []).forEach((field) => {
-    const name = field.groupName || "General";
-    const color = field.groupColor || "#e2f4ec";
-    if (!current || current.name !== name) {
+  getOrderedBoardColumns(board).forEach((column) => {
+    const name = column.sectionName || "General";
+    const color = column.sectionColor || "#e2f4ec";
+    if (!current || current.name !== name || current.color !== color) {
       current = { name, color, span: 0 };
       groups.push(current);
     }
@@ -1661,8 +2200,9 @@ function mapColumnToFieldDraft(column, columns = []) {
   return {
     ...createEmptyFieldDraft(),
     fieldLabel: column.label || "",
-    fieldType: inferInventoryBundleFieldType(columns, column),
+    fieldType: getBoardFieldDisplayType(columns, column),
     optionSource: column.optionSource || "manual",
+    optionCatalogCategory: column.optionCatalogCategory || "",
     optionsText: Array.isArray(column.options) ? column.options.join(", ") : "",
     inventoryProperty: column.inventoryProperty || "code",
     sourceFieldId: column.sourceFieldId || "",
@@ -1677,6 +2217,7 @@ function mapColumnToFieldDraft(column, columns = []) {
     placeholder: column.placeholder || "",
     defaultValue: column.defaultValue ?? "",
     fieldWidth: column.width || "md",
+    fieldWidthPx: column.widthPx ? String(column.widthPx) : "",
     isRequired: column.required ? "true" : "false",
     groupName: column.groupName || "General",
     groupColor: column.groupColor || "#e2f4ec",
@@ -1685,7 +2226,7 @@ function mapColumnToFieldDraft(column, columns = []) {
 
 function getBoardFieldDefaultValue(field, currentUserId) {
   if (field.defaultValue !== undefined && field.defaultValue !== null && String(field.defaultValue).trim() !== "") {
-    if (field.type === "number") return Number(field.defaultValue || 0);
+    if (["number", "currency", "percentage"].includes(field.type)) return Number(field.defaultValue || 0);
     if (field.type === "boolean") return String(field.defaultValue).toLowerCase() === "si" ? "Si" : field.defaultValue;
     return field.defaultValue;
   }
@@ -1694,6 +2235,7 @@ function getBoardFieldDefaultValue(field, currentUserId) {
   if (field.type === "user") return currentUserId || "";
   if (field.type === "boolean") return "No";
   if (field.type === "date") return new Date().toISOString().slice(0, 10);
+  if (field.type === "time") return "08:00";
   return "";
 }
 
@@ -1882,6 +2424,234 @@ async function parseInventoryImportFile(file) {
     .filter(Boolean);
 }
 
+function excelColumnLettersToIndex(letters) {
+  const normalized = String(letters || "").trim().toUpperCase();
+  let total = 0;
+  for (let index = 0; index < normalized.length; index += 1) {
+    total = total * 26 + (normalized.charCodeAt(index) - 64);
+  }
+  return Math.max(0, total - 1);
+}
+
+function parseSimpleExcelFormula(formula) {
+  const expression = String(formula || "").trim().replace(/^=/, "").replace(/\$/g, "");
+  if (!expression || expression.includes("!")) return null;
+  const match = expression.match(/^([A-Z]+)\d+\s*([+\-*/])\s*([A-Z]+)\d+$/i);
+  if (!match) return null;
+  return {
+    leftColumnIndex: excelColumnLettersToIndex(match[1]),
+    operator: match[2],
+    rightColumnIndex: excelColumnLettersToIndex(match[3]),
+  };
+}
+
+function normalizeArgbHex(colorValue) {
+  const raw = String(colorValue || "").replace(/^#/, "").trim();
+  if (!raw) return "";
+  const normalized = raw.length === 8 ? raw.slice(2) : raw;
+  if (!/^[0-9a-fA-F]{6}$/.test(normalized)) return "";
+  return `#${normalized.toLowerCase()}`;
+}
+
+function getExcelCellColors(cell) {
+  const fillColor = normalizeArgbHex(cell?.fill?.fgColor?.argb || cell?.fill?.bgColor?.argb);
+  const textColor = normalizeArgbHex(cell?.font?.color?.argb);
+  return {
+    fillColor,
+    textColor,
+  };
+}
+
+function inferImportedFieldTypeFromSamples(samples) {
+  const normalized = (samples || []).map((item) => String(item || "").trim()).filter(Boolean);
+  if (!normalized.length) return { type: "text", options: [] };
+
+  const isEmail = normalized.every((value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value));
+  if (isEmail) return { type: "email", options: [] };
+
+  const isUrl = normalized.every((value) => /^https?:\/\//i.test(value));
+  if (isUrl) return { type: "url", options: [] };
+
+  const isTime = normalized.every((value) => /^([01]?\d|2[0-3]):[0-5]\d$/.test(value));
+  if (isTime) return { type: "time", options: [] };
+
+  const phoneScore = normalized.filter((value) => /^\+?[\d\s()-]{8,}$/.test(value)).length / normalized.length;
+  if (phoneScore >= 0.9) return { type: "phone", options: [] };
+
+  const numericSamples = normalized.map((value) => Number(String(value).replace(/[$,%\s,]/g, ""))).filter((value) => Number.isFinite(value));
+  const numericScore = numericSamples.length / normalized.length;
+
+  if (numericScore >= 0.9) {
+    const isPercentage = normalized.some((value) => String(value).includes("%"));
+    const isCurrency = normalized.some((value) => /[$€£]/.test(value));
+    if (isPercentage) return { type: "percentage", options: [] };
+    if (isCurrency) return { type: "currency", options: [] };
+    return { type: "number", options: [] };
+  }
+
+  const dateScore = normalized.filter((value) => !Number.isNaN(new Date(value).getTime())).length / normalized.length;
+  if (dateScore >= 0.8) return { type: "date", options: [] };
+
+  const uniqueValues = Array.from(new Set(normalized));
+  if (uniqueValues.length >= 2 && uniqueValues.length <= 12 && normalized.length >= 3) {
+    return { type: "select", options: uniqueValues };
+  }
+
+  return { type: "text", options: [] };
+}
+
+async function parseBoardStructureImportFile(file) {
+  const buffer = await file.arrayBuffer();
+  const ExcelJS = await getExcelJsModule();
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+  const firstSheet = workbook.worksheets[0];
+
+  if (!firstSheet) {
+    throw new Error("No se encontró ninguna hoja en el archivo.");
+  }
+
+  const headerRow = firstSheet.getRow(1);
+  const columnCount = headerRow.actualCellCount || headerRow.cellCount || firstSheet.columnCount || 0;
+  if (!columnCount) {
+    throw new Error("El archivo no tiene encabezados en la primera fila.");
+  }
+
+  const headers = [];
+  for (let columnIndex = 1; columnIndex <= columnCount; columnIndex += 1) {
+    headers.push(String(headerRow.getCell(columnIndex).text || `Campo ${columnIndex}`).trim() || `Campo ${columnIndex}`);
+  }
+
+  const sampleValuesByColumn = headers.map(() => []);
+  const formulaByColumn = headers.map(() => "");
+  const styleHintByColumn = headers.map(() => ({ value: "", fillColor: "", textColor: "" }));
+  const importedRows = [];
+
+  for (let rowIndex = 2; rowIndex <= Math.min(firstSheet.rowCount, 60); rowIndex += 1) {
+    const worksheetRow = firstSheet.getRow(rowIndex);
+    const rowByHeader = {};
+    for (let columnIndex = 1; columnIndex <= headers.length; columnIndex += 1) {
+      const cell = worksheetRow.getCell(columnIndex);
+      const raw = cell.value;
+      const textValue = String(cell.text || "").trim();
+      const { fillColor, textColor } = getExcelCellColors(cell);
+
+      if (!formulaByColumn[columnIndex - 1] && raw && typeof raw === "object" && typeof raw.formula === "string") {
+        formulaByColumn[columnIndex - 1] = raw.formula;
+      }
+
+      if (textValue) {
+        sampleValuesByColumn[columnIndex - 1].push(textValue);
+      }
+
+      if (!styleHintByColumn[columnIndex - 1].value && textValue && (fillColor || textColor)) {
+        styleHintByColumn[columnIndex - 1] = {
+          value: textValue,
+          fillColor,
+          textColor,
+        };
+      }
+
+      rowByHeader[headers[columnIndex - 1]] = textValue;
+    }
+
+    if (Object.values(rowByHeader).some((value) => String(value || "").trim() !== "")) {
+      importedRows.push(rowByHeader);
+    }
+  }
+
+  const formulaOperationMap = {
+    "+": "add",
+    "-": "subtract",
+    "*": "multiply",
+    "/": "divide",
+  };
+
+  const pendingFormulaMetaByFieldId = new Map();
+  const unsupportedFormulaColumns = [];
+  const unsupportedFormulaDetails = [];
+  let supportedFormulaCount = 0;
+  const importedFields = headers.map((header, index) => {
+    const sourceFormula = String(formulaByColumn[index] || "").trim();
+    const formulaMeta = parseSimpleExcelFormula(sourceFormula);
+    const hasUnsupportedFormula = Boolean(sourceFormula) && !formulaMeta;
+    const inferred = formulaMeta ? { type: "formula", options: [] } : inferImportedFieldTypeFromSamples(sampleValuesByColumn[index]);
+    const styleHint = styleHintByColumn[index];
+    const fieldId = makeId("fld");
+
+    if (formulaMeta) {
+      supportedFormulaCount += 1;
+      pendingFormulaMetaByFieldId.set(fieldId, {
+        leftColumnIndex: formulaMeta.leftColumnIndex,
+        rightColumnIndex: formulaMeta.rightColumnIndex,
+        operation: formulaOperationMap[formulaMeta.operator] || "add",
+      });
+    } else if (hasUnsupportedFormula) {
+      unsupportedFormulaColumns.push(header);
+      unsupportedFormulaDetails.push({
+        header,
+        formula: sourceFormula,
+        columnIndex: index,
+      });
+    }
+
+    const importedColorRules = styleHint?.value && (styleHint?.fillColor || styleHint?.textColor)
+      ? [{
+          operator: "equals",
+          value: styleHint.value,
+          color: styleHint.fillColor || "#fee2e2",
+          textColor: styleHint.textColor || "#111827",
+        }]
+      : [];
+
+    return {
+      id: fieldId,
+      label: header,
+      type: inferred.type,
+      optionSource: inferred.type === "select" ? "manual" : "manual",
+      optionCatalogCategory: "",
+      options: inferred.options,
+      inventoryProperty: "code",
+      sourceFieldId: null,
+      formulaOperation: "add",
+      formulaLeftFieldId: null,
+      formulaRightFieldId: null,
+      helpText: hasUnsupportedFormula
+        ? `Importado desde Excel (${firstSheet.name}). La fórmula original no es compatible para conversión automática; configúrala manualmente en el Studio.`
+        : `Importado desde Excel (${firstSheet.name}).`,
+      placeholder: "",
+      defaultValue: "",
+      width: inferred.type === "textarea" ? "lg" : "md",
+      required: false,
+      groupName: "Importado",
+      groupColor: "#dbeafe",
+      colorRules: importedColorRules,
+    };
+  });
+
+  importedFields.forEach((field) => {
+    if (field.type !== "formula") return;
+    const meta = pendingFormulaMetaByFieldId.get(field.id);
+    if (!meta) return;
+    field.formulaOperation = meta.operation;
+    field.formulaLeftFieldId = importedFields[meta.leftColumnIndex]?.id || null;
+    field.formulaRightFieldId = importedFields[meta.rightColumnIndex]?.id || null;
+  });
+
+  return {
+    boardName: String(firstSheet.name || file.name.replace(/\.[^.]+$/, "")).trim() || "Tablero importado",
+    fields: importedFields,
+    rows: importedRows,
+    supportedFormulaCount,
+    unsupportedFormulaColumns,
+    unsupportedFormulaDetails,
+    notes: [
+      "El formato condicional de Excel (por ejemplo, celdas en rojo) no se importa automáticamente.",
+      "Las fórmulas entre hojas o funciones avanzadas deben reconfigurarse manualmente en el Studio.",
+    ],
+  };
+}
+
 async function downloadInventoryTemplateFile() {
   const ExcelJS = await getExcelJsModule();
   const workbook = new ExcelJS.Workbook();
@@ -1959,7 +2729,7 @@ function createUserModalState(overrides = {}) {
     mode: "create",
     id: null,
     name: "",
-    email: "",
+    username: "",
     role: ROLE_JR,
     area: "",
     jobTitle: "",
@@ -2022,8 +2792,10 @@ function normalizeUserRecord(user, fallbackManagerId = null) {
   const role = normalizeRole(user.role);
   const area = String(user.area ?? user.department ?? "").trim();
   const selfIdentityEditCount = Number(user.selfIdentityEditCount ?? 0);
+  const username = String(user.email ?? user.username ?? "").trim();
   return {
     ...user,
+    email: username,
     role,
     area,
     department: area,
@@ -2110,28 +2882,48 @@ function canEditBoardRowRecord(user, board, row, permissions, actionId = "create
   if (!user || !board || !row) return false;
   if (!canDoBoardAction(user, board)) return false;
   if (!canDoAction(user, actionId, permissions)) return false;
-  if (row.status !== STATUS_FINISHED) return true;
-  return canDoAction(user, "editFinishedBoardRow", permissions);
+  return row.status !== STATUS_FINISHED;
 }
 
 function canOperateBoardRowRecord(user, board, row, permissions) {
   return canEditBoardRowRecord(user, board, row, permissions, "boardWorkflow");
 }
 
+function toSelectOption(value, group = "") {
+  const normalized = String(value || "").trim();
+  return {
+    value: normalized,
+    label: normalized,
+    group,
+  };
+}
+
 function buildSelectOptions(field, state) {
   if (field.optionSource === "users") {
-    return state.users.filter((user) => user.isActive).map((user) => user.name);
+    return state.users
+      .filter((user) => user.isActive)
+      .map((user) => ({ value: user.name, label: user.name, group: "Players" }));
   }
   if (field.optionSource === "inventory") {
-    return (state.inventoryItems || []).map((item) => item.name);
+    return (state.inventoryItems || []).map((item) => ({ value: item.name, label: item.name, group: item.domain || "Inventario" }));
   }
   if (field.optionSource === "catalog") {
-    return state.catalog.filter((item) => !item.isDeleted).map((item) => item.name);
+    return state.catalog
+      .filter((item) => !item.isDeleted)
+      .map((item) => ({ value: item.name, label: item.name, group: item.category || "General" }));
+  }
+  if (field.optionSource === "catalogByCategory") {
+    const selectedCategory = String(field.optionCatalogCategory || "").trim();
+    const candidates = state.catalog.filter((item) => !item.isDeleted);
+    const filtered = selectedCategory
+      ? candidates.filter((item) => String(item.category || "General").trim() === selectedCategory)
+      : candidates;
+    return filtered.map((item) => ({ value: item.name, label: item.name, group: item.category || "General" }));
   }
   if (field.optionSource === "status") {
-    return [STATUS_PENDING, STATUS_RUNNING, STATUS_PAUSED, STATUS_FINISHED];
+    return [STATUS_PENDING, STATUS_RUNNING, STATUS_PAUSED, STATUS_FINISHED].map((value) => toSelectOption(value, "Estados"));
   }
-  return field.options || [];
+  return (field.options || []).map((value) => toSelectOption(value, "Manual"));
 }
 
 function getWeekName(date) {
@@ -2208,13 +3000,13 @@ function buildSampleState() {
   const users = buildDemoUsers();
 
   const catalog = [
-    normalizeCatalogItemRecord({ id: "cat-piso", name: "Piso producción", timeLimitMinutes: 50, isMandatory: true, isDeleted: false, frequency: "daily" }),
-    normalizeCatalogItemRecord({ id: "cat-banos", name: "Lavado de baños", timeLimitMinutes: 40, isMandatory: true, isDeleted: false, frequency: "daily" }),
-    normalizeCatalogItemRecord({ id: "cat-inspeccion", name: "Inspección nave", timeLimitMinutes: 75, isMandatory: true, isDeleted: false, frequency: "threeTimesWeek" }),
-    normalizeCatalogItemRecord({ id: "cat-oficinas", name: "Limpieza oficinas", timeLimitMinutes: 50, isMandatory: true, isDeleted: false, frequency: "weekdays" }),
-    normalizeCatalogItemRecord({ id: "cat-comedor", name: "Comedor", timeLimitMinutes: 50, isMandatory: true, isDeleted: false, frequency: "daily" }),
-    normalizeCatalogItemRecord({ id: "cat-vidrios", name: "Limpieza vidrios", timeLimitMinutes: 50, isMandatory: false, isDeleted: false, frequency: "twiceWeek" }),
-    normalizeCatalogItemRecord({ id: "cat-rampas", name: "Revisión de rampas", timeLimitMinutes: 35, isMandatory: false, isDeleted: false, frequency: "weekly" }),
+    normalizeCatalogItemRecord({ id: "cat-piso", name: "Piso producción", timeLimitMinutes: 50, isMandatory: true, isDeleted: false, frequency: "daily", category: "Limpieza" }),
+    normalizeCatalogItemRecord({ id: "cat-banos", name: "Lavado de baños", timeLimitMinutes: 40, isMandatory: true, isDeleted: false, frequency: "daily", category: "Limpieza" }),
+    normalizeCatalogItemRecord({ id: "cat-inspeccion", name: "Inspección nave", timeLimitMinutes: 75, isMandatory: true, isDeleted: false, frequency: "threeTimesWeek", category: "Seguridad" }),
+    normalizeCatalogItemRecord({ id: "cat-oficinas", name: "Limpieza oficinas", timeLimitMinutes: 50, isMandatory: true, isDeleted: false, frequency: "weekdays", category: "Limpieza" }),
+    normalizeCatalogItemRecord({ id: "cat-comedor", name: "Comedor", timeLimitMinutes: 50, isMandatory: true, isDeleted: false, frequency: "daily", category: "Servicios" }),
+    normalizeCatalogItemRecord({ id: "cat-vidrios", name: "Limpieza vidrios", timeLimitMinutes: 50, isMandatory: false, isDeleted: false, frequency: "twiceWeek", category: "Limpieza" }),
+    normalizeCatalogItemRecord({ id: "cat-rampas", name: "Revisión de rampas", timeLimitMinutes: 35, isMandatory: false, isDeleted: false, frequency: "weekly", category: "Seguridad" }),
   ];
 
   const inventoryItems = [
@@ -2274,6 +3066,8 @@ function buildSampleState() {
     pauseLogs: starterWorkspace?.pauseLogs || pauseLogs,
     controlRows: starterWorkspace?.controlRows || controlRows,
     controlBoards: starterWorkspace?.controlBoards || controlBoards,
+    boardWeeklyCycle: normalizeBoardWeeklyCycle(null, now),
+    boardWeekHistory: [],
     boardTemplates: [],
     permissions: buildDefaultPermissions(),
     auditLog: [],
@@ -2287,7 +3081,7 @@ function normalizeWarehouseState(parsed) {
   const sourceUsers = shouldHydrateDemoWorkspace ? sampleState.users : parsed.users;
   const users = sourceUsers.map((user) => normalizeUserRecord(user, user.managerId ?? parsed.currentUserId ?? null));
   const normalizedPermissions = normalizePermissions(remapPermissionsModel(parsed.permissions, users));
-  return {
+  const normalizedState = {
     ...parsed,
     system: {
       masterBootstrapEnabled: parsed.system?.masterBootstrapEnabled ?? !hasLeadUser(users),
@@ -2300,13 +3094,27 @@ function normalizeWarehouseState(parsed) {
     activities: shouldHydrateDemoWorkspace && (!Array.isArray(parsed.activities) || parsed.activities.length === 0) ? sampleState.activities : parsed.activities,
     pauseLogs: shouldHydrateDemoWorkspace && !Array.isArray(parsed.pauseLogs) ? sampleState.pauseLogs : parsed.pauseLogs,
     controlRows: shouldHydrateDemoWorkspace && (!Array.isArray(parsed.controlRows) || parsed.controlRows.length === 0) ? sampleState.controlRows : parsed.controlRows,
+    boardWeeklyCycle: normalizeBoardWeeklyCycle(parsed.boardWeeklyCycle),
+    boardWeekHistory: Array.isArray(parsed.boardWeekHistory)
+      ? parsed.boardWeekHistory.map((snapshot) => normalizeBoardHistorySnapshot(snapshot))
+      : sampleState.boardWeekHistory,
     controlBoards: Array.isArray(parsed.controlBoards)
       ? parsed.controlBoards.map((board) => {
+          const timeFieldIds = new Set((board.fields || []).filter((field) => field.type === "time").map((field) => field.id));
           const normalizedBoard = {
             ...board,
             createdById: board.createdById ?? users[0]?.id ?? null,
             ownerId: board.ownerId ?? board.createdById ?? users[0]?.id ?? null,
             accessUserIds: Array.isArray(board.accessUserIds) ? board.accessUserIds : [],
+            rows: Array.isArray(board.rows)
+              ? board.rows.map((row) => ({
+                  ...row,
+                  values: Object.entries(row.values || {}).reduce((accumulator, [fieldId, fieldValue]) => {
+                    accumulator[fieldId] = timeFieldIds.has(fieldId) ? normalizeTimeValue24h(fieldValue) : fieldValue;
+                    return accumulator;
+                  }, {}),
+                }))
+              : [],
           };
           return {
             ...normalizedBoard,
@@ -2320,6 +3128,8 @@ function normalizeWarehouseState(parsed) {
     permissions: normalizedPermissions,
     auditLog: Array.isArray(parsed.auditLog) ? parsed.auditLog : [],
   };
+
+  return applyBoardWeeklyCutToState(normalizedState).state;
 }
 
 function loadState() {
@@ -2479,7 +3289,7 @@ function buildStarterWorkspace(leadUser, catalog, inventoryItems, permissions, w
     createdById: leadUser.id,
     ownerId: leadUser.id,
     accessUserIds: [],
-    settings: { showWorkflow: true, showMetrics: true, showAssignee: true, showDates: true, ...(sampleBoardTemplate?.settings || {}) },
+    settings: { showWorkflow: true, showMetrics: true, showAssignee: true, showDates: true, auxColumnsOrder: [...DEFAULT_BOARD_AUX_COLUMNS_ORDER], ...(sampleBoardTemplate?.settings || {}) },
     fields: sampleFields,
     rows: boardRows,
   };
@@ -2529,28 +3339,12 @@ function InventoryStockBar({ current, minimum, unitLabel = "pzas" }) {
   const isLow = safeCurrent <= safeMinimum;
   return (
     <div className="progress-row">
-      <div className="progress-row-head">
-        <span>{isLow ? "Stock crítico" : "Stock disponible"}</span>
-        <strong className={isLow ? "danger-text" : ""}>{safeCurrent} {unitLabel} · mínimo {safeMinimum}</strong>
+      <div>
+        <span>{safeCurrent} {unitLabel}</span>
+        <small>Mínimo {safeMinimum} {unitLabel}</small>
       </div>
       <div className="progress-track">
-        <div className={`progress-fill ${isLow ? "danger" : ""}`} style={{ width: `${Math.max(10, percent)}%` }} />
-      </div>
-    </div>
-  );
-}
-
-function ProgressBar({ value, max, label }) {
-  const percent = max > 0 ? Math.min(100, (value / max) * 100) : 0;
-  const exceeded = value > max;
-  return (
-    <div className="progress-row">
-      <div className="progress-row-head">
-        <span>{label}</span>
-        <strong className={exceeded ? "danger-text" : ""}>{formatMinutes(value)} / {formatMinutes(max)}</strong>
-      </div>
-      <div className="progress-track">
-        <div className={`progress-fill ${exceeded ? "danger" : ""}`} style={{ width: `${Math.max(8, percent)}%` }} />
+        <div className={`progress-fill ${isLow ? "danger" : ""}`} style={{ width: `${Math.max(8, percent)}%` }} />
       </div>
     </div>
   );
@@ -2561,11 +3355,11 @@ function DashboardKpiCard({ title, value, subtitle, tone, icon: Icon }) {
   return (
     <article className="dashboard-kpi-card">
       <div className="dashboard-kpi-head">
-        <span>{title}</span>
         <div className="dashboard-kpi-icon" style={{ backgroundColor: palette.iconBg, color: palette.iconColor }}>
           <Icon size={18} strokeWidth={2.1} />
         </div>
       </div>
+      <span>{title}</span>
       <strong>{value}</strong>
       <small>{subtitle}</small>
     </article>
@@ -3117,8 +3911,8 @@ function LoginScreen({ loginForm, onChange, onSubmit, error, demoUsers }) {
 
           <form className="login-form" onSubmit={onSubmit}>
             <label className="app-modal-field login-field">
-              <span>Usuario o correo</span>
-              <input value={loginForm.email} onChange={(event) => onChange("email", event.target.value)} placeholder="Player" />
+              <span>Player de acceso</span>
+              <input value={loginForm.login} onChange={(event) => onChange("login", event.target.value)} placeholder="Tu acceso" />
             </label>
             <label className="app-modal-field login-field">
               <span>Contraseña</span>
@@ -3144,9 +3938,9 @@ function LoginScreen({ loginForm, onChange, onSubmit, error, demoUsers }) {
               <div className="login-demo-list">
                 {demoUsers.map((user) => (
                   <button key={user.id} type="button" className="chip login-demo-chip" onClick={() => {
-                    onChange("email", user.email);
+                    onChange("login", user.login || user.email);
                   }}>
-                    {user.role} · {user.email}
+                    {user.role} · {user.login || user.email}
                   </button>
                 ))}
               </div>
@@ -3187,18 +3981,18 @@ function BootstrapLeadSetup({ setupForm, onChange, onSubmit, error, areaOptions,
 
         <article className="login-form-panel">
           <div className="login-form-panel-head">
-            <h2>Alta inicial de player líder</h2>
-            <p>Primer acceso principal</p>
+            <h2>Configuración inicial del player principal</h2>
+            <p>Primer acceso del sistema</p>
           </div>
 
           <form className="login-form" onSubmit={onSubmit}>
             <label className="app-modal-field login-field">
-              <span>Nombre del Lead</span>
+              <span>Nombre del player principal</span>
               <input value={setupForm.name} onChange={(event) => onChange("name", event.target.value)} placeholder="Nombre completo" />
             </label>
             <label className="app-modal-field login-field">
-              <span>Correo del Lead</span>
-              <input value={setupForm.email} onChange={(event) => onChange("email", event.target.value)} placeholder="lead@copmec.local" />
+              <span>Player de acceso del player principal</span>
+              <input value={setupForm.username} onChange={(event) => onChange("username", event.target.value)} placeholder="lead@copmec.local" />
             </label>
             <label className="app-modal-field login-field">
               <span>Área</span>
@@ -3219,7 +4013,7 @@ function BootstrapLeadSetup({ setupForm, onChange, onSubmit, error, areaOptions,
               <input type="password" value={setupForm.password} onChange={(event) => onChange("password", event.target.value)} placeholder="Contraseña segura" />
             </label>
             {error ? <p className="validation-text">{error}</p> : null}
-            <button type="submit" className="primary-button login-submit-button">Crear player líder y cerrar maestro</button>
+            <button type="submit" className="primary-button login-submit-button">Crear player principal y cerrar acceso maestro</button>
           </form>
         </article>
       </section>
@@ -3323,12 +4117,12 @@ function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChange, onS
 
   function handleSaveIdentity() {
     if (!identityForm.name.trim() || !identityForm.email.trim() || !identityForm.area.trim() || !identityForm.jobTitle.trim()) {
-      setIdentityMessage("Captura nombre, correo, área y cargo para guardar el perfil del player.");
+      setIdentityMessage("Captura nombre, player de acceso, área y cargo para guardar el perfil del player.");
       return;
     }
     const result = onUpdateIdentity({
       name: identityForm.name.trim(),
-      email: identityForm.email.trim(),
+      username: identityForm.email.trim(),
       area: identityForm.area.trim(),
       jobTitle: identityForm.jobTitle.trim(),
     });
@@ -3377,11 +4171,11 @@ function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChange, onS
                   }} placeholder="Nombre del player" />
                 </label>
                 <label className="profile-summary-field">
-                  <span>Correo</span>
+                  <span>Player de acceso</span>
                   <input value={identityForm.email} onChange={(event) => {
                     setIdentityForm((current) => ({ ...current, email: event.target.value }));
                     setIdentityMessage("");
-                  }} placeholder="correo@empresa.com" />
+                  }} placeholder="Tu acceso" />
                 </label>
               </>
             ) : (
@@ -3391,7 +4185,7 @@ function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChange, onS
                   <strong>{currentUser.name}</strong>
                 </article>
                 <article className="profile-static-field">
-                  <span>Correo</span>
+                  <span>Player de acceso</span>
                   <strong>{currentUser.email}</strong>
                 </article>
               </div>
@@ -3528,7 +4322,7 @@ function App() {
   const [dashboardFilters, setDashboardFilters] = useState({ periodType: "week", periodKey: "all", responsibleId: "all", area: "all", source: "all", startDate: "", endDate: "" });
   const [pauseState, setPauseState] = useState({ open: false, activityId: null, reason: "", error: "" });
   const [boardPauseState, setBoardPauseState] = useState({ open: false, boardId: null, rowId: null, reason: "", error: "" });
-  const [catalogModal, setCatalogModal] = useState({ open: false, mode: "create", id: null, name: "", limit: "", mandatory: "true", frequency: "weekly" });
+  const [catalogModal, setCatalogModal] = useState({ open: false, mode: "create", id: null, name: "", limit: "", mandatory: "true", frequency: "weekly", category: "General" });
   const [editWeekId, setEditWeekId] = useState(null);
   const [editWeekActivityId, setEditWeekActivityId] = useState("");
   const [historyPauseActivityId, setHistoryPauseActivityId] = useState(null);
@@ -3543,6 +4337,8 @@ function App() {
   const [areaModal, setAreaModal] = useState({ open: false, target: "user", name: "", error: "" });
   const [controlBoardDraft, setControlBoardDraft] = useState(createEmptyBoardDraft);
   const [controlBoardFeedback, setControlBoardFeedback] = useState("");
+  const [boardImportedRowsDraft, setBoardImportedRowsDraft] = useState([]);
+  const [excelFormulaWizard, setExcelFormulaWizard] = useState({ open: false, items: [] });
   const [boardBuilderModal, setBoardBuilderModal] = useState({ open: false, mode: "create", boardId: null });
   const [customBoardSearch, setCustomBoardSearch] = useState("");
   const [templateSearch, setTemplateSearch] = useState("");
@@ -3556,6 +4352,7 @@ function App() {
   const [deleteBoardRowState, setDeleteBoardRowState] = useState({ open: false, boardId: null, rowId: null });
   const [inventoryModal, setInventoryModal] = useState(() => createInventoryModalState());
   const [inventoryMovementModal, setInventoryMovementModal] = useState(() => createInventoryMovementModalState());
+  const [inventoryTransferViewerOpen, setInventoryTransferViewerOpen] = useState(false);
   const [inventoryImportFeedback, setInventoryImportFeedback] = useState({ tone: "", message: "" });
   const [permissionsFeedback, setPermissionsFeedback] = useState({ tone: "", message: "" });
   const [selectedPermissionUserId, setSelectedPermissionUserId] = useState("");
@@ -3566,12 +4363,13 @@ function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true");
   const [selectedCustomBoardId, setSelectedCustomBoardId] = useState(INITIAL_ROUTE_STATE.selectedBoardId);
+  const [selectedCustomBoardViewId, setSelectedCustomBoardViewId] = useState("current");
   const [customBoardActionsMenuOpen, setCustomBoardActionsMenuOpen] = useState(false);
   const [selectedPermissionBoardId, setSelectedPermissionBoardId] = useState("");
-  const [loginForm, setLoginForm] = useState({ email: "", password: "" });
+  const [loginForm, setLoginForm] = useState({ login: "", password: "" });
   const [loginError, setLoginError] = useState("");
   const [loginDirectory, setLoginDirectory] = useState(EMPTY_LOGIN_DIRECTORY);
-  const [bootstrapLeadForm, setBootstrapLeadForm] = useState({ name: "", email: "", area: "", jobTitle: "", password: "" });
+  const [bootstrapLeadForm, setBootstrapLeadForm] = useState({ name: "", username: "", area: "", jobTitle: "", password: "" });
   const [bootstrapLeadError, setBootstrapLeadError] = useState("");
   const [auditFilters, setAuditFilters] = useState({ scope: "all", userId: "all", period: "all", search: "" });
   const [sessionUserId, setSessionUserId] = useState("");
@@ -3583,6 +4381,7 @@ function App() {
   const skipNextSyncRef = useRef(false);
   const contentShellRef = useRef(null);
   const inventoryFileInputRef = useRef(null);
+  const boardExcelFileInputRef = useRef(null);
   const permissionFileInputRef = useRef(null);
   const customBoardActionsMenuRef = useRef(null);
   const inventoryActionsMenuRef = useRef(null);
@@ -3721,7 +4520,7 @@ function App() {
         setSyncStatus("Sincronizado");
       } catch (error) {
         if (!active) return;
-        if (error?.status === 401) {
+        if (isSessionRequiredError(error)) {
           invalidateClientSession("Tu sesión terminó. Vuelve a iniciar sesión.");
         }
         setSyncStatus("Modo local");
@@ -3792,7 +4591,7 @@ function App() {
         setLoginDirectory(buildLoginDirectoryFromState(normalizedState));
         setSyncStatus("Sincronizado");
       } catch (error) {
-        if (error?.status === 401) {
+        if (isSessionRequiredError(error)) {
           invalidateClientSession("Tu sesión terminó. Vuelve a iniciar sesión.");
         } else if (error?.status === 409) {
           try {
@@ -3869,6 +4668,11 @@ function App() {
     return (state.controlBoards || []).filter((board) => getBoardVisibleToUser(board, currentUser));
   }, [currentUser, state.controlBoards]);
 
+  const dashboardVisibleBoardHistorySnapshots = useMemo(() => {
+    if (!currentUser) return [];
+    return (state.boardWeekHistory || []).filter((snapshot) => getBoardVisibleToUser(snapshot, currentUser));
+  }, [currentUser, state.boardWeekHistory]);
+
   const activityPauseSummaryMap = useMemo(() => {
     const summary = new Map();
     (state.pauseLogs || []).forEach((log) => {
@@ -3934,8 +4738,32 @@ function App() {
       };
     }));
 
-    return activityRecords.concat(boardRecords).filter((record) => Boolean(record.occurredAt));
-  }, [activityPauseSummaryMap, catalogMap, dashboardVisibleControlBoards, now, state.activities, userMap, visibleDashboardActivities]);
+    const historicalBoardRecords = dashboardVisibleBoardHistorySnapshots.flatMap((snapshot) => (snapshot.rows || []).map((row) => {
+      const responsibleUser = userMap.get(row.responsibleId || snapshot.ownerId);
+      const durationSeconds = getElapsedSeconds(row, now);
+      return {
+        id: `board-history-${snapshot.id}-${row.id}`,
+        rawId: `${snapshot.id}-${row.id}`,
+        source: "board",
+        sourceLabel: "Histórico de tablero",
+        label: snapshot.boardName,
+        boardName: snapshot.boardName,
+        responsibleId: row.responsibleId || snapshot.ownerId || "",
+        responsibleName: responsibleUser?.name || userMap.get(snapshot.ownerId)?.name || "Sin player",
+        area: getUserArea(responsibleUser) || getUserArea(userMap.get(snapshot.ownerId)) || "Sin área",
+        occurredAt: row.endTime || row.createdAt || row.startTime || row.lastResumedAt || snapshot.archivedAt,
+        status: row.status || STATUS_PENDING,
+        durationSeconds,
+        limitMinutes: 0,
+        excessSeconds: 0,
+        pauseCount: 0,
+        pauseSeconds: 0,
+        pauseReasons: [],
+      };
+    }));
+
+    return activityRecords.concat(boardRecords, historicalBoardRecords).filter((record) => Boolean(record.occurredAt));
+  }, [activityPauseSummaryMap, catalogMap, dashboardVisibleBoardHistorySnapshots, dashboardVisibleControlBoards, now, state.activities, userMap, visibleDashboardActivities]);
 
   const dateFilteredDashboardRecords = useMemo(() => {
     const startDate = getDashboardFilterStartDate(dashboardFilters.startDate);
@@ -4000,6 +4828,7 @@ function App() {
   }, [filteredDashboardActivities, state.pauseLogs]);
 
   const dashboardMetrics = useMemo(() => {
+    const catalogItemsSnapshot = (state.catalog || []).filter((item) => !item.isDeleted);
     const total = filteredDashboardRecords.length;
     const completed = filteredDashboardRecords.filter((record) => record.status === STATUS_FINISHED).length;
     const running = filteredDashboardRecords.filter((record) => record.status === STATUS_RUNNING).length;
@@ -4014,6 +4843,9 @@ function App() {
     const within = slaScoped.filter((record) => record.durationSeconds <= record.limitMinutes * 60).length;
     const exceeded = slaScoped.filter((record) => record.durationSeconds > record.limitMinutes * 60);
     const totalPauseSeconds = dashboardPauseLogs.reduce((sum, log) => sum + (log.pauseDurationSeconds || 0), 0);
+    const catalogMandatoryCount = catalogItemsSnapshot.filter((item) => item.isMandatory).length;
+    const catalogOptionalCount = Math.max(0, catalogItemsSnapshot.length - catalogMandatoryCount);
+    const catalogFrequencyTypes = new Set(catalogItemsSnapshot.map((item) => String(item.frequency || "daily"))).size;
     return {
       total,
       completed,
@@ -4031,8 +4863,17 @@ function App() {
       pauseHours: totalPauseSeconds / 3600,
       areaCount: new Set(filteredDashboardRecords.map((record) => record.area)).size,
       boardCount: new Set(filteredDashboardRecords.map((record) => record.boardName)).size,
+      catalogActiveCount: catalogItemsSnapshot.length,
+      catalogMandatoryCount,
+      catalogOptionalCount,
+      catalogFrequencyTypes,
     };
-  }, [dashboardPauseLogs, filteredDashboardCompleted, filteredDashboardRecords]);
+  }, [
+    dashboardPauseLogs,
+    filteredDashboardCompleted,
+    filteredDashboardRecords,
+    state.catalog,
+  ]);
 
   const rankingByUser = useMemo(() => {
     const groups = new Map();
@@ -4323,10 +5164,15 @@ function App() {
     [INVENTORY_DOMAIN_ORDERS]: inventoryItems.filter((item) => item.domain === INVENTORY_DOMAIN_ORDERS),
   }), [inventoryItems]);
 
+  const inventoryItemsById = useMemo(
+    () => new Map(inventoryItems.map((item) => [item.id, item])),
+    [inventoryItems],
+  );
+
   const currentInventoryItems = inventoryItemsByDomain[inventoryTab] || [];
 
   const inventoryMovements = useMemo(
-    () => (state.inventoryMovements || []).slice().sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt)),
+    () => (state.inventoryMovements || []).map((movement) => normalizeInventoryMovementRecord(movement)).sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt)),
     [state.inventoryMovements],
   );
 
@@ -4344,6 +5190,55 @@ function App() {
     () => inventoryItemsByDomain[INVENTORY_DOMAIN_CLEANING].filter((item) => item.activityCatalogIds.length > 0),
     [inventoryItemsByDomain],
   );
+
+  const orderInventoryItems = inventoryItemsByDomain[INVENTORY_DOMAIN_ORDERS] || [];
+
+  const orderInventoryTransferMovements = useMemo(
+    () => inventoryMovements.filter((movement) => movement.domain === INVENTORY_DOMAIN_ORDERS && movement.movementType === INVENTORY_MOVEMENT_TRANSFER),
+    [inventoryMovements],
+  );
+
+  const orderInventoryTransferSummary = useMemo(
+    () => orderInventoryItems
+      .map((item) => ({
+        ...item,
+        allocatedUnits: getInventoryAllocatedUnits(item),
+        availableToTransferUnits: getInventoryAvailableToTransfer(item),
+      }))
+      .sort((left, right) => {
+        const balanceGap = right.allocatedUnits - left.allocatedUnits;
+        if (balanceGap !== 0) return balanceGap;
+        return left.name.localeCompare(right.name, "es-MX");
+      }),
+    [orderInventoryItems],
+  );
+
+  const inventoryMovementSelectedItem = useMemo(
+    () => (inventoryMovementModal.itemId ? inventoryItemsById.get(inventoryMovementModal.itemId) || null : null),
+    [inventoryItemsById, inventoryMovementModal.itemId],
+  );
+
+  const inventoryMovementTransferTarget = useMemo(
+    () => inventoryMovementModal.movementType === INVENTORY_MOVEMENT_TRANSFER && inventoryMovementSelectedItem?.domain === INVENTORY_DOMAIN_ORDERS
+      ? findInventoryTransferTarget(inventoryMovementSelectedItem, inventoryMovementModal.warehouse, inventoryMovementModal.storageLocation)
+      : null,
+    [inventoryMovementModal.movementType, inventoryMovementSelectedItem, inventoryMovementModal.warehouse, inventoryMovementModal.storageLocation],
+  );
+
+  const inventoryMovementAvailableUnits = useMemo(
+    () => inventoryMovementSelectedItem
+      ? getInventoryAvailableToTransfer(
+          inventoryMovementSelectedItem,
+          inventoryMovementModal.remainingUnits,
+          inventoryMovementTransferTarget?.destinationKey || "",
+        )
+      : 0,
+    [inventoryMovementModal.remainingUnits, inventoryMovementSelectedItem, inventoryMovementTransferTarget],
+  );
+
+  const isOrderTransferMovementModal = inventoryMovementModal.movementType === INVENTORY_MOVEMENT_TRANSFER && inventoryMovementModal.domain === INVENTORY_DOMAIN_ORDERS;
+  const inventoryMovementModalTitle = isOrderTransferMovementModal ? "Registrar transferencia" : "Registrar movimiento";
+  const hasOrderTransferTargets = orderInventoryTransferSummary.some((item) => item.transferTargets.length > 0);
 
   const inventoryStats = useMemo(() => ({
     total: currentInventoryItems.length,
@@ -4368,6 +5263,26 @@ function App() {
     () => (state.catalog || []).filter((item) => !item.isDeleted),
     [state.catalog],
   );
+
+  const dashboardCatalogTypeRows = useMemo(() => {
+    const mandatory = activeCatalogItems.filter((item) => item.isMandatory).length;
+    const optional = Math.max(0, activeCatalogItems.length - mandatory);
+    return [
+      { id: "mandatory", label: "Obligatorias", value: mandatory },
+      { id: "optional", label: "Ocasionales", value: optional },
+    ];
+  }, [activeCatalogItems]);
+
+  const dashboardCatalogFrequencyRows = useMemo(() => {
+    const grouped = new Map();
+    activeCatalogItems.forEach((item) => {
+      const frequency = String(item.frequency || "daily");
+      grouped.set(frequency, (grouped.get(frequency) || 0) + 1);
+    });
+    return Array.from(grouped.entries())
+      .map(([id, value]) => ({ id, label: getActivityFrequencyLabel(id), value }))
+      .sort((a, b) => b.value - a.value);
+  }, [activeCatalogItems]);
 
   const catalogWeekGroups = useMemo(() => ([
     {
@@ -4534,6 +5449,30 @@ function App() {
     return filteredVisibleControlBoards.find((board) => board.id === selectedCustomBoardId) || filteredVisibleControlBoards[0] || null;
   }, [selectedCustomBoardId, filteredVisibleControlBoards]);
 
+  const visibleBoardHistorySnapshots = useMemo(() => {
+    if (!currentUser) return [];
+    return (state.boardWeekHistory || []).filter((snapshot) => getBoardVisibleToUser(snapshot, currentUser));
+  }, [currentUser, state.boardWeekHistory]);
+
+  const selectedCustomBoardHistoryOptions = useMemo(() => {
+    if (!selectedCustomBoard) return [];
+    return visibleBoardHistorySnapshots
+      .filter((snapshot) => snapshot.boardId === selectedCustomBoard.id)
+      .sort((left, right) => new Date(right.startDate) - new Date(left.startDate));
+  }, [selectedCustomBoard, visibleBoardHistorySnapshots]);
+
+  const selectedCustomBoardSnapshot = useMemo(
+    () => selectedCustomBoardHistoryOptions.find((snapshot) => snapshot.id === selectedCustomBoardViewId) || null,
+    [selectedCustomBoardHistoryOptions, selectedCustomBoardViewId],
+  );
+
+  const isHistoricalCustomBoardView = Boolean(selectedCustomBoardSnapshot);
+
+  const selectedCustomBoardDisplay = useMemo(
+    () => selectedCustomBoardSnapshot || selectedCustomBoard,
+    [selectedCustomBoard, selectedCustomBoardSnapshot],
+  );
+
   const selectedPermissionBoard = useMemo(
     () => (state.controlBoards || []).find((board) => board.id === selectedPermissionBoardId) || state.controlBoards?.[0] || null,
     [selectedPermissionBoardId, state.controlBoards],
@@ -4615,9 +5554,16 @@ function App() {
   );
 
   const selectedCustomBoardSections = useMemo(
-    () => getBoardSectionGroups(selectedCustomBoard),
-    [selectedCustomBoard],
+    () => getBoardSectionGroups(selectedCustomBoardDisplay),
+    [selectedCustomBoardDisplay],
   );
+
+  useEffect(() => {
+    if (selectedCustomBoardViewId === "current") return;
+    if (!selectedCustomBoardHistoryOptions.some((snapshot) => snapshot.id === selectedCustomBoardViewId)) {
+      setSelectedCustomBoardViewId("current");
+    }
+  }, [selectedCustomBoardHistoryOptions, selectedCustomBoardViewId]);
 
   const filteredAuditLog = useMemo(() => {
     const nowMs = Date.now();
@@ -4680,8 +5626,8 @@ function App() {
   }, [controlBoardDraft.columns]);
 
   const customBoardMetrics = useMemo(() => {
-    if (!selectedCustomBoard) return null;
-    const rows = selectedCustomBoard.rows || [];
+    if (!selectedCustomBoardDisplay) return null;
+    const rows = selectedCustomBoardDisplay.rows || [];
     const completed = rows.filter((row) => row.status === STATUS_FINISHED).length;
     const running = rows.filter((row) => row.status === STATUS_RUNNING).length;
     const paused = rows.filter((row) => row.status === STATUS_PAUSED).length;
@@ -4693,7 +5639,7 @@ function App() {
       paused,
       averageMinutes: rows.length ? totalSeconds / rows.length / 60 : 0,
     };
-  }, [now, selectedCustomBoard]);
+  }, [now, selectedCustomBoardDisplay]);
 
   const dashboardResponsibleRows = useMemo(() => {
     const max = Math.max(...rankingByUser.map((item) => item.averageMinutes), 1);
@@ -4944,8 +5890,9 @@ function App() {
     }));
   }
 
-  function openCatalogCreate() {
-    setCatalogModal({ open: true, mode: "create", id: null, name: "", limit: "", mandatory: "true", frequency: "weekly" });
+  function openCatalogCreate(preferredCategory = "General") {
+    const normalizedCategory = String(preferredCategory || "General").trim() || "General";
+    setCatalogModal({ open: true, mode: "create", id: null, name: "", limit: "", mandatory: "true", frequency: "weekly", category: normalizedCategory });
   }
 
   function openCatalogEdit(item) {
@@ -4957,6 +5904,7 @@ function App() {
       limit: String(item.timeLimitMinutes),
       mandatory: String(item.isMandatory),
       frequency: normalizeActivityFrequency(item.frequency),
+      category: String(item.category || "General").trim() || "General",
     });
   }
 
@@ -4966,6 +5914,7 @@ function App() {
       timeLimitMinutes: Number(catalogModal.limit || 0),
       isMandatory: catalogModal.mandatory === "true",
       frequency: normalizeActivityFrequency(catalogModal.frequency),
+      category: String(catalogModal.category || "General").trim() || "General",
       isDeleted: false,
     };
 
@@ -4980,7 +5929,7 @@ function App() {
         },
       );
       applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
-      setCatalogModal({ open: false, mode: "create", id: null, name: "", limit: "", mandatory: "true", frequency: "weekly" });
+      setCatalogModal({ open: false, mode: "create", id: null, name: "", limit: "", mandatory: "true", frequency: "weekly", category: "General" });
     } catch {
       // Keep modal open if the save fails.
     }
@@ -5025,7 +5974,7 @@ function App() {
     return normalizeUserRecord({
       id: draft.id || fallbackId,
       name: draft.name || "Nuevo player",
-      email: draft.email || `${normalizeKey(draft.role || ROLE_JR) || "usuario"}@copmec.local`,
+      email: draft.username || draft.email || normalizeKey(draft.name || draft.role || "player").replace(/\s+/g, ".") || "player",
       role: draft.role,
       area: draft.area || getUserArea(currentUser),
       department: draft.area || getUserArea(currentUser),
@@ -5100,7 +6049,7 @@ function App() {
       mode: "create",
       id: null,
       name: "",
-      email: "",
+      username: "",
       role: defaultRole,
       area: getUserArea(currentUser),
       jobTitle: DEFAULT_JOB_TITLE_BY_ROLE[defaultRole] || "",
@@ -5121,7 +6070,7 @@ function App() {
       mode: "edit",
       id: user.id,
       name: user.name,
-      email: user.email,
+      username: user.email,
       role: user.role,
       area: getUserArea(user),
       jobTitle: getUserJobTitle(user),
@@ -5140,7 +6089,7 @@ function App() {
     const trimmedPassword = userModal.password.trim();
     const payload = {
       name: userModal.name.trim(),
-      email: userModal.email.trim(),
+      username: userModal.username.trim(),
       role: userModal.role,
       area: userModal.area.trim(),
       department: userModal.area.trim(),
@@ -5152,7 +6101,7 @@ function App() {
       permissionOverrides: userModal.permissionOverrides,
     };
 
-    if (!payload.name || !payload.email || !payload.area || !payload.jobTitle) return;
+    if (!payload.name || !payload.username || !payload.area || !payload.jobTitle) return;
     if (userModal.mode === "create") {
       if (!isTemporaryPassword(trimmedPassword)) return;
       payload.password = trimmedPassword;
@@ -5179,12 +6128,12 @@ function App() {
     if (!currentUser) return;
     const trimmedPatch = {
       name: String(identityPatch.name || "").trim(),
-      email: String(identityPatch.email || "").trim(),
+      email: String((identityPatch.username ?? identityPatch.email) || "").trim(),
       area: String(identityPatch.area || "").trim(),
       jobTitle: String(identityPatch.jobTitle || "").trim(),
     };
     if (!trimmedPatch.name || !trimmedPatch.email || !trimmedPatch.area || !trimmedPatch.jobTitle) {
-      return { ok: false, message: "Captura nombre, correo, área y cargo para guardar el perfil del player." };
+      return { ok: false, message: "Captura nombre, player de acceso, área y cargo para guardar el perfil del player." };
     }
     const hasChanges = [
       trimmedPatch.name !== String(currentUser.name || "").trim(),
@@ -5269,17 +6218,28 @@ function App() {
       setControlBoardFeedback("Escribe una etiqueta para el campo antes de agregarlo.");
       return;
     }
+    const resolvedInventorySourceFieldId = controlBoardDraft.fieldType === "inventoryProperty"
+      ? resolveInventoryPropertySourceFieldId(controlBoardDraft.columns, controlBoardDraft.sourceFieldId)
+      : controlBoardDraft.sourceFieldId || null;
+    if (controlBoardDraft.fieldType === "inventoryProperty" && !resolvedInventorySourceFieldId) {
+      setControlBoardFeedback("Agrega primero un Buscador de inventario y luego enlaza este dato derivado.");
+      return;
+    }
+    const isActivityListField = controlBoardDraft.fieldType === BOARD_ACTIVITY_LIST_FIELD;
     const colorRules = controlBoardDraft.colorValue
       ? [{ operator: controlBoardDraft.colorOperator, value: controlBoardDraft.colorValue, color: controlBoardDraft.colorBg, textColor: controlBoardDraft.colorText }]
       : [];
+    const normalizedWidthPx = Number(controlBoardDraft.fieldWidthPx || 0);
+    const widthPx = Number.isFinite(normalizedWidthPx) && normalizedWidthPx >= 90 ? Math.round(normalizedWidthPx) : null;
     const field = {
       id: makeId("fld"),
       label: controlBoardDraft.fieldLabel.trim(),
-      type: controlBoardDraft.fieldType,
-      optionSource: controlBoardDraft.optionSource,
-      options: controlBoardDraft.optionsText.split(",").map((item) => item.trim()).filter(Boolean),
+      type: isActivityListField ? "select" : controlBoardDraft.fieldType,
+      optionSource: isActivityListField ? "catalogByCategory" : controlBoardDraft.optionSource,
+      optionCatalogCategory: controlBoardDraft.optionCatalogCategory,
+      options: isActivityListField ? [] : controlBoardDraft.optionsText.split(",").map((item) => item.trim()).filter(Boolean),
       inventoryProperty: controlBoardDraft.inventoryProperty,
-      sourceFieldId: controlBoardDraft.sourceFieldId || null,
+      sourceFieldId: resolvedInventorySourceFieldId,
       formulaOperation: controlBoardDraft.formulaOperation,
       formulaLeftFieldId: controlBoardDraft.formulaLeftFieldId || null,
       formulaRightFieldId: controlBoardDraft.formulaRightFieldId || null,
@@ -5287,6 +6247,7 @@ function App() {
       placeholder: controlBoardDraft.placeholder.trim(),
       defaultValue: controlBoardDraft.defaultValue,
       width: controlBoardDraft.fieldWidth,
+      widthPx,
       required: controlBoardDraft.isRequired === "true",
       groupName: controlBoardDraft.groupName.trim() || "General",
       groupColor: controlBoardDraft.groupColor,
@@ -5296,9 +6257,8 @@ function App() {
     const fieldsToInsert = controlBoardDraft.fieldType === INVENTORY_LOOKUP_LOGISTICS_FIELD
       ? buildInventoryBundleFields(controlBoardDraft, editingDraftColumnId || null)
       : [field];
-    setControlBoardDraft((current) => ({
-      ...current,
-      columns: editingDraftColumnId
+    setControlBoardDraft((current) => {
+      const nextColumns = editingDraftColumnId
         ? current.columns.flatMap((column) => {
           if (isBundleField) {
             const derivedIds = new Set(getInventoryBundleEditableFields(current.columns, editingDraftColumnId).map((item) => item.id));
@@ -5308,19 +6268,35 @@ function App() {
           }
           return column.id === editingDraftColumnId ? fieldsToInsert : [column];
         })
-        : current.columns.concat(fieldsToInsert),
-      ...createEmptyFieldDraft(),
-    }));
+        : current.columns.concat(fieldsToInsert);
+      const nextColumnOrder = syncBoardFieldOrderIntoColumnOrder(nextColumns, current.settings || {});
+      return {
+        ...current,
+        columns: nextColumns,
+        settings: {
+          ...current.settings,
+          columnOrder: nextColumnOrder,
+        },
+        ...createEmptyFieldDraft(),
+      };
+    });
     setEditingDraftColumnId(null);
     setComponentStudioOpen(false);
     setControlBoardFeedback(editingDraftColumnId ? "Componente actualizado correctamente." : fieldsToInsert.length > 1 ? "Buscador agregado con sus columnas automáticas." : "Componente agregado al tablero borrador.");
   }
 
   function removeDraftColumn(columnId) {
-    setControlBoardDraft((current) => ({
-      ...current,
-      columns: current.columns.filter((column) => column.id !== columnId),
-    }));
+    setControlBoardDraft((current) => {
+      const nextColumns = current.columns.filter((column) => column.id !== columnId);
+      return {
+        ...current,
+        columns: nextColumns,
+        settings: {
+          ...current.settings,
+          columnOrder: getNormalizedBoardColumnOrder({ fields: nextColumns, settings: current.settings || {} }),
+        },
+      };
+    });
     setControlBoardFeedback("Columna eliminada del borrador.");
   }
 
@@ -5348,7 +6324,14 @@ function App() {
       };
       const nextColumns = [...current.columns];
       nextColumns.splice(index + 1, 0, duplicate);
-      return { ...current, columns: nextColumns };
+      return {
+        ...current,
+        columns: nextColumns,
+        settings: {
+          ...current.settings,
+          columnOrder: syncBoardFieldOrderIntoColumnOrder(nextColumns, current.settings || {}),
+        },
+      };
     });
     setControlBoardFeedback("Componente duplicado.");
   }
@@ -5362,7 +6345,34 @@ function App() {
       const nextColumns = [...current.columns];
       const [moved] = nextColumns.splice(index, 1);
       nextColumns.splice(targetIndex, 0, moved);
-      return { ...current, columns: nextColumns };
+      return {
+        ...current,
+        columns: nextColumns,
+        settings: {
+          ...current.settings,
+          columnOrder: syncBoardFieldOrderIntoColumnOrder(nextColumns, current.settings || {}),
+        },
+      };
+    });
+  }
+
+  function reorderDraftColumn(sourceColumnId, targetColumnId) {
+    if (!sourceColumnId || !targetColumnId || sourceColumnId === targetColumnId) return;
+    setControlBoardDraft((current) => {
+      const sourceIndex = current.columns.findIndex((item) => item.id === sourceColumnId);
+      const targetIndex = current.columns.findIndex((item) => item.id === targetColumnId);
+      if (sourceIndex === -1 || targetIndex === -1) return current;
+      const nextColumns = [...current.columns];
+      const [moved] = nextColumns.splice(sourceIndex, 1);
+      nextColumns.splice(targetIndex, 0, moved);
+      return {
+        ...current,
+        columns: nextColumns,
+        settings: {
+          ...current.settings,
+          columnOrder: syncBoardFieldOrderIntoColumnOrder(nextColumns, current.settings || {}),
+        },
+      };
     });
   }
 
@@ -5374,7 +6384,7 @@ function App() {
       ...current,
       name: template.name,
       description: template.description,
-      settings: { ...current.settings, ...(template.settings || {}) },
+      settings: { ...current.settings, ...(template.settings || {}), columnOrder: [] },
       columns: buildTemplateColumns(template),
       ...createEmptyFieldDraft(),
     }));
@@ -5666,13 +6676,20 @@ function App() {
     const isEditing = boardBuilderModal.mode === "edit" && boardBuilderModal.boardId;
 
     const ownerId = controlBoardDraft.ownerId || currentUser.id;
+    const normalizedColumnOrder = getNormalizedBoardColumnOrder({
+      fields: controlBoardDraft.columns || [],
+      settings: controlBoardDraft.settings || {},
+    });
     const payload = {
       name: controlBoardDraft.name.trim(),
       description: controlBoardDraft.description.trim(),
       ownerId,
       accessUserIds: Array.from(new Set((controlBoardDraft.accessUserIds || []).filter((userId) => userId && userId !== ownerId))),
-      settings: { ...controlBoardDraft.settings },
-      columns: cloneDraftColumns(controlBoardDraft.columns || []),
+      settings: {
+        ...controlBoardDraft.settings,
+        columnOrder: normalizedColumnOrder,
+      },
+      columns: sortBoardFieldsByColumnOrder(cloneDraftColumns(controlBoardDraft.columns || []), normalizedColumnOrder),
     };
 
     try {
@@ -5684,18 +6701,92 @@ function App() {
         },
       );
       applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
-      setSelectedCustomBoardId(result.data.boardId || boardBuilderModal.boardId || "");
-      setPage(PAGE_CUSTOM_BOARDS);
+      const createdBoardId = result.data.boardId || boardBuilderModal.boardId || "";
+
+      if (!isEditing && createdBoardId && boardImportedRowsDraft.length) {
+        let latestRemoteState = result.data.state;
+        const rowsToImport = boardImportedRowsDraft.slice(0, 200);
+        const yesValues = new Set(["si", "sí", "true", "1", "yes", "y"]);
+
+        for (const importedRow of rowsToImport) {
+          const createdRowState = await requestJson(`/warehouse/boards/${createdBoardId}/rows`, {
+            method: "POST",
+          });
+
+          const boardAfterCreate = (createdRowState.controlBoards || []).find((item) => item.id === createdBoardId);
+          const rowId = boardAfterCreate?.rows?.[boardAfterCreate.rows.length - 1]?.id;
+          if (!rowId) {
+            latestRemoteState = createdRowState;
+            continue;
+          }
+
+          const valuesPatch = {};
+          (payload.columns || []).forEach((field) => {
+            const raw = importedRow?.[field.label];
+            if (raw === undefined || raw === null || String(raw).trim() === "") return;
+
+            if (["number", "currency", "percentage", "formula"].includes(field.type)) {
+              const parsed = Number(String(raw).replace(/[$,%\s,]/g, ""));
+              valuesPatch[field.id] = Number.isFinite(parsed) ? parsed : 0;
+              return;
+            }
+
+            if (field.type === "boolean") {
+              valuesPatch[field.id] = yesValues.has(String(raw).trim().toLowerCase()) ? "Si" : "No";
+              return;
+            }
+
+            if (field.type === "user") {
+              const match = visibleUsers.find((user) => normalizeKey(user.name) === normalizeKey(raw));
+              valuesPatch[field.id] = match?.id || "";
+              return;
+            }
+
+            if (isInventoryLookupFieldType(field.type)) {
+              const item = findInventoryItemByQuery(state.inventoryItems || [], raw);
+              valuesPatch[field.id] = item?.id || "";
+              return;
+            }
+
+            valuesPatch[field.id] = String(raw);
+          });
+
+          if (Object.keys(valuesPatch).length) {
+            latestRemoteState = await requestJson(`/warehouse/boards/${createdBoardId}/rows/${rowId}`, {
+              method: "PATCH",
+              body: JSON.stringify({ values: valuesPatch }),
+            });
+          } else {
+            latestRemoteState = createdRowState;
+          }
+        }
+
+        applyRemoteWarehouseState(latestRemoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+        setBoardRuntimeFeedback({
+          tone: "success",
+          message: `Se creó ${payload.name} y se importaron ${Math.min(boardImportedRowsDraft.length, 200)} fila(s) desde Excel.${boardImportedRowsDraft.length > 200 ? " Solo se importaron las primeras 200 por rendimiento." : ""}`,
+        });
+      }
+
+      setSelectedCustomBoardId(createdBoardId);
+      setSelectedCustomBoardViewId("current");
+      if (!isEditing) {
+        setPage(PAGE_CUSTOM_BOARDS);
+      }
       setBoardBuilderModal({ open: false, mode: "create", boardId: null });
       setTemplatePreviewId(null);
       setControlBoardDraft({ ...createEmptyBoardDraft(), ownerId: currentUser.id });
+      setBoardImportedRowsDraft([]);
+      setExcelFormulaWizard({ open: false, items: [] });
       setControlBoardFeedback("");
-      setBoardRuntimeFeedback({
-        tone: "success",
-        message: isEditing
-          ? `Se actualizó ${payload.name} y ya quedó reflejado en Mis tableros.`
-          : `Se creó ${payload.name} y ya aparece en Mis tableros.`,
-      });
+      if (isEditing || !boardImportedRowsDraft.length) {
+        setBoardRuntimeFeedback({
+          tone: "success",
+          message: isEditing
+            ? `Se actualizó ${payload.name} sin cambiarte de pantalla.`
+            : `Se creó ${payload.name} y ya aparece en Mis tableros.`,
+        });
+      }
     } catch (error) {
       setControlBoardFeedback(error?.message || "No se pudo guardar el tablero.");
     }
@@ -5703,6 +6794,8 @@ function App() {
 
   function clearControlBoardDraft() {
     setControlBoardDraft({ ...createEmptyBoardDraft(), ownerId: currentUser?.id || "" });
+    setBoardImportedRowsDraft([]);
+    setExcelFormulaWizard({ open: false, items: [] });
     setEditingDraftColumnId(null);
     setTemplatePreviewId(null);
     setControlBoardFeedback("Borrador limpiado.");
@@ -5710,6 +6803,8 @@ function App() {
 
   function openCreateBoardBuilder() {
     setControlBoardDraft({ ...createEmptyBoardDraft(), ownerId: currentUser?.id || "" });
+    setBoardImportedRowsDraft([]);
+    setExcelFormulaWizard({ open: false, items: [] });
     setBoardBuilderModal({ open: true, mode: "create", boardId: null });
     setTemplatePreviewId(null);
     setEditingDraftColumnId(null);
@@ -5719,6 +6814,8 @@ function App() {
   function openEditBoardBuilder(board) {
     if (!actionPermissions.saveBoard || !canEditBoard(currentUser, board)) return;
     setControlBoardDraft(createBoardDraftFromBoard(board));
+    setBoardImportedRowsDraft([]);
+    setExcelFormulaWizard({ open: false, items: [] });
     setBoardBuilderModal({ open: true, mode: "edit", boardId: board.id });
     setTemplatePreviewId(null);
     setEditingDraftColumnId(null);
@@ -5773,9 +6870,71 @@ function App() {
     setInventoryModal({ ...createInventoryModalState("edit", item, item.domain), open: true });
   }
 
+  function closeInventoryMovementModal() {
+    setInventoryMovementModal(createInventoryMovementModalState());
+  }
+
+  function updateInventoryMovementModal(updates) {
+    setInventoryMovementModal((current) => {
+      const next = { ...current, ...updates };
+      const hasItemChange = Object.prototype.hasOwnProperty.call(updates, "itemId");
+      const hasWarehouseChange = Object.prototype.hasOwnProperty.call(updates, "warehouse");
+      const hasStorageChange = Object.prototype.hasOwnProperty.call(updates, "storageLocation");
+      const hasMovementTypeChange = Object.prototype.hasOwnProperty.call(updates, "movementType");
+      const selectedItem = next.itemId ? inventoryItemsById.get(next.itemId) || null : null;
+
+      if (hasItemChange) {
+        next.itemCode = selectedItem?.code || "";
+        next.itemName = selectedItem?.name || "";
+        next.unitLabel = selectedItem?.unitLabel || "pzas";
+        next.domain = selectedItem?.domain || current.domain;
+        if (next.movementType !== INVENTORY_MOVEMENT_TRANSFER) {
+          next.storageLocation = selectedItem?.storageLocation || "";
+        }
+      }
+
+      if (hasMovementTypeChange && next.movementType !== INVENTORY_MOVEMENT_TRANSFER) {
+        next.warehouse = "";
+        next.recipientName = "";
+        next.remainingUnits = "";
+        next.transferTargetKey = "";
+        next.storageLocation = selectedItem?.storageLocation || next.storageLocation;
+      }
+
+      if (next.movementType === INVENTORY_MOVEMENT_TRANSFER && selectedItem?.domain === INVENTORY_DOMAIN_ORDERS) {
+        const matchedTarget = findInventoryTransferTarget(selectedItem, next.warehouse, next.storageLocation);
+        const nextTargetKey = matchedTarget?.destinationKey || "";
+        const shouldResetRemaining = (hasItemChange || hasWarehouseChange || hasStorageChange) && current.transferTargetKey !== nextTargetKey;
+        next.transferTargetKey = nextTargetKey;
+        if (shouldResetRemaining) {
+          next.remainingUnits = "";
+        }
+      } else {
+        next.transferTargetKey = "";
+        if (next.movementType !== INVENTORY_MOVEMENT_TRANSFER) {
+          next.remainingUnits = "";
+        }
+      }
+
+      return next;
+    });
+  }
+
   function openInventoryMovement(item, movementType = INVENTORY_MOVEMENT_RESTOCK) {
     if (!actionPermissions[getInventoryManageActionId(item?.domain)]) return;
+    setInventoryImportFeedback({ tone: "", message: "" });
     setInventoryMovementModal({ ...createInventoryMovementModalState(item, movementType, item?.domain || inventoryTab), open: true });
+  }
+
+  function openOrderInventoryTransfer(item = null) {
+    if (!actionPermissions[getInventoryManageActionId(INVENTORY_DOMAIN_ORDERS)]) return;
+    setInventoryImportFeedback({ tone: "", message: "" });
+    setInventoryMovementModal({ ...createInventoryMovementModalState(item, INVENTORY_MOVEMENT_TRANSFER, INVENTORY_DOMAIN_ORDERS), open: true });
+  }
+
+  function openInventoryTransferViewer() {
+    if (!actionPermissions[getInventoryManageActionId(INVENTORY_DOMAIN_ORDERS)]) return;
+    setInventoryTransferViewerOpen(true);
   }
 
   async function submitInventoryModal() {
@@ -5816,23 +6975,48 @@ function App() {
   async function submitInventoryMovementModal() {
     if (!actionPermissions[getInventoryManageActionId(inventoryMovementModal.domain)] || !inventoryMovementModal.itemId) return;
 
+    const selectedItem = inventoryItemsById.get(inventoryMovementModal.itemId) || null;
+    const quantity = Number(inventoryMovementModal.quantity || 0);
+    const isOrderTransfer = inventoryMovementModal.movementType === INVENTORY_MOVEMENT_TRANSFER && selectedItem?.domain === INVENTORY_DOMAIN_ORDERS;
+
+    if (!selectedItem || !quantity || Number.isNaN(quantity)) {
+      setInventoryImportFeedback({ tone: "danger", message: "Define el artículo y una cantidad válida para continuar." });
+      return;
+    }
+
+    if (isOrderTransfer) {
+      if (!inventoryMovementModal.warehouse.trim() && !inventoryMovementModal.storageLocation.trim()) {
+        setInventoryImportFeedback({ tone: "danger", message: "Define una nave o un resguardo para registrar la transferencia." });
+        return;
+      }
+      if (inventoryMovementTransferTarget && !hasInventoryBalanceInput(inventoryMovementModal.remainingUnits)) {
+        setInventoryImportFeedback({ tone: "danger", message: "Antes de volver a transferir a ese destino, indica cuántas unidades le quedan." });
+        return;
+      }
+      if (quantity > inventoryMovementAvailableUnits) {
+        setInventoryImportFeedback({ tone: "danger", message: `Solo hay ${inventoryMovementAvailableUnits} ${selectedItem.unitLabel || "pzas"} disponibles para transferir con el saldo actual.` });
+        return;
+      }
+    }
+
     try {
       const result = await requestJson("/warehouse/inventory/movements", {
         method: "POST",
         body: JSON.stringify({
-          itemId: inventoryMovementModal.itemId,
+          itemId: selectedItem.id,
           movementType: inventoryMovementModal.movementType,
-          quantity: Number(inventoryMovementModal.quantity || 0),
+          quantity,
           notes: inventoryMovementModal.notes.trim(),
           warehouse: inventoryMovementModal.warehouse.trim(),
           recipientName: inventoryMovementModal.recipientName.trim(),
           storageLocation: inventoryMovementModal.storageLocation.trim(),
           unitLabel: inventoryMovementModal.unitLabel.trim() || "pzas",
+          remainingUnits: hasInventoryBalanceInput(inventoryMovementModal.remainingUnits) ? Number(inventoryMovementModal.remainingUnits || 0) : null,
         }),
       });
       applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
-      setInventoryMovementModal(createInventoryMovementModalState());
-      setInventoryImportFeedback({ tone: "success", message: "Movimiento de inventario registrado." });
+      closeInventoryMovementModal();
+      setInventoryImportFeedback({ tone: "success", message: isOrderTransfer ? "Transferencia registrada." : "Movimiento de inventario registrado." });
     } catch (error) {
       setInventoryImportFeedback({ tone: "danger", message: error?.message || "No se pudo registrar el movimiento." });
     }
@@ -5913,7 +7097,7 @@ function App() {
     try {
       authResult = await requestJson("/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email: loginForm.email, password: loginForm.password }),
+        body: JSON.stringify({ login: loginForm.login, password: loginForm.password }),
       });
     } catch (error) {
       setLoginError(error?.message || "Credenciales inválidas.");
@@ -5937,7 +7121,7 @@ function App() {
       setPage(nextUser?.role === ROLE_JR ? PAGE_CUSTOM_BOARDS : PAGE_DASHBOARD);
       setSyncStatus("Sincronizado");
     } catch (error) {
-      if (error?.status === 401) {
+      if (isSessionRequiredError(error)) {
         setLoginError("Se validaron tus credenciales, pero no se pudo guardar la sesión. Revisa CORS_ALLOWED_ORIGINS y SESSION_COOKIE_SAMESITE en Render.");
         return;
       }
@@ -5952,7 +7136,7 @@ function App() {
       // Ignore logout transport errors and clear client session anyway.
     }
     setSessionUserId("");
-    setLoginForm({ email: "", password: "" });
+    setLoginForm({ login: "", password: "" });
     setLoginError("");
     setLoginDirectory(EMPTY_LOGIN_DIRECTORY);
     setPasswordForm({ password: "", confirmPassword: "", message: "" });
@@ -5960,8 +7144,8 @@ function App() {
 
   function handleCreateFirstLead(event) {
     event.preventDefault();
-    if (!bootstrapLeadForm.name.trim() || !bootstrapLeadForm.email.trim() || !bootstrapLeadForm.area.trim() || !bootstrapLeadForm.jobTitle.trim() || !bootstrapLeadForm.password.trim()) {
-      setBootstrapLeadError("Completa nombre, correo, área, cargo y contraseña para crear el primer Lead.");
+    if (!bootstrapLeadForm.name.trim() || !bootstrapLeadForm.username.trim() || !bootstrapLeadForm.area.trim() || !bootstrapLeadForm.jobTitle.trim() || !bootstrapLeadForm.password.trim()) {
+      setBootstrapLeadError("Completa nombre, player de acceso, área, cargo y contraseña para crear el primer Lead.");
       return;
     }
     if (!isStrongPassword(bootstrapLeadForm.password)) {
@@ -5973,7 +7157,7 @@ function App() {
     const leadUser = {
       id: leadId,
       name: bootstrapLeadForm.name.trim(),
-      email: bootstrapLeadForm.email.trim(),
+      email: bootstrapLeadForm.username.trim(),
       area: bootstrapLeadForm.area.trim(),
       department: bootstrapLeadForm.area.trim(),
       jobTitle: bootstrapLeadForm.jobTitle.trim(),
@@ -6001,7 +7185,7 @@ function App() {
       activities: starterWorkspace.activities,
       pauseLogs: starterWorkspace.pauseLogs,
     }));
-    setBootstrapLeadForm({ name: "", email: "", area: "", jobTitle: "", password: "" });
+    setBootstrapLeadForm({ name: "", username: "", area: "", jobTitle: "", password: "" });
     setSessionUserId(leadId);
     setPage(PAGE_DASHBOARD);
   }
@@ -6128,10 +7312,27 @@ function App() {
     const row = board?.rows?.find((item) => item.id === rowId);
     if (!board || !row || !canOperateBoardRowRecord(currentUser, board, row, normalizedPermissions)) return;
 
+    const nowTime = new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false });
+    const autoTimeValues = (board.fields || []).reduce((accumulator, field) => {
+      if (field.type !== "time") return accumulator;
+      const normalizedLabel = normalizeKey(field.label || "");
+      const currentValue = String(row.values?.[field.id] || "").trim();
+      if (status === STATUS_RUNNING && (normalizedLabel.includes("inicio") || normalizedLabel.includes("start")) && !currentValue) {
+        accumulator[field.id] = nowTime;
+      }
+      if (status === STATUS_FINISHED && (normalizedLabel.includes("fin") || normalizedLabel.includes("final") || normalizedLabel.includes("end"))) {
+        accumulator[field.id] = nowTime;
+      }
+      return accumulator;
+    }, {});
+
     if (status === STATUS_FINISHED) {
       const missingFields = (board.fields || []).filter((field) => {
         if (!field.required) return false;
-        return !isBoardFieldValueFilled(getBoardFieldValue(board, row, field), field.type);
+        const effectiveValue = Object.prototype.hasOwnProperty.call(autoTimeValues, field.id)
+          ? autoTimeValues[field.id]
+          : getBoardFieldValue(board, row, field);
+        return !isBoardFieldValueFilled(effectiveValue, field.type);
       });
 
       if (missingFields.length) {
@@ -6146,7 +7347,10 @@ function App() {
     setBoardRuntimeFeedback({ tone: "", message: "" });
     requestJson(`/warehouse/boards/${boardId}/rows/${rowId}`, {
       method: "PATCH",
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({
+        status,
+        ...(Object.keys(autoTimeValues).length ? { values: autoTimeValues } : {}),
+      }),
     }).then((remoteState) => {
       applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
     }).catch((error) => {
@@ -6162,7 +7366,7 @@ function App() {
       open: true,
       boardId,
       rowId,
-      message: "Al terminar la fila, el producto buscado ya no podrá cambiarse ni borrarse.",
+      message: "Al finalizar esta fila, su información quedará bloqueada para mantener la trazabilidad del registro.",
     });
   }
 
@@ -6207,7 +7411,7 @@ function App() {
     const rows = getBoardExportRows(selectedCustomBoard);
     const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
     const descriptionLines = selectedCustomBoard.description ? doc.splitTextToSize(selectedCustomBoard.description, 760) : [];
-    const subtitle = `Filas: ${selectedCustomBoard.rows?.length || 0} · Exportado ${new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(new Date())}`;
+    const subtitle = `Filas: ${selectedCustomBoard.rows?.length || 0} · Exportado ${new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short", hour12: false }).format(new Date())}`;
     const columns = rows.length ? Object.keys(rows[0]) : ["Estado"];
     const body = rows.length ? rows.map((row) => columns.map((column) => String(row[column] ?? ""))) : [["Sin filas registradas"]];
 
@@ -6265,12 +7469,102 @@ function App() {
     }
   }
 
+  function openBoardExcelImportPicker() {
+    boardExcelFileInputRef.current?.click();
+  }
+
+  async function importBoardStructureFromExcel(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      const imported = await parseBoardStructureImportFile(file);
+      setControlBoardDraft((current) => ({
+        ...current,
+        name: current.name || imported.boardName,
+        description: current.description || "Tablero importado desde Excel.",
+        columns: imported.fields,
+        ...createEmptyFieldDraft(),
+      }));
+      setBoardImportedRowsDraft(Array.isArray(imported.rows) ? imported.rows : []);
+
+      if (Array.isArray(imported.unsupportedFormulaDetails) && imported.unsupportedFormulaDetails.length) {
+        setExcelFormulaWizard({
+          open: true,
+          items: imported.unsupportedFormulaDetails.map((item) => ({
+            targetLabel: item.header,
+            targetFieldId: imported.fields[item.columnIndex]?.id || "",
+            formula: item.formula,
+            operation: "add",
+            formulaLeftFieldId: "",
+            formulaRightFieldId: "",
+          })),
+        });
+      } else {
+        setExcelFormulaWizard({ open: false, items: [] });
+      }
+
+      const unsupportedColumnsMessage = imported.unsupportedFormulaColumns?.length
+        ? ` Fórmulas complejas no convertidas: ${imported.unsupportedFormulaColumns.join(", ")}.`
+        : "";
+      const supportedFormulaMessage = imported.supportedFormulaCount
+        ? ` Fórmulas simples convertidas: ${imported.supportedFormulaCount}.`
+        : "";
+      const notesMessage = Array.isArray(imported.notes) && imported.notes.length
+        ? ` ${imported.notes.join(" ")}`
+        : "";
+
+      setControlBoardFeedback(`Se importaron ${imported.fields.length} componentes desde Excel.${supportedFormulaMessage}${unsupportedColumnsMessage}${notesMessage}`);
+    } catch (error) {
+      setBoardImportedRowsDraft([]);
+      setExcelFormulaWizard({ open: false, items: [] });
+      setControlBoardFeedback(error?.message || "No se pudo importar la estructura del Excel.");
+    }
+  }
+
+  function updateExcelFormulaWizardItem(index, key, value) {
+    setExcelFormulaWizard((current) => ({
+      ...current,
+      items: current.items.map((item, itemIndex) => (itemIndex === index ? { ...item, [key]: value } : item)),
+    }));
+  }
+
+  function applyExcelFormulaWizard() {
+    const validMappings = (excelFormulaWizard.items || []).filter((item) => item.targetFieldId && item.formulaLeftFieldId && item.formulaRightFieldId);
+    if (!validMappings.length) {
+      setExcelFormulaWizard({ open: false, items: [] });
+      setControlBoardFeedback("No se aplicaron conversiones manuales de fórmula.");
+      return;
+    }
+
+    const mappingByTarget = new Map(validMappings.map((item) => [item.targetFieldId, item]));
+    setControlBoardDraft((current) => ({
+      ...current,
+      columns: (current.columns || []).map((field) => {
+        const mapping = mappingByTarget.get(field.id);
+        if (!mapping) return field;
+        return {
+          ...field,
+          type: "formula",
+          formulaOperation: mapping.operation || "add",
+          formulaLeftFieldId: mapping.formulaLeftFieldId,
+          formulaRightFieldId: mapping.formulaRightFieldId,
+          helpText: field.helpText || "Fórmula configurada manualmente desde el asistente de importación.",
+        };
+      }),
+    }));
+    setExcelFormulaWizard({ open: false, items: [] });
+    setControlBoardFeedback(`Se configuraron ${validMappings.length} fórmula(s) de manera manual.`);
+  }
+
   function getBoardFieldValue(board, row, field) {
     const values = row.values || {};
     const rawValue = values[field.id];
 
     if (field.type === "inventoryProperty") {
-      const lookupId = values[field.sourceFieldId];
+      const resolvedSourceFieldId = resolveInventoryPropertySourceFieldId(board.fields || [], field.sourceFieldId, field.id);
+      const lookupId = values[resolvedSourceFieldId];
       const inventoryItem = (state.inventoryItems || []).find((item) => item.id === lookupId);
       return inventoryItem?.[field.inventoryProperty] ?? "";
     }
@@ -6288,7 +7582,16 @@ function App() {
   }
 
   function getBoardFieldCellStyle(field) {
-    return BOARD_FIELD_WIDTH_STYLES[field.width] || BOARD_FIELD_WIDTH_STYLES.md;
+    const typeMinimum = BOARD_FIELD_MIN_WIDTH_BY_TYPE[field?.type] || 120;
+    const widthPx = Number(field?.widthPx || 0);
+    if (Number.isFinite(widthPx) && widthPx >= 90) {
+      const normalizedWidth = Math.max(typeMinimum, Math.round(widthPx));
+      return { minWidth: `${normalizedWidth}px`, width: `${normalizedWidth}px` };
+    }
+    const fallbackStyle = BOARD_FIELD_WIDTH_STYLES[field.width] || BOARD_FIELD_WIDTH_STYLES.md;
+    const fallbackValue = Number.parseInt(String(fallbackStyle.minWidth || "180").replace("px", ""), 10);
+    const normalizedFallback = Math.max(typeMinimum, Number.isFinite(fallbackValue) ? fallbackValue : 180);
+    return { minWidth: `${normalizedFallback}px`, width: `${normalizedFallback}px` };
   }
 
   function openComponentStudio() {
@@ -6387,7 +7690,28 @@ function App() {
     [PAGE_NOT_FOUND]: "Página no encontrada",
   }[page];
 
+  const boardSectionOptions = useMemo(() => {
+    const options = new Set(DEFAULT_BOARD_SECTION_OPTIONS);
+    (controlBoardDraft.columns || []).forEach((column) => {
+      const sectionName = String(column.groupName || "").trim();
+      if (sectionName) options.add(sectionName);
+    });
+    return Array.from(options.values());
+  }, [controlBoardDraft.columns]);
+
+  const activityCatalogCategoryOptions = useMemo(() => {
+    const options = new Set(["General"]);
+    (state.catalog || []).forEach((item) => {
+      if (item?.isDeleted) return;
+      const categoryName = String(item?.category || "General").trim() || "General";
+      options.add(categoryName);
+    });
+    return Array.from(options.values());
+  }, [state.catalog]);
+
   const contextoConstructor = {
+    BOARD_ACTIVITY_LIST_FIELD,
+    BOARD_AUX_COLUMN_DEFINITIONS,
     BOARD_FIELD_TYPES,
     BOARD_FIELD_WIDTHS,
     BOARD_FIELD_WIDTH_STYLES,
@@ -6399,9 +7723,14 @@ function App() {
     STATUS_PENDING,
     STATUS_RUNNING,
     formatBoardPreviewValue,
+    getBoardFieldDisplayType,
     getBoardFieldTypeDescription,
+    getNormalizedBoardColumnOrder,
+    getOrderedBoardColumns,
     getBoardSectionGroups,
+    reorderBoardColumnOrderTokens,
     renderBoardFieldLabel,
+    sortBoardFieldsByColumnOrder,
   };
 
   const paginasContexto = {
@@ -6445,6 +7774,8 @@ function App() {
     customBoardSearch,
     dashboardActivityRows,
     dashboardAreaRows,
+    dashboardCatalogFrequencyRows,
+    dashboardCatalogTypeRows,
     dashboardDistributionRows,
     dashboardFilters,
     dashboardIshikawaRows,
@@ -6469,6 +7800,7 @@ function App() {
     downloadInventoryTemplate,
     Download,
     duplicateBoardRecord,
+    Eye,
     editableVisibleBoards,
     exportPermissionRules,
     exportSelectedBoardToExcel,
@@ -6488,7 +7820,9 @@ function App() {
     getActivityLabel,
     getActivityFrequencyLabel,
     getBoardFieldCellStyle,
+    getOrderedBoardColumns,
     getBoardFieldValue,
+    renderBoardFieldLabel,
     getDashboardPeriodTypeLabel,
     getElapsedSeconds,
     getFieldColorRule,
@@ -6508,6 +7842,10 @@ function App() {
     inventorySearch,
     inventoryStats,
     inventoryTab,
+    openInventoryTransferViewer,
+    openOrderInventoryTransfer,
+    orderInventoryTransferMovements,
+    orderInventoryTransferSummary,
     InventoryLookupInput,
     InventoryStockBar,
     INVENTORY_DOMAIN_BASE,
@@ -6550,6 +7888,7 @@ function App() {
     Play,
     Plus,
     requestJson,
+    ROLE_LEAD,
     ROLE_JR,
     RotateCcw,
     Search,
@@ -6557,6 +7896,10 @@ function App() {
     securityEventsStatus,
     selectedBoardActionPermissions,
     selectedCustomBoard,
+    selectedCustomBoardDisplay,
+    selectedCustomBoardHistoryOptions,
+    selectedCustomBoardSnapshot,
+    selectedCustomBoardViewId,
     selectedCustomBoardSections,
     selectedPermissionBoard,
     setAdminTab,
@@ -6605,6 +7948,8 @@ function App() {
     Upload,
     userMap,
     usersByAreaGroups,
+    isHistoricalCustomBoardView,
+    setSelectedCustomBoardViewId,
     usersByCreatorGroups,
     usersCreatedByMap,
     usersViewTab,
@@ -6624,7 +7969,7 @@ function App() {
   }
 
   if (!currentUser) {
-    return <LoginScreen loginForm={loginForm} onChange={updateLoginField} onSubmit={handleLogin} error={loginError} demoUsers={loginDirectory.system?.showBootstrapMasterHint ? [{ id: BOOTSTRAP_MASTER_ID, role: "Usuario maestro", email: loginDirectory.system?.masterUsername || MASTER_USERNAME }] : loginDirectory.demoUsers} />;
+    return <LoginScreen loginForm={loginForm} onChange={updateLoginField} onSubmit={handleLogin} error={loginError} demoUsers={loginDirectory.system?.showBootstrapMasterHint ? [{ id: BOOTSTRAP_MASTER_ID, role: "Acceso maestro", login: loginDirectory.system?.masterUsername || MASTER_USERNAME }] : loginDirectory.demoUsers} />;
   }
 
   return (
@@ -6649,7 +7994,7 @@ function App() {
             <span>Menú</span>
           </button>
           <div>
-            <p className="eyebrow">{page === PAGE_DASHBOARD ? "Panel principal" : page === PAGE_USERS ? "Control de accesos" : "Operación diaria"}</p>
+            <p className="eyebrow">{page === PAGE_DASHBOARD ? "Panel principal" : page === PAGE_USERS ? "Players y permisos" : "Operación diaria"}</p>
             <h2>{page === PAGE_DASHBOARD ? "Dashboard" : pageTitle}</h2>
             {page === PAGE_DASHBOARD ? <span className="dashboard-header-subtitle">Vista en tiempo real · {activeWeek?.name || "Semana actual"}</span> : null}
           </div>
@@ -6705,8 +8050,12 @@ function App() {
         </div>
       </Modal>
 
-      <Modal open={catalogModal.open} title={catalogModal.mode === "create" ? "Nueva actividad" : "Editar actividad"} confirmLabel={catalogModal.mode === "create" ? "Guardar" : "Guardar cambios"} cancelLabel="Cancelar" onClose={() => setCatalogModal({ open: false, mode: "create", id: null, name: "", limit: "", mandatory: "true", frequency: "weekly" })} onConfirm={submitCatalogModal}>
+      <Modal open={catalogModal.open} title={catalogModal.mode === "create" ? "Nueva actividad" : "Editar actividad"} confirmLabel={catalogModal.mode === "create" ? "Guardar" : "Guardar cambios"} cancelLabel="Cancelar" onClose={() => setCatalogModal({ open: false, mode: "create", id: null, name: "", limit: "", mandatory: "true", frequency: "weekly", category: "General" })} onConfirm={submitCatalogModal}>
         <div className="modal-form-grid">
+          <label className="app-modal-field">
+            <span>Lista de actividades</span>
+            <input value={catalogModal.category} onChange={(event) => setCatalogModal((current) => ({ ...current, category: event.target.value }))} placeholder="Ej: Limpieza, Seguridad, Producción" />
+          </label>
           <label className="app-modal-field">
             <span>Nombre de la actividad</span>
             <input value={catalogModal.name} onChange={(event) => setCatalogModal((current) => ({ ...current, name: event.target.value }))} />
@@ -6774,8 +8123,8 @@ function App() {
               <input value={userModal.name} onChange={(event) => setUserModal((current) => ({ ...current, name: event.target.value }))} />
             </label>
             <label className="app-modal-field">
-              <span>Correo</span>
-              <input value={userModal.email} onChange={(event) => setUserModal((current) => ({ ...current, email: event.target.value }))} />
+              <span>Player de acceso</span>
+              <input value={userModal.username} onChange={(event) => setUserModal((current) => ({ ...current, username: event.target.value }))} placeholder="Ej: lead@copmec.local" />
             </label>
             <label className="app-modal-field">
               <span>Área</span>
@@ -6803,7 +8152,7 @@ function App() {
               </select>
             </label>
             <label className="app-modal-field">
-              <span>Reporta a</span>
+              <span>Referencia</span>
               <select value={userModal.managerId} onChange={(event) => setUserModal((current) => ({ ...current, managerId: event.target.value }))}>
                 <option value="">Seleccionar...</option>
                 {activeAssignableUsers.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
@@ -6916,7 +8265,7 @@ function App() {
           {!supportsManagedPermissionOverrides(userModal.role) ? (
             <article className="user-permission-note">
               <strong>{userModal.role === ROLE_SSR ? "Semi-Senior con alcance operativo" : "Acceso operativo por tablero"}</strong>
-              <p>{userModal.role === ROLE_SSR ? "Semi-Senior solo puede crear players Junior y trabajar con los tableros que tenga asignados." : "Junior solo entra a Mis tableros y verá únicamente los tableros que le asignen."}</p>
+              <p>{userModal.role === ROLE_SSR ? "Semi-Senior solo puede crear perfiles Junior y trabajar con los tableros que tenga asignados." : "Junior solo accede a Mis tableros y verá únicamente los tableros que tenga asignados."}</p>
             </article>
           ) : null}
         </div>
@@ -6971,6 +8320,7 @@ function App() {
         onClose={closeBoardBuilderModal}
         onConfirm={saveControlBoard}
         onOpenComponentStudio={openComponentStudio}
+        onImportFromExcel={openBoardExcelImportPicker}
         onSaveTemplate={saveDraftAsBoardTemplate}
         onClear={clearControlBoardDraft}
         feedback={controlBoardFeedback}
@@ -6987,6 +8337,7 @@ function App() {
         previewBoard={boardBuilderPreview}
         draftColumnGroups={draftColumnGroups}
         onMoveDraftColumn={moveDraftColumn}
+        onReorderDraftColumn={reorderDraftColumn}
         onDuplicateDraftColumn={duplicateDraftColumn}
         onEditDraftColumn={editDraftColumn}
         onRemoveDraftColumn={removeDraftColumn}
@@ -6999,7 +8350,49 @@ function App() {
         canSaveBoard={actionPermissions.saveBoard}
       />
 
-      <BoardComponentStudioModal open={componentStudioOpen} mode={editingDraftColumnId ? "edit" : "create"} draft={controlBoardDraft} onChange={setControlBoardDraft} onClose={() => { setComponentStudioOpen(false); setEditingDraftColumnId(null); setControlBoardDraft((current) => ({ ...current, ...createEmptyFieldDraft() })); }} onConfirm={addDraftColumn} catalog={state.catalog} inventoryItems={state.inventoryItems} visibleUsers={visibleUsers} contextoConstructor={contextoConstructor} />
+      <input
+        ref={boardExcelFileInputRef}
+        type="file"
+        accept=".xlsx"
+        hidden
+        onChange={importBoardStructureFromExcel}
+      />
+
+      <BoardComponentStudioModal open={componentStudioOpen} mode={editingDraftColumnId ? "edit" : "create"} draft={controlBoardDraft} onChange={setControlBoardDraft} onClose={() => { setComponentStudioOpen(false); setEditingDraftColumnId(null); setControlBoardDraft((current) => ({ ...current, ...createEmptyFieldDraft() })); }} onConfirm={addDraftColumn} catalog={state.catalog} inventoryItems={state.inventoryItems} visibleUsers={visibleUsers} sectionOptions={boardSectionOptions} activityCategoryOptions={activityCatalogCategoryOptions} contextoConstructor={contextoConstructor} />
+
+      <Modal open={excelFormulaWizard.open} title="Asistente de fórmulas de Excel" confirmLabel="Aplicar mapeo" cancelLabel="Cerrar" onClose={() => setExcelFormulaWizard({ open: false, items: [] })} onConfirm={applyExcelFormulaWizard}>
+        <div className="modal-form-grid">
+          <p className="modal-footnote">Estas columnas tenían fórmulas complejas que no se pudieron convertir automáticamente. Puedes mapearlas aquí para crear fórmulas nativas del tablero.</p>
+          {(excelFormulaWizard.items || []).map((item, index) => (
+            <section key={`${item.targetFieldId || item.targetLabel}-${index}`} className="surface-card" style={{ padding: "0.8rem" }}>
+              <p><strong>{item.targetLabel}</strong></p>
+              <p className="modal-footnote">Fórmula original: {item.formula}</p>
+              <div className="modal-form-grid" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+                <label className="app-modal-field">
+                  <span>Operando izquierdo<span className="required-mark" aria-hidden="true"> *</span></span>
+                  <select value={item.formulaLeftFieldId || ""} onChange={(event) => updateExcelFormulaWizardItem(index, "formulaLeftFieldId", event.target.value)}>
+                    <option value="">Seleccionar...</option>
+                    {(controlBoardDraft.columns || []).filter((field) => field.id !== item.targetFieldId).map((field) => <option key={field.id} value={field.id}>{field.label}</option>)}
+                  </select>
+                </label>
+                <label className="app-modal-field">
+                  <span>Operación<span className="required-mark" aria-hidden="true"> *</span></span>
+                  <select value={item.operation || "add"} onChange={(event) => updateExcelFormulaWizardItem(index, "operation", event.target.value)}>
+                    {FORMULA_OPERATIONS.map((operation) => <option key={operation.value} value={operation.value}>{operation.label}</option>)}
+                  </select>
+                </label>
+                <label className="app-modal-field">
+                  <span>Operando derecho<span className="required-mark" aria-hidden="true"> *</span></span>
+                  <select value={item.formulaRightFieldId || ""} onChange={(event) => updateExcelFormulaWizardItem(index, "formulaRightFieldId", event.target.value)}>
+                    <option value="">Seleccionar...</option>
+                    {(controlBoardDraft.columns || []).filter((field) => field.id !== item.targetFieldId).map((field) => <option key={field.id} value={field.id}>{field.label}</option>)}
+                  </select>
+                </label>
+              </div>
+            </section>
+          ))}
+        </div>
+      </Modal>
 
       {profileModalOpen ? <EmployeeProfileModal currentUser={currentUser} passwordForm={passwordForm} onPasswordChange={setPasswordForm} onSubmit={submitPasswordReset} onUpdateIdentity={updateCurrentUserIdentity} onClose={() => { setProfileModalOpen(false); setPasswordForm({ password: "", confirmPassword: "", message: "" }); }} onLogout={() => { setProfileModalOpen(false); setPasswordForm({ password: "", confirmPassword: "", message: "" }); handleLogout(); }} /> : null}
 
@@ -7096,42 +8489,141 @@ function App() {
         </div>
       </Modal>
 
-      <Modal open={inventoryMovementModal.open} title="Registrar movimiento" confirmLabel="Guardar movimiento" cancelLabel="Cancelar" onClose={() => setInventoryMovementModal(createInventoryMovementModalState())} onConfirm={submitInventoryMovementModal}>
+      <Modal open={inventoryMovementModal.open} title={inventoryMovementModalTitle} confirmLabel={isOrderTransferMovementModal ? "Guardar transferencia" : "Guardar movimiento"} cancelLabel="Cancelar" onClose={closeInventoryMovementModal} onConfirm={submitInventoryMovementModal}>
         <div className="modal-form-grid">
-          <label className="app-modal-field">
-            <span>Artículo</span>
-            <input value={inventoryMovementModal.itemName} readOnly />
-          </label>
+          {isOrderTransferMovementModal ? (
+            <label className="app-modal-field">
+              <span>Insumo</span>
+              <select value={inventoryMovementModal.itemId || ""} onChange={(event) => updateInventoryMovementModal({ itemId: event.target.value || null })}>
+                <option value="">Selecciona un insumo</option>
+                {orderInventoryItems.map((item) => <option key={item.id} value={item.id}>{item.code} · {item.name}</option>)}
+              </select>
+            </label>
+          ) : (
+            <label className="app-modal-field">
+              <span>Artículo</span>
+              <input value={inventoryMovementModal.itemName} readOnly />
+            </label>
+          )}
           <label className="app-modal-field">
             <span>Tipo de movimiento</span>
-            <select value={inventoryMovementModal.movementType} onChange={(event) => setInventoryMovementModal((current) => ({ ...current, movementType: event.target.value }))}>
-              {INVENTORY_MOVEMENT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
+            {isOrderTransferMovementModal ? (
+              <input value="Transferencia" readOnly />
+            ) : (
+              <select value={inventoryMovementModal.movementType} onChange={(event) => updateInventoryMovementModal({ movementType: event.target.value })}>
+                {INVENTORY_MOVEMENT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            )}
           </label>
           <label className="app-modal-field">
-            <span>Cantidad</span>
-            <input type="number" value={inventoryMovementModal.quantity} onChange={(event) => setInventoryMovementModal((current) => ({ ...current, quantity: event.target.value }))} />
+            <span>{isOrderTransferMovementModal ? "Cantidad a transferir" : "Cantidad"}</span>
+            <input type="number" min="0" value={inventoryMovementModal.quantity} onChange={(event) => updateInventoryMovementModal({ quantity: event.target.value })} />
           </label>
           <label className="app-modal-field">
-            <span>Ubicación / resguardo</span>
-            <input value={inventoryMovementModal.storageLocation} onChange={(event) => setInventoryMovementModal((current) => ({ ...current, storageLocation: event.target.value }))} />
+            <span>{isOrderTransferMovementModal ? "Resguardo / punto de entrega" : "Ubicación / resguardo"}</span>
+            <input value={inventoryMovementModal.storageLocation} onChange={(event) => updateInventoryMovementModal({ storageLocation: event.target.value })} placeholder={isOrderTransferMovementModal ? "Ej: Estación de empaque A" : "Ej: Nave 2 · Estante 4"} />
           </label>
-          {inventoryMovementModal.domain === INVENTORY_DOMAIN_ORDERS || inventoryMovementModal.movementType === INVENTORY_MOVEMENT_TRANSFER ? (
+          {isOrderTransferMovementModal ? (
             <>
               <label className="app-modal-field">
                 <span>Nave / destino</span>
-                <input value={inventoryMovementModal.warehouse} onChange={(event) => setInventoryMovementModal((current) => ({ ...current, warehouse: event.target.value }))} placeholder="Ej: Nave 1" />
+                <input value={inventoryMovementModal.warehouse} onChange={(event) => updateInventoryMovementModal({ warehouse: event.target.value })} placeholder="Ej: Nave 1" />
               </label>
               <label className="app-modal-field">
                 <span>Quién tomó el material</span>
-                <input value={inventoryMovementModal.recipientName} onChange={(event) => setInventoryMovementModal((current) => ({ ...current, recipientName: event.target.value }))} placeholder="Nombre del responsable" />
+                <input value={inventoryMovementModal.recipientName} onChange={(event) => updateInventoryMovementModal({ recipientName: event.target.value })} placeholder="Nombre del responsable" />
               </label>
+              <div className="app-modal-field app-modal-field-full inventory-transfer-modal-summary">
+                <span>Resumen actual</span>
+                <div className="inventory-transfer-modal-summary-grid">
+                  <p><strong>Stock general:</strong> {inventoryMovementSelectedItem?.stockUnits || 0} {inventoryMovementSelectedItem?.unitLabel || "pzas"}</p>
+                  <p><strong>Disponible para transferir:</strong> {inventoryMovementAvailableUnits} {inventoryMovementSelectedItem?.unitLabel || "pzas"}</p>
+                </div>
+                {inventoryMovementTransferTarget ? (
+                  <p className="subtle-line">Último saldo registrado en {inventoryMovementTransferTarget.warehouse || "sin nave"} / {inventoryMovementTransferTarget.storageLocation || "sin resguardo"}: {inventoryMovementTransferTarget.availableUnits} {inventoryMovementTransferTarget.unitLabel || inventoryMovementSelectedItem?.unitLabel || "pzas"}.</p>
+                ) : (
+                  <p className="subtle-line">Este destino se registrará como un nuevo punto de resguardo para el insumo seleccionado.</p>
+                )}
+              </div>
+              {inventoryMovementTransferTarget ? (
+                <label className="app-modal-field app-modal-field-full">
+                  <span>¿Cuántas unidades quedan ahora en ese destino?</span>
+                  <input type="number" min="0" value={inventoryMovementModal.remainingUnits} onChange={(event) => updateInventoryMovementModal({ remainingUnits: event.target.value })} placeholder={`Último saldo: ${inventoryMovementTransferTarget.availableUnits}`} />
+                </label>
+              ) : null}
             </>
           ) : null}
           <label className="app-modal-field">
             <span>Notas</span>
-            <input value={inventoryMovementModal.notes} onChange={(event) => setInventoryMovementModal((current) => ({ ...current, notes: event.target.value }))} placeholder="Detalle del movimiento" />
+            <input value={inventoryMovementModal.notes} onChange={(event) => updateInventoryMovementModal({ notes: event.target.value })} placeholder="Detalle del movimiento" />
           </label>
+        </div>
+      </Modal>
+
+      <Modal open={inventoryTransferViewerOpen} title="Transferencias por destino" confirmLabel="Cerrar" hideCancel onClose={() => setInventoryTransferViewerOpen(false)}>
+        <div className="inventory-transfer-view">
+          <section className="surface-card inventory-transfer-view-card">
+            <div className="card-header-row">
+              <div>
+                <h3>Saldos actuales</h3>
+                <p>Consulta cuánto stock queda en cada nave o resguardo y cuánto sigue disponible para nuevas transferencias.</p>
+              </div>
+              <span className="chip primary">{orderInventoryTransferMovements.length}</span>
+            </div>
+            <div className="saved-board-list board-builder-launch-list">
+              {orderInventoryTransferSummary.filter((item) => item.transferTargets.length > 0).map((item) => (
+                <article key={item.id} className="surface-card inventory-transfer-summary-card">
+                  <div className="card-header-row">
+                    <div>
+                      <strong>{item.name}</strong>
+                      <p>{item.code} · Stock general {item.stockUnits} {item.unitLabel || "pzas"}</p>
+                    </div>
+                    <span className="chip primary">Disponible · {item.availableToTransferUnits}</span>
+                  </div>
+                  <div className="saved-board-list board-builder-launch-list">
+                    {item.transferTargets.map((target) => (
+                      <article key={target.destinationKey} className="inventory-transfer-destination-card">
+                        <div>
+                          <strong>{target.warehouse || "Sin nave"}</strong>
+                          <p>{target.storageLocation || "Sin resguardo"}</p>
+                        </div>
+                        <span className="chip">{target.availableUnits} {target.unitLabel || item.unitLabel || "pzas"}</span>
+                        <p className="subtle-line">Responsable: {target.recipientName || "Sin responsable"}</p>
+                        <p className="subtle-line">Actualizado: {target.updatedAt ? formatDateTime(target.updatedAt) : "Sin fecha"}</p>
+                      </article>
+                    ))}
+                  </div>
+                </article>
+              ))}
+              {!hasOrderTransferTargets ? <p className="subtle-line">Todavía no hay saldos por destino registrados.</p> : null}
+            </div>
+          </section>
+
+          <section className="surface-card inventory-transfer-view-card">
+            <div className="card-header-row">
+              <div>
+                <h3>Movimientos recientes</h3>
+                <p>Historial rápido de las últimas transferencias registradas.</p>
+              </div>
+            </div>
+            <div className="saved-board-list board-builder-launch-list">
+              {orderInventoryTransferMovements.slice(0, 12).map((movement) => (
+                <article key={movement.id} className="surface-card inventory-transfer-summary-card">
+                  <div className="card-header-row">
+                    <div>
+                      <strong>{movement.itemName || movement.itemCode}</strong>
+                      <p>{movement.quantity} {movement.unitLabel || "pzas"} hacia {movement.warehouse || "Sin nave"}</p>
+                    </div>
+                    <span className="chip">Saldo destino · {movement.destinationBalanceUnits ?? movement.quantity}</span>
+                  </div>
+                  <p className="subtle-line">{movement.storageLocation || "Sin resguardo"} · {movement.recipientName || "Sin responsable"}</p>
+                  {movement.remainingUnits !== null ? <p className="subtle-line">Se reportaron {movement.remainingUnits} {movement.unitLabel || "pzas"} restantes antes de esta transferencia.</p> : null}
+                  <p className="subtle-line">{formatDateTime(movement.createdAt)}</p>
+                </article>
+              ))}
+              {!orderInventoryTransferMovements.length ? <p className="subtle-line">No hay transferencias registradas todavía.</p> : null}
+            </div>
+          </section>
         </div>
       </Modal>
 

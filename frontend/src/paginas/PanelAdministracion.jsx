@@ -54,10 +54,10 @@ export default function PanelAdministracion({ contexto }) {
     <section className="admin-page-layout">
       <article className="admin-hero-card">
         <div>
-          <h3>Constructor</h3>
-          <p>Gestión central del catálogo, semanas, reportes y control operativo.</p>
+          <h3>Configuración</h3>
+          <p>Administra catálogo, semanas, reportes y operación desde un solo espacio.</p>
         </div>
-        <span className="chip success">Modo administrador</span>
+        <span className="chip success">Vista de gestión</span>
       </article>
 
       <div className="admin-stat-strip">
@@ -114,6 +114,7 @@ export default function PanelAdministracion({ contexto }) {
               <thead>
                 <tr>
                   <th>Actividad</th>
+                  <th>Grupo</th>
                   <th>Frecuencia</th>
                   <th>Tiempo límite</th>
                   <th>Tipo</th>
@@ -125,6 +126,7 @@ export default function PanelAdministracion({ contexto }) {
                 {state.catalog.filter((item) => !item.isDeleted).map((item) => (
                   <tr key={item.id}>
                     <td>{item.name}</td>
+                    <td><span className="chip">{item.category || "General"}</span></td>
                     <td>{getActivityFrequencyLabel(item.frequency)}</td>
                     <td>{item.timeLimitMinutes} min</td>
                     <td>{item.isMandatory ? "Obligatoria" : "Ocasional"}</td>
@@ -225,7 +227,7 @@ export default function PanelAdministracion({ contexto }) {
             <div className="card-header-row">
               <div>
                 <h3>Presets rápidos</h3>
-                <p>Aplica una base completa y luego afina usuarios o departamentos si lo necesitas.</p>
+                <p>Aplica una base completa y luego afina players o departamentos si lo necesitas.</p>
               </div>
             </div>
             <div className="saved-board-list permissions-preset-list">
@@ -260,7 +262,7 @@ export default function PanelAdministracion({ contexto }) {
             <div className="card-header-row">
               <div>
                 <h3>Matriz rápida por rol</h3>
-                <p>Activa o desactiva acceso por rol sin entrar al detalle fino de usuarios o departamentos.</p>
+                <p>Activa o desactiva acceso por rol sin entrar al detalle fino de players o departamentos.</p>
               </div>
             </div>
             <div className="table-wrap permissions-matrix-wrap">
@@ -445,7 +447,7 @@ export default function PanelAdministracion({ contexto }) {
             </div>
             <div className="builder-template-toolbar permissions-audit-toolbar">
               <label className="app-modal-field builder-card">
-                <span>Usuario</span>
+                <span>Player</span>
                 <select value={auditFilters.userId} onChange={(event) => setAuditFilters((current) => ({ ...current, userId: event.target.value }))}>
                   <option value="all">Todos</option>
                   {state.users.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
@@ -468,7 +470,7 @@ export default function PanelAdministracion({ contexto }) {
               </label>
               <label className="app-modal-field builder-card builder-card-wide">
                 <span>Buscar detalle</span>
-                <input value={auditFilters.search} onChange={(event) => setAuditFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Usuario, acción o detalle" />
+                <input value={auditFilters.search} onChange={(event) => setAuditFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Player, acción o detalle" />
               </label>
             </div>
             <div className="table-wrap permissions-matrix-wrap">
@@ -476,7 +478,7 @@ export default function PanelAdministracion({ contexto }) {
                 <thead>
                   <tr>
                     <th>Fecha</th>
-                    <th>Usuario</th>
+                    <th>Player</th>
                     <th>Ámbito</th>
                     <th>Detalle</th>
                   </tr>
@@ -512,7 +514,7 @@ export default function PanelAdministracion({ contexto }) {
                     <tr>
                       <th>Fecha</th>
                       <th>Evento</th>
-                      <th>Usuario</th>
+                      <th>Player</th>
                       <th>Ruta</th>
                       <th>Detalle</th>
                     </tr>
