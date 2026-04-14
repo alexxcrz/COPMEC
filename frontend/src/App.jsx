@@ -5391,12 +5391,14 @@ function App() {
   }, [page]);
 
   useEffect(() => {
+    if (!isHydratedRef.current) return;
+    if (syncStatus === "Conectando") return;
     if (sessionUserId && !currentUser) {
       if (!isBootstrapMasterSession) {
         setSessionUserId("");
       }
     }
-  }, [currentUser, isBootstrapMasterSession, sessionUserId]);
+  }, [currentUser, isBootstrapMasterSession, sessionUserId, syncStatus]);
 
   useEffect(() => {
     if (!currentUser || (ROLE_LEVEL[currentUser.role] || 0) < ROLE_LEVEL[ROLE_SR]) {

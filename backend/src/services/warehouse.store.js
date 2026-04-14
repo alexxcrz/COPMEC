@@ -7,7 +7,8 @@ import { hashPassword, isStrongPassword, isTemporaryPassword, verifyPassword } f
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const dataDirectory = path.resolve(__dirname, "../../data");
+// Usar disco persistente de Render si está disponible
+const dataDirectory = process.env.RENDER ? "/var/data" : path.resolve(__dirname, "../../data");
 const dataFilePath = path.join(dataDirectory, "warehouse-state.json");
 const warehouseEvents = new EventEmitter();
 export const BOOTSTRAP_MASTER_ID = "bootstrap-master";

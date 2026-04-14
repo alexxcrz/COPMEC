@@ -1,11 +1,29 @@
 {
-  "revision": 2,
+  "revision": 5,
   "system": {
     "masterBootstrapEnabled": true,
     "masterUsername": "Maestro"
   },
-  "currentUserId": null,
-  "users": [],
+  "currentUserId": "usr-visual-lead",
+  "users": [
+    {
+      "id": "usr-visual-lead",
+      "name": "Visual Lead",
+      "email": "visuallead",
+      "role": "Lead",
+      "area": "INVENTARIO",
+      "department": "INVENTARIO",
+      "jobTitle": "Lead QA",
+      "isActive": true,
+      "managerId": "usr-visual-lead",
+      "createdById": "usr-visual-lead",
+      "selfIdentityEditCount": 0,
+      "mustChangePassword": false,
+      "temporaryPasswordIssuedAt": null,
+      "passwordHash": "scrypt$9d5e337514e91e527b1b722947467735$00c4f234cebea07b8a26840c18437bd986d7a174d8c84e50dc9d486046dc238b29ade72bba120cbaed79278dd626fea06d6881e9402582a845669023c46c5d09",
+      "sessionVersion": 1
+    }
+  ],
   "weeks": [
     {
       "id": "week-active",
@@ -211,9 +229,57 @@
       "transferTargets": [],
       "activityCatalogIds": [],
       "consumptionPerStart": 0
+    },
+    {
+      "id": "inv-7k3um0tr",
+      "code": "VISUAL-ORD-001",
+      "name": "Film stretch QA",
+      "presentation": "Rollo",
+      "piecesPerBox": 1,
+      "boxesPerPallet": 1,
+      "domain": "orders",
+      "stockUnits": 40,
+      "minStockUnits": 5,
+      "storageLocation": "Central QA",
+      "unitLabel": "pzas",
+      "transferTargets": [
+        {
+          "destinationKey": "nave 1::estacion a",
+          "warehouse": "Náve 1",
+          "storageLocation": "Estación Á",
+          "recipientName": "Equipo QA",
+          "unitLabel": "pzas",
+          "availableUnits": 8,
+          "updatedAt": "2026-04-14T19:05:46.907Z"
+        }
+      ],
+      "activityCatalogIds": [],
+      "consumptionPerStart": 0
     }
   ],
-  "inventoryMovements": [],
+  "inventoryMovements": [
+    {
+      "id": "invmov-6gu8p67b",
+      "itemId": "inv-7k3um0tr",
+      "itemCode": "VISUAL-ORD-001",
+      "itemName": "Film stretch QA",
+      "domain": "orders",
+      "movementType": "transfer",
+      "quantity": 8,
+      "unitLabel": "pzas",
+      "notes": "Semilla visual inicial",
+      "activityId": null,
+      "catalogActivityId": null,
+      "warehouse": "Náve 1",
+      "recipientName": "Equipo QA",
+      "storageLocation": "Estación Á",
+      "remainingUnits": null,
+      "destinationBalanceUnits": 8,
+      "destinationKey": "nave 1::estacion a",
+      "performedById": "usr-visual-lead",
+      "createdAt": "2026-04-14T19:05:46.907Z"
+    }
+  ],
   "activities": [],
   "pauseLogs": [],
   "controlRows": [],
@@ -520,5 +586,5 @@
   },
   "auditLog": [],
   "controlBoards": [],
-  "updatedAt": "2026-04-14T18:23:21.486Z"
+  "updatedAt": "2026-04-14T19:05:46.910Z"
 }
