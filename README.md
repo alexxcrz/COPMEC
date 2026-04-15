@@ -48,6 +48,7 @@ Plataforma de gestion de datos relacionales y multimedia para reemplazar multipl
 - `copmec-api` se despliega desde `backend/` con `npm start` segun [render.yaml](C:\Users\alexx\Desktop\COPMEC\render.yaml) y durante el build tambien compila el frontend de `frontend/`.
 - El frontend queda servido por Express desde la misma URL publica del backend.
 - El disco persistente debe montarse en `/var/data` para conservar `warehouse-state.json` y `security-events.log` entre deploys.
+- El estado principal de almacén (`/api/warehouse`) se guarda en `/var/data/warehouse-state.json` y ahora mantiene backups rotativos automáticos dentro de `/var/data/warehouse-state-backups/`, además de un respaldo inmediato `warehouse-state.previous.json`.
 - La base en Render es `copmec-db`, administrada por Render y separada del PostgreSQL local en `5432`.
 
 ## Seguridad aplicada

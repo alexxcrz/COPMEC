@@ -10,6 +10,9 @@ const __dirname = path.dirname(__filename);
 // Usar disco persistente de Render si está disponible
 const dataDirectory = process.env.RENDER ? "/var/data" : path.resolve(__dirname, "../../data");
 const dataFilePath = path.join(dataDirectory, "warehouse-state.json");
+const backupDirectory = path.join(dataDirectory, "warehouse-state-backups");
+const latestBackupFilePath = path.join(dataDirectory, "warehouse-state.previous.json");
+const MAX_WAREHOUSE_STATE_BACKUPS = 24;
 const warehouseEvents = new EventEmitter();
 export const BOOTSTRAP_MASTER_ID = "bootstrap-master";
 const EMPTY_OBJECT = Object.freeze({});
@@ -925,20 +928,106 @@ function ensureStore() {
     fs.mkdirSync(dataDirectory, { recursive: true });
   }
 
+  if (!fs.existsSync(backupDirectory)) {
+    fs.mkdirSync(backupDirectory, { recursive: true });
+  }
+
   if (!fs.existsSync(dataFilePath)) {
     fs.writeFileSync(dataFilePath, JSON.stringify(buildSampleState(), null, 2), "utf8");
   }
 }
 
+function getStateBackupTimestamp() {
+  return new Date().toISOString().replaceAll(":", "-").replaceAll(".", "-");
+}
+
+function getStateBackupFilePaths() {
+  if (!fs.existsSync(backupDirectory)) {
+    return [];
+  }
+
+  return fs.readdirSync(backupDirectory)
+    .filter((fileName) => fileName.startsWith("warehouse-state-") && fileName.endsWith(".json"))
+    .sort()
+    .map((fileName) => path.join(backupDirectory, fileName));
+}
+
+function pruneStateBackups() {
+  const backupPaths = getStateBackupFilePaths();
+  const excessCount = backupPaths.length - MAX_WAREHOUSE_STATE_BACKUPS;
+  if (excessCount <= 0) {
+    return;
+  }
+
+  backupPaths.slice(0, excessCount).forEach((backupPath) => {
+    try {
+      fs.rmSync(backupPath, { force: true });
+    } catch {
+      // Ignore backup pruning issues; preserving the main store is more important.
+    }
+  });
+}
+
+function writeStoreFile(filePath, state) {
+  const tempFilePath = `${filePath}.tmp`;
+  fs.writeFileSync(tempFilePath, JSON.stringify(state, null, 2), "utf8");
+  fs.rmSync(filePath, { force: true });
+  fs.renameSync(tempFilePath, filePath);
+}
+
+function snapshotCurrentStore() {
+  if (!fs.existsSync(dataFilePath)) {
+    return;
+  }
+
+  try {
+    fs.copyFileSync(dataFilePath, latestBackupFilePath);
+    const timestampedBackupPath = path.join(backupDirectory, `warehouse-state-${getStateBackupTimestamp()}.json`);
+    fs.copyFileSync(dataFilePath, timestampedBackupPath);
+    pruneStateBackups();
+  } catch {
+    // Backup failures should not block the main state write.
+  }
+}
+
+function tryReadStoreFromFile(filePath) {
+  const raw = fs.readFileSync(filePath, "utf8");
+  return normalizeState(JSON.parse(raw));
+}
+
+function restoreStoreFromBackup(filePath) {
+  const recoveredState = tryReadStoreFromFile(filePath);
+  writeStoreFile(dataFilePath, recoveredState);
+  return recoveredState;
+}
+
 function readStore() {
   ensureStore();
-  const raw = fs.readFileSync(dataFilePath, "utf8");
-  return normalizeState(JSON.parse(raw));
+
+  try {
+    return tryReadStoreFromFile(dataFilePath);
+  } catch (primaryError) {
+    const candidatePaths = Array.from(new Set([latestBackupFilePath, ...getStateBackupFilePaths().reverse()]))
+      .filter((filePath) => fs.existsSync(filePath));
+
+    for (const candidatePath of candidatePaths) {
+      try {
+        const recoveredState = restoreStoreFromBackup(candidatePath);
+        console.warn(`[COPMEC] warehouse-state.json was recovered from backup: ${path.basename(candidatePath)}`);
+        return recoveredState;
+      } catch {
+        // Try the next backup candidate.
+      }
+    }
+
+    throw primaryError;
+  }
 }
 
 function writeStore(state) {
   ensureStore();
-  fs.writeFileSync(dataFilePath, JSON.stringify(state, null, 2), "utf8");
+  snapshotCurrentStore();
+  writeStoreFile(dataFilePath, state);
 }
 
 export function sanitizeUserRecord(user) {
