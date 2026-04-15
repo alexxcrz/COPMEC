@@ -439,6 +439,14 @@ function normalizeInventoryDomain(value) {
   return "base";
 }
 
+function inventoryDomainUsesPresentation(domain) {
+  return normalizeInventoryDomain(domain) !== "orders";
+}
+
+function inventoryDomainUsesPackagingMetrics(domain) {
+  return normalizeInventoryDomain(domain) === "base";
+}
+
 function normalizeInventoryTransferTargetSegment(value) {
   return String(value || "")
     .normalize("NFD")
@@ -636,6 +644,8 @@ function applyBoardRowCleaningInventoryConsumption(currentState, row, board, cur
 
 function normalizeInventoryItemRecord(item, fallbackId = null) {
   const domain = normalizeInventoryDomain(item?.domain);
+  const usesPresentation = inventoryDomainUsesPresentation(domain);
+  const usesPackagingMetrics = inventoryDomainUsesPackagingMetrics(domain);
   const transferTargets = domain === "orders"
     ? normalizeInventoryTransferTargets(item?.transferTargets, item?.unitLabel || "pzas")
     : [];
@@ -648,9 +658,9 @@ function normalizeInventoryItemRecord(item, fallbackId = null) {
     id: fallbackId || item?.id || makeId("inv"),
     code: String(item?.code || "").trim(),
     name: String(item?.name || "").trim(),
-    presentation: String(item?.presentation || "").trim(),
-    piecesPerBox: Number(item?.piecesPerBox || 0),
-    boxesPerPallet: Number(item?.boxesPerPallet || 0),
+    presentation: usesPresentation ? String(item?.presentation || "").trim() : "",
+    piecesPerBox: usesPackagingMetrics ? Number(item?.piecesPerBox || 0) : 0,
+    boxesPerPallet: usesPackagingMetrics ? Number(item?.boxesPerPallet || 0) : 0,
     domain,
     stockUnits: resolveInventorySourceStockUnits(domain, rawStockUnits, transferTargets, item?.stockTrackingMode),
     minStockUnits: Math.max(0, Number(item?.minStockUnits || 0)),
@@ -710,10 +720,10 @@ function getDefaultInventoryItems() {
     normalizeInventoryItemRecord({ id: "inv-1", code: "ALM-001", name: "Tarima estándar", presentation: "Tarima", piecesPerBox: 1, boxesPerPallet: 1, domain: "base", stockUnits: 36, minStockUnits: 10, storageLocation: "Almacén central", unitLabel: "pzas" }),
     normalizeInventoryItemRecord({ id: "inv-2", code: "ALM-002", name: "Caja master", presentation: "Paquete", piecesPerBox: 20, boxesPerPallet: 48, domain: "base", stockUnits: 240, minStockUnits: 80, storageLocation: "Racks A-2", unitLabel: "pzas" }),
     normalizeInventoryItemRecord({ id: "inv-3", code: "ALM-003", name: "Playo transparente", presentation: "Rollo", piecesPerBox: 6, boxesPerPallet: 40, domain: "base", stockUnits: 120, minStockUnits: 36, storageLocation: "Racks B-1", unitLabel: "rollos" }),
-    normalizeInventoryItemRecord({ id: "inv-4", code: "LIMP-001", name: "Detergente industrial", presentation: "Bidón 20L", piecesPerBox: 4, boxesPerPallet: 30, domain: "cleaning", stockUnits: 18, minStockUnits: 8, cleaningSite: "C3", storageLocation: "Cuarto de limpieza", unitLabel: "bidones", activityConsumptions: [{ catalogActivityId: "cat-piso", quantity: 1 }, { catalogActivityId: "cat-oficinas", quantity: 1 }] }),
-    normalizeInventoryItemRecord({ id: "inv-5", code: "LIMP-002", name: "Papel higiénico", presentation: "Paquete 12 rollos", piecesPerBox: 6, boxesPerPallet: 24, domain: "cleaning", stockUnits: 42, minStockUnits: 18, cleaningSite: "C3", storageLocation: "Cuarto de limpieza", unitLabel: "paquetes", activityConsumptions: [{ catalogActivityId: "cat-banos", quantity: 1 }] }),
-    normalizeInventoryItemRecord({ id: "inv-6", code: "PED-001", name: "Separador corrugado", presentation: "Fajo 25 piezas", piecesPerBox: 25, boxesPerPallet: 80, domain: "orders", stockUnits: 220, minStockUnits: 100, storageLocation: "Nave 2 · Estante 4", unitLabel: "pzas" }),
-    normalizeInventoryItemRecord({ id: "inv-7", code: "PED-002", name: "Esquinero", presentation: "Paquete 50 piezas", piecesPerBox: 50, boxesPerPallet: 60, domain: "orders", stockUnits: 150, minStockUnits: 70, storageLocation: "Nave 1 · Jaula 2", unitLabel: "pzas" }),
+    normalizeInventoryItemRecord({ id: "inv-4", code: "LIMP-001", name: "Detergente neutro multiusos", presentation: "Bidón 20 L · dilución 1:40", piecesPerBox: 0, boxesPerPallet: 0, domain: "cleaning", stockUnits: 12, minStockUnits: 4, cleaningSite: "C3", storageLocation: "Cuarto de limpieza · anaquel 1", unitLabel: "bidones", activityConsumptions: [{ catalogActivityId: "cat-piso", quantity: 1 }, { catalogActivityId: "cat-oficinas", quantity: 1 }] }),
+    normalizeInventoryItemRecord({ id: "inv-5", code: "LIMP-002", name: "Papel higiénico jumbo", presentation: "Rollo jumbo 400 m", piecesPerBox: 0, boxesPerPallet: 0, domain: "cleaning", stockUnits: 96, minStockUnits: 24, cleaningSite: "C3", storageLocation: "Cuarto de limpieza · rack baños", unitLabel: "rollos", activityConsumptions: [{ catalogActivityId: "cat-banos", quantity: 2 }] }),
+    normalizeInventoryItemRecord({ id: "inv-6", code: "PED-001", name: "Esquinero de cartón 2 x 2 x 48", presentation: "", piecesPerBox: 0, boxesPerPallet: 0, domain: "orders", stockUnits: 150, minStockUnits: 70, storageLocation: "Nave 1 · rack empaque", unitLabel: "pzas" }),
+    normalizeInventoryItemRecord({ id: "inv-7", code: "PED-002", name: "Etiqueta térmica 4 x 6", presentation: "", piecesPerBox: 0, boxesPerPallet: 0, domain: "orders", stockUnits: 28, minStockUnits: 10, storageLocation: "Mesa de surtido · gaveta 2", unitLabel: "rollos" }),
   ];
 }
 

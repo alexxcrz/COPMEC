@@ -868,6 +868,50 @@ function normalizeInventoryDomain(value) {
   return INVENTORY_DOMAIN_BASE;
 }
 
+function inventoryDomainUsesPresentation(domain) {
+  return normalizeInventoryDomain(domain) !== INVENTORY_DOMAIN_ORDERS;
+}
+
+function inventoryDomainUsesPackagingMetrics(domain) {
+  return normalizeInventoryDomain(domain) === INVENTORY_DOMAIN_BASE;
+}
+
+function getInventoryPresentationLabel(domain) {
+  return normalizeInventoryDomain(domain) === INVENTORY_DOMAIN_CLEANING ? "Formato / contenido" : "Presentación";
+}
+
+function getInventoryPresentationPlaceholder(domain) {
+  return normalizeInventoryDomain(domain) === INVENTORY_DOMAIN_CLEANING
+    ? "Ej: Bidón 20 L · dilución 1:40"
+    : "Ej: Caja master, paquete, rollo";
+}
+
+function getInventoryUnitPlaceholder(domain) {
+  if (normalizeInventoryDomain(domain) === INVENTORY_DOMAIN_CLEANING) {
+    return "Ej: bidones, rollos, bolsas";
+  }
+  if (normalizeInventoryDomain(domain) === INVENTORY_DOMAIN_ORDERS) {
+    return "Ej: pzas, rollos, paquetes";
+  }
+  return "Ej: pzas, rollos";
+}
+
+function getInventoryStoragePlaceholder(domain) {
+  if (normalizeInventoryDomain(domain) === INVENTORY_DOMAIN_CLEANING) {
+    return "Ej: Cuarto de limpieza · anaquel 2";
+  }
+  if (normalizeInventoryDomain(domain) === INVENTORY_DOMAIN_ORDERS) {
+    return "Ej: Nave 2 · rack de surtido";
+  }
+  return "Ej: Nave 2 · Estante 4";
+}
+
+function getInventoryEntityLabel(domain) {
+  if (normalizeInventoryDomain(domain) === INVENTORY_DOMAIN_CLEANING) return "insumo de limpieza";
+  if (normalizeInventoryDomain(domain) === INVENTORY_DOMAIN_ORDERS) return "insumo para pedidos";
+  return "producto";
+}
+
 function normalizeCleaningSite(value, fallback = DEFAULT_CLEANING_SITE) {
   const key = normalizeKey(value).replaceAll(" ", "");
   if (key === "c1") return "C1";
@@ -1022,6 +1066,8 @@ function resolveInventorySourceStockUnits(domain, rawStockUnits, transferTargets
 
 function normalizeInventoryItemRecord(item) {
   const domain = normalizeInventoryDomain(item?.domain);
+  const usesPresentation = inventoryDomainUsesPresentation(domain);
+  const usesPackagingMetrics = inventoryDomainUsesPackagingMetrics(domain);
   const transferTargets = Array.isArray(item?.transferTargets)
     ? item.transferTargets
     : [];
@@ -1037,6 +1083,9 @@ function normalizeInventoryItemRecord(item) {
   return {
     ...item,
     domain,
+    presentation: usesPresentation ? String(item?.presentation || "").trim() : "",
+    piecesPerBox: usesPackagingMetrics ? Number(item?.piecesPerBox || 0) : 0,
+    boxesPerPallet: usesPackagingMetrics ? Number(item?.boxesPerPallet || 0) : 0,
     stockUnits: resolveInventorySourceStockUnits(domain, rawStockUnits, normalizedTransferTargets, item?.stockTrackingMode),
     minStockUnits: domain === INVENTORY_DOMAIN_BASE ? 0 : Math.max(0, Number(item?.minStockUnits || 0)),
     storageLocation: domain === INVENTORY_DOMAIN_BASE ? "" : String(item?.storageLocation || "").trim(),
@@ -3151,6 +3200,9 @@ function mapInventoryImportRow(row, index) {
 
   const code = String(normalizedRow.code || "").trim();
   const name = String(normalizedRow.name || "").trim();
+  const domain = normalizeInventoryDomain(normalizedRow.domain);
+  const usesPresentation = inventoryDomainUsesPresentation(domain);
+  const usesPackagingMetrics = inventoryDomainUsesPackagingMetrics(domain);
 
   if (!code || !name) return null;
 
@@ -3158,10 +3210,10 @@ function mapInventoryImportRow(row, index) {
     id: `import-${index + 1}`,
     code,
     name,
-    domain: normalizeInventoryDomain(normalizedRow.domain),
-    presentation: String(normalizedRow.presentation || "").trim(),
-    piecesPerBox: toInventoryNumber(normalizedRow.piecesPerBox),
-    boxesPerPallet: toInventoryNumber(normalizedRow.boxesPerPallet),
+    domain,
+    presentation: usesPresentation ? String(normalizedRow.presentation || "").trim() : "",
+    piecesPerBox: usesPackagingMetrics ? toInventoryNumber(normalizedRow.piecesPerBox) : 0,
+    boxesPerPallet: usesPackagingMetrics ? toInventoryNumber(normalizedRow.boxesPerPallet) : 0,
     stockUnits: toInventoryNumber(normalizedRow.stockUnits),
     minStockUnits: toInventoryNumber(normalizedRow.minStockUnits),
     storageLocation: String(normalizedRow.storageLocation || "").trim(),
@@ -3949,10 +4001,10 @@ function buildSampleState() {
     normalizeInventoryItemRecord({ id: "inv-1", code: "ALM-001", name: "Tarima estándar", presentation: "Tarima", piecesPerBox: 1, boxesPerPallet: 1, domain: INVENTORY_DOMAIN_BASE, stockUnits: 36, minStockUnits: 10, storageLocation: "Almacén central", unitLabel: "pzas" }),
     normalizeInventoryItemRecord({ id: "inv-2", code: "ALM-002", name: "Caja master", presentation: "Paquete", piecesPerBox: 20, boxesPerPallet: 48, domain: INVENTORY_DOMAIN_BASE, stockUnits: 240, minStockUnits: 80, storageLocation: "Racks A-2", unitLabel: "pzas" }),
     normalizeInventoryItemRecord({ id: "inv-3", code: "ALM-003", name: "Playo transparente", presentation: "Rollo", piecesPerBox: 6, boxesPerPallet: 40, domain: INVENTORY_DOMAIN_BASE, stockUnits: 120, minStockUnits: 36, storageLocation: "Racks B-1", unitLabel: "rollos" }),
-    normalizeInventoryItemRecord({ id: "inv-4", code: "LIMP-001", name: "Detergente industrial", presentation: "Bidón 20L", piecesPerBox: 4, boxesPerPallet: 30, domain: INVENTORY_DOMAIN_CLEANING, stockUnits: 18, minStockUnits: 8, cleaningSite: "C3", storageLocation: "Cuarto de limpieza", unitLabel: "bidones", activityConsumptions: [{ catalogActivityId: "cat-piso", quantity: 1 }, { catalogActivityId: "cat-oficinas", quantity: 1 }] }),
-    normalizeInventoryItemRecord({ id: "inv-5", code: "LIMP-002", name: "Papel higiénico", presentation: "Paquete 12 rollos", piecesPerBox: 6, boxesPerPallet: 24, domain: INVENTORY_DOMAIN_CLEANING, stockUnits: 42, minStockUnits: 18, cleaningSite: "C3", storageLocation: "Cuarto de limpieza", unitLabel: "paquetes", activityConsumptions: [{ catalogActivityId: "cat-banos", quantity: 1 }] }),
-    normalizeInventoryItemRecord({ id: "inv-6", code: "PED-001", name: "Separador corrugado", presentation: "Fajo 25 piezas", piecesPerBox: 25, boxesPerPallet: 80, domain: INVENTORY_DOMAIN_ORDERS, stockUnits: 220, minStockUnits: 100, storageLocation: "Nave 2 · Estante 4", unitLabel: "pzas" }),
-    normalizeInventoryItemRecord({ id: "inv-7", code: "PED-002", name: "Esquinero", presentation: "Paquete 50 piezas", piecesPerBox: 50, boxesPerPallet: 60, domain: INVENTORY_DOMAIN_ORDERS, stockUnits: 150, minStockUnits: 70, storageLocation: "Nave 1 · Jaula 2", unitLabel: "pzas" }),
+    normalizeInventoryItemRecord({ id: "inv-4", code: "LIMP-001", name: "Detergente neutro multiusos", presentation: "Bidón 20 L · dilución 1:40", piecesPerBox: 0, boxesPerPallet: 0, domain: INVENTORY_DOMAIN_CLEANING, stockUnits: 12, minStockUnits: 4, cleaningSite: "C3", storageLocation: "Cuarto de limpieza · anaquel 1", unitLabel: "bidones", activityConsumptions: [{ catalogActivityId: "cat-piso", quantity: 1 }, { catalogActivityId: "cat-oficinas", quantity: 1 }] }),
+    normalizeInventoryItemRecord({ id: "inv-5", code: "LIMP-002", name: "Papel higiénico jumbo", presentation: "Rollo jumbo 400 m", piecesPerBox: 0, boxesPerPallet: 0, domain: INVENTORY_DOMAIN_CLEANING, stockUnits: 96, minStockUnits: 24, cleaningSite: "C3", storageLocation: "Cuarto de limpieza · rack baños", unitLabel: "rollos", activityConsumptions: [{ catalogActivityId: "cat-banos", quantity: 2 }] }),
+    normalizeInventoryItemRecord({ id: "inv-6", code: "PED-001", name: "Esquinero de cartón 2 x 2 x 48", presentation: "", piecesPerBox: 0, boxesPerPallet: 0, domain: INVENTORY_DOMAIN_ORDERS, stockUnits: 150, minStockUnits: 70, storageLocation: "Nave 1 · rack empaque", unitLabel: "pzas" }),
+    normalizeInventoryItemRecord({ id: "inv-7", code: "PED-002", name: "Etiqueta térmica 4 x 6", presentation: "", piecesPerBox: 0, boxesPerPallet: 0, domain: INVENTORY_DOMAIN_ORDERS, stockUnits: 28, minStockUnits: 10, storageLocation: "Mesa de surtido · gaveta 2", unitLabel: "rollos" }),
   ];
 
   const weeks = [
@@ -8327,6 +8379,8 @@ function App() { // NOSONAR
 
   async function submitInventoryModal() {
     if (!actionPermissions[getInventoryManageActionId(inventoryModal.domain)]) return;
+    const usesPresentation = inventoryDomainUsesPresentation(inventoryModal.domain);
+    const usesPackagingMetrics = inventoryDomainUsesPackagingMetrics(inventoryModal.domain);
     const normalizedActivityConsumptions = inventoryModal.domain === INVENTORY_DOMAIN_CLEANING
       ? inventoryModal.activityConsumptions
         .map((entry) => ({
@@ -8339,9 +8393,9 @@ function App() { // NOSONAR
       domain: inventoryModal.domain,
       code: inventoryModal.code.trim(),
       name: inventoryModal.name.trim(),
-      presentation: inventoryModal.presentation.trim(),
-      piecesPerBox: Number(inventoryModal.piecesPerBox || 0),
-      boxesPerPallet: Number(inventoryModal.boxesPerPallet || 0),
+      presentation: usesPresentation ? inventoryModal.presentation.trim() : "",
+      piecesPerBox: usesPackagingMetrics ? Number(inventoryModal.piecesPerBox || 0) : 0,
+      boxesPerPallet: usesPackagingMetrics ? Number(inventoryModal.boxesPerPallet || 0) : 0,
       stockUnits: inventoryModal.domain === INVENTORY_DOMAIN_BASE ? 0 : Number(inventoryModal.stockUnits || 0),
       minStockUnits: inventoryModal.domain === INVENTORY_DOMAIN_BASE ? 0 : Number(inventoryModal.minStockUnits || 0),
       storageLocation: inventoryModal.domain === INVENTORY_DOMAIN_BASE ? "" : inventoryModal.storageLocation.trim(),
@@ -9155,8 +9209,15 @@ function App() { // NOSONAR
   }[page];
   const headerEyebrow = getHeaderEyebrowText(page);
   const shouldShowUserPermissionNote = !supportsManagedPermissionOverrides(userModal.role);
+  const inventoryEntityLabel = getInventoryEntityLabel(inventoryModal.domain);
+  const shouldShowInventoryPresentationField = inventoryDomainUsesPresentation(inventoryModal.domain);
+  const shouldShowInventoryPackagingFields = inventoryDomainUsesPackagingMetrics(inventoryModal.domain);
   const shouldShowInventoryStockFields = inventoryModal.domain !== INVENTORY_DOMAIN_BASE;
   const shouldShowCleaningLinkFields = inventoryModal.domain === INVENTORY_DOMAIN_CLEANING;
+  const inventoryPresentationLabel = getInventoryPresentationLabel(inventoryModal.domain);
+  const inventoryPresentationPlaceholder = getInventoryPresentationPlaceholder(inventoryModal.domain);
+  const inventoryUnitPlaceholder = getInventoryUnitPlaceholder(inventoryModal.domain);
+  const inventoryStoragePlaceholder = getInventoryStoragePlaceholder(inventoryModal.domain);
   const shouldShowTransferTargetEmptyState = !hasOrderTransferTargets;
   const shouldShowTransferRemainingUnits = (movement) => movement.remainingUnits !== null;
   const shouldShowTransferMovementEmptyState = orderInventoryTransferMovements.length === 0;
@@ -9909,11 +9970,26 @@ function App() { // NOSONAR
         </div>
       </Modal>
 
-      <Modal className="inventory-item-modal" open={inventoryModal.open} title={inventoryModal.mode === "create" ? "Agregar artículo" : "Editar artículo"} confirmLabel={inventoryModal.mode === "create" ? "Guardar artículo" : "Guardar cambios"} cancelLabel="Cancelar" onClose={() => setInventoryModal(createInventoryModalState())} onConfirm={submitInventoryModal}>
+      <Modal className="inventory-item-modal" open={inventoryModal.open} title={inventoryModal.mode === "create" ? `Agregar ${inventoryEntityLabel}` : `Editar ${inventoryEntityLabel}`} confirmLabel={inventoryModal.mode === "create" ? `Guardar ${inventoryEntityLabel}` : "Guardar cambios"} cancelLabel="Cancelar" onClose={() => setInventoryModal(createInventoryModalState())} onConfirm={submitInventoryModal}>
         <div className="modal-form-grid">
           <label className="app-modal-field">
             <span>Dominio</span>
-            <select value={inventoryModal.domain} onChange={(event) => setInventoryModal((current) => ({ ...current, domain: event.target.value }))}>
+            <select
+              value={inventoryModal.domain}
+              onChange={(event) => {
+                const nextDomain = normalizeInventoryDomain(event.target.value);
+                setInventoryModal((current) => ({
+                  ...current,
+                  domain: nextDomain,
+                  presentation: inventoryDomainUsesPresentation(nextDomain) ? current.presentation : "",
+                  piecesPerBox: inventoryDomainUsesPackagingMetrics(nextDomain) ? current.piecesPerBox : "",
+                  boxesPerPallet: inventoryDomainUsesPackagingMetrics(nextDomain) ? current.boxesPerPallet : "",
+                  cleaningSite: nextDomain === INVENTORY_DOMAIN_CLEANING ? current.cleaningSite || inventoryCleaningSite || DEFAULT_CLEANING_SITE : DEFAULT_CLEANING_SITE,
+                  activityCatalogIds: nextDomain === INVENTORY_DOMAIN_CLEANING ? current.activityCatalogIds : [],
+                  activityConsumptions: nextDomain === INVENTORY_DOMAIN_CLEANING ? current.activityConsumptions : [],
+                }));
+              }}
+            >
               {INVENTORY_DOMAIN_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </label>
@@ -9925,18 +10001,24 @@ function App() { // NOSONAR
             <span>Nombre</span>
             <input value={inventoryModal.name} onChange={(event) => setInventoryModal((current) => ({ ...current, name: event.target.value }))} />
           </label>
-          <label className="app-modal-field">
-            <span>Presentación</span>
-            <input value={inventoryModal.presentation} onChange={(event) => setInventoryModal((current) => ({ ...current, presentation: event.target.value }))} />
-          </label>
-          <label className="app-modal-field">
-            <span>Piezas por caja</span>
-            <input type="number" value={inventoryModal.piecesPerBox} onChange={(event) => setInventoryModal((current) => ({ ...current, piecesPerBox: event.target.value }))} />
-          </label>
-          <label className="app-modal-field">
-            <span>Cajas por tarima</span>
-            <input type="number" value={inventoryModal.boxesPerPallet} onChange={(event) => setInventoryModal((current) => ({ ...current, boxesPerPallet: event.target.value }))} />
-          </label>
+          {shouldShowInventoryPresentationField ? (
+            <label className="app-modal-field">
+              <span>{inventoryPresentationLabel}</span>
+              <input value={inventoryModal.presentation} onChange={(event) => setInventoryModal((current) => ({ ...current, presentation: event.target.value }))} placeholder={inventoryPresentationPlaceholder} />
+            </label>
+          ) : null}
+          {shouldShowInventoryPackagingFields ? (
+            <>
+              <label className="app-modal-field">
+                <span>Piezas por caja</span>
+                <input type="number" value={inventoryModal.piecesPerBox} onChange={(event) => setInventoryModal((current) => ({ ...current, piecesPerBox: event.target.value }))} />
+              </label>
+              <label className="app-modal-field">
+                <span>Cajas por tarima</span>
+                <input type="number" value={inventoryModal.boxesPerPallet} onChange={(event) => setInventoryModal((current) => ({ ...current, boxesPerPallet: event.target.value }))} />
+              </label>
+            </>
+          ) : null}
           {shouldShowInventoryStockFields && (
             <>
               <label className="app-modal-field">
@@ -9949,11 +10031,11 @@ function App() { // NOSONAR
               </label>
               <label className="app-modal-field">
                 <span>Unidad</span>
-                <input value={inventoryModal.unitLabel} onChange={(event) => setInventoryModal((current) => ({ ...current, unitLabel: event.target.value }))} placeholder="Ej: pzas, rollos, bidones" />
+                <input value={inventoryModal.unitLabel} onChange={(event) => setInventoryModal((current) => ({ ...current, unitLabel: event.target.value }))} placeholder={inventoryUnitPlaceholder} />
               </label>
               <label className="app-modal-field">
                 <span>Ubicación / resguardo</span>
-                <input value={inventoryModal.storageLocation} onChange={(event) => setInventoryModal((current) => ({ ...current, storageLocation: event.target.value }))} placeholder="Ej: Nave 2 · Estante 4" />
+                <input value={inventoryModal.storageLocation} onChange={(event) => setInventoryModal((current) => ({ ...current, storageLocation: event.target.value }))} placeholder={inventoryStoragePlaceholder} />
               </label>
             </>
           )}
