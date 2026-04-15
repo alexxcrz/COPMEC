@@ -2159,6 +2159,40 @@ function normalizeKey(value) {
     .trim();
 }
 
+function getIshikawaCategory(label) {
+  const normalizedLabel = normalizeKey(label);
+
+  if (!normalizedLabel) {
+    return "Gestion";
+  }
+
+  if (["material", "insumo", "inventario", "stock", "surtido", "faltante", "abasto", "consumible", "refaccion"].some((keyword) => normalizedLabel.includes(keyword))) {
+    return "Materiales";
+  }
+
+  if (["equipo", "maquina", "montacarga", "herramienta", "impresora", "sistema", "software", "tablet", "scanner", "mantenimiento"].some((keyword) => normalizedLabel.includes(keyword))) {
+    return "Maquinaria y sistemas";
+  }
+
+  if (["operador", "player", "usuario", "personal", "ausencia", "turno", "capacitacion", "mano de obra", "responsable"].some((keyword) => normalizedLabel.includes(keyword))) {
+    return "Mano de obra";
+  }
+
+  if (["proceso", "metodo", "flujo", "arranque", "espera", "autorizacion", "configuracion", "cambio", "prioridad", "planeacion"].some((keyword) => normalizedLabel.includes(keyword))) {
+    return "Metodo";
+  }
+
+  if (["calidad", "medicion", "registro", "validacion", "conteo", "auditoria", "captura", "revision", "inspeccion"].some((keyword) => normalizedLabel.includes(keyword))) {
+    return "Medicion y control";
+  }
+
+  if (["area", "ruta", "rampa", "trafico", "espacio", "seguridad", "limpieza", "ambiente", "entorno", "clima", "nave"].some((keyword) => normalizedLabel.includes(keyword))) {
+    return "Entorno";
+  }
+
+  return "Gestion";
+}
+
 function normalizeImportHeader(value) {
   return normalizeKey(value).replaceAll(/[^a-z0-9]/g, "");
 }
