@@ -8,6 +8,10 @@ const BACKEND_PORT = 4000
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: {
+    outDir: '../backend/frontend-dist',
+    emptyOutDir: true,
+  },
   server: {
     host: '0.0.0.0',
     port: FRONTEND_PORT,

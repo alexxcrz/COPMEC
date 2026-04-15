@@ -16,6 +16,7 @@ export default function TablerosCreados({ contexto }) {
     duplicateBoardRecord,
     Copy,
     canEditBoard,
+    getBoardAssignmentSummary,
     openCreateBoardBuilder,
     openEditBoardBuilder,
     openCatalogCreate,
@@ -166,7 +167,7 @@ export default function TablerosCreados({ contexto }) {
                 <div className="board-meta-inline">
                   <span>Player principal · {userMap.get(board.ownerId)?.name || "N/A"}</span>
                   <span>Creó · {userMap.get(board.createdById)?.name || "N/A"}</span>
-                  {(board.accessUserIds || []).length ? <span>Acceso · {(board.accessUserIds || []).map((userId) => userMap.get(userId)?.name || "N/A").join(", ")}</span> : null}
+                  <span>{getBoardAssignmentSummary(board, userMap)}</span>
                 </div>
                 <div className="toolbar-actions">
                   <button type="button" className="primary-button" onClick={() => {

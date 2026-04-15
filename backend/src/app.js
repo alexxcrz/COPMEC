@@ -29,7 +29,7 @@ import { auditSecurityEvent } from "./services/security-events.service.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const frontendDistPath = path.resolve(__dirname, "../../frontend/dist");
+const frontendDistPath = path.resolve(__dirname, "../frontend-dist");
 const frontendIndexPath = path.join(frontendDistPath, "index.html");
 const hasFrontendBuild = fs.existsSync(frontendIndexPath);
 

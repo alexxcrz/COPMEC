@@ -534,6 +534,7 @@ export function BoardBuilderModal({
   onEditDraftColumn,
   onRemoveDraftColumn,
   visibleUsers,
+  departmentOptions = [],
   currentUser,
   userMap,
   inventoryItems,
@@ -569,11 +570,28 @@ export function BoardBuilderModal({
   const previewSections = getBoardSectionGroups(previewBoard);
   const previewRows = previewBoard?.rows?.slice(0, 2) || [];
   const orderedPreviewColumns = getOrderedBoardColumns(previewBoard || { fields: draft.columns, settings: draft.settings });
-  const previewAccessNames = (previewBoard?.accessUserIds || []).map((userId) => userMap.get(userId)?.name).filter(Boolean);
-  const availableOperationalUsers = visibleUsers.filter((user) => user.isActive && user.id !== draft.ownerId);
-  const selectedOperationalNames = (draft.accessUserIds || []).map((userId) => userMap.get(userId)?.name).filter(Boolean);
+  const activeUsers = visibleUsers.filter((user) => user.isActive);
+  const availableOperationalUsers = activeUsers.filter((user) => user.id !== draft.ownerId);
+  const normalizedDepartmentOptions = Array.from(new Set((departmentOptions || []).map((option) => String(option || "").trim()).filter(Boolean)));
   const filteredOperationalUsers = availableOperationalUsers.filter((user) => user.name.toLowerCase().includes(accessSearch.trim().toLowerCase()));
-  const selectedPlayersLabel = `${draft.accessUserIds?.length || 0} player${(draft.accessUserIds?.length || 0) === 1 ? "" : "s"} asignado${(draft.accessUserIds?.length || 0) === 1 ? "" : "s"}`;
+  const visibilityType = String(draft.visibilityType || "users");
+  const ownerName = userMap.get(draft.ownerId)?.name || currentUser?.name || "Sin player";
+  const selectedPlayersLabel = draft.accessUserIds?.length
+    ? `${draft.accessUserIds.length + 1} players con acceso`
+    : `Solo ${ownerName}`;
+  const selectedDepartmentsLabel = (draft.sharedDepartments || []).length
+    ? (draft.sharedDepartments || []).join(", ")
+    : "Sin áreas seleccionadas";
+  const previewOwnerName = userMap.get(previewBoard?.ownerId)?.name || currentUser?.name || "Sin player";
+  const previewAccessNames = (previewBoard?.accessUserIds || []).map((userId) => userMap.get(userId)?.name).filter(Boolean);
+  const previewSharedDepartments = Array.isArray(previewBoard?.sharedDepartments) ? previewBoard.sharedDepartments : [];
+  const previewAssignmentSummary = previewBoard?.visibilityType === "all"
+    ? "Visible para todos"
+    : previewBoard?.visibilityType === "department"
+      ? `Áreas · ${previewSharedDepartments.join(", ") || "Sin áreas"}`
+      : previewAccessNames.length
+        ? `Players · ${[previewOwnerName].concat(previewAccessNames).join(", ")}`
+        : `Player asignado · ${previewOwnerName}`;
   const operationalContextType = String(draft.settings?.operationalContextType || "none");
   const operationalContextLabel = String(draft.settings?.operationalContextLabel || "").trim();
   const operationalContextOptions = operationalContextType === "cleaningSite"
@@ -659,6 +677,30 @@ export function BoardBuilderModal({
       accessUserIds: pendingAccessUserIds.filter((userId) => userId !== current.ownerId),
     }));
     setAccessMenuOpen(false);
+  }
+
+  function handleOwnerChange(nextOwnerId) {
+    onChange((current) => ({
+      ...current,
+      ownerId: nextOwnerId,
+      accessUserIds: (current.accessUserIds || []).filter((userId) => userId !== nextOwnerId),
+    }));
+  }
+
+  function handleVisibilityTypeChange(nextVisibilityType) {
+    onChange((current) => {
+      const ownerArea = userMap.get(current.ownerId)?.area || userMap.get(current.ownerId)?.department || currentUser?.area || currentUser?.department || "";
+      const seededDepartments = current.sharedDepartments?.length
+        ? current.sharedDepartments
+        : ownerArea
+          ? [String(ownerArea).trim().toUpperCase()]
+          : [];
+      return {
+        ...current,
+        visibilityType: nextVisibilityType,
+        sharedDepartments: nextVisibilityType === "department" ? seededDepartments : current.sharedDepartments || [],
+      };
+    });
   }
 
   function updateOperationalContext(nextType, nextLabel = operationalContextLabel, nextOptions = operationalContextOptions, nextValue = operationalContextValue) {
@@ -1040,41 +1082,71 @@ export function BoardBuilderModal({
                     <input value={draft.description} onChange={(event) => onChange((current) => ({ ...current, description: event.target.value }))} placeholder="Describe qué controla este tablero" />
                   </label>
                   <label className="app-modal-field board-preview-edit-field board-preview-owner-field">
-                    <span>Asignación de players</span>
-                    <div className="board-access-selector" ref={accessMenuRef}>
-                      <button type="button" className="board-access-trigger" onClick={() => setAccessMenuOpen((current) => !current)} aria-expanded={accessMenuOpen}>
-                        <span>{selectedPlayersLabel}</span>
-                        <ArrowDown size={16} />
-                      </button>
-                      {accessMenuOpen ? (
-                        <div className="board-access-dropdown">
-                          <label className="app-modal-field board-access-search-field">
-                            <span>Buscar player</span>
-                            <input value={accessSearch} onChange={(event) => setAccessSearch(event.target.value)} placeholder="Escribe un nombre" />
-                          </label>
-                          <div className="board-access-list">
-                          {filteredOperationalUsers.length ? filteredOperationalUsers.map((user) => {
-                            const checked = pendingAccessUserIds.includes(user.id);
-                            return (
-                              <label key={user.id} className="board-access-option">
-                                <input
-                                  type="checkbox"
-                                  checked={checked}
-                                  onChange={() => handleTogglePendingAccess(user.id)}
-                                />
-                                <span>{user.name}</span>
-                              </label>
-                            );
-                          }) : <p className="board-access-empty">No hay players disponibles para seleccionar.</p>}
-                          </div>
-                          <div className="board-access-actions">
-                            <button type="button" className="icon-button" onClick={() => setAccessMenuOpen(false)}>Cancelar</button>
-                            <button type="button" className="primary-button" onClick={handleSaveAccessSelection}>Guardar</button>
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
+                    <span>Player principal</span>
+                    <select value={draft.ownerId || currentUser?.id || ""} onChange={(event) => handleOwnerChange(event.target.value)}>
+                      {activeUsers.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
+                    </select>
                   </label>
+                  <section className="board-preview-assignment-panel">
+                    <label className="app-modal-field board-preview-edit-field">
+                      <span>Compartir tablero con</span>
+                      <select value={visibilityType} onChange={(event) => handleVisibilityTypeChange(event.target.value)}>
+                        <option value="users">Player o players específicos</option>
+                        <option value="department">Área o grupo</option>
+                        <option value="all">Todos</option>
+                      </select>
+                    </label>
+
+                    {visibilityType === "users" ? (
+                      <div className="board-access-selector" ref={accessMenuRef}>
+                        <button type="button" className="board-access-trigger" onClick={() => setAccessMenuOpen((current) => !current)} aria-expanded={accessMenuOpen}>
+                          <span>{selectedPlayersLabel}</span>
+                          <ArrowDown size={16} />
+                        </button>
+                        {accessMenuOpen ? (
+                          <div className="board-access-dropdown">
+                            <label className="app-modal-field board-access-search-field">
+                              <span>Buscar player</span>
+                              <input value={accessSearch} onChange={(event) => setAccessSearch(event.target.value)} placeholder="Escribe un nombre" />
+                            </label>
+                            <div className="board-access-list">
+                              {filteredOperationalUsers.length ? filteredOperationalUsers.map((user) => {
+                                const checked = pendingAccessUserIds.includes(user.id);
+                                return (
+                                  <label key={user.id} className="board-access-option">
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() => handleTogglePendingAccess(user.id)}
+                                    />
+                                    <span>{user.name}</span>
+                                  </label>
+                                );
+                              }) : <p className="board-access-empty">No hay players disponibles para seleccionar.</p>}
+                            </div>
+                            <div className="board-access-actions">
+                              <button type="button" className="icon-button" onClick={() => setAccessMenuOpen(false)}>Cancelar</button>
+                              <button type="button" className="primary-button" onClick={handleSaveAccessSelection}>Guardar</button>
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {visibilityType === "department" ? (
+                      <label className="app-modal-field board-preview-edit-field board-preview-department-field">
+                        <span>Áreas con acceso</span>
+                        <select multiple value={draft.sharedDepartments || []} onChange={(event) => onChange((current) => ({ ...current, sharedDepartments: Array.from(event.target.selectedOptions).map((option) => option.value) }))}>
+                          {normalizedDepartmentOptions.map((department) => <option key={department} value={department}>{department}</option>)}
+                        </select>
+                      </label>
+                    ) : null}
+
+                    {visibilityType === "all" ? <p className="board-assignment-hint">Todos los players con permisos de tableros podrán ver este tablero.</p> : null}
+                    {visibilityType === "users" ? <p className="board-assignment-hint">Usa un solo player si quieres asignarlo individualmente o varios para compartir un mismo tablero sin duplicarlo.</p> : null}
+                    {visibilityType === "department" ? <p className="board-assignment-hint">Solo los players cuyas áreas coincidan con las seleccionadas verán este tablero.</p> : null}
+                    {visibilityType === "department" ? <span className="chip soft board-assignment-chip">{selectedDepartmentsLabel}</span> : null}
+                  </section>
                 </div>
               </div>
               <div className="board-preview-head-side">
@@ -1107,7 +1179,7 @@ export function BoardBuilderModal({
 
             <div className="board-meta-inline board-meta-inline-preview">
               <span>Creador · {currentUser?.name || userMap.get(previewBoard.ownerId)?.name || "Sin asignar"}</span>
-              {previewAccessNames.length ? <span>Players · {previewAccessNames.length}</span> : null}
+              <span>{previewAssignmentSummary}</span>
               {operationalContextType !== "none" && operationalContextValue ? <span>{operationalContextLabel || "Contexto operativo"} · {operationalContextValue}</span> : null}
             </div>
 

@@ -62,7 +62,7 @@ const MASTER_USERNAME = "Maestro";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||
-  `${globalThis.location.protocol}//${globalThis.location.hostname}:4000/api`;
+  "/api";
 const ENABLE_LEGACY_WHOLE_STATE_SYNC = false;
 const PAGE_BOARD = "index";
 const PAGE_CUSTOM_BOARDS = "customBoards";
@@ -1346,7 +1346,7 @@ function AppNotificationCenter({ unreadNotifications, readNotifications, unreadC
           </div>
           <div className="app-notification-list">
             {visibleNotifications.map((notification) => (
-              <article key={notification.id} className={`app-notification-item ${notification.tone === "danger" ? "danger" : "success"} ${notification.isUnread ? "unread" : ""} ${notification.isLocked ? "locked" : ""}`.trim()}>
+              <article key={notification.id} className={`app-notification-item ${notification.tone === "danger" ? "danger" : "success"} ${notification.isUnread ? "unread" : ""} ${notification.isLocked ? "locked" : ""} ${activeTab === "read" && !notification.isLocked ? "deletable" : ""}`.trim()}>
                 <button type="button" className="app-notification-open" onClick={() => onOpenNotification(notification)}>
                   <div className="app-notification-item-header">
                     <strong>{notification.title}</strong>
@@ -1618,13 +1618,16 @@ function normalizePermissions(permissions) {
 }
 
 function buildBoardPermissions(basePermissions, board = null) {
-  const visibilityUserIds = Array.from(new Set([board?.ownerId, ...(board?.accessUserIds || [])].filter(Boolean)));
+  const visibility = getNormalizedBoardVisibility(board);
+  const visibilityUserIds = visibility.visibilityType === "all"
+    ? []
+    : Array.from(new Set([visibility.ownerId, ...visibility.accessUserIds].filter(Boolean)));
   return {
     isEnabled: false,
     visibility: {
       roles: [],
       userIds: visibilityUserIds,
-      departments: [],
+      departments: visibility.visibilityType === "department" ? visibility.sharedDepartments : [],
     },
     actions: Object.fromEntries(BOARD_PERMISSION_ACTIONS.map((item) => [
       item.id,
@@ -1913,14 +1916,17 @@ function cloneBoardRowSnapshot(row) {
 function normalizeBoardHistorySnapshot(snapshot) {
   const weekKey = String(snapshot?.weekKey || "").trim() || formatBoardWeekKey(new Date(snapshot?.startDate || Date.now()));
   const weekStart = parseBoardWeekKey(weekKey) || getBoardWeekStart(new Date(snapshot?.startDate || Date.now()));
+  const visibility = getNormalizedBoardVisibility(snapshot);
   return {
     id: snapshot?.id || makeId("boardhist"),
     boardId: String(snapshot?.boardId || "").trim(),
     boardName: String(snapshot?.boardName || snapshot?.name || "Tablero").trim() || "Tablero",
     description: String(snapshot?.description || "").trim(),
     createdById: snapshot?.createdById ?? snapshot?.ownerId ?? null,
-    ownerId: snapshot?.ownerId ?? snapshot?.createdById ?? null,
-    accessUserIds: Array.isArray(snapshot?.accessUserIds) ? snapshot.accessUserIds : [],
+    ownerId: visibility.ownerId || snapshot?.createdById || null,
+    visibilityType: visibility.visibilityType,
+    sharedDepartments: visibility.sharedDepartments,
+    accessUserIds: visibility.accessUserIds,
     weekKey,
     weekName: String(snapshot?.weekName || "").trim() || getBoardWeekLabel(weekKey),
     startDate: snapshot?.startDate || weekStart.toISOString(),
@@ -1943,6 +1949,8 @@ function buildBoardHistorySnapshot(board, weekKey, archivedAt = new Date().toISO
     description: board.description || "",
     createdById: board.createdById,
     ownerId: board.ownerId,
+    visibilityType: board.visibilityType,
+    sharedDepartments: board.sharedDepartments || [],
     accessUserIds: board.accessUserIds || [],
     weekKey,
     weekName: getBoardWeekLabel(weekKey),
@@ -2481,6 +2489,8 @@ function createEmptyBoardDraft() {
     name: "",
     description: "",
     ownerId: "",
+    visibilityType: "users",
+    sharedDepartments: [],
     accessUserIds: [],
     settings: {
       showWorkflow: true,
@@ -2513,6 +2523,8 @@ function createBoardDraftFromBoard(board) {
     name: board?.name || "",
     description: board?.description || "",
     ownerId: board?.ownerId || "",
+    visibilityType: normalizeBoardVisibilityType(board?.visibilityType),
+    sharedDepartments: normalizeBoardSharedDepartments(board?.sharedDepartments),
     accessUserIds: [...(board?.accessUserIds || [])],
     settings: {
       ...withDefaultBoardSettings(board?.settings),
@@ -2648,6 +2660,8 @@ function buildBoardPreviewModel(baseBoard, currentUserId, inventoryItems) {
     description: baseBoard?.description || "La vista previa se actualiza en tiempo real conforme agregas o ajustas componentes.",
     createdById: currentUserId || null,
     ownerId: baseBoard?.ownerId || currentUserId || "",
+    visibilityType: normalizeBoardVisibilityType(baseBoard?.visibilityType),
+    sharedDepartments: normalizeBoardSharedDepartments(baseBoard?.sharedDepartments),
     accessUserIds: [...(baseBoard?.accessUserIds || [])],
     settings: {
       ...withDefaultBoardSettings(baseBoard?.settings),
@@ -2663,6 +2677,8 @@ function buildDraftPreviewBoard(draft, currentUserId, inventoryItems) {
     name: draft?.name,
     description: draft?.description,
     ownerId: draft?.ownerId,
+    visibilityType: draft?.visibilityType,
+    sharedDepartments: draft?.sharedDepartments,
     accessUserIds: draft?.accessUserIds,
     settings: draft?.settings,
     fields: draft?.columns,
@@ -3420,6 +3436,7 @@ function buildBoardSavePayload(controlBoardDraft, ownerId) {
     fields: controlBoardDraft.columns || [],
     settings: controlBoardDraft.settings ?? EMPTY_OBJECT,
   });
+  const visibilityType = normalizeBoardVisibilityType(controlBoardDraft.visibilityType);
 
   return {
     normalizedColumnOrder,
@@ -3427,7 +3444,9 @@ function buildBoardSavePayload(controlBoardDraft, ownerId) {
       name: controlBoardDraft.name.trim(),
       description: controlBoardDraft.description.trim(),
       ownerId,
-      accessUserIds: Array.from(new Set((controlBoardDraft.accessUserIds || []).filter((userId) => userId && userId !== ownerId))),
+      visibilityType,
+      sharedDepartments: visibilityType === "department" ? normalizeBoardSharedDepartments(controlBoardDraft.sharedDepartments) : [],
+      accessUserIds: visibilityType === "users" ? normalizeBoardAccessUserIds(controlBoardDraft.accessUserIds, ownerId) : [],
       settings: {
         ...withDefaultBoardSettings(controlBoardDraft.settings),
         columnOrder: normalizedColumnOrder,
@@ -3570,6 +3589,53 @@ function normalizeAreaOption(area) {
   return String(area || "").trim().toUpperCase();
 }
 
+function normalizeBoardVisibilityType(value) {
+  const normalizedValue = String(value || "").trim();
+  return ["all", "department", "users"].includes(normalizedValue) ? normalizedValue : "users";
+}
+
+function normalizeBoardSharedDepartments(entries = []) {
+  return Array.from(new Set((Array.isArray(entries) ? entries : [])
+    .map((entry) => normalizeAreaOption(entry))
+    .filter(Boolean)));
+}
+
+function normalizeBoardAccessUserIds(entries = [], ownerId = "") {
+  return Array.from(new Set((Array.isArray(entries) ? entries : [])
+    .map((entry) => String(entry || "").trim())
+    .filter((entry) => entry && entry !== ownerId)));
+}
+
+function getNormalizedBoardVisibility(board) {
+  const ownerId = String(board?.ownerId || "").trim();
+  const visibilityType = normalizeBoardVisibilityType(board?.visibilityType);
+  return {
+    ownerId,
+    visibilityType,
+    sharedDepartments: visibilityType === "department" ? normalizeBoardSharedDepartments(board?.sharedDepartments) : [],
+    accessUserIds: visibilityType === "users" ? normalizeBoardAccessUserIds(board?.accessUserIds, ownerId) : [],
+  };
+}
+
+function getBoardAssignmentSummary(board, userMap) {
+  const visibility = getNormalizedBoardVisibility(board);
+  if (visibility.visibilityType === "all") {
+    return "Visible para todos";
+  }
+
+  if (visibility.visibilityType === "department") {
+    return visibility.sharedDepartments.length
+      ? `Áreas · ${visibility.sharedDepartments.join(", ")}`
+      : "Áreas · Sin área configurada";
+  }
+
+  const ownerName = userMap?.get?.(visibility.ownerId)?.name || "Sin player principal";
+  const extraNames = visibility.accessUserIds.map((userId) => userMap?.get?.(userId)?.name || "N/A").filter(Boolean);
+  return extraNames.length
+    ? `Players · ${[ownerName].concat(extraNames).join(", ")}`
+    : `Player asignado · ${ownerName}`;
+}
+
 function buildAreaCatalog(users = [], catalog = []) {
   return Array.from(new Set(DEFAULT_AREA_OPTIONS.concat(catalog || []).concat((users || []).map((user) => normalizeAreaOption(getUserArea(user))))).values())
     .filter(Boolean)
@@ -3660,7 +3726,12 @@ function canManageBoard(user, board) {
   if (!user || !board) return false;
   if (user.role === ROLE_LEAD) return true;
   if (board.createdById === user.id || board.ownerId === user.id) return true;
-  if ((board.accessUserIds || []).includes(user.id)) return true;
+  if (board.visibilityType === "users" && (board.accessUserIds || []).includes(user.id)) return true;
+  if (board.visibilityType === "all") return true;
+  if (board.visibilityType === "department") {
+    const userArea = normalizeAreaOption(getUserArea(user));
+    return Boolean(userArea) && (board.sharedDepartments || []).includes(userArea);
+  }
   return false;
 }
 
@@ -3883,11 +3954,18 @@ function normalizeBoardRowValues(row, timeFieldIds) {
 
 function normalizeControlBoard(board, users, normalizedPermissions) {
   const timeFieldIds = new Set((board.fields || []).filter((field) => field.type === "time").map((field) => field.id));
+  const ownerId = board.ownerId ?? board.createdById ?? users[0]?.id ?? null;
+  const visibility = getNormalizedBoardVisibility({
+    ...board,
+    ownerId,
+  });
   const normalizedBoard = {
     ...board,
     createdById: board.createdById ?? users[0]?.id ?? null,
-    ownerId: board.ownerId ?? board.createdById ?? users[0]?.id ?? null,
-    accessUserIds: Array.isArray(board.accessUserIds) ? board.accessUserIds : [],
+    ownerId,
+    visibilityType: visibility.visibilityType,
+    sharedDepartments: visibility.sharedDepartments,
+    accessUserIds: visibility.accessUserIds,
     settings: withDefaultBoardSettings(board.settings),
     rows: Array.isArray(board.rows)
       ? board.rows.map((row) => ({
@@ -6747,7 +6825,7 @@ function App() { // NOSONAR
   const filteredVisibleControlBoards = useMemo(() => {
     const term = customBoardSearch.trim().toLowerCase();
     if (!term) return visibleControlBoards;
-    return visibleControlBoards.filter((board) => [board.name, board.description, userMap.get(board.ownerId)?.name]
+    return visibleControlBoards.filter((board) => [board.name, board.description, userMap.get(board.ownerId)?.name, ...(board.sharedDepartments || [])]
       .some((value) => String(value || "").toLowerCase().includes(term)));
   }, [customBoardSearch, userMap, visibleControlBoards]);
 
@@ -7577,13 +7655,19 @@ function App() { // NOSONAR
     const board = (state.controlBoards || []).find((item) => item.id === boardId);
     if (!board) return;
     const ownerId = field === "ownerId" ? value : board.ownerId;
-    const accessUserIds = field === "accessUserIds"
-      ? Array.from(new Set((value || []).filter((userId) => userId && userId !== ownerId)))
-      : Array.from(new Set((board.accessUserIds || []).filter((userId) => userId && userId !== ownerId)));
+    const visibilityType = field === "visibilityType" ? normalizeBoardVisibilityType(value) : normalizeBoardVisibilityType(board.visibilityType);
+    const accessUserIds = visibilityType === "users"
+      ? (field === "accessUserIds"
+          ? normalizeBoardAccessUserIds(value || [], ownerId)
+          : normalizeBoardAccessUserIds(board.accessUserIds || [], ownerId))
+      : [];
+    const sharedDepartments = field === "sharedDepartments"
+      ? normalizeBoardSharedDepartments(value || [])
+      : normalizeBoardSharedDepartments(board.sharedDepartments || []);
     try {
       const result = await requestJson(`/warehouse/boards/${boardId}/assignment`, {
         method: "PATCH",
-        body: JSON.stringify({ ownerId, accessUserIds }),
+        body: JSON.stringify({ ownerId, visibilityType, sharedDepartments, accessUserIds }),
       });
       applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
     } catch (error) {
@@ -9125,6 +9209,7 @@ function App() { // NOSONAR
     Gauge,
     getActivityLabel,
     getActivityFrequencyLabel,
+    getBoardAssignmentSummary,
     getBoardFieldCellStyle,
     getOrderedBoardColumns,
     getBoardFieldValue,
@@ -9672,6 +9757,7 @@ function App() { // NOSONAR
         onEditDraftColumn={editDraftColumn}
         onRemoveDraftColumn={removeDraftColumn}
         visibleUsers={visibleUsers}
+        departmentOptions={departmentOptions}
         currentUser={currentUser}
         userMap={userMap}
         inventoryItems={state.inventoryItems}

@@ -40,6 +40,7 @@ export default function MisTableros({ contexto }) {
     getBoardFieldValue,
     getFieldColorRule,
     getBoardFieldCellStyle,
+    getBoardAssignmentSummary,
     getOrderedBoardColumns,
     buildSelectOptions,
     state,
@@ -265,7 +266,7 @@ export default function MisTableros({ contexto }) {
             <div className="board-meta-inline board-meta-inline-header">
               <span>Creó · {userMap.get(boardView?.createdById)?.name || "N/A"}</span>
               <span>Player principal · {userMap.get(boardView?.ownerId)?.name || "N/A"}</span>
-              {(boardView?.accessUserIds || []).length ? <span>Acceso · {(boardView.accessUserIds || []).map((userId) => userMap.get(userId)?.name || "N/A").join(", ")}</span> : null}
+              <span>{getBoardAssignmentSummary(boardView, userMap)}</span>
               {boardOperationalContextType !== "none" && boardOperationalContextValue ? <span>{boardOperationalContextLabel} · {boardOperationalContextValue}</span> : null}
               {isHistoricalCustomBoardView ? <span>Corte · {formatDate(selectedCustomBoardSnapshot?.startDate)} - {formatDate(selectedCustomBoardSnapshot?.endDate)}</span> : null}
             </div>

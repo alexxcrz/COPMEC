@@ -332,6 +332,7 @@ function normalizeBoardHistorySnapshot(snapshot, permissions, fallbackUsers = []
   const createdById = snapshot?.createdById ?? ownerId ?? fallbackUsers[0]?.id ?? null;
   const weekKey = String(snapshot?.weekKey || "").trim() || formatBoardWeekKey(new Date(snapshot?.startDate || Date.now()));
   const parsedWeekStart = parseBoardWeekKey(weekKey) || getBoardWeekStart(new Date(snapshot?.startDate || Date.now()));
+  const visibility = resolveBoardVisibilitySnapshot(snapshot, ownerId);
   return {
     id: snapshot?.id || makeId("boardhist"),
     boardId: String(snapshot?.boardId || "").trim(),
@@ -339,7 +340,9 @@ function normalizeBoardHistorySnapshot(snapshot, permissions, fallbackUsers = []
     description: String(snapshot?.description || "").trim(),
     createdById,
     ownerId,
-    accessUserIds: Array.isArray(snapshot?.accessUserIds) ? snapshot.accessUserIds : [],
+    visibilityType: visibility.visibilityType,
+    sharedDepartments: visibility.sharedDepartments,
+    accessUserIds: visibility.accessUserIds,
     weekKey,
     weekName: String(snapshot?.weekName || "").trim() || getBoardWeekNameByKey(weekKey),
     startDate: snapshot?.startDate || parsedWeekStart.toISOString(),
@@ -363,6 +366,8 @@ function buildBoardHistorySnapshot(board, weekKey, permissions, archivedAt = new
     description: board.description || "",
     createdById: board.createdById,
     ownerId: board.ownerId,
+    visibilityType: board.visibilityType,
+    sharedDepartments: board.sharedDepartments || [],
     accessUserIds: board.accessUserIds || [],
     weekKey,
     weekName: getBoardWeekNameByKey(weekKey),
@@ -750,13 +755,17 @@ function userMatchesPermissionEntry(user, entry) {
 }
 
 function buildBoardPermissions(basePermissions, board = null) {
-  const visibilityUserIds = Array.from(new Set([board?.ownerId, ...(board?.accessUserIds || [])].filter(Boolean)));
+  const ownerId = String(board?.ownerId || "").trim();
+  const visibility = resolveBoardVisibilitySnapshot(board, ownerId);
+  const visibilityUserIds = visibility.visibilityType === "all"
+    ? []
+    : Array.from(new Set([ownerId, ...visibility.accessUserIds].filter(Boolean)));
   return {
     isEnabled: false,
     visibility: {
       roles: [],
       userIds: visibilityUserIds,
-      departments: [],
+      departments: visibility.visibilityType === "department" ? visibility.sharedDepartments : [],
     },
     actions: {
       createBoardRow: normalizePermissionEntry(basePermissions?.actions?.createBoardRow, ACTION_PERMISSIONS.createBoardRow),
@@ -845,16 +854,25 @@ function normalizeState(state, previousState = null) {
       ? state.boardWeekHistory.map((snapshot) => normalizeBoardHistorySnapshot(snapshot, permissions, users))
       : [],
     controlBoards: Array.isArray(state.controlBoards)
-      ? state.controlBoards.map((board) => ({
-          ...board,
-          createdById: board.createdById ?? users[0]?.id ?? null,
-          ownerId: board.ownerId ?? board.createdById ?? users[0]?.id ?? null,
-          accessUserIds: Array.isArray(board.accessUserIds) ? board.accessUserIds : [],
-          settings: withDefaultBoardSettings(board.settings),
-          fields: normalizeBoardFields(board),
-          permissions: normalizeBoardPermissions(board.permissions, permissions, board),
-          rows: Array.isArray(board.rows) ? board.rows : [],
-        }))
+      ? state.controlBoards.map((board) => {
+          const ownerId = board.ownerId ?? board.createdById ?? users[0]?.id ?? null;
+          const visibility = resolveBoardVisibilitySnapshot(board, ownerId);
+          const normalizedBoard = {
+            ...board,
+            createdById: board.createdById ?? users[0]?.id ?? null,
+            ownerId,
+            visibilityType: visibility.visibilityType,
+            sharedDepartments: visibility.sharedDepartments,
+            accessUserIds: visibility.accessUserIds,
+            settings: withDefaultBoardSettings(board.settings),
+            fields: normalizeBoardFields(board),
+            rows: Array.isArray(board.rows) ? board.rows : [],
+          };
+          return {
+            ...normalizedBoard,
+            permissions: normalizeBoardPermissions(board.permissions, permissions, normalizedBoard),
+          };
+        })
       : [],
   };
 }
@@ -1014,7 +1032,12 @@ export function canManageWarehouseBoard(user, board) {
   const normalizedRole = normalizeRole(user.role);
   if (normalizedRole === ROLE_LEAD) return true;
   if (board.createdById === user.id || board.ownerId === user.id) return true;
-  if ((board.accessUserIds || []).includes(user.id)) return true;
+  if (board.visibilityType === "users" && (board.accessUserIds || []).includes(user.id)) return true;
+  if (board.visibilityType === "all") return true;
+  if (board.visibilityType === "department") {
+    const userArea = normalizeAreaOption(user.department || user.area || "");
+    return Boolean(userArea) && (board.sharedDepartments || []).includes(userArea);
+  }
   return false;
 }
 
@@ -1432,11 +1455,14 @@ function remapBoardColumnOrder(columnOrder, idMap) {
 
 function sanitizeBoardDraft(draft, currentUserId) {
   const ownerId = String(draft?.ownerId || currentUserId || "").trim() || currentUserId;
+  const visibilityType = normalizeBoardVisibilityType(draft?.visibilityType);
   return {
     name: String(draft?.name || "").trim(),
     description: String(draft?.description || "").trim(),
     ownerId,
-    accessUserIds: Array.from(new Set((Array.isArray(draft?.accessUserIds) ? draft.accessUserIds : []).filter((userId) => userId && userId !== ownerId))),
+    visibilityType,
+    sharedDepartments: visibilityType === "department" ? normalizeBoardSharedDepartments(draft?.sharedDepartments) : [],
+    accessUserIds: visibilityType === "users" ? normalizeBoardAccessUserIds(draft?.accessUserIds, ownerId) : [],
     settings: withDefaultBoardSettings(draft?.settings),
     fields: Array.isArray(draft?.columns) ? draft.columns.map((field) => ({ ...field, colorRules: field.colorRules || [] })) : [],
   };
@@ -1610,6 +1636,32 @@ function normalizeKey(value) {
 
 function normalizeAreaOption(area) {
   return String(area || "").trim().toUpperCase();
+}
+
+function normalizeBoardVisibilityType(value) {
+  const normalizedValue = String(value || "").trim();
+  return ["all", "department", "users"].includes(normalizedValue) ? normalizedValue : "users";
+}
+
+function normalizeBoardSharedDepartments(entries = []) {
+  return Array.from(new Set((Array.isArray(entries) ? entries : [])
+    .map((entry) => normalizeAreaOption(entry))
+    .filter(Boolean)));
+}
+
+function normalizeBoardAccessUserIds(entries = [], ownerId = "") {
+  return Array.from(new Set((Array.isArray(entries) ? entries : [])
+    .map((entry) => String(entry || "").trim())
+    .filter((entry) => entry && entry !== ownerId)));
+}
+
+function resolveBoardVisibilitySnapshot(board, ownerId = "") {
+  const visibilityType = normalizeBoardVisibilityType(board?.visibilityType);
+  return {
+    visibilityType,
+    sharedDepartments: visibilityType === "department" ? normalizeBoardSharedDepartments(board?.sharedDepartments) : [],
+    accessUserIds: visibilityType === "users" ? normalizeBoardAccessUserIds(board?.accessUserIds, ownerId) : [],
+  };
 }
 
 function buildAreaCatalogEntries(users = [], catalog = []) {
@@ -2266,10 +2318,18 @@ export function updateWarehouseBoardAssignment(auth, boardId, assignment = {}) {
   if (!board) return { ok: false, reason: "board_not_found" };
 
   const nextOwnerId = String(assignment.ownerId || board.ownerId || "").trim() || board.ownerId;
-  const nextAccessUserIds = Array.from(new Set((Array.isArray(assignment.accessUserIds) ? assignment.accessUserIds : board.accessUserIds || []).filter((userId) => userId && userId !== nextOwnerId)));
+  const visibilityType = normalizeBoardVisibilityType(assignment.visibilityType ?? board.visibilityType);
+  const nextSharedDepartments = visibilityType === "department"
+    ? normalizeBoardSharedDepartments(assignment.sharedDepartments ?? board.sharedDepartments)
+    : [];
+  const nextAccessUserIds = visibilityType === "users"
+    ? normalizeBoardAccessUserIds(assignment.accessUserIds ?? board.accessUserIds, nextOwnerId)
+    : [];
   const boardShape = {
     ...board,
     ownerId: nextOwnerId,
+    visibilityType,
+    sharedDepartments: nextSharedDepartments,
     accessUserIds: nextAccessUserIds,
   };
   const nextBoard = {
@@ -2305,6 +2365,8 @@ export function createWarehouseBoard(auth, draft) {
     description: normalizedDraft.description,
     createdById: currentUser.id,
     ownerId: normalizedDraft.ownerId,
+    visibilityType: normalizedDraft.visibilityType,
+    sharedDepartments: normalizedDraft.sharedDepartments,
     accessUserIds: normalizedDraft.accessUserIds,
     settings: normalizedDraft.settings,
     fields: normalizedDraft.fields,
@@ -2343,6 +2405,8 @@ export function updateWarehouseBoard(auth, boardId, draft) {
     name: normalizedDraft.name,
     description: normalizedDraft.description,
     ownerId: normalizedDraft.ownerId,
+    visibilityType: normalizedDraft.visibilityType,
+    sharedDepartments: normalizedDraft.sharedDepartments,
     accessUserIds: normalizedDraft.accessUserIds,
     settings: normalizedDraft.settings,
     fields: normalizedDraft.fields,
@@ -2464,6 +2528,8 @@ export function duplicateWarehouseBoard(auth, boardId, includeRows = false) {
     description: board.description || `Copia de ${board.name}.`,
     createdById: currentUser.id,
     ownerId: board.ownerId || currentUser.id,
+    visibilityType: board.visibilityType || "users",
+    sharedDepartments: [...(board.sharedDepartments || [])],
     settings: withDefaultBoardSettings({
       ...board.settings,
       columnOrder: remapBoardColumnOrder(board.settings?.columnOrder, idMap),
@@ -2818,6 +2884,8 @@ function getBoardStructureSnapshot(board) {
     description: board.description,
     createdById: board.createdById,
     ownerId: board.ownerId,
+    visibilityType: board.visibilityType,
+    sharedDepartments: board.sharedDepartments || [],
     accessUserIds: board.accessUserIds || [],
     settings: board.settings ?? EMPTY_OBJECT,
     fields: board.fields || [],
