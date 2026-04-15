@@ -8617,7 +8617,7 @@ function App() { // NOSONAR
     setPasswordForm({ password: "", confirmPassword: "", message: "" });
   }
 
-  function handleCreateFirstLead(event) {
+  async function handleCreateFirstLead(event) {
     event.preventDefault();
     if (!bootstrapLeadForm.name.trim() || !bootstrapLeadForm.area.trim() || !bootstrapLeadForm.jobTitle.trim() || !bootstrapLeadForm.password.trim()) {
       setBootstrapLeadError("Completa nombre, área, cargo y contraseña para crear el primer Lead.");
@@ -8628,48 +8628,31 @@ function App() { // NOSONAR
       return;
     }
 
-    const resolvedPlayerAccess = bootstrapLeadForm.username.trim() || buildUniquePlayerAccess(
+    const resolvedEmail = bootstrapLeadForm.username.trim() || buildUniquePlayerAccess(
       bootstrapLeadForm.name,
       state.users || [],
       null,
       "lead",
     );
 
-    const leadId = makeId("usr-lead");
-    const leadUser = {
-      id: leadId,
-      name: bootstrapLeadForm.name.trim(),
-      email: resolvedPlayerAccess,
-      area: bootstrapLeadForm.area.trim(),
-      department: bootstrapLeadForm.area.trim(),
-      jobTitle: bootstrapLeadForm.jobTitle.trim(),
-      password: bootstrapLeadForm.password,
-      role: ROLE_LEAD,
-      isActive: true,
-      managerId: null,
-      createdById: BOOTSTRAP_MASTER_ID,
-    };
-
-    const starterWorkspace = buildStarterWorkspace(leadUser, state.catalog, state.inventoryItems || [], state.permissions);
-
-    setState((current) => ({
-      ...current,
-      system: {
-        ...current.system,
-        masterBootstrapEnabled: false,
-        firstLeadCreatedAt: new Date().toISOString(),
-      },
-      currentUserId: leadId,
-      users: [leadUser],
-      weeks: starterWorkspace.weeks,
-      controlBoards: starterWorkspace.controlBoards,
-      controlRows: starterWorkspace.controlRows,
-      activities: starterWorkspace.activities,
-      pauseLogs: starterWorkspace.pauseLogs,
-    }));
-    setBootstrapLeadForm({ name: "", username: "", area: "", jobTitle: "", password: "" });
-    setSessionUserId(leadId);
-    setPage(PAGE_DASHBOARD);
+    try {
+      const result = await requestJson("/auth/bootstrap-lead", {
+        method: "POST",
+        body: JSON.stringify({
+          name: bootstrapLeadForm.name.trim(),
+          email: resolvedEmail,
+          area: bootstrapLeadForm.area.trim(),
+          jobTitle: bootstrapLeadForm.jobTitle.trim(),
+          password: bootstrapLeadForm.password,
+        }),
+      });
+      setBootstrapLeadForm({ name: "", username: "", area: "", jobTitle: "", password: "" });
+      setSessionUserId(result.userId);
+      applyRemoteWarehouseState(result.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setPage(PAGE_DASHBOARD);
+    } catch (error) {
+      setBootstrapLeadError(error?.message || "No fue posible crear el primer Lead. Intenta de nuevo.");
+    }
   }
 
   function createBoardRow(boardId) {

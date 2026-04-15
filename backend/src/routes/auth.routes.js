@@ -3,7 +3,7 @@ import { clearSessionCookie, isMasterCredentials, setSessionCookie } from "../co
 import { requireRoles } from "../middleware/auth.middleware.js";
 import { auditSecurityEvent } from "../services/security-events.service.js";
 import { readSecurityEvents } from "../services/security-events.service.js";
-import { BOOTSTRAP_MASTER_ID, authenticateWarehouseUser, changeWarehouseSelfPassword, getLoginDirectory, hasLeadUser, resetWarehouseUserPassword, sanitizeUserRecord } from "../services/warehouse.store.js";
+import { BOOTSTRAP_MASTER_ID, authenticateWarehouseUser, bootstrapFirstLeadUser, changeWarehouseSelfPassword, getLoginDirectory, hasLeadUser, resetWarehouseUserPassword, sanitizeUserRecord } from "../services/warehouse.store.js";
 import { STRONG_PASSWORD_MIN_LENGTH, TEMPORARY_PASSWORD_MIN_LENGTH } from "../utils/passwords.js";
 
 const ROLE_LEAD = "Lead";
@@ -93,4 +93,31 @@ authRouter.post("/logout", (_req, res) => {
   auditSecurityEvent("logout", _req);
   clearSessionCookie(res);
   res.json({ ok: true });
+});
+
+authRouter.post("/bootstrap-lead", (req, res) => {
+  if (req.auth?.type !== "master") {
+    auditSecurityEvent("bootstrap_lead_unauthorized", req);
+    res.status(401).json({ ok: false, message: "Acceso de maestro requerido para configuración inicial." });
+    return;
+  }
+
+  const result = bootstrapFirstLeadUser(req.body || {});
+  if (!result.ok) {
+    const status = result.reason === "lead_already_exists" || result.reason === "bootstrap_not_enabled" ? 409 : 400;
+    const message =
+      result.reason === "weak_password"
+        ? `La contraseña debe tener al menos ${STRONG_PASSWORD_MIN_LENGTH} caracteres e incluir mayúscula, minúscula, número y símbolo.`
+        : result.reason === "invalid_payload"
+          ? "Completa todos los campos requeridos: nombre, correo/usuario, área, cargo y contraseña."
+          : result.reason === "lead_already_exists"
+            ? "Ya existe un usuario Lead. La configuración inicial ya fue completada."
+            : "El modo de configuración inicial no está activo.";
+    res.status(status).json({ ok: false, message });
+    return;
+  }
+
+  setSessionCookie(res, { type: "user", userId: result.userId, sessionVersion: result.user?.sessionVersion || 1 });
+  auditSecurityEvent("bootstrap_lead_created", req, { userId: result.userId });
+  res.status(201).json({ ok: true, userId: result.userId, user: sanitizeUserRecord(result.user), state: result.state });
 });

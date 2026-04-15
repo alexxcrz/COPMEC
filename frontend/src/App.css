@@ -13,7 +13,7 @@
 .inventory-activity-consumption-editor {
   display: grid;
   gap: 0.85rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .inventory-activity-consumption-empty {
@@ -91,7 +91,7 @@
 
 @media (max-width: 720px) {
   .inventory-activity-consumption-editor {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .inventory-activity-consumption-row {
@@ -105,7 +105,7 @@
 
 @media (min-width: 1500px) {
   .inventory-activity-consumption-editor {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 html {
@@ -4778,6 +4778,10 @@ tbody tr:hover {
   align-items: end;
 }
 
+.inventory-item-modal .modal-form-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
 .modal-form-grid > p,
 .modal-form-grid > div:not(.app-modal-field):not(.user-status-switch-field),
 .modal-form-grid > section,
@@ -7662,6 +7666,10 @@ tbody tr:hover {
 
   .modal-form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .inventory-item-modal .modal-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .inventory-transfer-card-actions {

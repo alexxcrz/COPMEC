@@ -3129,6 +3129,63 @@ export function hasLeadUser() {
   return getRawWarehouseState().users.some((user) => normalizeRole(user.role) === ROLE_LEAD);
 }
 
+export function bootstrapFirstLeadUser(payload) {
+  const currentState = getRawWarehouseState();
+
+  if (!currentState.system?.masterBootstrapEnabled) {
+    return { ok: false, reason: "bootstrap_not_enabled" };
+  }
+  if (hasLeadUser()) {
+    return { ok: false, reason: "lead_already_exists" };
+  }
+
+  const name = String(payload.name || "").trim();
+  const email = String((payload.email || payload.username) || "").trim();
+  const area = String((payload.area || payload.department) || "").trim();
+  const jobTitle = String(payload.jobTitle || "").trim();
+  const password = String(payload.password || "").trim();
+
+  if (!name || !email || !area || !jobTitle || !password) {
+    return { ok: false, reason: "invalid_payload" };
+  }
+  if (!isStrongPassword(password)) {
+    return { ok: false, reason: "weak_password" };
+  }
+
+  const leadId = makeId("usr-lead");
+  const leadUser = {
+    id: leadId,
+    name,
+    email,
+    area,
+    department: area,
+    jobTitle,
+    password,
+    role: ROLE_LEAD,
+    isActive: true,
+    mustChangePassword: false,
+    managerId: null,
+    createdById: BOOTSTRAP_MASTER_ID,
+    selfIdentityEditCount: 0,
+    temporaryPasswordIssuedAt: null,
+  };
+
+  const nextState = {
+    ...currentState,
+    system: {
+      ...currentState.system,
+      masterBootstrapEnabled: false,
+      firstLeadCreatedAt: new Date().toISOString(),
+    },
+    currentUserId: leadId,
+    users: [leadUser],
+  };
+
+  const savedState = replaceWarehouseState(nextState);
+  const savedUser = savedState.users.find((u) => u.id === leadId) || null;
+  return { ok: true, state: savedState, user: savedUser, userId: leadId };
+}
+
 function getInventoryManageActionId(domain) {
   if (normalizeInventoryDomain(domain) === "cleaning") return "manageCleaningInventory";
   if (normalizeInventoryDomain(domain) === "orders") return "manageOrderInventory";
