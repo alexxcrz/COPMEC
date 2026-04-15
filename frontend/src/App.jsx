@@ -2159,6 +2159,37 @@ function normalizeKey(value) {
     .trim();
 }
 
+function buildPlayerAccessBase(value, fallback = "player") {
+  const normalized = normalizeKey(value)
+    .replaceAll(/[^a-z0-9\s._-]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .join(".")
+    .replaceAll(/\.+/g, ".")
+    .replaceAll(/^\.+|\.+$/g, "");
+
+  return normalized || fallback;
+}
+
+function buildUniquePlayerAccess(value, existingUsers = [], excludedUserId = null, fallback = "player") {
+  const base = buildPlayerAccessBase(value, fallback);
+  const usedValues = new Set(
+    (existingUsers || [])
+      .filter((user) => user?.id !== excludedUserId)
+      .map((user) => normalizeKey(user?.email || user?.username || ""))
+      .filter(Boolean),
+  );
+
+  let candidate = base;
+  let suffix = 2;
+  while (usedValues.has(normalizeKey(candidate))) {
+    candidate = `${base}.${suffix}`;
+    suffix += 1;
+  }
+
+  return candidate;
+}
+
 function getIshikawaCategory(label) {
   const normalizedLabel = normalizeKey(label);
 
@@ -4934,8 +4965,8 @@ function BootstrapLeadSetup({ setupForm, onChange, onSubmit, error, areaOptions,
               <input value={setupForm.name} onChange={(event) => onChange("name", event.target.value)} placeholder="Nombre completo" />
             </label>
             <label className="app-modal-field login-field">
-              <span>Player de acceso del player principal</span>
-              <input value={setupForm.username} onChange={(event) => onChange("username", event.target.value)} placeholder="lead@copmec.local" />
+              <span>Player de acceso del player principal (opcional)</span>
+              <input value={setupForm.username} onChange={(event) => onChange("username", event.target.value)} placeholder="Ej: alejandro.cruz" />
             </label>
             <label className="app-modal-field login-field">
               <span>Área</span>
@@ -7254,11 +7285,11 @@ function App() { // NOSONAR
   }
 
   function buildUserRecordFromModalDraft(draft, fallbackId = "user-modal-preview") {
-    const fallbackEmail = normalizeKey(draft.name || draft.role || "player").split(/\s+/).filter(Boolean).join(".") || "player";
+    const fallbackAccess = buildUniquePlayerAccess(draft.name || draft.role || "player", state.users || [], draft.id || null);
     return normalizeUserRecord({
       id: draft.id || fallbackId,
       name: draft.name || "Nuevo player",
-      email: draft.username || draft.email || fallbackEmail,
+      email: draft.username || draft.email || fallbackAccess,
       role: draft.role,
       area: draft.area || getUserArea(currentUser),
       department: draft.area || getUserArea(currentUser),
@@ -7371,9 +7402,14 @@ function App() { // NOSONAR
   async function submitUserModal() {
     if (!currentUser || !actionPermissions.manageUsers || !canCreateRole(currentUser.role, userModal.role) && userModal.mode === "create") return;
     const trimmedPassword = userModal.password.trim();
+    const resolvedPlayerAccess = userModal.username.trim() || buildUniquePlayerAccess(
+      userModal.name || userModal.role || "player",
+      state.users || [],
+      userModal.mode === "edit" ? userModal.id : null,
+    );
     const payload = {
       name: userModal.name.trim(),
-      username: userModal.username.trim(),
+      username: resolvedPlayerAccess,
       role: userModal.role,
       area: userModal.area.trim(),
       department: userModal.area.trim(),
@@ -7385,7 +7421,7 @@ function App() { // NOSONAR
       permissionOverrides: userModal.permissionOverrides,
     };
 
-    if (!payload.name || !payload.username || !payload.area || !payload.jobTitle) return;
+    if (!payload.name || !payload.area || !payload.jobTitle) return;
     if (userModal.mode === "create") {
       if (!isTemporaryPassword(trimmedPassword)) return;
       payload.password = trimmedPassword;
@@ -7410,14 +7446,19 @@ function App() { // NOSONAR
 
   async function updateCurrentUserIdentity(identityPatch) {
     if (!currentUser) return;
+    const resolvedPlayerAccess = String((identityPatch.username ?? identityPatch.email) || "").trim() || buildUniquePlayerAccess(
+      identityPatch.name || currentUser.name || "player",
+      state.users || [],
+      currentUser.id,
+    );
     const trimmedPatch = {
       name: String(identityPatch.name || "").trim(),
-      email: String((identityPatch.username ?? identityPatch.email) || "").trim(),
+      email: resolvedPlayerAccess,
       area: String(identityPatch.area || "").trim(),
       jobTitle: String(identityPatch.jobTitle || "").trim(),
     };
-    if (!trimmedPatch.name || !trimmedPatch.email || !trimmedPatch.area || !trimmedPatch.jobTitle) {
-      return { ok: false, message: "Captura nombre, player de acceso, área y cargo para guardar el perfil del player." };
+    if (!trimmedPatch.name || !trimmedPatch.area || !trimmedPatch.jobTitle) {
+      return { ok: false, message: "Captura nombre, área y cargo para guardar el perfil del player." };
     }
     const hasChanges = [
       trimmedPatch.name !== String(currentUser.name || "").trim(),
@@ -8524,8 +8565,8 @@ function App() { // NOSONAR
 
   function handleCreateFirstLead(event) {
     event.preventDefault();
-    if (!bootstrapLeadForm.name.trim() || !bootstrapLeadForm.username.trim() || !bootstrapLeadForm.area.trim() || !bootstrapLeadForm.jobTitle.trim() || !bootstrapLeadForm.password.trim()) {
-      setBootstrapLeadError("Completa nombre, player de acceso, área, cargo y contraseña para crear el primer Lead.");
+    if (!bootstrapLeadForm.name.trim() || !bootstrapLeadForm.area.trim() || !bootstrapLeadForm.jobTitle.trim() || !bootstrapLeadForm.password.trim()) {
+      setBootstrapLeadError("Completa nombre, área, cargo y contraseña para crear el primer Lead.");
       return;
     }
     if (!isStrongPassword(bootstrapLeadForm.password)) {
@@ -8533,11 +8574,18 @@ function App() { // NOSONAR
       return;
     }
 
+    const resolvedPlayerAccess = bootstrapLeadForm.username.trim() || buildUniquePlayerAccess(
+      bootstrapLeadForm.name,
+      state.users || [],
+      null,
+      "lead",
+    );
+
     const leadId = makeId("usr-lead");
     const leadUser = {
       id: leadId,
       name: bootstrapLeadForm.name.trim(),
-      email: bootstrapLeadForm.username.trim(),
+      email: resolvedPlayerAccess,
       area: bootstrapLeadForm.area.trim(),
       department: bootstrapLeadForm.area.trim(),
       jobTitle: bootstrapLeadForm.jobTitle.trim(),
@@ -9578,7 +9626,7 @@ function App() { // NOSONAR
             </label>
             <label className="app-modal-field">
               <span>Player de acceso</span>
-              <input value={userModal.username} onChange={(event) => setUserModal((current) => ({ ...current, username: event.target.value }))} placeholder="Ej: lead@copmec.local" />
+              <input value={userModal.username} onChange={(event) => setUserModal((current) => ({ ...current, username: event.target.value }))} placeholder="Ej: alejandro.cruz" />
             </label>
             <label className="app-modal-field">
               <span>Área</span>
