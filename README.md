@@ -27,6 +27,7 @@ Plataforma de gestion de datos relacionales y multimedia para reemplazar multipl
 
 - `npm run dev`: levanta frontend y backend con verificacion de puertos fijos (`5173` y `4000`) y reutiliza servicios ya encendidos
 - `npm run dev:raw`: levanta frontend y backend en paralelo sin verificaciones extra
+- `npm run preview --prefix frontend`: usa tambien el puerto fijo `5173`; si ese puerto esta ocupado, Vite falla en vez de saltar a otro
 - `npm run status`: muestra el estado sincronizado de frontend (`5173`), backend (`4000`) y PostgreSQL local (`5432`)
 - `npm run stop`: detiene frontend y backend; deja PostgreSQL local intacto porque es una dependencia externa del entorno local
 - `npm run stop:all`: intenta detener frontend, backend y PostgreSQL local; detener PostgreSQL puede requerir una terminal con permisos de administrador
@@ -38,13 +39,15 @@ Plataforma de gestion de datos relacionales y multimedia para reemplazar multipl
 - `iniciar_copmec.bat`: inicia COPMEC desde Windows con el mismo flujo estable de `npm run dev`
 - Frontend local: `http://localhost:5173/`
 - Backend local: `http://localhost:4000/api/health`
+- En desarrollo local solo deben existir esos dos puertos de app: `5173` para frontend y `4000` para backend
 - PostgreSQL local: `5432` como servicio de Windows separado del runner de desarrollo
 
 ## Render
 
 - Render no usa estos scripts locales de orquestacion.
-- `copmec-api` se despliega desde `backend/` con `npm start` segun [render.yaml](C:\Users\alexx\Desktop\COPMEC\render.yaml).
-- `copmec-web` se construye desde `frontend/` como sitio estatico segun [render.yaml](C:\Users\alexx\Desktop\COPMEC\render.yaml).
+- `copmec-api` se despliega desde `backend/` con `npm start` segun [render.yaml](C:\Users\alexx\Desktop\COPMEC\render.yaml) y durante el build tambien compila el frontend de `frontend/`.
+- El frontend queda servido por Express desde la misma URL publica del backend.
+- El disco persistente debe montarse en `/var/data` para conservar `warehouse-state.json` y `security-events.log` entre deploys.
 - La base en Render es `copmec-db`, administrada por Render y separada del PostgreSQL local en `5432`.
 
 ## Seguridad aplicada
@@ -63,8 +66,7 @@ Plataforma de gestion de datos relacionales y multimedia para reemplazar multipl
 
 El repositorio ya incluye `render.yaml` para desplegar:
 
-- `copmec-api`: servicio web Node/Express.
-- `copmec-web`: sitio estatico de Vite.
+- `copmec-api`: servicio web Node/Express que tambien sirve el frontend compilado.
 - `copmec-db`: base de datos PostgreSQL administrada por Render.
 
 Pasos recomendados:
@@ -76,8 +78,8 @@ Pasos recomendados:
   - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` o `CLOUDINARY_URL`
 3. `DATABASE_URL` queda conectado automaticamente desde `copmec-db` dentro del blueprint.
 4. `SESSION_SECRET` se genera automaticamente en Render por el blueprint.
-5. Configura en `copmec-web` la variable `VITE_API_BASE_URL` o `VITE_API_URL` con la URL publica real del backend.
-6. Despliega primero el backend y luego el frontend.
+5. Agrega un disco persistente al servicio web y montalo en `/var/data`.
+6. Despliega el servicio web; el frontend quedara disponible en la raiz `/` y la API en `/api`.
 
 Variables adicionales disponibles:
 
@@ -91,13 +93,9 @@ Variables adicionales disponibles:
 - `MASTER_USERNAME`
 - `MASTER_PASSWORD`
 
-## Render y SPA
-
-El frontend incluye `_redirects` para que las rutas del cliente React funcionen correctamente en Render Static Sites.
-
 ## Variables de frontend
 
-- Usa [frontend/.env.example](frontend/.env.example) como base local para `VITE_API_URL`.
+- En local puedes definir `VITE_API_URL` o `VITE_API_BASE_URL` en tu archivo `.env` dentro de `frontend/` si quieres apuntar a otra API distinta de `localhost:4000`.
 
 ## Estado por fases
 

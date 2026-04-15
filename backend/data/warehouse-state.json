@@ -1,5 +1,5 @@
 {
-  "revision": 1774,
+  "revision": 1789,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro"
@@ -305,8 +305,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -320,8 +324,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -335,8 +343,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -350,8 +362,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -365,8 +381,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -380,8 +400,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -395,8 +419,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -410,8 +438,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -425,8 +457,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -440,8 +476,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -455,8 +495,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -470,8 +514,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -485,8 +533,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -500,8 +552,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -515,8 +571,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -530,8 +590,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -545,8 +609,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -560,8 +628,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -575,8 +647,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -590,8 +666,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -605,8 +685,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -620,8 +704,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -635,8 +723,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -650,8 +742,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -665,8 +761,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -680,8 +780,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -695,8 +799,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -710,8 +818,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -725,8 +837,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -740,8 +856,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -755,8 +875,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -770,8 +894,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -785,8 +913,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -800,8 +932,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -815,8 +951,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -830,8 +970,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -845,8 +989,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -860,8 +1008,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -875,8 +1027,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -890,8 +1046,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -905,8 +1065,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -920,8 +1084,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -935,8 +1103,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -950,8 +1122,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -965,8 +1141,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -980,8 +1160,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -995,8 +1179,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1010,8 +1198,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1025,8 +1217,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1040,8 +1236,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1055,8 +1255,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1070,8 +1274,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1085,8 +1293,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1100,8 +1312,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1115,8 +1331,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1130,8 +1350,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1145,8 +1369,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1160,8 +1388,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1175,8 +1407,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1190,8 +1426,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1205,8 +1445,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1220,8 +1464,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1235,8 +1483,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1250,8 +1502,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1265,8 +1521,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1280,8 +1540,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1295,8 +1559,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1310,8 +1578,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1325,8 +1597,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1340,8 +1616,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1355,8 +1635,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1370,8 +1654,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1385,8 +1673,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1400,8 +1692,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1415,8 +1711,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1430,8 +1730,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1445,8 +1749,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1460,8 +1768,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1475,8 +1787,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1490,8 +1806,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1505,8 +1825,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1520,8 +1844,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1535,8 +1863,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1550,8 +1882,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1565,8 +1901,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1580,8 +1920,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1595,8 +1939,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1610,8 +1958,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1625,8 +1977,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1640,8 +1996,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1655,8 +2015,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1670,8 +2034,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1685,8 +2053,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1700,8 +2072,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1715,8 +2091,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1730,8 +2110,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1745,8 +2129,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1760,8 +2148,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1775,8 +2167,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1790,8 +2186,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1805,8 +2205,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1820,8 +2224,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1835,8 +2243,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1850,8 +2262,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1865,8 +2281,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1880,8 +2300,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1895,8 +2319,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1910,8 +2338,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1925,8 +2357,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1940,8 +2376,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1955,8 +2395,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1970,8 +2414,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -1985,8 +2433,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2000,8 +2452,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2015,8 +2471,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2030,8 +2490,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2045,8 +2509,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2060,8 +2528,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2075,8 +2547,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2090,8 +2566,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2105,8 +2585,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2120,8 +2604,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2135,8 +2623,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2150,8 +2642,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2165,8 +2661,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2180,8 +2680,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2195,8 +2699,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2210,8 +2718,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2225,8 +2737,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2240,8 +2756,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2255,8 +2775,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2270,8 +2794,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2285,8 +2813,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2300,8 +2832,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2315,8 +2851,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2330,8 +2870,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2345,8 +2889,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2360,8 +2908,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2375,8 +2927,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2390,8 +2946,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2405,8 +2965,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2420,8 +2984,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2435,8 +3003,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2450,8 +3022,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2465,8 +3041,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2480,8 +3060,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2495,8 +3079,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2510,8 +3098,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2525,8 +3117,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2540,8 +3136,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2555,8 +3155,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2570,8 +3174,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2585,8 +3193,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2600,8 +3212,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2615,8 +3231,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2630,8 +3250,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2645,8 +3269,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2660,8 +3288,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2675,8 +3307,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2690,8 +3326,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2705,8 +3345,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2720,8 +3364,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2735,8 +3383,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2750,8 +3402,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2765,8 +3421,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2780,8 +3440,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2795,8 +3459,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2810,8 +3478,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2825,8 +3497,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2840,8 +3516,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2855,8 +3535,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2870,8 +3554,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2885,8 +3573,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2900,8 +3592,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2915,8 +3611,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2930,8 +3630,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2945,8 +3649,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2960,8 +3668,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2975,8 +3687,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -2990,8 +3706,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3005,8 +3725,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3020,8 +3744,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3035,8 +3763,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3050,8 +3782,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3065,8 +3801,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3080,8 +3820,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3095,8 +3839,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3110,8 +3858,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3125,8 +3877,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3140,8 +3896,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3155,8 +3915,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3170,8 +3934,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3185,8 +3953,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3200,8 +3972,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3215,8 +3991,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3230,8 +4010,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3245,8 +4029,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3260,8 +4048,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3275,8 +4067,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3290,8 +4086,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3305,8 +4105,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3320,8 +4124,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3335,8 +4143,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3350,8 +4162,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3365,8 +4181,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3380,8 +4200,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3395,8 +4219,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3410,8 +4238,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3425,8 +4257,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3440,8 +4276,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3455,8 +4295,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3470,8 +4314,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3485,8 +4333,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3500,8 +4352,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3515,8 +4371,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3530,8 +4390,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3545,8 +4409,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3560,8 +4428,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3575,8 +4447,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3590,8 +4466,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3605,8 +4485,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3620,8 +4504,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3635,8 +4523,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3650,8 +4542,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3665,8 +4561,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3680,8 +4580,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3695,8 +4599,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3710,8 +4618,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3725,8 +4637,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3740,8 +4656,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3755,8 +4675,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3770,8 +4694,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3785,8 +4713,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3800,8 +4732,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3815,8 +4751,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3830,8 +4770,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3845,8 +4789,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3860,8 +4808,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3875,8 +4827,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3890,8 +4846,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3905,8 +4865,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3920,8 +4884,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3935,8 +4903,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3950,8 +4922,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3965,8 +4941,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3980,8 +4960,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -3995,8 +4979,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4010,8 +4998,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4025,8 +5017,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4040,8 +5036,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4055,8 +5055,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4070,8 +5074,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4085,8 +5093,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4100,8 +5112,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4115,8 +5131,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4130,8 +5150,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4145,8 +5169,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4160,8 +5188,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4175,8 +5207,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4190,8 +5226,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4205,8 +5245,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4220,8 +5264,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4235,8 +5283,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4250,8 +5302,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4265,8 +5321,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4280,8 +5340,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4295,8 +5359,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4310,8 +5378,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4325,8 +5397,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4340,8 +5416,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4355,8 +5435,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4370,8 +5454,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4385,8 +5473,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4400,8 +5492,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4415,8 +5511,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4430,8 +5530,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4445,8 +5549,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4460,8 +5568,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4475,8 +5587,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4490,8 +5606,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4505,8 +5625,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4520,8 +5644,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4535,8 +5663,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4550,8 +5682,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4565,8 +5701,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4580,8 +5720,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4595,8 +5739,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4610,8 +5758,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4625,8 +5777,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4640,8 +5796,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4655,8 +5815,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4670,8 +5834,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4685,8 +5853,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4700,8 +5872,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4715,8 +5891,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4730,8 +5910,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4745,8 +5929,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4760,8 +5948,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4775,8 +5967,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4790,8 +5986,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4805,8 +6005,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4820,8 +6024,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4835,8 +6043,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4850,8 +6062,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4865,8 +6081,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4880,8 +6100,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4895,8 +6119,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4910,8 +6138,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4925,8 +6157,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4940,8 +6176,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4955,8 +6195,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4970,8 +6214,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -4985,8 +6233,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5000,8 +6252,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5015,8 +6271,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5030,8 +6290,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5045,8 +6309,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5060,8 +6328,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5075,8 +6347,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5090,8 +6366,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5105,8 +6385,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5120,8 +6404,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5135,8 +6423,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5150,8 +6442,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5165,8 +6461,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5180,8 +6480,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5195,8 +6499,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5210,8 +6518,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5225,8 +6537,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5240,8 +6556,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5255,8 +6575,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5270,8 +6594,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5285,8 +6613,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5300,8 +6632,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5315,8 +6651,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5330,8 +6670,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5345,8 +6689,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5360,8 +6708,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5375,8 +6727,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5390,8 +6746,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5405,8 +6765,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5420,8 +6784,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5435,8 +6803,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5450,8 +6822,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5465,8 +6841,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5480,8 +6860,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5495,8 +6879,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5510,8 +6898,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5525,8 +6917,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5540,8 +6936,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5555,8 +6955,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5570,8 +6974,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5585,8 +6993,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5600,8 +7012,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5615,8 +7031,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5630,8 +7050,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5645,8 +7069,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5660,8 +7088,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5675,8 +7107,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5690,8 +7126,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5705,8 +7145,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5720,8 +7164,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5735,8 +7183,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5750,8 +7202,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5765,8 +7221,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5780,8 +7240,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5795,8 +7259,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5810,8 +7278,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5825,8 +7297,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5840,8 +7316,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5855,8 +7335,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5870,8 +7354,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5885,8 +7373,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5900,8 +7392,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5915,8 +7411,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5930,8 +7430,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5945,8 +7449,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5960,8 +7468,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5975,8 +7487,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -5990,8 +7506,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6005,8 +7525,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6020,8 +7544,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6035,8 +7563,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6050,8 +7582,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6065,8 +7601,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6080,8 +7620,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6095,8 +7639,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6110,8 +7658,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6125,8 +7677,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6140,8 +7696,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6155,8 +7715,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6170,8 +7734,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6185,8 +7753,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6200,8 +7772,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6215,8 +7791,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6230,8 +7810,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6245,8 +7829,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6260,8 +7848,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6275,8 +7867,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6290,8 +7886,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6305,8 +7905,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6320,8 +7924,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6335,8 +7943,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6350,8 +7962,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6365,8 +7981,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6380,8 +8000,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6395,8 +8019,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6410,8 +8038,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6425,8 +8057,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6440,8 +8076,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6455,8 +8095,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6470,8 +8114,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6485,8 +8133,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6500,8 +8152,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6515,8 +8171,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6530,8 +8190,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6545,8 +8209,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6560,8 +8228,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6575,8 +8247,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6590,8 +8266,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6605,8 +8285,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6620,8 +8304,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6635,8 +8323,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6650,8 +8342,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6665,8 +8361,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6680,8 +8380,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6695,8 +8399,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6710,8 +8418,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6725,8 +8437,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6740,8 +8456,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6755,8 +8475,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6770,8 +8494,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6785,8 +8513,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6800,8 +8532,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6815,8 +8551,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6830,8 +8570,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6845,8 +8589,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6860,8 +8608,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6875,8 +8627,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6890,8 +8646,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6905,8 +8665,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6920,8 +8684,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6935,8 +8703,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6950,8 +8722,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6965,8 +8741,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6980,8 +8760,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -6995,8 +8779,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -7010,8 +8798,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -7025,8 +8817,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -7040,8 +8836,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -7055,8 +8855,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -7070,8 +8874,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -7085,8 +8893,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     },
     {
@@ -7100,8 +8912,12 @@
       "stockUnits": 0,
       "minStockUnits": 0,
       "storageLocation": "",
+      "cleaningSite": "",
       "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
       "activityCatalogIds": [],
+      "activityConsumptions": [],
       "consumptionPerStart": 0
     }
   ],
@@ -7125,9 +8941,9 @@
         "showAssignee": true,
         "showDates": true,
         "auxColumnsOrder": [
-          "workflow",
-          "time",
           "status",
+          "time",
+          "workflow",
           "assignee"
         ],
         "auxColumnWidths": {
@@ -7138,14 +8954,18 @@
         },
         "columnOrder": [
           "fld-pjabusyf",
+          "aux:workflow",
           "fld-x1jzjoxm",
           "fld-gtp4zz3s",
           "aux:assignee",
-          "aux:workflow",
           "aux:time",
           "aux:status",
           "fld-eaq0jvax"
-        ]
+        ],
+        "operationalContextType": "none",
+        "operationalContextLabel": "",
+        "operationalContextOptions": [],
+        "operationalContextValue": ""
       },
       "fields": [
         {
@@ -7604,9 +9424,509 @@
           }
         }
       }
+    },
+    {
+      "id": "board-kn3z5b87",
+      "name": "Control de Actividades de Limpieza",
+      "description": "Copia de Control de Actividades de Limpieza.",
+      "createdById": "usr-lead-nu7wt83h",
+      "ownerId": "usr-lead-nu7wt83h",
+      "accessUserIds": [
+        "usr-sqtdyayn",
+        "usr-06t9ibth"
+      ],
+      "settings": {
+        "showWorkflow": true,
+        "showMetrics": true,
+        "showAssignee": true,
+        "showDates": true,
+        "auxColumnsOrder": [
+          "status",
+          "time",
+          "workflow",
+          "assignee"
+        ],
+        "auxColumnWidths": {
+          "status": 90,
+          "time": 90,
+          "workflow": 109,
+          "assignee": 190
+        },
+        "columnOrder": [
+          "fld-g9sfbwpf",
+          "fld-m8jepz54",
+          "fld-w64whk7v",
+          "aux:assignee",
+          "aux:workflow",
+          "aux:time",
+          "aux:status",
+          "fld-wwqphfbf"
+        ],
+        "operationalContextType": "none",
+        "operationalContextLabel": "",
+        "operationalContextOptions": [],
+        "operationalContextValue": ""
+      },
+      "fields": [
+        {
+          "id": "fld-g9sfbwpf",
+          "label": "Actividad",
+          "type": "select",
+          "optionSource": "catalogByCategory",
+          "optionCatalogCategory": "Limpieza",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "sm",
+          "widthPx": 190,
+          "required": false,
+          "groupName": "Operación",
+          "groupColor": "#e2f4ec",
+          "colorRules": []
+        },
+        {
+          "id": "fld-m8jepz54",
+          "label": "Inicio",
+          "type": "time",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "sm",
+          "required": false,
+          "groupName": "Seguimiento",
+          "groupColor": "#e2f4ec",
+          "colorRules": [],
+          "widthPx": 90
+        },
+        {
+          "id": "fld-w64whk7v",
+          "label": "Fin",
+          "type": "time",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "sm",
+          "widthPx": 130,
+          "required": false,
+          "groupName": "Seguimiento",
+          "groupColor": "#e2f4ec",
+          "colorRules": []
+        },
+        {
+          "id": "fld-wwqphfbf",
+          "label": "Observaciones",
+          "type": "text",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "md",
+          "widthPx": 260,
+          "required": false,
+          "groupName": "Cierre",
+          "groupColor": "#e2f4ec",
+          "colorRules": []
+        }
+      ],
+      "rows": [
+        {
+          "id": "row-zcey10i2",
+          "values": {
+            "fld-g9sfbwpf": "Piso de Produccíon",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.550Z"
+        },
+        {
+          "id": "row-16zybu9b",
+          "values": {
+            "fld-g9sfbwpf": "Inspeccíon General de Naves",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.550Z"
+        },
+        {
+          "id": "row-kv1uwwy7",
+          "values": {
+            "fld-g9sfbwpf": "Baños",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.550Z"
+        },
+        {
+          "id": "row-7aqaz7rv",
+          "values": {
+            "fld-g9sfbwpf": "Oficinas",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.550Z"
+        },
+        {
+          "id": "row-y710p0vi",
+          "values": {
+            "fld-g9sfbwpf": "Portones",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.550Z"
+        },
+        {
+          "id": "row-4t9j1k1d",
+          "values": {
+            "fld-g9sfbwpf": "Rampas",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.550Z"
+        },
+        {
+          "id": "row-s4fjbfzs",
+          "values": {
+            "fld-g9sfbwpf": "Racks",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.550Z"
+        },
+        {
+          "id": "row-dv51po9r",
+          "values": {
+            "fld-g9sfbwpf": "Comedor 1ra",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.550Z"
+        },
+        {
+          "id": "row-84ozd0hg",
+          "values": {
+            "fld-g9sfbwpf": "Comedor 2da",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.550Z"
+        },
+        {
+          "id": "row-uvo0utv2",
+          "values": {
+            "fld-g9sfbwpf": "Protección Civil",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-ksgl47de",
+          "values": {
+            "fld-g9sfbwpf": "Recolección Basura",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-s4offl6s",
+          "values": {
+            "fld-g9sfbwpf": "Sala de Juntas",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-ksb9dwo5",
+          "values": {
+            "fld-g9sfbwpf": "Vidrios",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-bj7dxap6",
+          "values": {
+            "fld-g9sfbwpf": "Tarimas",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-f9bowd58",
+          "values": {
+            "fld-g9sfbwpf": "Muebles Picking",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-sv8kvhjl",
+          "values": {
+            "fld-g9sfbwpf": "Barrido de Colindancia",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-jbrj91aj",
+          "values": {
+            "fld-g9sfbwpf": "Limpieza de Patio",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-dxsrxar8",
+          "values": {
+            "fld-g9sfbwpf": "Deshierbe en Grietas y Jardineras",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        }
+      ],
+      "permissions": {
+        "isEnabled": false,
+        "visibility": {
+          "roles": [],
+          "userIds": [
+            "usr-lead-nu7wt83h",
+            "usr-sqtdyayn",
+            "usr-06t9ibth"
+          ],
+          "departments": []
+        },
+        "actions": {
+          "createBoardRow": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)",
+              "Junior (Jr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "boardWorkflow": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)",
+              "Junior (Jr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "exportBoardExcel": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "previewBoardPdf": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "exportBoardPdf": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "duplicateBoard": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "duplicateBoardWithRows": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)"
+            ],
+            "userIds": [],
+            "departments": []
+          }
+        }
+      }
     }
   ],
-  "updatedAt": "2026-04-14T16:32:13.491Z",
+  "updatedAt": "2026-04-15T17:37:29.615Z",
   "permissions": {
     "pages": {
       "index": {

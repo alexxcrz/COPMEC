@@ -4,9 +4,12 @@ export default function GestionInventario({ contexto }) {
     handleInventoryImport,
     inventoryTab,
     setInventoryTab,
+    inventoryCleaningSite,
+    setInventoryCleaningSite,
     INVENTORY_DOMAIN_BASE,
     INVENTORY_DOMAIN_CLEANING,
     INVENTORY_DOMAIN_ORDERS,
+    CLEANING_SITE_OPTIONS,
     inventoryActionsMenuRef,
     openCreateInventoryItem,
     currentInventoryManagePermission,
@@ -16,10 +19,10 @@ export default function GestionInventario({ contexto }) {
     setInventoryActionsMenuOpen,
     downloadInventoryTemplate,
     currentInventoryImportPermission,
-    inventoryImportFeedback,
     inventoryStats,
     StatTile,
     currentInventoryItems,
+    currentInventorySupplyableCount,
     Package,
     Eye,
     inventorySearch,
@@ -28,8 +31,10 @@ export default function GestionInventario({ contexto }) {
     RotateCcw,
     catalogMap,
     InventoryStockBar,
+    openInventoryBulkRestockModal,
     openInventoryMovement,
-    INVENTORY_MOVEMENT_RESTOCK,
+    INVENTORY_MOVEMENT_CONSUME,
+    openInventoryRestockModal,
     openEditInventoryItem,
     Pencil,
     setDeleteInventoryId,
@@ -38,14 +43,27 @@ export default function GestionInventario({ contexto }) {
     lowStockInventoryItems,
     inventoryLinkedCleaningRows,
     openInventoryTransferViewer,
+    openInventoryTransferHistory,
     openOrderInventoryTransfer,
     orderInventoryTransferMovements,
     orderInventoryTransferSummary,
   } = contexto;
 
   const getTransferredUnits = (item) => (item?.transferTargets || []).reduce((sum, target) => sum + Number(target?.availableUnits || 0), 0);
-  const getAvailableTransferUnits = (item) => Math.max(0, Number(item?.stockUnits || 0) - getTransferredUnits(item));
+  const getAvailableTransferUnits = (item) => Math.max(0, Number(item?.stockUnits || 0));
+  const getTransferBarTargetUnits = (item) => Math.max(getAvailableTransferUnits(item) + getTransferredUnits(item), Number(item?.minStockUnits || 0), 1);
   const orderItemsWithTransfers = orderInventoryTransferSummary.filter((item) => item.transferTargets.length > 0);
+  const inventoryTitle = inventoryTab === INVENTORY_DOMAIN_CLEANING ? "Insumos de limpieza" : inventoryTab === INVENTORY_DOMAIN_ORDERS ? "Insumos para pedidos" : "Productos";
+
+  function formatCleaningLocation(item) {
+    return [item?.cleaningSite || "C3", item?.storageLocation || "Sin ubicación"].join(" · ");
+  }
+
+  function getCleaningActivitySummary(item) {
+    return (item?.activityConsumptions || [])
+      .filter((entry) => Number(entry?.quantity || 0) > 0)
+      .map((entry) => `${catalogMap.get(entry.catalogActivityId)?.name || entry.catalogActivityId} · ${entry.quantity}`);
+  }
 
   return (
     <section className="inventory-page-layout">
@@ -53,10 +71,21 @@ export default function GestionInventario({ contexto }) {
 
       <article className="surface-card admin-tabs full-width admin-tabs-shell">
         <div className="card-header-row">
-          <div className="tab-strip">
-            <button type="button" className={inventoryTab === INVENTORY_DOMAIN_BASE ? "tab active" : "tab"} onClick={() => setInventoryTab(INVENTORY_DOMAIN_BASE)}>Productos</button>
-            <button type="button" className={inventoryTab === INVENTORY_DOMAIN_CLEANING ? "tab active" : "tab"} onClick={() => setInventoryTab(INVENTORY_DOMAIN_CLEANING)}>Insumos de limpieza</button>
-            <button type="button" className={inventoryTab === INVENTORY_DOMAIN_ORDERS ? "tab active" : "tab"} onClick={() => setInventoryTab(INVENTORY_DOMAIN_ORDERS)}>Insumos para pedidos</button>
+          <div>
+            <div className="tab-strip">
+              <button type="button" className={inventoryTab === INVENTORY_DOMAIN_BASE ? "tab active" : "tab"} onClick={() => setInventoryTab(INVENTORY_DOMAIN_BASE)}>Productos</button>
+              <button type="button" className={inventoryTab === INVENTORY_DOMAIN_CLEANING ? "tab active" : "tab"} onClick={() => setInventoryTab(INVENTORY_DOMAIN_CLEANING)}>Insumos de limpieza</button>
+              <button type="button" className={inventoryTab === INVENTORY_DOMAIN_ORDERS ? "tab active" : "tab"} onClick={() => setInventoryTab(INVENTORY_DOMAIN_ORDERS)}>Insumos para pedidos</button>
+            </div>
+            {inventoryTab === INVENTORY_DOMAIN_CLEANING ? (
+              <div className="tab-strip inventory-subtab-strip">
+                {CLEANING_SITE_OPTIONS.map((option) => (
+                  <button key={option.value} type="button" className={inventoryCleaningSite === option.value ? "tab active" : "tab"} onClick={() => setInventoryCleaningSite(option.value)}>
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
           <div className="custom-board-actions-menu-shell inventory-actions-menu-shell" ref={inventoryActionsMenuRef}>
             <button
@@ -92,9 +121,6 @@ export default function GestionInventario({ contexto }) {
           </div>
         </div>
       </article>
-
-      {inventoryImportFeedback.message ? <p className={`inventory-import-feedback ${inventoryImportFeedback.tone}`}>{inventoryImportFeedback.message}</p> : null}
-
       <details className="inventory-stat-collapsible">
         <summary className="inventory-stat-summary">Indicadores</summary>
         <div className="inventory-stat-grid inventory-stat-grid-collapsed">
@@ -120,7 +146,7 @@ export default function GestionInventario({ contexto }) {
           <div className="card-header-row">
             <div>
               <h3>Alertas de insumos</h3>
-              <p>Lista rápida de compras o reabasto por debajo del mínimo.</p>
+              <p>Lista rápida de compras o reabasto por debajo del mínimo en {inventoryCleaningSite}.</p>
             </div>
             <span className="chip primary">{lowStockInventoryItems.length}</span>
           </div>
@@ -130,11 +156,11 @@ export default function GestionInventario({ contexto }) {
                 <div className="card-header-row">
                   <div>
                     <strong>{item.name}</strong>
-                    <p>{item.code} · {item.storageLocation || "Sin ubicación"}</p>
+                    <p>{item.code} · {formatCleaningLocation(item)}</p>
                   </div>
                   <span className="chip danger">{item.stockUnits}/{item.minStockUnits}</span>
                 </div>
-                <InventoryStockBar current={item.stockUnits} minimum={item.minStockUnits} unitLabel={item.unitLabel} />
+                <InventoryStockBar current={item.stockUnits} minimum={item.minStockUnits} unitLabel={item.unitLabel} className="inventory-stock-bar" />
               </article>
             ))}
             {!lowStockInventoryItems.length ? <p className="subtle-line">No hay artículos por debajo del mínimo.</p> : null}
@@ -161,7 +187,7 @@ export default function GestionInventario({ contexto }) {
                 <div className="card-header-row">
                   <div>
                     <strong>{item.name}</strong>
-                    <p>{item.code} · Stock general {item.stockUnits} {item.unitLabel || "pzas"}</p>
+                    <p>{item.code} · Stock origen {item.stockUnits} {item.unitLabel || "pzas"}</p>
                   </div>
                   <span className="chip primary">Disponible · {item.availableToTransferUnits}</span>
                 </div>
@@ -180,8 +206,13 @@ export default function GestionInventario({ contexto }) {
         <article className="surface-card inventory-surface-card full-width table-card">
           <div className="card-header-row">
             <div>
-              <h3>{inventoryTab === INVENTORY_DOMAIN_CLEANING ? "Insumos de limpieza" : inventoryTab === INVENTORY_DOMAIN_ORDERS ? "Insumos para pedidos" : "Productos"}</h3>
+              <h3>{inventoryTitle}</h3>
             </div>
+            {inventoryTab !== INVENTORY_DOMAIN_BASE ? (
+              <button type="button" className="icon-button" onClick={() => openInventoryBulkRestockModal(inventoryTab)} disabled={!currentInventoryManagePermission || !currentInventorySupplyableCount}>
+                <Plus size={15} /> Surtido general
+              </button>
+            ) : null}
             <label className="users-search-field inventory-search-field">
               <span>Buscar</span>
               <div className="users-search-input-wrap">
@@ -229,30 +260,41 @@ export default function GestionInventario({ contexto }) {
                       </td>
                       <td>{item.presentation}</td>
                       <td style={inventoryTab === INVENTORY_DOMAIN_BASE ? undefined : { minWidth: "220px" }}>
-                        {inventoryTab === INVENTORY_DOMAIN_BASE ? item.piecesPerBox : <InventoryStockBar current={item.stockUnits} minimum={item.minStockUnits} unitLabel={item.unitLabel} />}
+                        {inventoryTab === INVENTORY_DOMAIN_BASE ? item.piecesPerBox : inventoryTab === INVENTORY_DOMAIN_ORDERS ? (
+                          <InventoryStockBar
+                            current={getAvailableTransferUnits(item)}
+                            minimum={item.minStockUnits}
+                            target={getTransferBarTargetUnits(item)}
+                            unitLabel={item.unitLabel}
+                            primaryLabel={`Stock origen ${getAvailableTransferUnits(item)} ${item.unitLabel || "pzas"}`}
+                            secondaryLabel={`Transferido ${getTransferredUnits(item)} ${item.unitLabel || "pzas"}`}
+                            className="inventory-stock-bar"
+                          />
+                        ) : <InventoryStockBar current={item.stockUnits} minimum={item.minStockUnits} unitLabel={item.unitLabel} className="inventory-stock-bar" />}
                       </td>
-                      <td>{inventoryTab === INVENTORY_DOMAIN_BASE ? item.boxesPerPallet : item.storageLocation || "Sin ubicación"}</td>
+                      <td>{inventoryTab === INVENTORY_DOMAIN_BASE ? item.boxesPerPallet : inventoryTab === INVENTORY_DOMAIN_CLEANING ? formatCleaningLocation(item) : item.storageLocation || "Sin ubicación"}</td>
                       {showControlColumn ? (
                         <td>
                           {inventoryTab === INVENTORY_DOMAIN_ORDERS ? (
                             <div className="saved-board-list board-builder-launch-list">
-                              <span className="chip primary">Por transferir · {getAvailableTransferUnits(item)} {item.unitLabel || "pzas"}</span>
-                              {(item.transferTargets || []).slice(0, 2).map((target) => <span key={target.destinationKey} className="chip">{target.warehouse || "Sin nave"} · {target.availableUnits}</span>)}
-                              {(item.transferTargets || []).length > 2 ? <span className="chip">+{item.transferTargets.length - 2} destinos</span> : null}
-                              {!(item.transferTargets || []).length ? <span className="chip">Sin destinos</span> : null}
+                              <button type="button" className="icon-button inventory-inline-action" onClick={() => openInventoryTransferHistory(item)} disabled={!currentInventoryManagePermission}>
+                                <Eye size={15} /> Historial
+                              </button>
                             </div>
                           ) : (
                             <div className="saved-board-list board-builder-launch-list">
                               <span className="chip">Caja · {item.piecesPerBox}</span>
                               <span className="chip">Tarima · {item.boxesPerPallet}</span>
-                              {inventoryTab === INVENTORY_DOMAIN_CLEANING && item.consumptionPerStart ? <span className="chip">Consumo auto · {item.consumptionPerStart}</span> : null}
+                              {inventoryTab === INVENTORY_DOMAIN_CLEANING ? <span className="chip">Sede · {item.cleaningSite || "C3"}</span> : null}
+                              {inventoryTab === INVENTORY_DOMAIN_CLEANING ? getCleaningActivitySummary(item).slice(0, 2).map((entry) => <span key={`${item.id}-${entry}`} className="chip">{entry}</span>) : null}
                             </div>
                           )}
                         </td>
                       ) : null}
                       <td>
                         <div className="row-actions compact">
-                          {inventoryTab !== INVENTORY_DOMAIN_BASE ? <button type="button" className="icon-button" onClick={() => inventoryTab === INVENTORY_DOMAIN_ORDERS ? openOrderInventoryTransfer(item) : openInventoryMovement(item, INVENTORY_MOVEMENT_RESTOCK)} disabled={!currentInventoryManagePermission}><ArrowUp size={15} /> {inventoryTab === INVENTORY_DOMAIN_ORDERS ? "Transferir" : "Movimiento"}</button> : null}
+                          {inventoryTab !== INVENTORY_DOMAIN_BASE ? <button type="button" className="icon-button" onClick={() => openInventoryRestockModal(item)} disabled={!currentInventoryManagePermission}><Plus size={15} /> Surtir</button> : null}
+                          {inventoryTab !== INVENTORY_DOMAIN_BASE ? <button type="button" className="icon-button" onClick={() => inventoryTab === INVENTORY_DOMAIN_ORDERS ? openOrderInventoryTransfer(item) : openInventoryMovement(item, INVENTORY_MOVEMENT_CONSUME)} disabled={!currentInventoryManagePermission}><ArrowUp size={15} /> {inventoryTab === INVENTORY_DOMAIN_ORDERS ? "Transferir" : "Descontar"}</button> : null}
                           <button type="button" className="icon-button" onClick={() => openEditInventoryItem(item)} disabled={!currentInventoryManagePermission}><Pencil size={15} /> Editar</button>
                           <button type="button" className="icon-button danger" onClick={() => setDeleteInventoryId(item.id)} disabled={!currentInventoryManagePermission}><Trash2 size={15} /> Eliminar</button>
                         </div>
@@ -272,7 +314,7 @@ export default function GestionInventario({ contexto }) {
             <div className="card-header-row">
               <div>
                 <h3>Consumo automático por actividad</h3>
-                <p>Estos insumos se descuentan cuando una actividad de limpieza ligada al catálogo se inicia por primera vez.</p>
+                <p>Estos insumos se descuentan al iniciar actividades ligadas en la sede principal C3.</p>
               </div>
             </div>
             <div className="saved-board-list permissions-preset-list">
@@ -281,12 +323,12 @@ export default function GestionInventario({ contexto }) {
                   <div className="card-header-row">
                     <div>
                       <h3>{item.name}</h3>
-                      <p>{item.consumptionPerStart} {item.unitLabel} por inicio.</p>
+                      <p>{item.cleaningSite || "C3"} · {item.storageLocation || "Sin ubicación"}</p>
                     </div>
                     <span className="chip primary">{item.stockUnits} disponibles</span>
                   </div>
                   <div className="saved-board-list board-builder-launch-list">
-                    {item.activityCatalogIds.map((catalogId) => <span key={`${item.id}-${catalogId}`} className="chip">{catalogMap.get(catalogId)?.name || catalogId}</span>)}
+                    {getCleaningActivitySummary(item).map((entry) => <span key={`${item.id}-${entry}`} className="chip">{entry} {item.unitLabel || "pzas"}</span>)}
                   </div>
                 </article>
               ))}

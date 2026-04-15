@@ -3,6 +3,9 @@ import cookieParser from "cookie-parser";
 import express from "express";
 import { rateLimit } from "express-rate-limit";
 import helmet from "helmet";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   authRateLimitMaxRequests,
   corsOriginValidator,
@@ -23,6 +26,12 @@ import { importRouter } from "./routes/import.routes.js";
 import { uploadRouter } from "./routes/upload.routes.js";
 import { warehouseRouter } from "./routes/warehouse.routes.js";
 import { auditSecurityEvent } from "./services/security-events.service.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const frontendDistPath = path.resolve(__dirname, "../../frontend/dist");
+const frontendIndexPath = path.join(frontendDistPath, "index.html");
+const hasFrontendBuild = fs.existsSync(frontendIndexPath);
 
 export const app = express();
 
@@ -87,7 +96,7 @@ app.use("/api", (_req, res, next) => {
 app.use(express.json({ limit: jsonBodyLimit, strict: true }));
 app.use(express.urlencoded({ extended: true, limit: urlencodedBodyLimit }));
 
-app.get("/", (_req, res) => {
+app.get("/api", (_req, res) => {
   res.json({
     name: "COPMEC API",
     status: "ok",
@@ -102,5 +111,25 @@ app.use("/api/boards", requireAuth, boardRouter);
 app.use("/api/imports", requireAuth, uploadLimiter, importRouter);
 app.use("/api/uploads", requireAuth, uploadLimiter, uploadRouter);
 app.use("/api/warehouse", requireAuth, warehouseRouter);
+
+if (hasFrontendBuild) {
+  app.use(express.static(frontendDistPath));
+  app.get("/{*path}", (req, res, next) => {
+    if (req.path === "/api" || req.path.startsWith("/api/")) {
+      return next();
+    }
+
+    res.sendFile(frontendIndexPath);
+  });
+} else {
+  app.get("/", (_req, res) => {
+    res.json({
+      name: "COPMEC API",
+      status: "ok",
+      environment: isProduction ? "production" : "development",
+      frontend: "build not found",
+    });
+  });
+}
 
 app.use(errorHandler);

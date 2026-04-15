@@ -513,8 +513,19 @@ export function BoardBuilderModal({
   onConfirm,
   onOpenComponentStudio,
   onImportFromExcel,
+  onSaveTemplate,
   onClear,
   feedback,
+  templateSearch,
+  onTemplateSearchChange,
+  templateCategoryFilter,
+  onTemplateCategoryChange,
+  templateCategories = [],
+  filteredBoardTemplates = [],
+  onPreviewTemplate,
+  onApplyTemplate,
+  selectedPreviewTemplate,
+  onClearTemplatePreview,
   previewBoard,
   draftColumnGroups,
   onMoveDraftColumn,
@@ -527,6 +538,7 @@ export function BoardBuilderModal({
   userMap,
   inventoryItems,
   contextoConstructor,
+  boardOperationalContextOptions = [],
 }) {
   const {
     BOARD_AUX_COLUMN_DEFINITIONS,
@@ -562,6 +574,18 @@ export function BoardBuilderModal({
   const selectedOperationalNames = (draft.accessUserIds || []).map((userId) => userMap.get(userId)?.name).filter(Boolean);
   const filteredOperationalUsers = availableOperationalUsers.filter((user) => user.name.toLowerCase().includes(accessSearch.trim().toLowerCase()));
   const selectedPlayersLabel = `${draft.accessUserIds?.length || 0} player${(draft.accessUserIds?.length || 0) === 1 ? "" : "s"} asignado${(draft.accessUserIds?.length || 0) === 1 ? "" : "s"}`;
+  const operationalContextType = String(draft.settings?.operationalContextType || "none");
+  const operationalContextLabel = String(draft.settings?.operationalContextLabel || "").trim();
+  const operationalContextOptions = operationalContextType === "cleaningSite"
+    ? ["C1", "C2", "C3"]
+    : Array.isArray(draft.settings?.operationalContextOptions)
+      ? draft.settings.operationalContextOptions.map((option) => String(option || "").trim()).filter(Boolean)
+      : [];
+  const operationalContextOptionsText = operationalContextType === "custom" ? operationalContextOptions.join(", ") : "";
+  const operationalContextValue = String(draft.settings?.operationalContextValue || "").trim()
+    || operationalContextOptions[0]
+    || "";
+  const selectedPreviewTemplateId = selectedPreviewTemplate?.id || "";
   const defaultAuxWidths = Object.fromEntries(Object.values(BOARD_AUX_COLUMN_DEFINITIONS).map((item) => [item.id, item.defaultWidth]));
   const fieldTypeMinWidths = {
     inventoryLookup: 210,
@@ -573,6 +597,26 @@ export function BoardBuilderModal({
     date: 140,
   };
   const auxMinWidths = Object.fromEntries(Object.values(BOARD_AUX_COLUMN_DEFINITIONS).map((item) => [item.id, item.minWidth]));
+
+  function getTemplateOperationalContext(template) {
+    const templateSettings = template?.settings && typeof template.settings === "object" ? template.settings : {};
+    const contextType = String(templateSettings.operationalContextType || "none").trim() || "none";
+    const contextLabel = String(templateSettings.operationalContextLabel || "").trim()
+      || (contextType === "cleaningSite" ? "Sede de limpieza" : contextType === "custom" ? "Ubicación operativa" : "");
+    const contextOptions = contextType === "cleaningSite"
+      ? ["C1", "C2", "C3"]
+      : Array.isArray(templateSettings.operationalContextOptions)
+        ? templateSettings.operationalContextOptions.map((option) => String(option || "").trim()).filter(Boolean)
+        : [];
+    const contextValue = String(templateSettings.operationalContextValue || "").trim() || contextOptions[0] || "";
+
+    return {
+      contextType,
+      contextLabel,
+      contextOptions,
+      contextValue,
+    };
+  }
 
   useEffect(() => {
     if (!actionMenuOpen) return undefined;
@@ -617,11 +661,35 @@ export function BoardBuilderModal({
     setAccessMenuOpen(false);
   }
 
+  function updateOperationalContext(nextType, nextLabel = operationalContextLabel, nextOptions = operationalContextOptions, nextValue = operationalContextValue) {
+    const resolvedOptions = nextType === "cleaningSite"
+      ? ["C1", "C2", "C3"]
+      : Array.from(new Set((Array.isArray(nextOptions) ? nextOptions : []).map((option) => String(option || "").trim()).filter(Boolean)));
+    const resolvedValue = nextType === "none"
+      ? ""
+      : nextType === "cleaningSite"
+        ? (["C1", "C2", "C3"].includes(nextValue) ? nextValue : "C3")
+        : (resolvedOptions.includes(nextValue) ? nextValue : resolvedOptions[0] || "");
+
+    onChange((current) => ({
+      ...current,
+      settings: {
+        ...current.settings,
+        operationalContextType: nextType,
+        operationalContextLabel: nextType === "none"
+          ? ""
+          : String(nextLabel || "").trim() || (nextType === "cleaningSite" ? "Sede de limpieza" : "Ubicación operativa"),
+        operationalContextOptions: nextType === "none" ? [] : resolvedOptions,
+        operationalContextValue: resolvedValue,
+      },
+    }));
+  }
+
   function handlePreviewColumnDrop(targetToken) {
     if (!draggingColumnToken || !targetToken || draggingColumnToken === targetToken) return;
     onChange((current) => {
       const currentOrder = getNormalizedBoardColumnOrder({ fields: current.columns || [], settings: current.settings || {} });
-      const nextOrder = reorderBoardColumnOrderTokens(currentOrder, draggingColumnToken, targetToken);
+      const nextOrder = reorderBoardColumnOrderTokens(draggingColumnToken, targetToken, currentOrder);
       return {
         ...current,
         columns: sortBoardFieldsByColumnOrder(current.columns || [], nextOrder),
@@ -758,6 +826,83 @@ export function BoardBuilderModal({
     >
       <div className="board-builder-modal-shell">
         <section className="board-builder-workbench" aria-hidden="true">
+          <section className="board-template-library">
+            <div className="builder-section-head board-builder-section-head">
+              <div>
+                <h4>Plantillas rápidas</h4>
+                <p>Carga una base semanal ya preparada para C1, C2, C3, nave o estación, y después ajusta solo lo necesario.</p>
+              </div>
+              <div className="saved-board-list compact-template-actions">
+                {selectedPreviewTemplateId ? <button type="button" className="icon-button" onClick={onClearTemplatePreview}>Volver al borrador</button> : null}
+                {onSaveTemplate ? <button type="button" className="primary-button" onClick={onSaveTemplate}>Guardar borrador como plantilla</button> : null}
+              </div>
+            </div>
+
+            <div className="builder-template-toolbar compact-template-toolbar compact-template-toolbar-grid">
+              <label className="app-modal-field">
+                <span>Buscar plantilla</span>
+                <input value={templateSearch || ""} onChange={(event) => onTemplateSearchChange?.(event.target.value)} placeholder="Ej: limpieza, nave, estación" />
+              </label>
+              <label className="app-modal-field">
+                <span>Categoría</span>
+                <select value={templateCategoryFilter || "Todas"} onChange={(event) => onTemplateCategoryChange?.(event.target.value)}>
+                  {(templateCategories || []).map((category) => <option key={category} value={category}>{category}</option>)}
+                </select>
+              </label>
+            </div>
+
+            {feedback ? (
+              <div className="feedback-banner feedback-success">
+                <strong>Actualización</strong>
+                <p>{feedback}</p>
+              </div>
+            ) : null}
+
+            {filteredBoardTemplates.length ? (
+              <div className="builder-template-grid builder-template-grid-compact">
+                {filteredBoardTemplates.map((template) => {
+                  const { contextType, contextLabel, contextOptions, contextValue } = getTemplateOperationalContext(template);
+                  const isActiveTemplate = selectedPreviewTemplateId === template.id;
+                  return (
+                    <article key={template.id} className={["builder-template-card", "compact-template-card", isActiveTemplate ? "active" : ""].filter(Boolean).join(" ")}>
+                      <div>
+                        <strong>{template.name}</strong>
+                        <p>{template.description || "Plantilla reutilizable para arrancar más rápido el tablero."}</p>
+                      </div>
+
+                      <div className="saved-board-list compact-template-meta">
+                        <span className="chip">{template.category || "Operación"}</span>
+                        {contextType !== "none" ? <span className="chip primary">{contextLabel || "Contexto operativo"} · {contextValue || contextOptions[0]}</span> : null}
+                        {contextType === "cleaningSite" ? <span className="chip">C1 / C2 / C3</span> : null}
+                        {contextType === "custom" && contextOptions.length ? <span className="chip">{contextOptions.length} opción(es)</span> : null}
+                      </div>
+
+                      {contextType !== "none" ? (
+                        <p className="compact-template-note">
+                          {contextType === "cleaningSite"
+                            ? "El descuento automático de limpieza saldrá de la sede activa de esta plantilla."
+                            : `Opciones iniciales: ${contextOptions.join(", ")}`}
+                        </p>
+                      ) : null}
+
+                      <div className="compact-template-actions">
+                        <button type="button" className="icon-button" onClick={() => onPreviewTemplate?.(template.id)}>{isActiveTemplate ? "Vista activa" : "Previsualizar"}</button>
+                        <button type="button" className="primary-button" onClick={() => onApplyTemplate?.(template.id)}>Usar plantilla</button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="builder-empty-state compact-builder-empty-state">
+                <div>
+                  <strong>No hay plantillas para ese filtro</strong>
+                  <p>Ajusta la búsqueda o guarda tu borrador actual como plantilla reutilizable.</p>
+                </div>
+              </div>
+            )}
+          </section>
+
           <div className="builder-settings-grid board-builder-settings-grid board-builder-short-select-grid">
             <div className="builder-card compact-builder-card board-builder-switch-row">
               <div>
@@ -794,6 +939,42 @@ export function BoardBuilderModal({
               <button type="button" className={draft.settings.showDates ? "switch-button on" : "switch-button"} aria-label="Alternar fechas visibles" aria-pressed={draft.settings.showDates} onClick={() => onChange((current) => ({ ...current, settings: { ...current.settings, showDates: !current.settings.showDates } }))}>
                 <span className="switch-thumb" />
               </button>
+            </div>
+            <div className="builder-card compact-builder-card board-context-card">
+              <div className="board-context-grid">
+                <label className="app-modal-field">
+                  <span>Contexto operativo</span>
+                  <select value={operationalContextType} onChange={(event) => updateOperationalContext(event.target.value)}>
+                    {boardOperationalContextOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </label>
+
+                {operationalContextType !== "none" ? (
+                  <label className="app-modal-field">
+                    <span>Etiqueta visible</span>
+                    <input value={operationalContextLabel} onChange={(event) => updateOperationalContext(operationalContextType, event.target.value)} placeholder={operationalContextType === "cleaningSite" ? "Sede de limpieza" : "Ej: Nave, estación o zona"} />
+                  </label>
+                ) : null}
+
+                {operationalContextType === "custom" ? (
+                  <label className="app-modal-field">
+                    <span>Opciones manuales</span>
+                    <input value={operationalContextOptionsText} onChange={(event) => updateOperationalContext(operationalContextType, operationalContextLabel, event.target.value.split(/[;,]/))} placeholder="Ej: Nave 1, Estación A, Estación B" />
+                  </label>
+                ) : null}
+
+                {operationalContextType !== "none" ? (
+                  <label className="app-modal-field">
+                    <span>Valor activo</span>
+                    <select value={operationalContextValue} onChange={(event) => updateOperationalContext(operationalContextType, operationalContextLabel, operationalContextOptions, event.target.value)}>
+                      {operationalContextOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                  </label>
+                ) : null}
+              </div>
+              <p className="board-context-help">
+                Usa este contexto para que cada tablero opere por semana y además quede ligado manualmente a una sede, nave, estación o zona. Cuando el contexto sea C1, C2 o C3, el descuento automático de limpieza saldrá sólo de esa sede.
+              </p>
             </div>
           </div>
 
@@ -838,8 +1019,6 @@ export function BoardBuilderModal({
               </div>
             </>
           ) : null}
-
-          {feedback ? <p className="inline-success-message">{feedback}</p> : null}
         </section>
 
         <aside className="board-builder-preview-panel">
@@ -929,6 +1108,7 @@ export function BoardBuilderModal({
             <div className="board-meta-inline board-meta-inline-preview">
               <span>Creador · {currentUser?.name || userMap.get(previewBoard.ownerId)?.name || "Sin asignar"}</span>
               {previewAccessNames.length ? <span>Players · {previewAccessNames.length}</span> : null}
+              {operationalContextType !== "none" && operationalContextValue ? <span>{operationalContextLabel || "Contexto operativo"} · {operationalContextValue}</span> : null}
             </div>
 
             {(previewBoard.fields || []).length ? (
@@ -1027,7 +1207,6 @@ export function BoardBuilderModal({
                   </div>
                 ))}
               </div>
-              {feedback ? <p className="inline-success-message">{feedback}</p> : null}
             </section>
           </div>
         </aside>

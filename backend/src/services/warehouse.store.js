@@ -12,6 +12,12 @@ const dataDirectory = process.env.RENDER ? "/var/data" : path.resolve(__dirname,
 const dataFilePath = path.join(dataDirectory, "warehouse-state.json");
 const warehouseEvents = new EventEmitter();
 export const BOOTSTRAP_MASTER_ID = "bootstrap-master";
+const EMPTY_OBJECT = Object.freeze({});
+const DEFAULT_CLEANING_SITE = "C3";
+const BOARD_OPERATIONAL_CONTEXT_NONE = "none";
+const BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE = "cleaningSite";
+const BOARD_OPERATIONAL_CONTEXT_CUSTOM = "custom";
+const BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE_OPTIONS = ["C1", "C2", "C3"];
 
 const ROLE_LEAD = "Lead";
 const ROLE_SR = "Senior (Sr)";
@@ -148,6 +154,160 @@ function getBoardWeekNameByKey(weekKey) {
   return `Semana ${formatDate(weekStart)} - ${formatDate(getBoardWeekEnd(weekStart))}`;
 }
 
+function hasOwn(record, key) {
+  return Object.hasOwn(record ?? EMPTY_OBJECT, key);
+}
+
+function normalizeBoardOperationalContextType(value) {
+  const normalizedValue = normalizeKey(value).replaceAll(" ", "");
+  if (["cleaningsite", "cleaning", "sedelimpieza"].includes(normalizedValue)) {
+    return BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE;
+  }
+  if (["custom", "manual", "station", "estacion", "nave", "ubicacionoperativa"].includes(normalizedValue)) {
+    return BOARD_OPERATIONAL_CONTEXT_CUSTOM;
+  }
+  return BOARD_OPERATIONAL_CONTEXT_NONE;
+}
+
+function normalizeBoardOperationalContextOptions(value, contextType = BOARD_OPERATIONAL_CONTEXT_NONE) {
+  if (contextType === BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE) {
+    return [...BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE_OPTIONS];
+  }
+
+  let sourceValues = [];
+  if (Array.isArray(value)) {
+    sourceValues = value;
+  } else if (typeof value === "string") {
+    sourceValues = value.split(/[;,]/);
+  }
+  const seen = new Set();
+
+  return sourceValues
+    .map((entry) => String(entry || "").trim())
+    .filter((entry) => {
+      const normalizedEntry = normalizeKey(entry);
+      if (!normalizedEntry || seen.has(normalizedEntry)) return false;
+      seen.add(normalizedEntry);
+      return true;
+    });
+}
+
+function normalizeBoardOperationalContextLabel(value, contextType = BOARD_OPERATIONAL_CONTEXT_NONE) {
+  let fallbackLabel = "";
+  if (contextType === BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE) {
+    fallbackLabel = "Sede de limpieza";
+  } else if (contextType === BOARD_OPERATIONAL_CONTEXT_CUSTOM) {
+    fallbackLabel = "Ubicación operativa";
+  }
+  return String(value || "").trim() || fallbackLabel;
+}
+
+function normalizeBoardOperationalContextValue(value, contextType = BOARD_OPERATIONAL_CONTEXT_NONE, contextOptions = []) {
+  if (contextType === BOARD_OPERATIONAL_CONTEXT_NONE) return "";
+  if (contextType === BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE) {
+    return normalizeCleaningSite(value, DEFAULT_CLEANING_SITE);
+  }
+
+  const trimmedValue = String(value || "").trim();
+  if (!contextOptions.length) return trimmedValue;
+  return contextOptions.includes(trimmedValue) ? trimmedValue : contextOptions[0] || "";
+}
+
+function withDefaultBoardSettings(settings) {
+  const resolvedSettings = settings && typeof settings === "object" ? settings : undefined;
+  const operationalContextType = normalizeBoardOperationalContextType(resolvedSettings?.operationalContextType);
+  const operationalContextOptions = normalizeBoardOperationalContextOptions(resolvedSettings?.operationalContextOptions, operationalContextType);
+  return {
+    showWorkflow: true,
+    showMetrics: true,
+    showAssignee: true,
+    showDates: true,
+    ...resolvedSettings,
+    operationalContextType,
+    operationalContextLabel: normalizeBoardOperationalContextLabel(resolvedSettings?.operationalContextLabel, operationalContextType),
+    operationalContextOptions,
+    operationalContextValue: normalizeBoardOperationalContextValue(resolvedSettings?.operationalContextValue, operationalContextType, operationalContextOptions),
+  };
+}
+
+function normalizeInventoryTransferTargets(targets, fallbackUnitLabel = "pzas") {
+  const sourceTargets = Array.isArray(targets) ? targets : [];
+  return sourceTargets
+    .map((target) => normalizeInventoryTransferTargetRecord(target, fallbackUnitLabel))
+    .filter((target) => target.warehouse || target.storageLocation || target.availableUnits > 0);
+}
+
+function resolveInventorySourceStockUnits(domain, rawStockUnits, transferTargets, stockTrackingMode) {
+  if (domain !== "orders") {
+    return rawStockUnits;
+  }
+
+  if (String(stockTrackingMode || "").trim().toLowerCase() === "source") {
+    return rawStockUnits;
+  }
+
+  return Math.max(0, rawStockUnits - sumInventoryTransferTargetUnits(transferTargets));
+}
+
+function getInventoryTransferTargetSource(nextItem, currentItem) {
+  if (Array.isArray(nextItem?.transferTargets) && nextItem.transferTargets.length) {
+    return nextItem.transferTargets;
+  }
+
+  if (Array.isArray(currentItem?.transferTargets)) {
+    return currentItem.transferTargets;
+  }
+
+  return [];
+}
+
+function resolveUserPasswordHash(incomingPassword, storedPasswordHash, previousUser, role) {
+  if (incomingPassword) {
+    return hashPassword(incomingPassword);
+  }
+
+  if (storedPasswordHash) {
+    return storedPasswordHash;
+  }
+
+  if (previousUser?.passwordHash) {
+    return previousUser.passwordHash;
+  }
+
+  return hashPassword(defaultPassword(role));
+}
+
+function resolveUserSessionVersion(previousUser, user, role, passwordHash, mustChangePassword) {
+  if (!previousUser) {
+    return Math.max(1, Number(user.sessionVersion || 1));
+  }
+
+  const previousSessionVersion = Math.max(1, Number(previousUser.sessionVersion || 1));
+  const shouldIncrement = previousUser.passwordHash !== passwordHash
+    || previousUser.role !== role
+    || Boolean(previousUser.isActive) !== Boolean(user.isActive)
+    || Boolean(previousUser.mustChangePassword) !== Boolean(mustChangePassword);
+
+  return shouldIncrement ? previousSessionVersion + 1 : previousSessionVersion;
+}
+
+function normalizeBoardFields(board) {
+  if (Array.isArray(board?.fields)) {
+    return board.fields;
+  }
+
+  if (Array.isArray(board?.columns)) {
+    return board.columns.map((field) => ({
+      ...field,
+      label: field.label || field.name,
+      type: field.type || "text",
+      colorRules: field.colorRules || [],
+    }));
+  }
+
+  return [];
+}
+
 function normalizeBoardWeeklyCycle(cycle, referenceDate = new Date()) {
   const weekStart = getBoardWeekStart(referenceDate);
   const activeWeekKey = String(cycle?.activeWeekKey || "").trim() || formatBoardWeekKey(weekStart);
@@ -163,7 +323,7 @@ function normalizeBoardWeeklyCycle(cycle, referenceDate = new Date()) {
 function cloneBoardRowSnapshot(row) {
   return {
     ...row,
-    values: { ...(row?.values || {}) },
+    values: { ...(row?.values ?? EMPTY_OBJECT) },
   };
 }
 
@@ -185,13 +345,7 @@ function normalizeBoardHistorySnapshot(snapshot, permissions, fallbackUsers = []
     startDate: snapshot?.startDate || parsedWeekStart.toISOString(),
     endDate: snapshot?.endDate || getBoardWeekEnd(parsedWeekStart).toISOString(),
     archivedAt: snapshot?.archivedAt || new Date().toISOString(),
-    settings: {
-      showWorkflow: true,
-      showMetrics: true,
-      showAssignee: true,
-      showDates: true,
-      ...(snapshot?.settings || {}),
-    },
+    settings: withDefaultBoardSettings(snapshot?.settings),
     fields: Array.isArray(snapshot?.fields)
       ? snapshot.fields.map((field) => ({ ...field, colorRules: field.colorRules || [] }))
       : [],
@@ -215,7 +369,7 @@ function buildBoardHistorySnapshot(board, weekKey, permissions, archivedAt = new
     startDate: weekStart.toISOString(),
     endDate: getBoardWeekEnd(weekStart).toISOString(),
     archivedAt,
-    settings: { ...(board.settings || {}) },
+    settings: { ...(board.settings ?? EMPTY_OBJECT) },
     fields: (board.fields || []).map((field) => ({ ...field, colorRules: field.colorRules || [] })),
     permissions: board.permissions,
     rows: (board.rows || []).map((row) => cloneBoardRowSnapshot(row)),
@@ -280,7 +434,7 @@ function normalizeInventoryDomain(value) {
 function normalizeInventoryTransferTargetSegment(value) {
   return String(value || "")
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replaceAll(/[\u0300-\u036f]/g, "")
     .trim()
     .toLowerCase();
 }
@@ -318,22 +472,31 @@ function mergeInventoryItemTransferTargets(currentItem, nextItem) {
     };
   }
 
-  const sourceTargets = Array.isArray(nextItem?.transferTargets) && nextItem.transferTargets.length
-    ? nextItem.transferTargets
-    : Array.isArray(currentItem?.transferTargets)
-      ? currentItem.transferTargets
-      : [];
+  const sourceTargets = getInventoryTransferTargetSource(nextItem, currentItem);
 
   return {
     ...nextItem,
-    transferTargets: sourceTargets
-      .map((target) => normalizeInventoryTransferTargetRecord(target, nextItem?.unitLabel || currentItem?.unitLabel || "pzas"))
-      .filter((target) => target.warehouse || target.storageLocation || target.availableUnits > 0),
+    transferTargets: normalizeInventoryTransferTargets(sourceTargets, nextItem?.unitLabel || currentItem?.unitLabel || "pzas"),
   };
 }
 
 function hasInventoryBalanceInput(value) {
   return !(value === undefined || value === null || String(value).trim() === "");
+}
+
+function normalizeCleaningSite(value, fallback = DEFAULT_CLEANING_SITE) {
+  const key = String(value || "").trim().toLowerCase().replaceAll(" ", "");
+  if (key === "c1") return "C1";
+  if (key === "c2") return "C2";
+  if (["c3", "principal", "main", "default"].includes(key)) return "C3";
+  return fallback;
+}
+
+function resolveBoardOperationalCleaningSite(board) {
+  const settings = withDefaultBoardSettings(board?.settings);
+  const contextValue = String(settings?.operationalContextValue || "").trim();
+  if (!contextValue) return "";
+  return normalizeCleaningSite(contextValue, "");
 }
 
 function normalizeInventoryActivityIds(value) {
@@ -346,8 +509,133 @@ function normalizeInventoryActivityIds(value) {
   return [];
 }
 
+function normalizeInventoryActivityConsumptions(value, fallbackActivityIds = [], fallbackConsumptionPerStart = 0) {
+  const normalizedFallbackQuantity = Math.max(0, Number(fallbackConsumptionPerStart || 0));
+  const consumptionMap = new Map();
+
+  function rememberConsumption(rawCatalogActivityId, rawQuantity = 0) {
+    const catalogActivityId = String(rawCatalogActivityId || "").trim();
+    if (!catalogActivityId) return;
+
+    const quantity = Math.max(0, Number(rawQuantity || 0));
+    const currentEntry = consumptionMap.get(catalogActivityId);
+    if (!currentEntry || quantity >= currentEntry.quantity) {
+      consumptionMap.set(catalogActivityId, { catalogActivityId, quantity });
+    }
+  }
+
+  if (Array.isArray(value)) {
+    value.forEach((entry) => {
+      if (entry && typeof entry === "object") {
+        rememberConsumption(entry.catalogActivityId || entry.activityCatalogId || entry.id, entry.quantity);
+        return;
+      }
+      rememberConsumption(entry, normalizedFallbackQuantity);
+    });
+  } else if (value && typeof value === "object") {
+    Object.entries(value).forEach(([catalogActivityId, quantity]) => rememberConsumption(catalogActivityId, quantity));
+  } else if (typeof value === "string") {
+    value.split(/[;,]/).forEach((entry) => {
+      const trimmedEntry = String(entry || "").trim();
+      if (!trimmedEntry) return;
+      const [catalogActivityId, rawQuantity] = trimmedEntry.split(":");
+      rememberConsumption(catalogActivityId, rawQuantity === undefined ? normalizedFallbackQuantity : rawQuantity);
+    });
+  }
+
+  normalizeInventoryActivityIds(fallbackActivityIds).forEach((catalogActivityId) => {
+    if (!consumptionMap.has(catalogActivityId)) {
+      rememberConsumption(catalogActivityId, normalizedFallbackQuantity);
+    }
+  });
+
+  return Array.from(consumptionMap.values());
+}
+
+function resolveBoardRowCatalogActivityId(board, row, catalog = []) {
+  const directCatalogActivityId = String(row?.catalogActivityId || row?.values?.catalogActivityId || "").trim();
+  if (directCatalogActivityId) {
+    return directCatalogActivityId;
+  }
+
+  const activityListField = findBoardActivityListField(board?.fields || []);
+  const activityName = activityListField ? String(row?.values?.[activityListField.id] || "").trim() : "";
+  if (!activityName) {
+    return "";
+  }
+
+  return String((catalog || []).find((item) => normalizeKey(item?.name) === normalizeKey(activityName))?.id || "").trim();
+}
+
+function applyBoardRowCleaningInventoryConsumption(currentState, row, board, currentUser, nowIso) {
+  const catalogActivityId = resolveBoardRowCatalogActivityId(board, row, currentState.catalog || []);
+  if (!catalogActivityId) {
+    return currentState;
+  }
+
+  const targetCleaningSite = resolveBoardOperationalCleaningSite(board) || DEFAULT_CLEANING_SITE;
+
+  const nextInventoryItems = [...(currentState.inventoryItems || [])];
+  const nextInventoryMovements = [...(currentState.inventoryMovements || [])];
+  let didChange = false;
+
+  nextInventoryItems.forEach((currentItem, itemIndex) => {
+    const normalizedItem = normalizeInventoryItemRecord(currentItem, currentItem.id);
+    if (normalizedItem.domain !== "cleaning" || normalizedItem.cleaningSite !== targetCleaningSite) {
+      return;
+    }
+
+    const activityConsumption = (normalizedItem.activityConsumptions || []).find((entry) => entry.catalogActivityId === catalogActivityId);
+    const quantity = Math.max(0, Number(activityConsumption?.quantity || 0));
+    if (!quantity || Number(normalizedItem.stockUnits || 0) < quantity) {
+      return;
+    }
+
+    didChange = true;
+    nextInventoryItems[itemIndex] = normalizeInventoryItemRecord({
+      ...normalizedItem,
+      stockUnits: Math.max(0, Number(normalizedItem.stockUnits || 0) - quantity),
+    }, normalizedItem.id);
+
+    nextInventoryMovements.unshift(normalizeInventoryMovementRecord({
+      itemId: normalizedItem.id,
+      itemCode: normalizedItem.code,
+      itemName: normalizedItem.name,
+      domain: normalizedItem.domain,
+      movementType: "consume",
+      quantity,
+      unitLabel: normalizedItem.unitLabel || "pzas",
+      notes: `Consumo automatico por inicio de actividad · ${targetCleaningSite}`,
+      activityId: row?.id || null,
+      catalogActivityId,
+      storageLocation: normalizedItem.storageLocation,
+      cleaningSite: normalizedItem.cleaningSite,
+      performedById: currentUser?.id || null,
+      createdAt: nowIso,
+    }, normalizedItem));
+  });
+
+  if (!didChange) {
+    return currentState;
+  }
+
+  return {
+    ...currentState,
+    inventoryItems: nextInventoryItems,
+    inventoryMovements: nextInventoryMovements,
+  };
+}
+
 function normalizeInventoryItemRecord(item, fallbackId = null) {
   const domain = normalizeInventoryDomain(item?.domain);
+  const transferTargets = domain === "orders"
+    ? normalizeInventoryTransferTargets(item?.transferTargets, item?.unitLabel || "pzas")
+    : [];
+  const rawStockUnits = Math.max(0, Number(item?.stockUnits || 0));
+  const fallbackConsumptionPerStart = Math.max(0, Number(item?.consumptionPerStart || 0));
+  const activityConsumptions = domain === "cleaning"
+    ? normalizeInventoryActivityConsumptions(item?.activityConsumptions, item?.activityCatalogIds, fallbackConsumptionPerStart)
+    : [];
   return {
     id: fallbackId || item?.id || makeId("inv"),
     code: String(item?.code || "").trim(),
@@ -356,15 +644,16 @@ function normalizeInventoryItemRecord(item, fallbackId = null) {
     piecesPerBox: Number(item?.piecesPerBox || 0),
     boxesPerPallet: Number(item?.boxesPerPallet || 0),
     domain,
-    stockUnits: Math.max(0, Number(item?.stockUnits || 0)),
+    stockUnits: resolveInventorySourceStockUnits(domain, rawStockUnits, transferTargets, item?.stockTrackingMode),
     minStockUnits: Math.max(0, Number(item?.minStockUnits || 0)),
     storageLocation: String(item?.storageLocation || "").trim(),
+    cleaningSite: domain === "cleaning" ? normalizeCleaningSite(item?.cleaningSite) : "",
     unitLabel: String(item?.unitLabel || "pzas").trim() || "pzas",
-    transferTargets: domain === "orders"
-      ? (Array.isArray(item?.transferTargets) ? item.transferTargets : []).map((target) => normalizeInventoryTransferTargetRecord(target, item?.unitLabel || "pzas")).filter((target) => target.warehouse || target.storageLocation || target.availableUnits > 0)
-      : [],
-    activityCatalogIds: normalizeInventoryActivityIds(item?.activityCatalogIds),
-    consumptionPerStart: Math.max(0, Number(item?.consumptionPerStart || 0)),
+    stockTrackingMode: domain === "orders" ? "source" : "",
+    transferTargets,
+    activityCatalogIds: activityConsumptions.map((entry) => entry.catalogActivityId),
+    activityConsumptions,
+    consumptionPerStart: fallbackConsumptionPerStart,
   };
 }
 
@@ -399,6 +688,7 @@ function normalizeInventoryMovementRecord(movement, item = null, fallbackId = nu
     warehouse,
     recipientName: String(movement?.recipientName || "").trim(),
     storageLocation,
+    cleaningSite: normalizeInventoryDomain(movement?.domain || item?.domain) === "cleaning" ? normalizeCleaningSite(movement?.cleaningSite || item?.cleaningSite) : "",
     remainingUnits: remainingUnits === undefined || remainingUnits === null || String(remainingUnits).trim() === "" ? null : Math.max(0, Number(remainingUnits || 0)),
     destinationBalanceUnits: destinationBalanceUnits === undefined || destinationBalanceUnits === null || String(destinationBalanceUnits).trim() === "" ? null : Math.max(0, Number(destinationBalanceUnits || 0)),
     destinationKey,
@@ -412,8 +702,8 @@ function getDefaultInventoryItems() {
     normalizeInventoryItemRecord({ id: "inv-1", code: "ALM-001", name: "Tarima estándar", presentation: "Tarima", piecesPerBox: 1, boxesPerPallet: 1, domain: "base", stockUnits: 36, minStockUnits: 10, storageLocation: "Almacén central", unitLabel: "pzas" }),
     normalizeInventoryItemRecord({ id: "inv-2", code: "ALM-002", name: "Caja master", presentation: "Paquete", piecesPerBox: 20, boxesPerPallet: 48, domain: "base", stockUnits: 240, minStockUnits: 80, storageLocation: "Racks A-2", unitLabel: "pzas" }),
     normalizeInventoryItemRecord({ id: "inv-3", code: "ALM-003", name: "Playo transparente", presentation: "Rollo", piecesPerBox: 6, boxesPerPallet: 40, domain: "base", stockUnits: 120, minStockUnits: 36, storageLocation: "Racks B-1", unitLabel: "rollos" }),
-    normalizeInventoryItemRecord({ id: "inv-4", code: "LIMP-001", name: "Detergente industrial", presentation: "Bidón 20L", piecesPerBox: 4, boxesPerPallet: 30, domain: "cleaning", stockUnits: 18, minStockUnits: 8, storageLocation: "Cuarto de limpieza", unitLabel: "bidones", activityCatalogIds: ["cat-piso", "cat-oficinas"], consumptionPerStart: 1 }),
-    normalizeInventoryItemRecord({ id: "inv-5", code: "LIMP-002", name: "Papel higiénico", presentation: "Paquete 12 rollos", piecesPerBox: 6, boxesPerPallet: 24, domain: "cleaning", stockUnits: 42, minStockUnits: 18, storageLocation: "Cuarto de limpieza", unitLabel: "paquetes", activityCatalogIds: ["cat-banos"], consumptionPerStart: 1 }),
+    normalizeInventoryItemRecord({ id: "inv-4", code: "LIMP-001", name: "Detergente industrial", presentation: "Bidón 20L", piecesPerBox: 4, boxesPerPallet: 30, domain: "cleaning", stockUnits: 18, minStockUnits: 8, cleaningSite: "C3", storageLocation: "Cuarto de limpieza", unitLabel: "bidones", activityConsumptions: [{ catalogActivityId: "cat-piso", quantity: 1 }, { catalogActivityId: "cat-oficinas", quantity: 1 }] }),
+    normalizeInventoryItemRecord({ id: "inv-5", code: "LIMP-002", name: "Papel higiénico", presentation: "Paquete 12 rollos", piecesPerBox: 6, boxesPerPallet: 24, domain: "cleaning", stockUnits: 42, minStockUnits: 18, cleaningSite: "C3", storageLocation: "Cuarto de limpieza", unitLabel: "paquetes", activityConsumptions: [{ catalogActivityId: "cat-banos", quantity: 1 }] }),
     normalizeInventoryItemRecord({ id: "inv-6", code: "PED-001", name: "Separador corrugado", presentation: "Fajo 25 piezas", piecesPerBox: 25, boxesPerPallet: 80, domain: "orders", stockUnits: 220, minStockUnits: 100, storageLocation: "Nave 2 · Estante 4", unitLabel: "pzas" }),
     normalizeInventoryItemRecord({ id: "inv-7", code: "PED-002", name: "Esquinero", presentation: "Paquete 50 piezas", piecesPerBox: 50, boxesPerPallet: 60, domain: "orders", stockUnits: 150, minStockUnits: 70, storageLocation: "Nave 1 · Jaula 2", unitLabel: "pzas" }),
   ];
@@ -439,7 +729,7 @@ function normalizePermissions(permissions) {
   return {
     pages: Object.fromEntries(Object.keys(PAGE_PERMISSIONS).map((key) => [key, normalizePermissionEntry(permissions?.pages?.[key], defaults.pages[key].roles)])),
     actions: Object.fromEntries(Object.keys(ACTION_PERMISSIONS).map((key) => [key, normalizePermissionEntry(permissions?.actions?.[key], defaults.actions[key].roles)])),
-    userOverrides: Object.fromEntries(Object.entries(permissions?.userOverrides || {}).map(([userId, override]) => [
+    userOverrides: Object.fromEntries(Object.entries(permissions?.userOverrides ?? EMPTY_OBJECT).map(([userId, override]) => [
       userId,
       {
         pages: Object.fromEntries(Object.keys(PAGE_PERMISSIONS).map((key) => [key, typeof override?.pages?.[key] === "boolean" ? override.pages[key] : null])),
@@ -507,7 +797,7 @@ function normalizeState(state, previousState = null) {
     system: {
       masterBootstrapEnabled: state.system?.masterBootstrapEnabled ?? !users.some((user) => normalizeRole(user.role) === ROLE_LEAD),
       masterUsername: "Maestro",
-      ...(state.system || {}),
+      ...(state.system ?? EMPTY_OBJECT),
     },
     users: users.map((user) => {
       const role = normalizeRole(user.role);
@@ -518,22 +808,8 @@ function normalizeState(state, previousState = null) {
       const mustChangePassword = typeof user.mustChangePassword === "boolean"
         ? user.mustChangePassword
         : Boolean(previousUser?.mustChangePassword);
-      const passwordHash = incomingPassword
-        ? hashPassword(incomingPassword)
-        : storedPasswordHash
-          ? storedPasswordHash
-          : previousUser?.passwordHash
-            ? previousUser.passwordHash
-            : hashPassword(defaultPassword(role));
-      const previousSessionVersion = Math.max(1, Number(previousUser?.sessionVersion || 1));
-      const sessionVersion = previousUser
-        ? previousUser.passwordHash !== passwordHash
-          || previousUser.role !== role
-          || Boolean(previousUser.isActive) !== Boolean(user.isActive)
-          || Boolean(previousUser.mustChangePassword) !== Boolean(mustChangePassword)
-          ? previousSessionVersion + 1
-          : previousSessionVersion
-        : Math.max(1, Number(user.sessionVersion || 1));
+      const passwordHash = resolveUserPasswordHash(incomingPassword, storedPasswordHash, previousUser, role);
+      const sessionVersion = resolveUserSessionVersion(previousUser, user, role, passwordHash, mustChangePassword);
       return {
         ...user,
         email: loginIdentifier,
@@ -574,14 +850,8 @@ function normalizeState(state, previousState = null) {
           createdById: board.createdById ?? users[0]?.id ?? null,
           ownerId: board.ownerId ?? board.createdById ?? users[0]?.id ?? null,
           accessUserIds: Array.isArray(board.accessUserIds) ? board.accessUserIds : [],
-          settings: {
-            showWorkflow: true,
-            showMetrics: true,
-            showAssignee: true,
-            showDates: true,
-            ...(board.settings || {}),
-          },
-          fields: Array.isArray(board.fields) ? board.fields : Array.isArray(board.columns) ? board.columns.map((field) => ({ ...field, label: field.label || field.name, type: field.type || "text", colorRules: field.colorRules || [] })) : [],
+          settings: withDefaultBoardSettings(board.settings),
+          fields: normalizeBoardFields(board),
           permissions: normalizeBoardPermissions(board.permissions, permissions, board),
           rows: Array.isArray(board.rows) ? board.rows : [],
         }))
@@ -1150,6 +1420,16 @@ function cloneBoardFieldBundle(fields) {
   };
 }
 
+function remapBoardColumnOrder(columnOrder, idMap) {
+  if (!Array.isArray(columnOrder)) return [];
+  return columnOrder.map((token) => {
+    const normalizedToken = String(token || "").trim();
+    if (!normalizedToken) return "";
+    if (normalizedToken.startsWith("aux:")) return normalizedToken;
+    return idMap.get(normalizedToken) || normalizedToken;
+  }).filter(Boolean);
+}
+
 function sanitizeBoardDraft(draft, currentUserId) {
   const ownerId = String(draft?.ownerId || currentUserId || "").trim() || currentUserId;
   return {
@@ -1157,13 +1437,7 @@ function sanitizeBoardDraft(draft, currentUserId) {
     description: String(draft?.description || "").trim(),
     ownerId,
     accessUserIds: Array.from(new Set((Array.isArray(draft?.accessUserIds) ? draft.accessUserIds : []).filter((userId) => userId && userId !== ownerId))),
-    settings: {
-      showWorkflow: true,
-      showMetrics: true,
-      showAssignee: true,
-      showDates: true,
-      ...(draft?.settings || {}),
-    },
+    settings: withDefaultBoardSettings(draft?.settings),
     fields: Array.isArray(draft?.columns) ? draft.columns.map((field) => ({ ...field, colorRules: field.colorRules || [] })) : [],
   };
 }
@@ -1189,9 +1463,16 @@ function getBoardActivityListValues(field, catalog = []) {
 
 function findMatchingPreviousBoardField(nextField, previousFields = []) {
   if (!nextField) return null;
-  return (previousFields || []).find((field) => field.id === nextField.id)
-    || (nextField.templateKey ? (previousFields || []).find((field) => field.templateKey && field.templateKey === nextField.templateKey) : null)
-    || (previousFields || []).find((field) => (
+  const normalizedPreviousFields = previousFields || [];
+  const exactMatch = normalizedPreviousFields.find((field) => field.id === nextField.id);
+  if (exactMatch) return exactMatch;
+
+  if (nextField.templateKey) {
+    const templateMatch = normalizedPreviousFields.find((field) => field.templateKey && field.templateKey === nextField.templateKey);
+    if (templateMatch) return templateMatch;
+  }
+
+  return normalizedPreviousFields.find((field) => (
       normalizeKey(field.label) === normalizeKey(nextField.label)
       && String(field.type || "") === String(nextField.type || "")
       && normalizeKey(field.groupName || "General") === normalizeKey(nextField.groupName || "General")
@@ -1200,15 +1481,16 @@ function findMatchingPreviousBoardField(nextField, previousFields = []) {
 }
 
 function remapBoardRowValues(row, previousFields, nextFields, fallbackResponsibleId) {
+  const rowValues = row?.values ?? EMPTY_OBJECT;
   return (nextFields || []).reduce((accumulator, nextField) => {
-    if (Object.prototype.hasOwnProperty.call(row?.values || {}, nextField.id)) {
-      accumulator[nextField.id] = row.values[nextField.id];
+    if (hasOwn(rowValues, nextField.id)) {
+      accumulator[nextField.id] = rowValues[nextField.id];
       return accumulator;
     }
 
     const matchedPreviousField = findMatchingPreviousBoardField(nextField, previousFields);
-    if (matchedPreviousField && Object.prototype.hasOwnProperty.call(row?.values || {}, matchedPreviousField.id)) {
-      accumulator[nextField.id] = row.values[matchedPreviousField.id];
+    if (matchedPreviousField && hasOwn(rowValues, matchedPreviousField.id)) {
+      accumulator[nextField.id] = rowValues[matchedPreviousField.id];
       return accumulator;
     }
 
@@ -1228,7 +1510,7 @@ function createBoardRowRecord(fields, responsibleId, partial = {}) {
     id: partial?.id || makeId("row"),
     values: {
       ...baseValues,
-      ...(partial?.values || {}),
+      ...(partial?.values ?? EMPTY_OBJECT),
     },
     responsibleId: effectiveResponsibleId,
     status: partial?.status || "Pendiente",
@@ -1239,7 +1521,7 @@ function createBoardRowRecord(fields, responsibleId, partial = {}) {
     createdAt: partial?.createdAt || new Date().toISOString(),
   };
 
-  if (Object.prototype.hasOwnProperty.call(partial || {}, "lastPauseReason")) {
+  if (hasOwn(partial, "lastPauseReason")) {
     nextRow.lastPauseReason = partial.lastPauseReason || "";
   }
 
@@ -1266,8 +1548,8 @@ function buildBoardRowsFromActivityList(fields, catalog, responsibleId, previous
   const seededRows = activityNames.map((activityName) => {
     const matchingRow = normalizedPreviousRows.find((row) => {
       if (!row || usedRowIds.has(row.id)) return false;
-      const rowValues = row.values || {};
-      const previousValue = previousActivityField?.id && Object.prototype.hasOwnProperty.call(rowValues, previousActivityField.id)
+      const rowValues = row.values ?? EMPTY_OBJECT;
+      const previousValue = previousActivityField?.id && hasOwn(rowValues, previousActivityField.id)
         ? rowValues[previousActivityField.id]
         : rowValues[activityListField.id];
       return normalizeKey(previousValue) === normalizeKey(activityName);
@@ -1284,10 +1566,10 @@ function buildBoardRowsFromActivityList(fields, catalog, responsibleId, previous
     nextValues[activityListField.id] = activityName;
     if (matchingRow) usedRowIds.add(matchingRow.id);
 
-    return createBoardRowRecord(nextFields, rowResponsibleId, {
-      ...(matchingRow || {}),
-      values: nextValues,
-    });
+    const nextPartial = matchingRow
+      ? { ...matchingRow, values: nextValues }
+      : { values: nextValues };
+    return createBoardRowRecord(nextFields, rowResponsibleId, nextPartial);
   });
 
   const remainingRows = normalizedPreviousRows
@@ -1309,13 +1591,7 @@ function sanitizeTemplateDraft(draft, currentUser) {
     visibilityType,
     sharedDepartments: Array.from(new Set((Array.isArray(draft?.sharedDepartments) ? draft.sharedDepartments : []).map((entry) => String(entry || "").trim()).filter(Boolean))),
     sharedUserIds: Array.from(new Set((Array.isArray(draft?.sharedUserIds) ? draft.sharedUserIds : []).map((entry) => String(entry || "").trim()).filter(Boolean))),
-    settings: {
-      showWorkflow: true,
-      showMetrics: true,
-      showAssignee: true,
-      showDates: true,
-      ...(draft?.settings || {}),
-    },
+    settings: withDefaultBoardSettings(draft?.settings),
     columns: Array.isArray(draft?.columns)
       ? draft.columns.map((column) => ({
           ...column,
@@ -1342,6 +1618,123 @@ function buildAreaCatalogEntries(users = [], catalog = []) {
 
 function sanitizeInventoryItemDraft(item, existingId = null) {
   return normalizeInventoryItemRecord(item, existingId);
+}
+
+function hasInsufficientInventoryStock(nextStockUnits, currentDomain = "", allocatedUnits = 0) {
+  return nextStockUnits < 0;
+}
+
+function applyInventoryStockDelta(nextStockUnits, quantity, currentDomain, allocatedUnits, delta) {
+  const updatedStockUnits = nextStockUnits + (delta * quantity);
+  if (hasInsufficientInventoryStock(updatedStockUnits, currentDomain, allocatedUnits)) {
+    return { ok: false, reason: "insufficient_stock" };
+  }
+
+  return { ok: true, nextStockUnits: updatedStockUnits };
+}
+
+function resolveOrderTransferMovementState({ currentItem, payload, currentTransferTargets, quantity, nextStockUnits, unitLabel, movementCreatedAt }) {
+  const warehouse = String(payload?.warehouse || "").trim();
+  const storageLocation = String(payload?.storageLocation || "").trim();
+  if (!warehouse && !storageLocation) {
+    return { ok: false, reason: "invalid_transfer_target" };
+  }
+
+  const destinationKey = buildInventoryTransferTargetKey(warehouse, storageLocation);
+  const targetIndex = currentTransferTargets.findIndex((target) => target.destinationKey === destinationKey);
+  const existingTarget = targetIndex >= 0 ? currentTransferTargets[targetIndex] : null;
+  const previousBalanceUnits = Math.max(0, Number(existingTarget?.availableUnits || 0));
+  const hasRemainingUnits = hasInventoryBalanceInput(payload?.remainingUnits);
+
+  if (existingTarget && !hasRemainingUnits) {
+    return { ok: false, reason: "remaining_units_required" };
+  }
+
+  let remainingUnits = null;
+  if (hasRemainingUnits) {
+    remainingUnits = Math.max(0, Number(payload?.remainingUnits || 0));
+    if (Number.isNaN(remainingUnits)) {
+      return { ok: false, reason: "invalid_payload" };
+    }
+  }
+
+  if (nextStockUnits < quantity) {
+    return { ok: false, reason: "insufficient_stock" };
+  }
+
+  const reconciledBalanceUnits = hasRemainingUnits ? remainingUnits : previousBalanceUnits;
+  const destinationBalanceUnits = reconciledBalanceUnits + quantity;
+  const nextTarget = normalizeInventoryTransferTargetRecord({
+    ...existingTarget,
+    destinationKey,
+    warehouse,
+    storageLocation,
+    recipientName: String(payload?.recipientName || existingTarget?.recipientName || "").trim(),
+    unitLabel,
+    availableUnits: destinationBalanceUnits,
+    updatedAt: movementCreatedAt,
+  }, unitLabel);
+  const nextTransferTargets = targetIndex >= 0
+    ? currentTransferTargets.map((target, index) => (index === targetIndex ? nextTarget : target))
+    : [nextTarget, ...currentTransferTargets];
+
+  return {
+    ok: true,
+    nextStockUnits: nextStockUnits - quantity,
+    nextStorageLocation: String(currentItem.storageLocation || "").trim(),
+    nextTransferTargets,
+    remainingUnits,
+    destinationBalanceUnits,
+    destinationKey,
+  };
+}
+
+function resolveWarehouseInventoryMovementState({ currentItem, payload, movementType, quantity, unitLabel, movementCreatedAt }) {
+  const currentDomain = normalizeInventoryDomain(currentItem.domain);
+  const currentTransferTargets = normalizeInventoryTransferTargets(currentItem.transferTargets, currentItem.unitLabel || "pzas");
+  const allocatedUnits = sumInventoryTransferTargetUnits(currentTransferTargets);
+  const nextStockUnits = Number(currentItem.stockUnits || 0);
+  const nextStorageLocation = String(payload?.storageLocation || currentItem.storageLocation || "").trim();
+  const destinationKey = String(payload?.destinationKey || "").trim();
+
+  if (movementType === "restock") {
+    return {
+      ok: true,
+      nextStockUnits: nextStockUnits + quantity,
+      nextStorageLocation,
+      nextTransferTargets: currentTransferTargets,
+      remainingUnits: null,
+      destinationBalanceUnits: null,
+      destinationKey,
+    };
+  }
+
+  if (movementType === "transfer" && currentDomain === "orders") {
+    return resolveOrderTransferMovementState({
+      currentItem,
+      payload,
+      currentTransferTargets,
+      quantity,
+      nextStockUnits,
+      unitLabel,
+      movementCreatedAt,
+    });
+  }
+
+  const stockResult = applyInventoryStockDelta(nextStockUnits, quantity, currentDomain, allocatedUnits, -1);
+  if (!stockResult.ok) {
+    return stockResult;
+  }
+
+  return {
+    ok: true,
+    nextStockUnits: stockResult.nextStockUnits,
+    nextStorageLocation,
+    nextTransferTargets: currentTransferTargets,
+    remainingUnits: null,
+    destinationBalanceUnits: null,
+    destinationKey,
+  };
 }
 
 export function createWarehouseInventoryItem(auth, payload) {
@@ -1490,90 +1883,25 @@ export function createWarehouseInventoryMovement(auth, payload) {
   }
 
   const movementType = normalizeInventoryMovementType(payload?.movementType);
-  const currentDomain = normalizeInventoryDomain(currentItem.domain);
-  const currentTransferTargets = (Array.isArray(currentItem.transferTargets) ? currentItem.transferTargets : [])
-    .map((target) => normalizeInventoryTransferTargetRecord(target, currentItem.unitLabel || "pzas"));
-  const allocatedUnits = sumInventoryTransferTargetUnits(currentTransferTargets);
   const movementCreatedAt = new Date().toISOString();
   const unitLabel = String(payload?.unitLabel || currentItem.unitLabel || "pzas").trim() || "pzas";
-
-  let nextStockUnits = Number(currentItem.stockUnits || 0);
-  let nextStorageLocation = String(payload?.storageLocation || currentItem.storageLocation || "").trim();
-  let nextTransferTargets = currentTransferTargets;
-  let remainingUnits = null;
-  let destinationBalanceUnits = null;
-  let destinationKey = String(payload?.destinationKey || "").trim();
-
-  if (movementType === "restock") {
-    nextStockUnits += quantity;
-  } else if (movementType === "consume") {
-    nextStockUnits -= quantity;
-    if (nextStockUnits < 0 || (currentDomain === "orders" && nextStockUnits < allocatedUnits)) {
-      return { ok: false, reason: "insufficient_stock" };
-    }
-  } else if (movementType === "transfer" && currentDomain === "orders") {
-    const warehouse = String(payload?.warehouse || "").trim();
-    const storageLocation = String(payload?.storageLocation || "").trim();
-    if (!warehouse && !storageLocation) {
-      return { ok: false, reason: "invalid_transfer_target" };
-    }
-
-    destinationKey = buildInventoryTransferTargetKey(warehouse, storageLocation);
-    const targetIndex = currentTransferTargets.findIndex((target) => target.destinationKey === destinationKey);
-    const existingTarget = targetIndex >= 0 ? currentTransferTargets[targetIndex] : null;
-    const previousBalanceUnits = Math.max(0, Number(existingTarget?.availableUnits || 0));
-    const hasRemainingUnits = hasInventoryBalanceInput(payload?.remainingUnits);
-
-    if (existingTarget && !hasRemainingUnits) {
-      return { ok: false, reason: "remaining_units_required" };
-    }
-
-    if (hasRemainingUnits) {
-      remainingUnits = Math.max(0, Number(payload?.remainingUnits || 0));
-      if (Number.isNaN(remainingUnits)) {
-        return { ok: false, reason: "invalid_payload" };
-      }
-    }
-
-    const reconciledBalanceUnits = hasRemainingUnits ? remainingUnits : previousBalanceUnits;
-    const otherAllocatedUnits = sumInventoryTransferTargetUnits(currentTransferTargets.filter((_, index) => index !== targetIndex));
-    const reconciledStockUnits = nextStockUnits + (reconciledBalanceUnits - previousBalanceUnits);
-    const availableToTransferUnits = reconciledStockUnits - otherAllocatedUnits - reconciledBalanceUnits;
-    if (availableToTransferUnits < quantity) {
-      return { ok: false, reason: "insufficient_stock" };
-    }
-
-    destinationBalanceUnits = reconciledBalanceUnits + quantity;
-    nextStockUnits = reconciledStockUnits;
-    nextStorageLocation = String(currentItem.storageLocation || "").trim();
-
-    const nextTarget = normalizeInventoryTransferTargetRecord({
-      ...existingTarget,
-      destinationKey,
-      warehouse,
-      storageLocation,
-      recipientName: String(payload?.recipientName || existingTarget?.recipientName || "").trim(),
-      unitLabel,
-      availableUnits: destinationBalanceUnits,
-      updatedAt: movementCreatedAt,
-    }, unitLabel);
-    if (targetIndex >= 0) {
-      nextTransferTargets = currentTransferTargets.map((target, index) => (index === targetIndex ? nextTarget : target));
-    } else {
-      nextTransferTargets = [nextTarget, ...currentTransferTargets];
-    }
-  } else {
-    nextStockUnits -= quantity;
-    if (nextStockUnits < 0 || (currentDomain === "orders" && nextStockUnits < allocatedUnits)) {
-      return { ok: false, reason: "insufficient_stock" };
-    }
+  const movementState = resolveWarehouseInventoryMovementState({
+    currentItem,
+    payload,
+    movementType,
+    quantity,
+    unitLabel,
+    movementCreatedAt,
+  });
+  if (!movementState.ok) {
+    return movementState;
   }
 
   const nextItem = normalizeInventoryItemRecord({
     ...currentItem,
-    stockUnits: nextStockUnits,
-    storageLocation: nextStorageLocation,
-    transferTargets: nextTransferTargets,
+    stockUnits: movementState.nextStockUnits,
+    storageLocation: movementState.nextStorageLocation,
+    transferTargets: movementState.nextTransferTargets,
   }, currentItem.id);
   const movement = normalizeInventoryMovementRecord({
     ...payload,
@@ -1582,9 +1910,9 @@ export function createWarehouseInventoryMovement(auth, payload) {
     itemName: currentItem.name,
     domain: currentItem.domain,
     unitLabel,
-    remainingUnits,
-    destinationBalanceUnits,
-    destinationKey,
+    remainingUnits: movementState.remainingUnits,
+    destinationBalanceUnits: movementState.destinationBalanceUnits,
+    destinationKey: movementState.destinationKey,
     performedById: currentUser.id,
     createdAt: movementCreatedAt,
   }, currentItem);
@@ -1752,18 +2080,30 @@ export function createWarehouseTemplate(auth, draft) {
     return { ok: false, reason: "invalid_payload" };
   }
 
+  let sharedDepartments = normalizedDraft.sharedDepartments;
+  if (normalizedDraft.visibilityType === "department") {
+    if (normalizedDraft.sharedDepartments.length) {
+      sharedDepartments = normalizedDraft.sharedDepartments;
+    } else if (normalizedDraft.creatorDepartment) {
+      sharedDepartments = [normalizedDraft.creatorDepartment];
+    } else {
+      sharedDepartments = [];
+    }
+  }
+
+  let sharedUserIds = normalizedDraft.sharedUserIds;
+  if (normalizedDraft.visibilityType === "users" && !normalizedDraft.sharedUserIds.length) {
+    sharedUserIds = [currentUser.id];
+  }
+
   const template = {
     id: makeId("tpl"),
     name: normalizedDraft.name,
     description: normalizedDraft.description || `Plantilla reutilizable para ${normalizedDraft.name}.`,
     category: normalizedDraft.category,
     visibilityType: normalizedDraft.visibilityType,
-    sharedDepartments: normalizedDraft.visibilityType === "department"
-      ? (normalizedDraft.sharedDepartments.length ? normalizedDraft.sharedDepartments : (normalizedDraft.creatorDepartment ? [normalizedDraft.creatorDepartment] : []))
-      : normalizedDraft.sharedDepartments,
-    sharedUserIds: normalizedDraft.visibilityType === "users"
-      ? (normalizedDraft.sharedUserIds.length ? normalizedDraft.sharedUserIds : [currentUser.id])
-      : normalizedDraft.sharedUserIds,
+    sharedDepartments,
+    sharedUserIds,
     settings: normalizedDraft.settings,
     columns: normalizedDraft.columns,
     isCustom: true,
@@ -1881,11 +2221,11 @@ export function updateWarehousePermissionOverride(auth, userId, draft = {}) {
   const nextOverride = {
     pages: {
       ...baseOverride.pages,
-      ...(draft.pages || {}),
+      ...(draft.pages ?? EMPTY_OBJECT),
     },
     actions: {
       ...baseOverride.actions,
-      ...(draft.actions || {}),
+      ...(draft.actions ?? EMPTY_OBJECT),
     },
   };
 
@@ -1895,7 +2235,7 @@ export function updateWarehousePermissionOverride(auth, userId, draft = {}) {
   };
   const hasOverride = Object.keys(cleanedOverride.pages).length > 0 || Object.keys(cleanedOverride.actions).length > 0;
 
-  const nextOverrides = { ...(currentState.permissions?.userOverrides || {}) };
+  const nextOverrides = { ...(currentState.permissions?.userOverrides ?? EMPTY_OBJECT) };
   if (hasOverride) {
     nextOverrides[userId] = cleanedOverride;
   } else {
@@ -2030,6 +2370,54 @@ export function updateWarehouseBoard(auth, boardId, draft) {
   return { ok: true, state: replaceWarehouseState(nextState), boardId: updatedBoard.id, boardName: updatedBoard.name };
 }
 
+export function updateWarehouseBoardOperationalContext(auth, boardId, patch = {}) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const currentState = getRawWarehouseState();
+  const { boardIndex, board } = findBoardAndRow(currentState, boardId);
+  if (!board) return { ok: false, reason: "board_not_found" };
+
+  const canUpdateContextValue = canManageWarehouseBoard(currentUser, board)
+    && (canUserDoWarehouseAction(currentUser, "boardWorkflow", currentState.permissions)
+      || canUserDoWarehouseAction(currentUser, "saveBoard", currentState.permissions));
+  const requestedStructureChange = hasOwn(patch, "operationalContextType")
+    || hasOwn(patch, "operationalContextLabel")
+    || hasOwn(patch, "operationalContextOptions");
+
+  if (requestedStructureChange) {
+    if (!canEditWarehouseBoard(currentUser, board) || !canUserDoWarehouseAction(currentUser, "saveBoard", currentState.permissions)) {
+      return { ok: false, reason: "forbidden" };
+    }
+  } else if (!hasOwn(patch, "operationalContextValue") || !canUpdateContextValue) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const nextSettings = withDefaultBoardSettings({
+    ...board.settings,
+    ...(hasOwn(patch, "operationalContextType") ? { operationalContextType: patch.operationalContextType } : EMPTY_OBJECT),
+    ...(hasOwn(patch, "operationalContextLabel") ? { operationalContextLabel: patch.operationalContextLabel } : EMPTY_OBJECT),
+    ...(hasOwn(patch, "operationalContextOptions") ? { operationalContextOptions: patch.operationalContextOptions } : EMPTY_OBJECT),
+    ...(hasOwn(patch, "operationalContextValue") ? { operationalContextValue: patch.operationalContextValue } : EMPTY_OBJECT),
+  });
+  const nextBoard = {
+    ...board,
+    settings: nextSettings,
+  };
+  const nextState = {
+    ...currentState,
+    controlBoards: currentState.controlBoards.map((item, index) => (index === boardIndex ? nextBoard : item)),
+  };
+
+  return {
+    ok: true,
+    state: replaceWarehouseState(nextState),
+    boardId: nextBoard.id,
+    boardName: nextBoard.name,
+    operationalContextValue: nextSettings.operationalContextValue,
+  };
+}
+
 export function deleteWarehouseBoard(auth, boardId) {
   const currentUser = findWarehouseUserById(auth?.userId);
   if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
@@ -2076,6 +2464,11 @@ export function duplicateWarehouseBoard(auth, boardId, includeRows = false) {
     description: board.description || `Copia de ${board.name}.`,
     createdById: currentUser.id,
     ownerId: board.ownerId || currentUser.id,
+    settings: withDefaultBoardSettings({
+      ...board.settings,
+      columnOrder: remapBoardColumnOrder(board.settings?.columnOrder, idMap),
+    }),
+    weeklyCycle: board.weeklyCycle ? { ...board.weeklyCycle } : undefined,
     fields,
     rows: includeRows
       ? (board.rows || []).map((row) => ({
@@ -2157,7 +2550,7 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
     return { ok: false, reason: "row_not_found" };
   }
 
-  const isWorkflowPatch = Object.prototype.hasOwnProperty.call(patch, "status") || Object.prototype.hasOwnProperty.call(patch, "lastPauseReason");
+  const isWorkflowPatch = hasOwn(patch, "status") || hasOwn(patch, "lastPauseReason");
   const allowed = isWorkflowPatch
     ? canOperateWarehouseBoardRow(currentUser, board, row, currentState.permissions)
     : canEditWarehouseBoardRow(currentUser, board, row, currentState.permissions);
@@ -2168,21 +2561,22 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
   const nowIso = new Date().toISOString();
   const nowTime = new Date(nowIso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false });
   const normalizedValuesPatch = {
-    ...(patch.values || {}),
+    ...(patch.values ?? EMPTY_OBJECT),
   };
+  const shouldApplyCleaningConsumption = patch.status === "En curso" && !row.startTime;
   const nextRow = {
     ...row,
     values: {
-      ...(row.values || {}),
+      ...(row.values ?? EMPTY_OBJECT),
       ...normalizedValuesPatch,
     },
   };
 
-  if (Object.prototype.hasOwnProperty.call(patch, "responsibleId")) {
+  if (hasOwn(patch, "responsibleId")) {
     nextRow.responsibleId = patch.responsibleId || "";
   }
 
-  if (Object.prototype.hasOwnProperty.call(patch, "status")) {
+  if (hasOwn(patch, "status")) {
     if (patch.status === "En curso") {
       (board.fields || []).forEach((field) => {
         if (field.type !== "time") return;
@@ -2217,11 +2611,11 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
     }
   }
 
-  if (Object.prototype.hasOwnProperty.call(patch, "lastPauseReason")) {
+  if (hasOwn(patch, "lastPauseReason")) {
     nextRow.lastPauseReason = patch.lastPauseReason || "";
   }
 
-  const nextState = {
+  const nextStateBase = {
     ...currentState,
     controlBoards: currentState.controlBoards.map((item, currentBoardIndex) => {
       if (currentBoardIndex !== boardIndex) return item;
@@ -2231,6 +2625,10 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
       };
     }),
   };
+
+  const nextState = shouldApplyCleaningConsumption
+    ? applyBoardRowCleaningInventoryConsumption(nextStateBase, nextRow, board, currentUser, nowIso)
+    : nextStateBase;
 
   return { ok: true, state: replaceWarehouseState(nextState), row: nextRow };
 }
@@ -2259,6 +2657,237 @@ export function deleteWarehouseBoardRow(auth, boardId, rowId) {
   return { ok: true, state: replaceWarehouseState(nextState) };
 }
 
+function isStateSectionChanged(currentState, nextState, key) {
+  const currentValue = JSON.stringify(currentState[key] ?? null);
+  const nextValue = JSON.stringify((nextState?.[key] ?? currentState[key]) ?? null);
+  return currentValue !== nextValue;
+}
+
+function validateMutatedUserPasswords(nextUsers, currentUsers) {
+  for (const nextUser of nextUsers) {
+    const incomingPassword = String(nextUser?.password || "").trim();
+    if (incomingPassword && !isStrongPassword(incomingPassword)) {
+      return { ok: false, reason: "weak_password", userId: nextUser.id || null };
+    }
+
+    const currentPasswordHash = currentUsers.find((item) => item.id === nextUser.id)?.passwordHash;
+    if (nextUser?.passwordHash && nextUser.passwordHash !== currentPasswordHash) {
+      return { ok: false, reason: "password_hash_injection", userId: nextUser.id || null };
+    }
+  }
+
+  return null;
+}
+
+function validateSensitiveStateMutations(currentUser, currentState, nextState, normalizedRole) {
+  const sensitiveSectionRules = [
+    { key: "permissions", actionId: "managePermissions", legacyBlocked: true },
+    { key: "catalog", actionId: "manageCatalog", legacyBlocked: true },
+    { key: "inventoryItems", actionId: "manageInventory", alternateActionIds: ["importInventory"], legacyBlocked: true },
+    { key: "inventoryMovements", actionId: "manageInventory", legacyBlocked: true },
+    { key: "boardTemplates", actionId: "saveTemplate", alternateActionIds: ["editTemplate", "deleteTemplate"], legacyBlocked: true },
+    { key: "weeks", actionId: "manageWeeks", alternateActionIds: ["createWeek"] },
+  ];
+
+  for (const rule of sensitiveSectionRules) {
+    if (!isStateSectionChanged(currentState, nextState, rule.key)) {
+      continue;
+    }
+
+    if (rule.legacyBlocked) {
+      return { ok: false, reason: "legacy_section_blocked", section: rule.key };
+    }
+
+    const allowed = [rule.actionId].concat(rule.alternateActionIds || []).some((actionId) => canUserDoWarehouseAction(currentUser, actionId, currentState.permissions));
+    if (!allowed) {
+      return { ok: false, reason: "restricted_section_changed", section: rule.key };
+    }
+  }
+
+  if (isStateSectionChanged(currentState, nextState, "system") && normalizedRole !== ROLE_LEAD) {
+    return { ok: false, reason: "restricted_section_changed", section: "system" };
+  }
+
+  if (isStateSectionChanged(currentState, nextState, "areaCatalog")) {
+    return { ok: false, reason: "legacy_section_blocked", section: "areaCatalog" };
+  }
+
+  return null;
+}
+
+function validateUserMutations(currentUser, currentState, nextUsers, nextUserMap) {
+  if (nextUsers.length !== currentState.users.length) {
+    const actionId = nextUsers.length < currentState.users.length ? "deleteUsers" : "manageUsers";
+    if (!canUserDoWarehouseAction(currentUser, actionId, currentState.permissions)) {
+      return { ok: false, reason: "user_list_changed" };
+    }
+  }
+
+  for (const currentRecord of currentState.users) {
+    const validationError = validateExistingUserMutation(currentUser, currentState, currentRecord, nextUserMap.get(currentRecord.id));
+    if (validationError) {
+      return validationError;
+    }
+  }
+
+  for (const nextRecord of nextUsers) {
+    const existsInCurrentState = currentState.users.some((item) => item.id === nextRecord.id);
+    if (!existsInCurrentState && !canUserDoWarehouseAction(currentUser, "manageUsers", currentState.permissions)) {
+      return { ok: false, reason: "user_list_changed" };
+    }
+  }
+
+  return null;
+}
+
+function getUserProfileSnapshot(user) {
+  return JSON.stringify({
+    name: user.name,
+    email: user.email,
+    area: user.area,
+    department: user.department,
+    jobTitle: user.jobTitle,
+  });
+}
+
+function getUserAdminSnapshot(user) {
+  return JSON.stringify({
+    role: user.role,
+    isActive: user.isActive,
+    managerId: user.managerId,
+    createdById: user.createdById,
+  });
+}
+
+function validateExistingUserMutation(currentUser, currentState, currentRecord, nextRecord) {
+  if (!nextRecord) {
+    if (!canUserDoWarehouseAction(currentUser, "deleteUsers", currentState.permissions)) {
+      return { ok: false, reason: "user_list_changed" };
+    }
+    return null;
+  }
+
+  const profileChanged = getUserProfileSnapshot(currentRecord) !== getUserProfileSnapshot(nextRecord);
+  if (profileChanged && currentRecord.id !== currentUser.id && !canUserDoWarehouseAction(currentUser, "manageUsers", currentState.permissions)) {
+    return { ok: false, reason: "restricted_section_changed", section: "users" };
+  }
+
+  const adminFieldsChanged = getUserAdminSnapshot(currentRecord) !== getUserAdminSnapshot(nextRecord);
+  if (adminFieldsChanged && !canUserDoWarehouseAction(currentUser, "manageUsers", currentState.permissions)) {
+    return { ok: false, reason: "restricted_section_changed", section: "users" };
+  }
+
+  const passwordChanged = String(nextRecord.password || "").trim() || nextRecord.passwordHash !== currentRecord.passwordHash;
+  if (passwordChanged && currentRecord.id !== currentUser.id && !canUserDoWarehouseAction(currentUser, "resetPasswords", currentState.permissions)) {
+    return { ok: false, reason: "restricted_section_changed", section: "users" };
+  }
+
+  return null;
+}
+
+function validateBoardListMutationByRole(normalizedRole, currentUser, currentState, nextState, nextUsers, nextBoards) {
+  if (normalizedRole === ROLE_JR) {
+    const restrictedKeys = ["users", "permissions", "weeks", "catalog", "inventoryItems", "inventoryMovements", "boardTemplates", "activities", "pauseLogs", "controlRows", "areaCatalog", "system"];
+    for (const key of restrictedKeys) {
+      if (isStateSectionChanged(currentState, nextState, key)) {
+        return { ok: false, reason: "restricted_section_changed", section: key };
+      }
+    }
+
+    if (nextUsers.length !== currentState.users.length) {
+      return { ok: false, reason: "user_list_changed" };
+    }
+
+    if (nextBoards.length !== currentState.controlBoards.length) {
+      return { ok: false, reason: "board_list_changed" };
+    }
+
+    return null;
+  }
+
+  if (nextBoards.length !== currentState.controlBoards.length && !canUserDoWarehouseAction(currentUser, "saveBoard", currentState.permissions)) {
+    return { ok: false, reason: "board_list_changed" };
+  }
+
+  return null;
+}
+
+function getBoardStructureSnapshot(board) {
+  return JSON.stringify({
+    name: board.name,
+    description: board.description,
+    createdById: board.createdById,
+    ownerId: board.ownerId,
+    accessUserIds: board.accessUserIds || [],
+    settings: board.settings ?? EMPTY_OBJECT,
+    fields: board.fields || [],
+    permissions: board.permissions ?? EMPTY_OBJECT,
+  });
+}
+
+function validateBoardMutations(currentUser, currentState, nextBoards, nextBoardMap) {
+  for (const currentBoard of currentState.controlBoards) {
+    const validationError = validateExistingBoardMutation(currentUser, currentState, currentBoard, nextBoardMap.get(currentBoard.id));
+    if (validationError) {
+      return validationError;
+    }
+  }
+
+  const addedBoardError = validateAddedBoards(currentUser, currentState, nextBoards);
+  if (addedBoardError) {
+    return addedBoardError;
+  }
+
+  return null;
+}
+
+function validateAddedBoards(currentUser, currentState, nextBoards) {
+  for (const nextBoard of nextBoards) {
+    const existsInCurrentState = currentState.controlBoards.some((item) => item.id === nextBoard.id);
+    if (!existsInCurrentState && !canUserDoWarehouseAction(currentUser, "saveBoard", currentState.permissions)) {
+      return { ok: false, reason: "board_list_changed" };
+    }
+  }
+
+  return null;
+}
+
+function validateExistingBoardMutation(currentUser, currentState, currentBoard, nextBoard) {
+  if (!nextBoard) {
+    if (!canUserDoWarehouseAction(currentUser, "saveBoard", currentState.permissions)) {
+      return { ok: false, reason: "board_missing", boardId: currentBoard.id };
+    }
+    return null;
+  }
+
+  const canManage = canManageWarehouseBoard(currentUser, currentBoard);
+  const currentStructure = getBoardStructureSnapshot(currentBoard);
+  const nextStructure = getBoardStructureSnapshot(nextBoard);
+  if (currentStructure !== nextStructure) {
+    if (!canManage || !canUserDoWarehouseAction(currentUser, "saveBoard", currentState.permissions)) {
+      return { ok: false, reason: "board_structure_changed", boardId: currentBoard.id };
+    }
+  }
+
+  const currentRows = JSON.stringify(currentBoard.rows || []);
+  const nextRows = JSON.stringify(nextBoard.rows || []);
+  if (currentRows === nextRows) {
+    return null;
+  }
+
+  if (!canManage) {
+    return { ok: false, reason: "board_rows_changed_without_access", boardId: currentBoard.id };
+  }
+
+  const canChangeRows = canUserDoWarehouseAction(currentUser, "boardWorkflow", currentState.permissions)
+    || canUserDoWarehouseAction(currentUser, "createBoardRow", currentState.permissions);
+  if (!canChangeRows) {
+    return { ok: false, reason: "board_rows_changed_without_access", boardId: currentBoard.id };
+  }
+
+  return null;
+}
+
 export function validateWarehouseStateMutation(auth, nextState) {
   if (!auth) {
     return { ok: false, reason: "auth_required" };
@@ -2282,189 +2911,18 @@ export function validateWarehouseStateMutation(auth, nextState) {
   const nextUserMap = new Map(nextUsers.map((user) => [user.id, user]));
   const nextBoardMap = new Map(nextBoards.map((board) => [board.id, board]));
   const normalizedRole = normalizeRole(currentUser.role);
-
-  for (const nextUser of nextUsers) {
-    const incomingPassword = String(nextUser?.password || "").trim();
-    if (incomingPassword && !isStrongPassword(incomingPassword)) {
-      return { ok: false, reason: "weak_password", userId: nextUser.id || null };
-    }
-    if (nextUser?.passwordHash && nextUser.passwordHash !== currentState.users.find((item) => item.id === nextUser.id)?.passwordHash) {
-      return { ok: false, reason: "password_hash_injection", userId: nextUser.id || null };
-    }
-  }
-
-  const sensitiveSectionRules = [
-    { key: "permissions", actionId: "managePermissions", legacyBlocked: true },
-    { key: "catalog", actionId: "manageCatalog", legacyBlocked: true },
-    { key: "inventoryItems", actionId: "manageInventory", alternateActionIds: ["importInventory"], legacyBlocked: true },
-    { key: "inventoryMovements", actionId: "manageInventory", legacyBlocked: true },
-    { key: "boardTemplates", actionId: "saveTemplate", alternateActionIds: ["editTemplate", "deleteTemplate"], legacyBlocked: true },
-    { key: "weeks", actionId: "manageWeeks", alternateActionIds: ["createWeek"] },
+  const validators = [
+    () => validateMutatedUserPasswords(nextUsers, currentState.users),
+    () => validateSensitiveStateMutations(currentUser, currentState, nextState, normalizedRole),
+    () => validateUserMutations(currentUser, currentState, nextUsers, nextUserMap),
+    () => validateBoardListMutationByRole(normalizedRole, currentUser, currentState, nextState, nextUsers, nextBoards),
+    () => validateBoardMutations(currentUser, currentState, nextBoards, nextBoardMap),
   ];
 
-  for (const rule of sensitiveSectionRules) {
-    const currentValue = JSON.stringify(currentState[rule.key] ?? null);
-    const nextValue = JSON.stringify((nextState?.[rule.key] ?? currentState[rule.key]) ?? null);
-    if (currentValue !== nextValue) {
-      if (rule.legacyBlocked) {
-        return { ok: false, reason: "legacy_section_blocked", section: rule.key };
-      }
-      const allowed = [rule.actionId].concat(rule.alternateActionIds || []).some((actionId) => canUserDoWarehouseAction(currentUser, actionId, currentState.permissions));
-      if (!allowed) {
-        return { ok: false, reason: "restricted_section_changed", section: rule.key };
-      }
-    }
-  }
-
-  const currentSystem = JSON.stringify(currentState.system ?? null);
-  const nextSystem = JSON.stringify((nextState?.system ?? currentState.system) ?? null);
-  if (currentSystem !== nextSystem && normalizedRole !== ROLE_LEAD) {
-    return { ok: false, reason: "restricted_section_changed", section: "system" };
-  }
-
-  const currentAreaCatalog = JSON.stringify(currentState.areaCatalog ?? null);
-  const nextAreaCatalog = JSON.stringify((nextState?.areaCatalog ?? currentState.areaCatalog) ?? null);
-  if (currentAreaCatalog !== nextAreaCatalog) {
-    return { ok: false, reason: "legacy_section_blocked", section: "areaCatalog" };
-  }
-
-  if (nextUsers.length !== currentState.users.length) {
-    const actionId = nextUsers.length < currentState.users.length ? "deleteUsers" : "manageUsers";
-    if (!canUserDoWarehouseAction(currentUser, actionId, currentState.permissions)) {
-      return { ok: false, reason: "user_list_changed" };
-    }
-  }
-
-  for (const currentRecord of currentState.users) {
-    const nextRecord = nextUserMap.get(currentRecord.id);
-    if (!nextRecord) {
-      if (!canUserDoWarehouseAction(currentUser, "deleteUsers", currentState.permissions)) {
-        return { ok: false, reason: "user_list_changed" };
-      }
-      continue;
-    }
-
-    const currentProfile = JSON.stringify({
-      name: currentRecord.name,
-      email: currentRecord.email,
-      area: currentRecord.area,
-      department: currentRecord.department,
-      jobTitle: currentRecord.jobTitle,
-    });
-    const nextProfile = JSON.stringify({
-      name: nextRecord.name,
-      email: nextRecord.email,
-      area: nextRecord.area,
-      department: nextRecord.department,
-      jobTitle: nextRecord.jobTitle,
-    });
-    if (currentProfile !== nextProfile && currentRecord.id !== currentUser.id && !canUserDoWarehouseAction(currentUser, "manageUsers", currentState.permissions)) {
-      return { ok: false, reason: "restricted_section_changed", section: "users" };
-    }
-
-    const currentAdminFields = JSON.stringify({
-      role: currentRecord.role,
-      isActive: currentRecord.isActive,
-      managerId: currentRecord.managerId,
-      createdById: currentRecord.createdById,
-    });
-    const nextAdminFields = JSON.stringify({
-      role: nextRecord.role,
-      isActive: nextRecord.isActive,
-      managerId: nextRecord.managerId,
-      createdById: nextRecord.createdById,
-    });
-    if (currentAdminFields !== nextAdminFields && !canUserDoWarehouseAction(currentUser, "manageUsers", currentState.permissions)) {
-      return { ok: false, reason: "restricted_section_changed", section: "users" };
-    }
-
-    const passwordChanged = String(nextRecord.password || "").trim() || nextRecord.passwordHash !== currentRecord.passwordHash;
-    if (passwordChanged && currentRecord.id !== currentUser.id && !canUserDoWarehouseAction(currentUser, "resetPasswords", currentState.permissions)) {
-      return { ok: false, reason: "restricted_section_changed", section: "users" };
-    }
-  }
-
-  for (const nextRecord of nextUsers) {
-    if (!currentState.users.find((item) => item.id === nextRecord.id) && !canUserDoWarehouseAction(currentUser, "manageUsers", currentState.permissions)) {
-      return { ok: false, reason: "user_list_changed" };
-    }
-  }
-
-  if (normalizedRole !== ROLE_JR) {
-    if (nextBoards.length !== currentState.controlBoards.length && !canUserDoWarehouseAction(currentUser, "saveBoard", currentState.permissions)) {
-      return { ok: false, reason: "board_list_changed" };
-    }
-  } else {
-    const restrictedKeys = ["users", "permissions", "weeks", "catalog", "inventoryItems", "inventoryMovements", "boardTemplates", "activities", "pauseLogs", "controlRows", "areaCatalog", "system"];
-    for (const key of restrictedKeys) {
-      const currentValue = JSON.stringify(currentState[key] ?? null);
-      const nextValue = JSON.stringify((nextState?.[key] ?? currentState[key]) ?? null);
-      if (currentValue !== nextValue) {
-        return { ok: false, reason: "restricted_section_changed", section: key };
-      }
-    }
-
-    if (nextUsers.length !== currentState.users.length) {
-      return { ok: false, reason: "user_list_changed" };
-    }
-
-    if (nextBoards.length !== currentState.controlBoards.length) {
-      return { ok: false, reason: "board_list_changed" };
-    }
-  }
-
-  for (const currentBoard of currentState.controlBoards) {
-    const nextBoard = nextBoardMap.get(currentBoard.id);
-    if (!nextBoard) {
-      if (!canUserDoWarehouseAction(currentUser, "saveBoard", currentState.permissions)) {
-        return { ok: false, reason: "board_missing", boardId: currentBoard.id };
-      }
-      continue;
-    }
-
-    const canManage = canManageWarehouseBoard(currentUser, currentBoard);
-    const currentStructure = JSON.stringify({
-      name: currentBoard.name,
-      description: currentBoard.description,
-      createdById: currentBoard.createdById,
-      ownerId: currentBoard.ownerId,
-      accessUserIds: currentBoard.accessUserIds || [],
-      settings: currentBoard.settings || {},
-      fields: currentBoard.fields || [],
-      permissions: currentBoard.permissions || {},
-    });
-    const nextStructure = JSON.stringify({
-      name: nextBoard.name,
-      description: nextBoard.description,
-      createdById: nextBoard.createdById,
-      ownerId: nextBoard.ownerId,
-      accessUserIds: nextBoard.accessUserIds || [],
-      settings: nextBoard.settings || {},
-      fields: nextBoard.fields || [],
-      permissions: nextBoard.permissions || {},
-    });
-
-    if (currentStructure !== nextStructure) {
-      if (!canManage || !canUserDoWarehouseAction(currentUser, "saveBoard", currentState.permissions)) {
-        return { ok: false, reason: "board_structure_changed", boardId: currentBoard.id };
-      }
-    }
-
-    const currentRows = JSON.stringify(currentBoard.rows || []);
-    const nextRows = JSON.stringify(nextBoard.rows || []);
-    if (currentRows !== nextRows) {
-      if (!canManage) {
-        return { ok: false, reason: "board_rows_changed_without_access", boardId: currentBoard.id };
-      }
-      if (!canUserDoWarehouseAction(currentUser, "boardWorkflow", currentState.permissions) && !canUserDoWarehouseAction(currentUser, "createBoardRow", currentState.permissions)) {
-        return { ok: false, reason: "board_rows_changed_without_access", boardId: currentBoard.id };
-      }
-    }
-  }
-
-  for (const nextBoard of nextBoards) {
-    if (!currentState.controlBoards.find((item) => item.id === nextBoard.id) && !canUserDoWarehouseAction(currentUser, "saveBoard", currentState.permissions)) {
-      return { ok: false, reason: "board_list_changed" };
+  for (const validator of validators) {
+    const error = validator();
+    if (error) {
+      return error;
     }
   }
 
@@ -2478,7 +2936,7 @@ export function authenticateWarehouseUser(login, password) {
     return username === normalizedLogin;
   });
 
-  if (!user || !user.isActive) return null;
+  if (!user?.isActive) return null;
   if (!verifyPassword(password, user.passwordHash)) return null;
   return user;
 }

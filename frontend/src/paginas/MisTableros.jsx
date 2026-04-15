@@ -12,6 +12,7 @@ export default function MisTableros({ contexto }) {
     selectedCustomBoardViewId,
     setSelectedCustomBoardViewId,
     isHistoricalCustomBoardView,
+    canChangeSelectedBoardOperationalContext,
     customBoardMetrics,
     StatTile,
     customBoardActionsMenuRef,
@@ -52,6 +53,7 @@ export default function MisTableros({ contexto }) {
     skipNextSyncRef,
     setSyncStatus,
     setBoardRuntimeFeedback,
+    updateBoardOperationalContext,
     StatusBadge,
     formatDurationClock,
     getElapsedSeconds,
@@ -160,6 +162,15 @@ export default function MisTableros({ contexto }) {
     : (label, required = false) => `${label}${required ? " *" : ""}`;
   const boardView = selectedCustomBoardDisplay || selectedCustomBoard;
   const boardColumns = boardView ? getOrderedBoardColumns(boardView) : [];
+  const boardOperationalContextType = String(boardView?.settings?.operationalContextType || "none");
+  const boardOperationalContextLabel = String(boardView?.settings?.operationalContextLabel || "").trim()
+    || (boardOperationalContextType === "cleaningSite" ? "Sede de limpieza" : "Ubicación operativa");
+  const boardOperationalContextOptions = boardOperationalContextType === "cleaningSite"
+    ? ["C1", "C2", "C3"]
+    : Array.isArray(boardView?.settings?.operationalContextOptions)
+      ? boardView.settings.operationalContextOptions.map((option) => String(option || "").trim()).filter(Boolean)
+      : [];
+  const boardOperationalContextValue = String(boardView?.settings?.operationalContextValue || "").trim();
 
   return (
     <section className="admin-page-layout">
@@ -171,7 +182,7 @@ export default function MisTableros({ contexto }) {
             <StatTile label="Terminadas" value={customBoardMetrics?.completed || 0} tone="success" className="custom-board-stat-tile" />
           </div>
 
-          <article className="surface-card full-width table-card admin-surface-card">
+          <article className="surface-card full-width table-card admin-surface-card board-pdf-root" data-board-pdf-root="selected">
             <div className="card-header-row">
               <div>
                 <h3>{boardView?.name || selectedCustomBoard.name}</h3>
@@ -180,7 +191,7 @@ export default function MisTableros({ contexto }) {
                   <span className="chip">{isHistoricalCustomBoardView ? selectedCustomBoardSnapshot?.weekName : "Operación activa"}</span>
                 </div>
               </div>
-              <div className="toolbar-actions custom-board-toolbar-actions">
+              <div className="toolbar-actions custom-board-toolbar-actions board-pdf-hide">
                 {filteredVisibleControlBoards.length > 1 ? (
                   <label className="board-top-select min-width">
                     <span>Tablero</span>
@@ -201,6 +212,18 @@ export default function MisTableros({ contexto }) {
                     ))}
                   </select>
                 </label>
+                {boardOperationalContextType !== "none" ? (
+                  <label className="board-top-select min-width">
+                    <span>{boardOperationalContextLabel}</span>
+                    <select
+                      value={boardOperationalContextValue}
+                      onChange={(event) => updateBoardOperationalContext(selectedCustomBoard.id, event.target.value)}
+                      disabled={isHistoricalCustomBoardView || !canChangeSelectedBoardOperationalContext}
+                    >
+                      {boardOperationalContextOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                  </label>
+                ) : null}
                 <div className="custom-board-actions-menu-shell" ref={customBoardActionsMenuRef}>
                   <button
                     type="button"
@@ -243,9 +266,9 @@ export default function MisTableros({ contexto }) {
               <span>Creó · {userMap.get(boardView?.createdById)?.name || "N/A"}</span>
               <span>Player principal · {userMap.get(boardView?.ownerId)?.name || "N/A"}</span>
               {(boardView?.accessUserIds || []).length ? <span>Acceso · {(boardView.accessUserIds || []).map((userId) => userMap.get(userId)?.name || "N/A").join(", ")}</span> : null}
+              {boardOperationalContextType !== "none" && boardOperationalContextValue ? <span>{boardOperationalContextLabel} · {boardOperationalContextValue}</span> : null}
               {isHistoricalCustomBoardView ? <span>Corte · {formatDate(selectedCustomBoardSnapshot?.startDate)} - {formatDate(selectedCustomBoardSnapshot?.endDate)}</span> : null}
             </div>
-            {boardRuntimeFeedback.message ? <p className={boardRuntimeFeedback.tone === "danger" ? "validation-text" : "inline-success-message"}>{boardRuntimeFeedback.message}</p> : null}
             {isHistoricalCustomBoardView ? <p className="subtle-line">Vista histórica en solo lectura. El tablero activo ya quedó limpio para la semana actual.</p> : null}
             <p className="required-legend"><span className="required-mark" aria-hidden="true">*</span> obligatorio</p>
 
@@ -253,7 +276,7 @@ export default function MisTableros({ contexto }) {
               <table className="admin-table-clean board-runtime-table">
                 <thead>
                   {selectedCustomBoardSections.length ? (
-                    <tr>
+                    <tr className="board-pdf-hide">
                       {selectedCustomBoardSections.map((section, index) => (
                         <th key={`${section.name}-${index}`} colSpan={section.span} className="board-section-header-cell" style={{ backgroundColor: section.color }}>
                           {section.name}
@@ -263,7 +286,7 @@ export default function MisTableros({ contexto }) {
                   ) : null}
                   <tr>
                     {boardColumns.map((column) => (
-                      <th key={column.token} style={column.kind === "field" ? getFieldColumnStyle(column.field) : getAuxColumnStyle(column.id)} title={column.kind === "field" ? `${column.field.helpText || column.field.label}${column.field.required ? " · Obligatorio" : ""}` : column.label}>
+                      <th key={column.token} className={column.kind !== "field" && column.id === "workflow" ? "board-pdf-hide" : ""} style={column.kind === "field" ? getFieldColumnStyle(column.field) : getAuxColumnStyle(column.id)} title={column.kind === "field" ? `${column.field.helpText || column.field.label}${column.field.required ? " · Obligatorio" : ""}` : column.label}>
                         {column.kind === "field" ? formatFieldLabel(column.field.label, column.field.required) : column.label}
                       </th>
                     ))}
@@ -312,7 +335,7 @@ export default function MisTableros({ contexto }) {
                             }
 
                             return (
-                              <td key={`${row.id}-${column.token}`} className="board-workflow-cell" style={getAuxColumnStyle(column.id)}>
+                              <td key={`${row.id}-${column.token}`} className="board-workflow-cell board-pdf-hide" style={getAuxColumnStyle(column.id)}>
                                 <div className="row-actions compact board-workflow-actions">
                                   {canStartRow ? (
                                     <button type="button" className="board-action-button start icon-only" title={row.status === STATUS_PAUSED ? "Reanudar" : "Iniciar"} aria-label={row.status === STATUS_PAUSED ? "Reanudar" : "Iniciar"} onClick={() => changeBoardRowStatus(selectedCustomBoard.id, row.id, STATUS_RUNNING)} disabled={!rowWorkflowEnabled}>

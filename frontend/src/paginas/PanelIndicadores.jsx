@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 const DASHBOARD_WEEKDAY_LABELS = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sa", "Do"];
 
@@ -35,12 +36,39 @@ function buildDashboardCalendarDays(monthDate) {
   });
 }
 
+function getDashboardDatePopoverStyle(triggerElement) {
+  if (!triggerElement) return null;
+
+  const rect = triggerElement.getBoundingClientRect();
+  const viewportWidth = globalThis.innerWidth;
+  const viewportHeight = globalThis.innerHeight;
+  const gap = 8;
+  const minWidth = 332;
+  const maxWidth = viewportWidth - 16;
+  const width = Math.min(Math.max(rect.width, minWidth), maxWidth);
+  const left = Math.min(Math.max(8, rect.left), Math.max(8, viewportWidth - width - 8));
+  const estimatedHeight = 360;
+  const openUpwards = rect.bottom + gap + estimatedHeight > viewportHeight && rect.top > estimatedHeight;
+  const top = openUpwards ? Math.max(8, rect.top - gap - estimatedHeight) : rect.bottom + gap;
+
+  return {
+    position: "fixed",
+    top,
+    left,
+    width,
+    zIndex: 80,
+  };
+}
+
 function DashboardDateRangePicker({ startDate, endDate, onChange }) {
   const pickerRef = useRef(null);
+  const triggerRef = useRef(null);
+  const popoverRef = useRef(null);
   const [isOpen, setIsOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(() => parseDashboardDate(startDate) || parseDashboardDate(endDate) || new Date());
   const [draftStartDate, setDraftStartDate] = useState(startDate || "");
   const [draftEndDate, setDraftEndDate] = useState(endDate || "");
+  const [popoverStyle, setPopoverStyle] = useState(null);
 
   const start = parseDashboardDate(startDate);
   const end = parseDashboardDate(endDate);
@@ -64,13 +92,31 @@ function DashboardDateRangePicker({ startDate, endDate, onChange }) {
     if (!isOpen) return undefined;
 
     function handlePointerDown(event) {
-      if (!pickerRef.current?.contains(event.target)) {
+      const clickedTrigger = pickerRef.current?.contains(event.target);
+      const clickedPopover = popoverRef.current?.contains(event.target);
+      if (!clickedTrigger && !clickedPopover) {
         applyDraftAndClose();
       }
     }
 
-    window.addEventListener("pointerdown", handlePointerDown);
-    return () => window.removeEventListener("pointerdown", handlePointerDown);
+    globalThis.addEventListener("pointerdown", handlePointerDown);
+    return () => globalThis.removeEventListener("pointerdown", handlePointerDown);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    function updatePopoverPosition() {
+      setPopoverStyle(getDashboardDatePopoverStyle(triggerRef.current));
+    }
+
+    updatePopoverPosition();
+    globalThis.addEventListener("resize", updatePopoverPosition);
+    globalThis.addEventListener("scroll", updatePopoverPosition, true);
+    return () => {
+      globalThis.removeEventListener("resize", updatePopoverPosition);
+      globalThis.removeEventListener("scroll", updatePopoverPosition, true);
+    };
   }, [isOpen]);
 
   function applyDraftAndClose() {
@@ -97,12 +143,12 @@ function DashboardDateRangePicker({ startDate, endDate, onChange }) {
 
   return (
     <div ref={pickerRef} className="dashboard-date-range-shell">
-      <button type="button" className={`dashboard-date-range-trigger ${isOpen ? "open" : ""}`} onClick={() => setIsOpen((current) => !current)}>
+      <button ref={triggerRef} type="button" className={`dashboard-date-range-trigger ${isOpen ? "open" : ""}`} onClick={() => setIsOpen((current) => !current)}>
         <span>{buttonLabel}</span>
         <small>{startDate || endDate ? "Rango activo" : "Sin filtro por fecha"}</small>
       </button>
-      {isOpen ? (
-        <div className="dashboard-date-range-popover">
+      {isOpen && popoverStyle ? createPortal(
+        <div ref={popoverRef} className="dashboard-date-range-popover" style={popoverStyle}>
           <div className="dashboard-date-range-header">
             <button type="button" className="icon-button" onClick={() => setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}>{"<"}</button>
             <strong>{monthLabel}</strong>
@@ -134,7 +180,8 @@ function DashboardDateRangePicker({ startDate, endDate, onChange }) {
             <button type="button" className="icon-button" onClick={applyDraftAndClose}>Confirmar</button>
             <button type="button" className="icon-button" onClick={applyDraftAndClose}>Cerrar</button>
           </div>
-        </div>
+        </div>,
+        globalThis.document.body,
       ) : null}
     </div>
   );

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -5,6 +6,7 @@ import {
   ArrowDown,
   ArrowUp,
   BarChart3,
+  Bell,
   CalendarDays,
   CircleCheckBig,
   ClipboardList,
@@ -33,7 +35,6 @@ import {
   Eye,
   EyeOff,
   X,
-  UserRound,
   Users,
   Zap,
 } from "lucide-react";
@@ -52,12 +53,16 @@ import "./App.css";
 const STORAGE_KEY = "sicfla.almacen.state.v1";
 const SIDEBAR_COLLAPSED_KEY = "sicfla.almacen.sidebarCollapsed.v1";
 const DASHBOARD_SECTIONS_KEY = "sicfla.almacen.dashboardSections.v1";
+const NOTIFICATION_READ_KEY = "sicfla.almacen.notifications.read.v1";
+const NOTIFICATION_DELETED_KEY = "sicfla.almacen.notifications.deleted.v1";
+const NOTIFICATION_INBOX_KEY = "sicfla.almacen.notifications.inbox.v1";
+const EMPTY_OBJECT = Object.freeze({});
 const BOOTSTRAP_MASTER_ID = "bootstrap-master";
 const MASTER_USERNAME = "Maestro";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||
-  `${window.location.protocol}//${window.location.hostname}:4000/api`;
+  `${globalThis.location.protocol}//${globalThis.location.hostname}:4000/api`;
 const ENABLE_LEGACY_WHOLE_STATE_SYNC = false;
 const PAGE_BOARD = "index";
 const PAGE_CUSTOM_BOARDS = "customBoards";
@@ -197,9 +202,8 @@ const ACTIVITY_FREQUENCY_DAY_OFFSETS = {
 };
 
 function getInitialRouteState() {
-  const pathnameSegments = window.location.pathname.split("/").filter(Boolean);
-  const pathPage = String(pathnameSegments[0] || "").trim().toLowerCase();
-  const params = new URLSearchParams(window.location.search);
+  const pathPage = String(globalThis.location.pathname.split("/").find(Boolean) || "").trim().toLowerCase();
+  const params = new URLSearchParams(globalThis.location.search);
   const routePage = String(params.get("page") || "").trim();
   return {
     page: PAGE_ROUTE_ALIASES[pathPage] || PAGE_ROUTE_ALIASES[routePage] || PAGE_DASHBOARD,
@@ -370,7 +374,7 @@ function getBoardAuxColumnOrder(settings = {}) {
 
 function getNormalizedBoardColumnOrder(board) {
   const fields = getBoardFields(board);
-  const settings = board?.settings || {};
+  const settings = board?.settings ?? EMPTY_OBJECT;
   const fieldIds = fields.map((field) => field.id).filter(Boolean);
   const validFieldIds = new Set(fieldIds);
   const fallbackOrder = fieldIds.concat(getBoardAuxColumnOrder(settings).map((auxId) => toBoardAuxColumnToken(auxId)));
@@ -385,7 +389,8 @@ function getNormalizedBoardColumnOrder(board) {
 }
 
 function sortBoardFieldsByColumnOrder(fields = [], columnOrder = []) {
-  const fieldOrder = columnOrder.filter((token) => !isBoardAuxColumnToken(token));
+  const safeColumnOrder = Array.isArray(columnOrder) ? columnOrder : [];
+  const fieldOrder = safeColumnOrder.filter((token) => !isBoardAuxColumnToken(token));
   const indexByFieldId = new Map(fieldOrder.map((fieldId, index) => [fieldId, index]));
   return [...fields].sort((left, right) => {
     const leftIndex = indexByFieldId.get(left.id);
@@ -409,7 +414,7 @@ function syncBoardFieldOrderIntoColumnOrder(fields = [], settings = {}) {
   });
 }
 
-function reorderBoardColumnOrderTokens(columnOrder = [], sourceToken, targetToken) {
+function reorderBoardColumnOrderTokens(sourceToken, targetToken, columnOrder = []) {
   if (!sourceToken || !targetToken || sourceToken === targetToken) return columnOrder;
   const nextOrder = [...columnOrder];
   const sourceIndex = nextOrder.indexOf(sourceToken);
@@ -423,7 +428,7 @@ function reorderBoardColumnOrderTokens(columnOrder = [], sourceToken, targetToke
 function getOrderedBoardColumns(board) {
   const fields = getBoardFields(board);
   const fieldMap = new Map(fields.map((field) => [field.id, field]));
-  const visibleAuxIds = new Set(getBoardVisibleAuxColumnIds(board?.settings || {}));
+  const visibleAuxIds = new Set(getBoardVisibleAuxColumnIds(board?.settings ?? EMPTY_OBJECT));
 
   return getNormalizedBoardColumnOrder(board).flatMap((token) => {
     if (isBoardAuxColumnToken(token)) {
@@ -458,6 +463,204 @@ function getOrderedBoardColumns(board) {
 }
 
 const BOARD_TEMPLATES = [
+  {
+    id: "limpieza-c1",
+    name: "Limpieza semanal C1",
+    category: "Limpieza",
+    description: "Plantilla semanal para limpieza con descuento automático concentrado en C1.",
+    settings: {
+      showWorkflow: true,
+      showMetrics: true,
+      showAssignee: true,
+      showDates: true,
+      operationalContextType: "cleaningSite",
+      operationalContextLabel: "Sede de limpieza",
+      operationalContextOptions: ["C1", "C2", "C3"],
+      operationalContextValue: "C1",
+    },
+    columns: [
+      { templateKey: "actividadLimpiezaC1", label: "Actividad", type: BOARD_ACTIVITY_LIST_FIELD, optionCatalogCategory: "Limpieza", required: true, width: "lg", groupName: "Semana", groupColor: "#e0f2fe", helpText: "Cada actividad del catálogo de limpieza genera una fila operativa para la semana." },
+      { label: "Zona específica", type: "text", width: "md", groupName: "Ubicación", groupColor: "#fee2e2", helpText: "Detalle interno dentro de C1, por ejemplo oficinas, baños o pasillo." },
+      { label: "Frecuencia objetivo", type: "text", width: "sm", groupName: "Control", groupColor: "#dcfce7", helpText: "Frecuencia o turno esperado para ejecutar la limpieza." },
+      { label: "Observación", type: "textarea", width: "lg", groupName: "Cierre", groupColor: "#fef3c7", helpText: "Comentarios, incidencias o necesidades detectadas durante la limpieza." },
+    ],
+  },
+  {
+    id: "limpieza-c2",
+    name: "Limpieza semanal C2",
+    category: "Limpieza",
+    description: "Plantilla semanal para limpieza con descuento automático concentrado en C2.",
+    settings: {
+      showWorkflow: true,
+      showMetrics: true,
+      showAssignee: true,
+      showDates: true,
+      operationalContextType: "cleaningSite",
+      operationalContextLabel: "Sede de limpieza",
+      operationalContextOptions: ["C1", "C2", "C3"],
+      operationalContextValue: "C2",
+    },
+    columns: [
+      { templateKey: "actividadLimpiezaC2", label: "Actividad", type: BOARD_ACTIVITY_LIST_FIELD, optionCatalogCategory: "Limpieza", required: true, width: "lg", groupName: "Semana", groupColor: "#e0f2fe", helpText: "Cada actividad del catálogo de limpieza genera una fila operativa para la semana." },
+      { label: "Zona específica", type: "text", width: "md", groupName: "Ubicación", groupColor: "#fee2e2", helpText: "Detalle interno dentro de C2, por ejemplo oficinas, baños o pasillo." },
+      { label: "Frecuencia objetivo", type: "text", width: "sm", groupName: "Control", groupColor: "#dcfce7", helpText: "Frecuencia o turno esperado para ejecutar la limpieza." },
+      { label: "Observación", type: "textarea", width: "lg", groupName: "Cierre", groupColor: "#fef3c7", helpText: "Comentarios, incidencias o necesidades detectadas durante la limpieza." },
+    ],
+  },
+  {
+    id: "limpieza-c3",
+    name: "Limpieza semanal C3",
+    category: "Limpieza",
+    description: "Plantilla semanal para limpieza con descuento automático concentrado en C3.",
+    settings: {
+      showWorkflow: true,
+      showMetrics: true,
+      showAssignee: true,
+      showDates: true,
+      operationalContextType: "cleaningSite",
+      operationalContextLabel: "Sede de limpieza",
+      operationalContextOptions: ["C1", "C2", "C3"],
+      operationalContextValue: "C3",
+    },
+    columns: [
+      { templateKey: "actividadLimpiezaC3", label: "Actividad", type: BOARD_ACTIVITY_LIST_FIELD, optionCatalogCategory: "Limpieza", required: true, width: "lg", groupName: "Semana", groupColor: "#e0f2fe", helpText: "Cada actividad del catálogo de limpieza genera una fila operativa para la semana." },
+      { label: "Zona específica", type: "text", width: "md", groupName: "Ubicación", groupColor: "#fee2e2", helpText: "Detalle interno dentro de C3, por ejemplo oficinas, baños o pasillo." },
+      { label: "Frecuencia objetivo", type: "text", width: "sm", groupName: "Control", groupColor: "#dcfce7", helpText: "Frecuencia o turno esperado para ejecutar la limpieza." },
+      { label: "Observación", type: "textarea", width: "lg", groupName: "Cierre", groupColor: "#fef3c7", helpText: "Comentarios, incidencias o necesidades detectadas durante la limpieza." },
+    ],
+  },
+  {
+    id: "operacion-nave",
+    name: "Operación semanal por nave",
+    category: "Operación semanal",
+    description: "Deja listo un tablero semanal con selector manual por nave para mover la operación sin reconfigurar el tablero.",
+    settings: {
+      showWorkflow: true,
+      showMetrics: true,
+      showAssignee: true,
+      showDates: true,
+      operationalContextType: "custom",
+      operationalContextLabel: "Nave",
+      operationalContextOptions: ["Nave 1", "Nave 2", "Nave 3"],
+      operationalContextValue: "Nave 1",
+    },
+    columns: [
+      { label: "Actividad", type: "text", required: true, width: "lg", groupName: "Semana", groupColor: "#e0f2fe", helpText: "Actividad o rutina principal que se ejecutará en la nave seleccionada." },
+      { label: "Objetivo", type: "textarea", width: "lg", groupName: "Planeación", groupColor: "#ecfccb", helpText: "Resultado esperado para la semana en esa nave." },
+      { label: "Fecha compromiso", type: "date", width: "sm", groupName: "Control", groupColor: "#fef3c7", helpText: "Fecha de revisión o cierre de la actividad." },
+      { label: "Observación", type: "textarea", width: "lg", groupName: "Cierre", groupColor: "#fee2e2", helpText: "Notas operativas, hallazgos o bloqueos detectados." },
+    ],
+  },
+  {
+    id: "operacion-estacion",
+    name: "Operación semanal por estación",
+    category: "Operación semanal",
+    description: "Plantilla semanal con selector manual por estación para cambiar el contexto activo desde el tablero.",
+    settings: {
+      showWorkflow: true,
+      showMetrics: true,
+      showAssignee: true,
+      showDates: true,
+      operationalContextType: "custom",
+      operationalContextLabel: "Estación",
+      operationalContextOptions: ["Estación A", "Estación B", "Estación C"],
+      operationalContextValue: "Estación A",
+    },
+    columns: [
+      { label: "Actividad", type: "text", required: true, width: "lg", groupName: "Semana", groupColor: "#e0f2fe", helpText: "Actividad o pendiente que se atenderá en la estación elegida." },
+      { label: "Checklist", type: "textarea", width: "lg", groupName: "Planeación", groupColor: "#ecfccb", helpText: "Lista corta de puntos a validar durante la semana." },
+      { label: "Fecha compromiso", type: "date", width: "sm", groupName: "Control", groupColor: "#fef3c7", helpText: "Fecha objetivo para terminar o validar la actividad." },
+      { label: "Resultado", type: "status", defaultValue: STATUS_PENDING, width: "sm", groupName: "Cierre", groupColor: "#fee2e2", helpText: "Estado operativo de la actividad dentro de la estación." },
+    ],
+  },
+  {
+    id: "operacion-nave-1-jaula-2",
+    name: "Operación semanal Nave 1 · Jaula 2",
+    category: "Operación semanal",
+    description: "Deja fija la semana operativa sobre la ubicación real Nave 1 · Jaula 2.",
+    settings: {
+      showWorkflow: true,
+      showMetrics: true,
+      showAssignee: true,
+      showDates: true,
+      operationalContextType: "custom",
+      operationalContextLabel: "Ubicación operativa",
+      operationalContextOptions: ["Nave 1 · Jaula 2"],
+      operationalContextValue: "Nave 1 · Jaula 2",
+    },
+    columns: [
+      { label: "Actividad", type: "text", required: true, width: "lg", groupName: "Semana", groupColor: "#e0f2fe", helpText: "Actividad o pendiente que se atenderá en esta ubicación fija durante la semana." },
+      { label: "Checklist", type: "textarea", width: "lg", groupName: "Planeación", groupColor: "#ecfccb", helpText: "Lista corta de puntos a validar dentro de la ubicación seleccionada." },
+      { label: "Fecha compromiso", type: "date", width: "sm", groupName: "Control", groupColor: "#fef3c7", helpText: "Fecha objetivo para terminar o validar la actividad." },
+      { label: "Resultado", type: "status", defaultValue: STATUS_PENDING, width: "sm", groupName: "Cierre", groupColor: "#fee2e2", helpText: "Estado operativo de la actividad en la ubicación fija." },
+    ],
+  },
+  {
+    id: "operacion-nave-2-estante-4",
+    name: "Operación semanal Nave 2 · Estante 4",
+    category: "Operación semanal",
+    description: "Deja fija la semana operativa sobre la ubicación real Nave 2 · Estante 4.",
+    settings: {
+      showWorkflow: true,
+      showMetrics: true,
+      showAssignee: true,
+      showDates: true,
+      operationalContextType: "custom",
+      operationalContextLabel: "Ubicación operativa",
+      operationalContextOptions: ["Nave 2 · Estante 4"],
+      operationalContextValue: "Nave 2 · Estante 4",
+    },
+    columns: [
+      { label: "Actividad", type: "text", required: true, width: "lg", groupName: "Semana", groupColor: "#e0f2fe", helpText: "Actividad o pendiente que se atenderá en esta ubicación fija durante la semana." },
+      { label: "Checklist", type: "textarea", width: "lg", groupName: "Planeación", groupColor: "#ecfccb", helpText: "Lista corta de puntos a validar dentro de la ubicación seleccionada." },
+      { label: "Fecha compromiso", type: "date", width: "sm", groupName: "Control", groupColor: "#fef3c7", helpText: "Fecha objetivo para terminar o validar la actividad." },
+      { label: "Resultado", type: "status", defaultValue: STATUS_PENDING, width: "sm", groupName: "Cierre", groupColor: "#fee2e2", helpText: "Estado operativo de la actividad en la ubicación fija." },
+    ],
+  },
+  {
+    id: "operacion-racks-a2",
+    name: "Operación semanal Racks A-2",
+    category: "Operación semanal",
+    description: "Preset fijo para seguimiento semanal sobre Racks A-2.",
+    settings: {
+      showWorkflow: true,
+      showMetrics: true,
+      showAssignee: true,
+      showDates: true,
+      operationalContextType: "custom",
+      operationalContextLabel: "Ubicación operativa",
+      operationalContextOptions: ["Racks A-2"],
+      operationalContextValue: "Racks A-2",
+    },
+    columns: [
+      { label: "Actividad", type: "text", required: true, width: "lg", groupName: "Semana", groupColor: "#e0f2fe", helpText: "Actividad o pendiente que se atenderá en esta ubicación fija durante la semana." },
+      { label: "Checklist", type: "textarea", width: "lg", groupName: "Planeación", groupColor: "#ecfccb", helpText: "Lista corta de puntos a validar dentro de la ubicación seleccionada." },
+      { label: "Fecha compromiso", type: "date", width: "sm", groupName: "Control", groupColor: "#fef3c7", helpText: "Fecha objetivo para terminar o validar la actividad." },
+      { label: "Resultado", type: "status", defaultValue: STATUS_PENDING, width: "sm", groupName: "Cierre", groupColor: "#fee2e2", helpText: "Estado operativo de la actividad en la ubicación fija." },
+    ],
+  },
+  {
+    id: "operacion-racks-b1",
+    name: "Operación semanal Racks B-1",
+    category: "Operación semanal",
+    description: "Preset fijo para seguimiento semanal sobre Racks B-1.",
+    settings: {
+      showWorkflow: true,
+      showMetrics: true,
+      showAssignee: true,
+      showDates: true,
+      operationalContextType: "custom",
+      operationalContextLabel: "Ubicación operativa",
+      operationalContextOptions: ["Racks B-1"],
+      operationalContextValue: "Racks B-1",
+    },
+    columns: [
+      { label: "Actividad", type: "text", required: true, width: "lg", groupName: "Semana", groupColor: "#e0f2fe", helpText: "Actividad o pendiente que se atenderá en esta ubicación fija durante la semana." },
+      { label: "Checklist", type: "textarea", width: "lg", groupName: "Planeación", groupColor: "#ecfccb", helpText: "Lista corta de puntos a validar dentro de la ubicación seleccionada." },
+      { label: "Fecha compromiso", type: "date", width: "sm", groupName: "Control", groupColor: "#fef3c7", helpText: "Fecha objetivo para terminar o validar la actividad." },
+      { label: "Resultado", type: "status", defaultValue: STATUS_PENDING, width: "sm", groupName: "Cierre", groupColor: "#fee2e2", helpText: "Estado operativo de la actividad en la ubicación fija." },
+    ],
+  },
   {
     id: "embarques",
     name: "Embarques",
@@ -622,6 +825,12 @@ const INVENTORY_IMPORT_FIELD_ALIASES = {
   actividadcatalogoids: "activityCatalogIds",
   consumoporinicio: "consumptionPerStart",
   consumptionperstart: "consumptionPerStart",
+  sedelimpieza: "cleaningSite",
+  limpiezasede: "cleaningSite",
+  cleaningsite: "cleaningSite",
+  consumosporactividad: "activityConsumptions",
+  consumosactividad: "activityConsumptions",
+  activityconsumptions: "activityConsumptions",
 };
 
 const INVENTORY_DOMAIN_OPTIONS = [
@@ -636,11 +845,140 @@ const INVENTORY_MOVEMENT_OPTIONS = [
   { value: INVENTORY_MOVEMENT_TRANSFER, label: "Transferencia" },
 ];
 
+const CLEANING_SITE_OPTIONS = [
+  { value: "C1", label: "C1" },
+  { value: "C2", label: "C2" },
+  { value: "C3", label: "C3 principal" },
+];
+
+const DEFAULT_CLEANING_SITE = "C3";
+const BOARD_OPERATIONAL_CONTEXT_NONE = "none";
+const BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE = "cleaningSite";
+const BOARD_OPERATIONAL_CONTEXT_CUSTOM = "custom";
+const BOARD_OPERATIONAL_CONTEXT_OPTIONS = [
+  { value: BOARD_OPERATIONAL_CONTEXT_NONE, label: "Sin contexto operativo" },
+  { value: BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE, label: "Sede de limpieza C1/C2/C3" },
+  { value: BOARD_OPERATIONAL_CONTEXT_CUSTOM, label: "Estación, nave u opciones manuales" },
+];
+
 function normalizeInventoryDomain(value) {
   const key = normalizeKey(value);
   if (["cleaning", "limpieza", "clean"].includes(key)) return INVENTORY_DOMAIN_CLEANING;
   if (["orders", "order", "pedidos", "pedido"].includes(key)) return INVENTORY_DOMAIN_ORDERS;
   return INVENTORY_DOMAIN_BASE;
+}
+
+function normalizeCleaningSite(value, fallback = DEFAULT_CLEANING_SITE) {
+  const key = normalizeKey(value).replaceAll(" ", "");
+  if (key === "c1") return "C1";
+  if (key === "c2") return "C2";
+  if (["c3", "principal", "main", "default"].includes(key)) return "C3";
+  return fallback;
+}
+
+function normalizeBoardOperationalContextType(value) {
+  const normalizedValue = normalizeKey(value).replaceAll(" ", "");
+  if (["cleaningsite", "cleaning", "sedelimpieza"].includes(normalizedValue)) {
+    return BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE;
+  }
+  if (["custom", "manual", "station", "estacion", "nave", "ubicacionoperativa"].includes(normalizedValue)) {
+    return BOARD_OPERATIONAL_CONTEXT_CUSTOM;
+  }
+  return BOARD_OPERATIONAL_CONTEXT_NONE;
+}
+
+function normalizeBoardOperationalContextOptions(value, contextType = BOARD_OPERATIONAL_CONTEXT_NONE) {
+  if (contextType === BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE) {
+    return CLEANING_SITE_OPTIONS.map((option) => option.value);
+  }
+
+  let sourceValues = [];
+  if (Array.isArray(value)) {
+    sourceValues = value;
+  } else if (typeof value === "string") {
+    sourceValues = value.split(/[;,]/);
+  }
+  const seen = new Set();
+
+  return sourceValues
+    .map((entry) => String(entry || "").trim())
+    .filter((entry) => {
+      const normalizedEntry = normalizeKey(entry);
+      if (!normalizedEntry || seen.has(normalizedEntry)) return false;
+      seen.add(normalizedEntry);
+      return true;
+    });
+}
+
+function normalizeBoardOperationalContextLabel(value, contextType = BOARD_OPERATIONAL_CONTEXT_NONE) {
+  let fallbackLabel = "";
+  if (contextType === BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE) {
+    fallbackLabel = "Sede de limpieza";
+  } else if (contextType === BOARD_OPERATIONAL_CONTEXT_CUSTOM) {
+    fallbackLabel = "Ubicación operativa";
+  }
+  return String(value || "").trim() || fallbackLabel;
+}
+
+function normalizeBoardOperationalContextValue(value, contextType = BOARD_OPERATIONAL_CONTEXT_NONE, contextOptions = []) {
+  if (contextType === BOARD_OPERATIONAL_CONTEXT_NONE) return "";
+  if (contextType === BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE) {
+    return normalizeCleaningSite(value, DEFAULT_CLEANING_SITE);
+  }
+
+  const trimmedValue = String(value || "").trim();
+  if (!contextOptions.length) return trimmedValue;
+  return contextOptions.includes(trimmedValue) ? trimmedValue : contextOptions[0] || "";
+}
+
+function normalizeInventoryActivityConsumptions(value, fallbackActivityIds = [], fallbackConsumptionPerStart = 0) {
+  const normalizedFallbackQuantity = Math.max(0, Number(fallbackConsumptionPerStart || 0));
+  const consumptionMap = new Map();
+
+  function rememberConsumption(rawCatalogActivityId, rawQuantity = 0) {
+    const catalogActivityId = String(rawCatalogActivityId || "").trim();
+    if (!catalogActivityId) return;
+
+    const quantity = Math.max(0, Number(rawQuantity || 0));
+    const currentEntry = consumptionMap.get(catalogActivityId);
+    if (!currentEntry || quantity >= currentEntry.quantity) {
+      consumptionMap.set(catalogActivityId, { catalogActivityId, quantity });
+    }
+  }
+
+  if (Array.isArray(value)) {
+    value.forEach((entry) => {
+      if (entry && typeof entry === "object") {
+        rememberConsumption(entry.catalogActivityId || entry.activityCatalogId || entry.id, entry.quantity);
+        return;
+      }
+      rememberConsumption(entry, normalizedFallbackQuantity);
+    });
+  } else if (value && typeof value === "object") {
+    Object.entries(value).forEach(([catalogActivityId, quantity]) => rememberConsumption(catalogActivityId, quantity));
+  } else if (typeof value === "string") {
+    value.split(/[;,]/).forEach((entry) => {
+      const trimmedEntry = String(entry || "").trim();
+      if (!trimmedEntry) return;
+      const [catalogActivityId, rawQuantity] = trimmedEntry.split(":");
+      rememberConsumption(catalogActivityId, rawQuantity === undefined ? normalizedFallbackQuantity : rawQuantity);
+    });
+  }
+
+  let fallbackActivityIdsList = [];
+  if (Array.isArray(fallbackActivityIds)) {
+    fallbackActivityIdsList = fallbackActivityIds;
+  } else if (typeof fallbackActivityIds === "string") {
+    fallbackActivityIdsList = fallbackActivityIds.split(/[;,]/).map((entry) => entry.trim()).filter(Boolean);
+  }
+
+  Array.from(new Set(fallbackActivityIdsList)).forEach((catalogActivityId) => {
+    if (!consumptionMap.has(catalogActivityId)) {
+      rememberConsumption(catalogActivityId, normalizedFallbackQuantity);
+    }
+  });
+
+  return Array.from(consumptionMap.values());
 }
 
 function normalizeInventoryMovementType(value) {
@@ -670,20 +1008,45 @@ function normalizeInventoryTransferTargetRecord(target, fallbackUnitLabel = "pza
   };
 }
 
+function resolveInventorySourceStockUnits(domain, rawStockUnits, transferTargets, stockTrackingMode) {
+  if (domain !== INVENTORY_DOMAIN_ORDERS) {
+    return rawStockUnits;
+  }
+
+  if (normalizeKey(stockTrackingMode) === "source") {
+    return rawStockUnits;
+  }
+
+  return Math.max(0, rawStockUnits - sumInventoryTransferTargetUnits(transferTargets));
+}
+
 function normalizeInventoryItemRecord(item) {
   const domain = normalizeInventoryDomain(item?.domain);
+  const transferTargets = Array.isArray(item?.transferTargets)
+    ? item.transferTargets
+    : [];
+  const normalizedTransferTargets = domain === INVENTORY_DOMAIN_ORDERS
+    ? transferTargets.map((target) => normalizeInventoryTransferTargetRecord(target, item?.unitLabel || "pzas")).filter((target) => target.warehouse || target.storageLocation || target.availableUnits > 0)
+    : [];
+  const rawStockUnits = domain === INVENTORY_DOMAIN_BASE ? 0 : Math.max(0, Number(item?.stockUnits || 0));
+  const fallbackConsumptionPerStart = Math.max(0, Number(item?.consumptionPerStart || 0));
+  const activityConsumptions = domain === INVENTORY_DOMAIN_CLEANING
+    ? normalizeInventoryActivityConsumptions(item?.activityConsumptions, item?.activityCatalogIds, fallbackConsumptionPerStart)
+    : [];
+
   return {
     ...item,
     domain,
-    stockUnits: domain === INVENTORY_DOMAIN_BASE ? 0 : Math.max(0, Number(item?.stockUnits || 0)),
+    stockUnits: resolveInventorySourceStockUnits(domain, rawStockUnits, normalizedTransferTargets, item?.stockTrackingMode),
     minStockUnits: domain === INVENTORY_DOMAIN_BASE ? 0 : Math.max(0, Number(item?.minStockUnits || 0)),
     storageLocation: domain === INVENTORY_DOMAIN_BASE ? "" : String(item?.storageLocation || "").trim(),
+    cleaningSite: domain === INVENTORY_DOMAIN_CLEANING ? normalizeCleaningSite(item?.cleaningSite) : "",
     unitLabel: String(item?.unitLabel || "pzas").trim() || "pzas",
-    transferTargets: domain === INVENTORY_DOMAIN_ORDERS
-      ? (Array.isArray(item?.transferTargets) ? item.transferTargets : []).map((target) => normalizeInventoryTransferTargetRecord(target, item?.unitLabel || "pzas")).filter((target) => target.warehouse || target.storageLocation || target.availableUnits > 0)
-      : [],
-    activityCatalogIds: domain === INVENTORY_DOMAIN_CLEANING ? (Array.isArray(item?.activityCatalogIds) ? item.activityCatalogIds.filter(Boolean) : typeof item?.activityCatalogIds === "string" ? item.activityCatalogIds.split(/[;,]/).map((entry) => entry.trim()).filter(Boolean) : []) : [],
-    consumptionPerStart: domain === INVENTORY_DOMAIN_CLEANING ? Math.max(0, Number(item?.consumptionPerStart || 0)) : 0,
+    stockTrackingMode: domain === INVENTORY_DOMAIN_ORDERS ? "source" : "",
+    transferTargets: normalizedTransferTargets,
+    activityCatalogIds: activityConsumptions.map((entry) => entry.catalogActivityId),
+    activityConsumptions,
+    consumptionPerStart: domain === INVENTORY_DOMAIN_CLEANING ? fallbackConsumptionPerStart : 0,
   };
 }
 
@@ -703,6 +1066,7 @@ function normalizeInventoryMovementRecord(movement) {
     warehouse,
     recipientName: String(movement?.recipientName || "").trim(),
     storageLocation,
+    cleaningSite: normalizeInventoryDomain(movement?.domain) === INVENTORY_DOMAIN_CLEANING ? normalizeCleaningSite(movement?.cleaningSite) : "",
     unitLabel: String(movement?.unitLabel || "pzas").trim() || "pzas",
     remainingUnits: remainingUnits === undefined || remainingUnits === null || String(remainingUnits).trim() === "" ? null : Math.max(0, Number(remainingUnits || 0)),
     destinationBalanceUnits: destinationBalanceUnits === undefined || destinationBalanceUnits === null || String(destinationBalanceUnits).trim() === "" ? null : Math.max(0, Number(destinationBalanceUnits || 0)),
@@ -729,28 +1093,90 @@ function getInventoryAllocatedUnits(item) {
 
 function getInventoryAvailableToTransfer(item, remainingUnits = null, destinationKey = "") {
   const normalizedItem = normalizeInventoryItemRecord(item);
-  if (normalizedItem.domain !== INVENTORY_DOMAIN_ORDERS) {
-    return Math.max(0, Number(normalizedItem.stockUnits || 0));
+  return Math.max(0, Number(normalizedItem.stockUnits || 0));
+}
+
+function getComparableDateMs(value) {
+  const parsed = Date.parse(value || "");
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function formatInventoryTransferDestinationLabel(destination) {
+  const parts = [destination?.warehouse || "Sin nave", destination?.storageLocation || "Sin resguardo"];
+  if (destination?.recipientName) {
+    parts.push(destination.recipientName);
+  }
+  return parts.join(" · ");
+}
+
+function getInventorySavedStorageLocations(item, movements = []) {
+  const locationMap = new Map();
+
+  function rememberLocation(location, updatedAt = "") {
+    const trimmedLocation = String(location || "").trim();
+    if (!trimmedLocation) return;
+
+    const locationKey = normalizeKey(trimmedLocation);
+    const currentRecord = locationMap.get(locationKey);
+    const nextRecord = { key: locationKey, label: trimmedLocation, updatedAt };
+    if (!currentRecord || getComparableDateMs(updatedAt) >= getComparableDateMs(currentRecord.updatedAt)) {
+      locationMap.set(locationKey, nextRecord);
+    }
   }
 
-  const transferTargets = normalizedItem.transferTargets || [];
-  if (!destinationKey || !hasInventoryBalanceInput(remainingUnits)) {
-    return Math.max(0, Number(normalizedItem.stockUnits || 0) - getInventoryAllocatedUnits(normalizedItem));
+  rememberLocation(item?.storageLocation);
+  (movements || [])
+    .filter((movement) => movement.itemId === item?.id)
+    .forEach((movement) => rememberLocation(movement.storageLocation, movement.createdAt || movement.updatedAt || ""));
+
+  return Array.from(locationMap.values()).sort((left, right) => {
+    const byDate = getComparableDateMs(right.updatedAt) - getComparableDateMs(left.updatedAt);
+    if (byDate !== 0) return byDate;
+    return left.label.localeCompare(right.label, "es-MX");
+  });
+}
+
+function getInventorySavedTransferDestinations(item, movements = []) {
+  const destinationMap = new Map();
+
+  function rememberDestination(destination, updatedAt = "") {
+    const normalizedDestination = normalizeInventoryTransferTargetRecord({
+      ...destination,
+      updatedAt: destination?.updatedAt || updatedAt,
+    }, item?.unitLabel || "pzas");
+
+    if (!normalizedDestination.warehouse && !normalizedDestination.storageLocation) {
+      return;
+    }
+
+    const currentRecord = destinationMap.get(normalizedDestination.destinationKey);
+    if (!currentRecord || getComparableDateMs(normalizedDestination.updatedAt) >= getComparableDateMs(currentRecord.updatedAt)) {
+      destinationMap.set(normalizedDestination.destinationKey, normalizedDestination);
+      return;
+    }
+
+    if (normalizedDestination.recipientName && !currentRecord.recipientName) {
+      destinationMap.set(normalizedDestination.destinationKey, {
+        ...currentRecord,
+        recipientName: normalizedDestination.recipientName,
+      });
+    }
   }
 
-  const parsedRemainingUnits = Math.max(0, Number(remainingUnits || 0));
-  if (Number.isNaN(parsedRemainingUnits)) {
-    return Math.max(0, Number(normalizedItem.stockUnits || 0) - getInventoryAllocatedUnits(normalizedItem));
-  }
+  (item?.transferTargets || []).forEach((target) => rememberDestination(target, target?.updatedAt || ""));
+  (movements || [])
+    .filter((movement) => movement.itemId === item?.id && movement.movementType === INVENTORY_MOVEMENT_TRANSFER)
+    .forEach((movement) => rememberDestination(movement, movement.createdAt || movement.updatedAt || ""));
 
-  const currentTarget = transferTargets.find((target) => target.destinationKey === destinationKey) || null;
-  if (!currentTarget) {
-    return Math.max(0, Number(normalizedItem.stockUnits || 0) - getInventoryAllocatedUnits(normalizedItem));
-  }
+  return Array.from(destinationMap.values()).sort((left, right) => {
+    const byDate = getComparableDateMs(right.updatedAt) - getComparableDateMs(left.updatedAt);
+    if (byDate !== 0) return byDate;
+    return formatInventoryTransferDestinationLabel(left).localeCompare(formatInventoryTransferDestinationLabel(right), "es-MX");
+  });
+}
 
-  const otherAllocatedUnits = sumInventoryTransferTargetUnits(transferTargets.filter((target) => target.destinationKey !== destinationKey));
-  const reconciledStockUnits = Number(normalizedItem.stockUnits || 0) + (parsedRemainingUnits - Number(currentTarget.availableUnits || 0));
-  return Math.max(0, reconciledStockUnits - otherAllocatedUnits - parsedRemainingUnits);
+function getInventoryDefaultTransferDestination(item, movements = []) {
+  return getInventorySavedTransferDestinations(item, movements)[0] || null;
 }
 
 function getInventoryManageActionId(domain) {
@@ -780,15 +1206,20 @@ function createInventoryModalState(mode = "create", item = {}, fallbackDomain = 
     stockUnits: normalized.stockUnits ? String(normalized.stockUnits) : "",
     minStockUnits: normalized.minStockUnits ? String(normalized.minStockUnits) : "",
     storageLocation: normalized.storageLocation || "",
+    cleaningSite: normalized.cleaningSite || DEFAULT_CLEANING_SITE,
     unitLabel: normalized.unitLabel || "pzas",
     activityCatalogIds: normalized.activityCatalogIds || [],
-    consumptionPerStart: normalized.consumptionPerStart ? String(normalized.consumptionPerStart) : "",
+    activityConsumptions: (normalized.activityConsumptions || []).map((entry) => ({
+      catalogActivityId: entry.catalogActivityId,
+      quantity: entry.quantity ? String(entry.quantity) : "",
+    })),
   };
 }
 
-function createInventoryMovementModalState(item = null, movementType = INVENTORY_MOVEMENT_RESTOCK, fallbackDomain = INVENTORY_DOMAIN_BASE) {
+function createInventoryMovementModalState(item = null, movementType = INVENTORY_MOVEMENT_RESTOCK, fallbackDomain = INVENTORY_DOMAIN_BASE, options = EMPTY_OBJECT) {
   const normalizedItem = item ? normalizeInventoryItemRecord(item) : null;
   const isTransferContext = normalizedItem?.domain === INVENTORY_DOMAIN_ORDERS || fallbackDomain === INVENTORY_DOMAIN_ORDERS || movementType === INVENTORY_MOVEMENT_TRANSFER;
+  const defaultDestination = isTransferContext ? options.defaultDestination || null : null;
   return {
     open: false,
     itemId: normalizedItem?.id || null,
@@ -798,13 +1229,148 @@ function createInventoryMovementModalState(item = null, movementType = INVENTORY
     movementType,
     quantity: "",
     notes: "",
-    warehouse: "",
-    recipientName: "",
-    storageLocation: isTransferContext ? "" : normalizedItem?.storageLocation || "",
+    warehouse: defaultDestination?.warehouse || "",
+    recipientName: defaultDestination?.recipientName || "",
+    storageLocation: isTransferContext ? defaultDestination?.storageLocation || "" : normalizedItem?.storageLocation || "",
     remainingUnits: "",
-    transferTargetKey: "",
+    transferTargetKey: defaultDestination?.destinationKey || "",
     unitLabel: normalizedItem?.unitLabel || "pzas",
   };
+}
+
+function createInventoryTransferConfirmModalState() {
+  return {
+    open: false,
+    itemId: null,
+    itemName: "",
+    warehouse: "",
+    storageLocation: "",
+    recipientName: "",
+    quantity: 0,
+    unitLabel: "pzas",
+    remainingUnits: "",
+    lastKnownUnits: null,
+    pendingPayload: null,
+    draftMovementModal: null,
+  };
+}
+
+function readNotificationReadState() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(NOTIFICATION_READ_KEY) || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function readNotificationDeletedState() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(NOTIFICATION_DELETED_KEY) || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function readNotificationInboxState() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(NOTIFICATION_INBOX_KEY) || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function formatNotificationTimestamp(value) {
+  if (!value) return "Sin fecha";
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) return "Sin fecha";
+  return new Intl.DateTimeFormat("es-MX", { dateStyle: "short", timeStyle: "short" }).format(new Date(parsed));
+}
+
+function createInventoryRestockModalState(domain = INVENTORY_DOMAIN_CLEANING, itemIds = []) {
+  const safeItemIds = Array.isArray(itemIds) ? itemIds.filter(Boolean) : [];
+  return {
+    open: false,
+    domain,
+    itemIds: safeItemIds,
+    quantities: Object.fromEntries(safeItemIds.map((itemId) => [itemId, ""])),
+  };
+}
+
+function inferFeedbackToneFromMessage(message) {
+  const normalizedMessage = normalizeKey(message);
+  if (!normalizedMessage) return "success";
+  if (["no se pudo", "error", "completa", "define", "agrega", "escribe", "selecciona", "inval", "obligatoria", "obligatorio"].some((term) => normalizedMessage.includes(term))) {
+    return "danger";
+  }
+  return "success";
+}
+
+function AppToastStack({ toasts, onDismiss }) {
+  if (!toasts.length) return null;
+
+  return (
+    <div className="app-toast-stack" aria-live="polite" aria-atomic="true">
+      {toasts.map((toast) => (
+        <article key={toast.id} className={`app-toast ${toast.tone === "danger" ? "danger" : "success"} ${toast.isClosing ? "closing" : ""}`.trim()}>
+          <p>{toast.message}</p>
+          <button type="button" className="app-toast-close" onClick={() => onDismiss(toast.id)} aria-label="Cerrar aviso">
+            <X size={14} />
+          </button>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function AppNotificationCenter({ unreadNotifications, readNotifications, unreadCount, activeTab, isOpen, onToggle, onTabChange, onDeleteAllRead, onDeleteNotification, onOpenNotification }) {
+  const visibleNotifications = activeTab === "read" ? readNotifications : unreadNotifications;
+
+  return (
+    <div className="app-notification-center">
+      <button type="button" className={`app-notification-trigger ${unreadCount ? "has-unread" : ""}`.trim()} onClick={onToggle} aria-label="Abrir alertas" aria-expanded={isOpen}>
+        <Bell size={18} />
+        {unreadCount ? <span className="app-notification-badge">{Math.min(unreadCount, 99)}</span> : null}
+      </button>
+      {isOpen ? (
+        <section className="app-notification-panel" aria-label="Centro de alertas">
+          <div className="app-notification-panel-header">
+            <strong>Alertas</strong>
+            {activeTab === "read" && readNotifications.length ? <button type="button" className="app-notification-action" onClick={onDeleteAllRead}>Borrar todo</button> : null}
+          </div>
+          <div className="app-notification-tabs" role="tablist" aria-label="Filtros de alertas">
+            <button type="button" role="tab" aria-selected={activeTab === "unread"} className={activeTab === "unread" ? "app-notification-tab active" : "app-notification-tab"} onClick={() => onTabChange("unread")}>Sin leer</button>
+            <button type="button" role="tab" aria-selected={activeTab === "read"} className={activeTab === "read" ? "app-notification-tab active" : "app-notification-tab"} onClick={() => onTabChange("read")}>Leidas</button>
+          </div>
+          <div className="app-notification-list">
+            {visibleNotifications.map((notification) => (
+              <article key={notification.id} className={`app-notification-item ${notification.tone === "danger" ? "danger" : "success"} ${notification.isUnread ? "unread" : ""} ${notification.isLocked ? "locked" : ""}`.trim()}>
+                <button type="button" className="app-notification-open" onClick={() => onOpenNotification(notification)}>
+                  <div className="app-notification-item-header">
+                    <strong>{notification.title}</strong>
+                    <span>{formatNotificationTimestamp(notification.timestamp)}</span>
+                  </div>
+                  <p>{notification.message}</p>
+                  {notification.meta ? <small>{notification.meta}</small> : null}
+                </button>
+                {activeTab === "read" && !notification.isLocked ? (
+                  <div className="app-notification-delete-wrap">
+                    <button type="button" className="app-notification-delete" onClick={() => onDeleteNotification(notification.id)} aria-label="Eliminar notificación">
+                      <X size={14} />
+                    </button>
+                  </div>
+                  
+                ) : null}
+              </article>
+            ))}
+            {visibleNotifications.length ? null : <p className="subtle-line app-notification-empty">{activeTab === "read" ? "No hay notificaciones leidas guardadas." : "No hay alertas sin leer."}</p>}
+          </div>
+        </section>
+      ) : null}
+    </div>
+  );
 }
 
 const NAV_ITEMS = [
@@ -845,16 +1411,16 @@ const ACTION_DEFINITIONS = [
   { id: "exportBoardPdf", label: "Exportar tablero a PDF", category: "Mis tableros", defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
 ];
 
-const BOARD_PERMISSION_ACTION_IDS = [
+const BOARD_PERMISSION_ACTION_IDS = new Set([
   "createBoardRow",
   "editFinishedBoardRow",
   "boardWorkflow",
   "exportBoardExcel",
   "previewBoardPdf",
   "exportBoardPdf",
-];
+]);
 
-const BOARD_PERMISSION_ACTIONS = ACTION_DEFINITIONS.filter((item) => BOARD_PERMISSION_ACTION_IDS.includes(item.id));
+const BOARD_PERMISSION_ACTIONS = ACTION_DEFINITIONS.filter((item) => BOARD_PERMISSION_ACTION_IDS.has(item.id));
 
 const PAGE_ACTION_GROUPS = {
   [PAGE_CUSTOM_BOARDS]: ["createBoardRow", "editFinishedBoardRow", "boardWorkflow", "exportBoardExcel", "previewBoardPdf", "exportBoardPdf"],
@@ -979,8 +1545,8 @@ function buildDefaultPermissions() {
 
 function hasExplicitOverrideValues(override) {
   if (!override) return false;
-  const pageValues = Object.values(override.pages || {});
-  const actionValues = Object.values(override.actions || {});
+  const pageValues = Object.values(override.pages ?? EMPTY_OBJECT);
+  const actionValues = Object.values(override.actions ?? EMPTY_OBJECT);
   return pageValues.concat(actionValues).some((value) => typeof value === "boolean");
 }
 
@@ -988,7 +1554,7 @@ function remapPermissionsModel(permissions, users = []) {
   const defaults = buildDefaultPermissions();
   const knownUserIds = new Set((users || []).map((user) => user.id));
   const userById = new Map((users || []).map((user) => [user.id, user]));
-  const nextOverrides = Object.fromEntries(Object.entries(permissions?.userOverrides || {})
+  const nextOverrides = Object.fromEntries(Object.entries(permissions?.userOverrides ?? EMPTY_OBJECT)
     .filter(([userId]) => knownUserIds.has(userId))
     .filter(([userId]) => supportsManagedPermissionOverrides(userById.get(userId)?.role))
     .map(([userId, override]) => {
@@ -1041,7 +1607,7 @@ function normalizePermissions(permissions) {
       item.id,
       normalizePermissionEntry(permissions?.actions?.[item.id], defaults.actions[item.id].roles),
     ])),
-    userOverrides: Object.fromEntries(Object.entries(permissions?.userOverrides || {}).map(([userId, override]) => [
+    userOverrides: Object.fromEntries(Object.entries(permissions?.userOverrides ?? EMPTY_OBJECT).map(([userId, override]) => [
       userId,
       {
         pages: Object.fromEntries(NAV_ITEMS.map((item) => [item.id, typeof override?.pages?.[item.id] === "boolean" ? override.pages[item.id] : null])),
@@ -1153,7 +1719,7 @@ async function requestJson(path, options = {}) {
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      ...(options.headers || {}),
+      ...(options.headers ?? EMPTY_OBJECT),
     },
     ...options,
   });
@@ -1320,10 +1886,27 @@ function normalizeBoardWeeklyCycle(cycle, referenceDate = new Date()) {
   };
 }
 
+function withDefaultBoardSettings(settings) {
+  const resolvedSettings = settings && typeof settings === "object" ? settings : undefined;
+  const operationalContextType = normalizeBoardOperationalContextType(resolvedSettings?.operationalContextType);
+  const operationalContextOptions = normalizeBoardOperationalContextOptions(resolvedSettings?.operationalContextOptions, operationalContextType);
+  return {
+    showWorkflow: true,
+    showMetrics: true,
+    showAssignee: true,
+    showDates: true,
+    ...resolvedSettings,
+    operationalContextType,
+    operationalContextLabel: normalizeBoardOperationalContextLabel(resolvedSettings?.operationalContextLabel, operationalContextType),
+    operationalContextOptions,
+    operationalContextValue: normalizeBoardOperationalContextValue(resolvedSettings?.operationalContextValue, operationalContextType, operationalContextOptions),
+  };
+}
+
 function cloneBoardRowSnapshot(row) {
   return {
     ...row,
-    values: { ...(row?.values || {}) },
+    values: { ...(row?.values ?? EMPTY_OBJECT) },
   };
 }
 
@@ -1343,13 +1926,7 @@ function normalizeBoardHistorySnapshot(snapshot) {
     startDate: snapshot?.startDate || weekStart.toISOString(),
     endDate: snapshot?.endDate || getBoardWeekEnd(weekStart).toISOString(),
     archivedAt: snapshot?.archivedAt || new Date().toISOString(),
-    settings: {
-      showWorkflow: true,
-      showMetrics: true,
-      showAssignee: true,
-      showDates: true,
-      ...(snapshot?.settings || {}),
-    },
+    settings: withDefaultBoardSettings(snapshot?.settings),
     fields: Array.isArray(snapshot?.fields)
       ? snapshot.fields.map((field) => ({ ...field, colorRules: field.colorRules || [] }))
       : [],
@@ -1372,7 +1949,7 @@ function buildBoardHistorySnapshot(board, weekKey, archivedAt = new Date().toISO
     startDate: weekStart.toISOString(),
     endDate: getBoardWeekEnd(weekStart).toISOString(),
     archivedAt,
-    settings: { ...(board.settings || {}) },
+    settings: { ...(board.settings ?? EMPTY_OBJECT) },
     fields: (board.fields || []).map((field) => ({ ...field, colorRules: field.colorRules || [] })),
     rows: (board.rows || []).map((row) => cloneBoardRowSnapshot(row)),
   });
@@ -1514,16 +2091,6 @@ function getDashboardFilterEndDate(dateValue) {
   return Number.isNaN(next.getTime()) ? null : next;
 }
 
-function getIshikawaCategory(label) {
-  const normalized = normalizeKey(label);
-  if (["responsable", "operador", "personal", "capacitacion", "ausencia", "turno"].some((term) => normalized.includes(term))) return "Personas";
-  if (["inventario", "material", "faltante", "insumo", "producto", "merma"].some((term) => normalized.includes(term))) return "Materiales";
-  if (["sistema", "scanner", "escaner", "equipo", "red", "impresora", "software", "maquina"].some((term) => normalized.includes(term))) return "Maquinaria / Sistema";
-  if (["espacio", "energia", "clima", "anden", "trafico", "limpieza", "layout"].some((term) => normalized.includes(term))) return "Entorno";
-  if (["captura", "conteo", "documento", "dato", "medicion", "folio"].some((term) => normalized.includes(term))) return "Medición";
-  return "Proceso";
-}
-
 function formatDate(value) {
   if (!value) return "-";
   return new Intl.DateTimeFormat("es-MX", {
@@ -1570,16 +2137,30 @@ function formatMetricNumber(value, digits = 1) {
   return value.toFixed(digits);
 }
 
+function getAuditPeriodMs(period) {
+  if (period === "7d") return 7 * 24 * 60 * 60 * 1000;
+  if (period === "30d") return 30 * 24 * 60 * 60 * 1000;
+  return null;
+}
+
 function normalizeKey(value) {
   return (value || "")
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replaceAll(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
 }
 
 function normalizeImportHeader(value) {
-  return normalizeKey(value).replace(/[^a-z0-9]/g, "");
+  return normalizeKey(value).replaceAll(/[^a-z0-9]/g, "");
+}
+
+function normalizeMeridiemHour(hourValue, meridiem) {
+  if (meridiem === "pm") {
+    return hourValue === 12 ? 12 : hourValue + 12;
+  }
+
+  return hourValue === 12 ? 0 : hourValue;
 }
 
 function normalizeTimeValue24h(value) {
@@ -1587,15 +2168,13 @@ function normalizeTimeValue24h(value) {
   if (!raw) return "";
   if (/^\d{2}:\d{2}$/.test(raw)) return raw;
 
-  const compact = raw.toLowerCase().replace(/\s+/g, "").replace(/\./g, "");
-  const ampmMatch = compact.match(/^(\d{1,2}):(\d{2})(am|pm)$/);
+  const compact = raw.toLowerCase().replaceAll(/\s+/g, "").replaceAll(".", "");
+  const ampmMatch = /^(\d{1,2}):(\d{2})(am|pm)$/.exec(compact);
   if (ampmMatch) {
     const hourValue = Number.parseInt(ampmMatch[1], 10);
     const minuteValue = Number.parseInt(ampmMatch[2], 10);
     if (Number.isFinite(hourValue) && Number.isFinite(minuteValue)) {
-      const normalizedHour = ampmMatch[3] === "pm"
-        ? hourValue === 12 ? 12 : hourValue + 12
-        : hourValue === 12 ? 0 : hourValue;
+      const normalizedHour = normalizeMeridiemHour(hourValue, ampmMatch[3]);
       return `${String(Math.max(0, Math.min(23, normalizedHour))).padStart(2, "0")}:${String(Math.max(0, Math.min(59, minuteValue))).padStart(2, "0")}`;
     }
   }
@@ -1618,7 +2197,7 @@ function isEmptyRuleValue(value) {
 
 function parseComparableNumber(value) {
   if (isEmptyRuleValue(value)) return null;
-  const parsed = Number(String(value).replace(/,/g, "."));
+  const parsed = Number(String(value).replaceAll(",", "."));
   return Number.isFinite(parsed) ? parsed : null;
 }
 
@@ -1661,6 +2240,53 @@ function isFalsyRuleValue(value) {
   return ["no", "false", "0", "falso", "inactivo"].includes(normalized);
 }
 
+function doesFieldColorRuleMatch(rule, value) {
+  const normalizedValue = normalizeKey(value);
+  const normalizedRuleValue = normalizeKey(rule.value);
+  const valueList = parseRuleValueList(rule.value);
+
+  switch (rule.operator) {
+    case "isEmpty":
+      return isEmptyRuleValue(value);
+    case "isNotEmpty":
+      return !isEmptyRuleValue(value);
+    case "isTrue":
+      return isTruthyRuleValue(value);
+    case "isFalse":
+      return isFalsyRuleValue(value);
+    case "equals":
+      return normalizedValue === normalizedRuleValue;
+    case "notEquals":
+      return normalizedValue !== normalizedRuleValue;
+    case ">=":
+      return compareRuleValues(value, rule.value) >= 0;
+    case "<=":
+      return compareRuleValues(value, rule.value) <= 0;
+    case ">":
+      return compareRuleValues(value, rule.value) > 0;
+    case "<":
+      return compareRuleValues(value, rule.value) < 0;
+    case "contains":
+      return normalizedValue.includes(normalizedRuleValue);
+    case "notContains":
+      return !normalizedValue.includes(normalizedRuleValue);
+    case "startsWith":
+      return normalizedValue.startsWith(normalizedRuleValue);
+    case "endsWith":
+      return normalizedValue.endsWith(normalizedRuleValue);
+    case "inList":
+      return valueList.includes(normalizedValue);
+    case "notInList":
+      return !valueList.includes(normalizedValue);
+    default:
+      return false;
+  }
+}
+
+function getFieldColorRule(field, value) {
+  return (field.colorRules || []).find((rule) => doesFieldColorRuleMatch(rule, value)) || null;
+}
+
 function formatInventoryLookupLabel(item) {
   if (!item) return "";
   return `${item.name} · ${item.presentation}`;
@@ -1681,7 +2307,7 @@ function resolveInventoryPropertySourceFieldId(fields = [], preferredSourceField
   if (preferredSourceFieldId && sourceFields.some((field) => field.id === preferredSourceFieldId)) {
     return preferredSourceFieldId;
   }
-  return sourceFields[sourceFields.length - 1]?.id || "";
+  return sourceFields.at(-1)?.id || "";
 }
 
 function getInventoryBundleEditableFields(fields, lookupFieldId) {
@@ -1689,7 +2315,7 @@ function getInventoryBundleEditableFields(fields, lookupFieldId) {
 }
 
 function inferInventoryBundleFieldType(fields, column) {
-  if (!column || column.type !== "inventoryLookup") return column?.type || "text";
+  if (column?.type !== "inventoryLookup") return column?.type ?? "text";
   const editableFields = getInventoryBundleEditableFields(fields, column.id);
   const editableRoles = new Set(editableFields.map((field) => field.bundleRole));
   if (editableRoles.has("piecesPerBox") && editableRoles.has("boxesPerPallet")) {
@@ -1794,6 +2420,23 @@ function buildInventoryBundleFields(draft, preservedLookupId = null) {
   ];
 }
 
+function buildUpdatedDraftColumns(currentColumns, editingDraftColumnId, isBundleField, fieldsToInsert) {
+  if (!editingDraftColumnId) {
+    return currentColumns.concat(fieldsToInsert);
+  }
+
+  return currentColumns.flatMap((column) => {
+    if (!isBundleField) {
+      return column.id === editingDraftColumnId ? fieldsToInsert : [column];
+    }
+
+    const derivedIds = new Set(getInventoryBundleEditableFields(currentColumns, editingDraftColumnId).map((item) => item.id));
+    if (column.id === editingDraftColumnId) return fieldsToInsert;
+    if (derivedIds.has(column.id)) return [];
+    return [column];
+  });
+}
+
 function findInventoryItemByQuery(items, query) {
   const normalizedQuery = normalizeKey(query);
   if (!normalizedQuery) return null;
@@ -1847,6 +2490,10 @@ function createEmptyBoardDraft() {
       auxColumnsOrder: [...DEFAULT_BOARD_AUX_COLUMNS_ORDER],
       columnOrder: [],
       auxColumnWidths: {},
+      operationalContextType: BOARD_OPERATIONAL_CONTEXT_NONE,
+      operationalContextLabel: "",
+      operationalContextOptions: [],
+      operationalContextValue: "",
     },
     columns: [],
     ...createEmptyFieldDraft(),
@@ -1868,41 +2515,76 @@ function createBoardDraftFromBoard(board) {
     ownerId: board?.ownerId || "",
     accessUserIds: [...(board?.accessUserIds || [])],
     settings: {
-      showWorkflow: true,
-      showMetrics: true,
-      showAssignee: true,
-      showDates: true,
+      ...withDefaultBoardSettings(board?.settings),
       auxColumnsOrder: [...DEFAULT_BOARD_AUX_COLUMNS_ORDER],
-      ...(board?.settings || {}),
     },
     columns: cloneDraftColumns(board?.fields || []),
     ...createEmptyFieldDraft(),
   };
 }
 
-function getPreviewFieldSeedValue(field, currentUserId, sampleInventory, variant = 0) {
-  if (field.defaultValue !== undefined && field.defaultValue !== null && String(field.defaultValue).trim() !== "") {
-    if (["number", "currency", "percentage"].includes(field.type)) return Number(field.defaultValue || 0);
-    if (field.type === "boolean") return String(field.defaultValue).toLowerCase() === "si" ? "Si" : field.defaultValue;
-    return field.defaultValue;
+function hasFieldDefaultValue(field) {
+  return field.defaultValue !== undefined && field.defaultValue !== null && String(field.defaultValue).trim() !== "";
+}
+
+function getFieldDefaultPreviewValue(field) {
+  if (!hasFieldDefaultValue(field)) return undefined;
+  if (["number", "currency", "percentage"].includes(field.type)) return Number(field.defaultValue || 0);
+  if (field.type === "boolean") return String(field.defaultValue).toLowerCase() === "si" ? "Si" : field.defaultValue;
+  return field.defaultValue;
+}
+
+function getPreviewDateValue(variant) {
+  const nextDate = new Date();
+  nextDate.setDate(nextDate.getDate() + variant);
+  return nextDate.toISOString().slice(0, 10);
+}
+
+function getDirectPreviewSeedValue(fieldType, currentUserId, variant) {
+  const directPreviewValueByType = {
+    status: variant === 0 ? STATUS_PENDING : STATUS_RUNNING,
+    date: getPreviewDateValue(variant),
+    time: variant === 0 ? "08:00" : "09:30",
+    boolean: variant === 0 ? "Si" : "No",
+    user: currentUserId || "",
+  };
+  return Object.hasOwn(directPreviewValueByType, fieldType) ? directPreviewValueByType[fieldType] : undefined;
+}
+
+function getTextPreviewSeedValue(field, variant) {
+  if (field.type === "textarea") {
+    return variant === 0 ? (field.placeholder || "Notas rápidas de ejemplo") : "Seguimiento validado en vista previa";
+  }
+  if (["text", "email", "phone", "url"].includes(field.type)) {
+    return variant === 0 ? (field.placeholder || field.label || "Dato") : `${field.label || "Dato"} 2`;
+  }
+  return undefined;
+}
+
+function getTypedPreviewSeedValue(field, currentUserId, sampleInventory, variant) {
+  if (isBoardActivityListField(field)) return variant === 0 ? "Actividad 1" : "Actividad 2";
+  if (isInventoryLookupFieldType(field.type)) return sampleInventory?.id || "preview-inventory";
+
+  if (["number", "currency", "percentage"].includes(field.type)) {
+    return variant === 0 ? 12 : 18;
+  }
+  if (field.type === "select") {
+    return field.options?.[variant] || field.options?.[0] || "Opción";
   }
 
-  if (["number", "currency", "percentage"].includes(field.type)) return variant === 0 ? 12 : 18;
-  if (isBoardActivityListField(field)) return variant === 0 ? "Actividad 1" : "Actividad 2";
-  if (field.type === "select") return field.options?.[variant] || field.options?.[0] || "Opción";
-  if (isInventoryLookupFieldType(field.type)) return sampleInventory?.id || "preview-inventory";
-  if (field.type === "status") return variant === 0 ? STATUS_PENDING : STATUS_RUNNING;
-  if (field.type === "date") {
-    const nextDate = new Date();
-    nextDate.setDate(nextDate.getDate() + variant);
-    return nextDate.toISOString().slice(0, 10);
-  }
-  if (field.type === "time") return variant === 0 ? "08:00" : "09:30";
-  if (field.type === "boolean") return variant === 0 ? "Si" : "No";
-  if (field.type === "user") return currentUserId || "";
-  if (field.type === "textarea") return variant === 0 ? (field.placeholder || "Notas rápidas de ejemplo") : "Seguimiento validado en vista previa";
-  if (["text", "email", "phone", "url"].includes(field.type)) return variant === 0 ? (field.placeholder || field.label || "Dato") : `${field.label || "Dato"} 2`;
+  const directPreviewValue = getDirectPreviewSeedValue(field.type, currentUserId, variant);
+  if (directPreviewValue !== undefined) return directPreviewValue;
+
+  const textPreviewValue = getTextPreviewSeedValue(field, variant);
+  if (textPreviewValue !== undefined) return textPreviewValue;
+
   return field.placeholder || field.label || "Dato";
+}
+
+function getPreviewFieldSeedValue(field, currentUserId, sampleInventory, variant = 0) {
+  const defaultValue = getFieldDefaultPreviewValue(field);
+  if (defaultValue !== undefined) return defaultValue;
+  return getTypedPreviewSeedValue(field, currentUserId, sampleInventory, variant);
 }
 
 function buildPreviewRowValues(fields, currentUserId, inventoryItems, variant = 0) {
@@ -1968,12 +2650,8 @@ function buildBoardPreviewModel(baseBoard, currentUserId, inventoryItems) {
     ownerId: baseBoard?.ownerId || currentUserId || "",
     accessUserIds: [...(baseBoard?.accessUserIds || [])],
     settings: {
-      showWorkflow: true,
-      showMetrics: true,
-      showAssignee: true,
-      showDates: true,
+      ...withDefaultBoardSettings(baseBoard?.settings),
       auxColumnsOrder: [...DEFAULT_BOARD_AUX_COLUMNS_ORDER],
-      ...(baseBoard?.settings || {}),
     },
     fields,
     rows: previewRows,
@@ -2002,26 +2680,31 @@ function buildTemplatePreviewBoard(template, currentUserId, inventoryItems) {
   }, currentUserId, inventoryItems);
 }
 
-function formatBoardPreviewValue(value, field, userMap, inventoryItems) {
+function getTypedBoardPreviewValue(value, field, userMap, inventoryItems) {
   if (isInventoryLookupFieldType(field.type)) {
     const inventoryItem = (inventoryItems || []).find((item) => item.id === value);
     return inventoryItem ? `${inventoryItem.name} · ${inventoryItem.presentation}` : "Producto vinculado";
   }
-  if (field.type === "user") {
-    return userMap.get(value)?.name || "Player";
+
+  switch (field.type) {
+    case "user":
+      return userMap.get(value)?.name || "Player";
+    case "date":
+      return value ? formatDate(value) : null;
+    case "currency":
+      return value ? `$${Number(value).toFixed(2)}` : "$0.00";
+    case "percentage":
+      return value ? `${Number(value)}%` : "0%";
+    case "boolean":
+      return value === "Si" ? "Sí" : "No";
+    default:
+      return null;
   }
-  if (field.type === "date" && value) {
-    return formatDate(value);
-  }
-  if (field.type === "currency") {
-    return value ? `$${Number(value).toFixed(2)}` : "$0.00";
-  }
-  if (field.type === "percentage") {
-    return value ? `${Number(value)}%` : "0%";
-  }
-  if (field.type === "boolean") {
-    return value === "Si" ? "Sí" : "No";
-  }
+}
+
+function formatBoardPreviewValue(value, field, userMap, inventoryItems) {
+  const typedValue = getTypedBoardPreviewValue(value, field, userMap, inventoryItems);
+  if (typedValue !== null) return typedValue;
   if (value === "" || value === null || value === undefined) {
     return field.placeholder || "Sin captura";
   }
@@ -2039,6 +2722,18 @@ function renderBoardFieldLabel(label, required = false) {
       {required ? <span className="required-mark" aria-hidden="true"> *</span> : null}
     </>
   );
+}
+
+function getProfileEditAvailabilityMessage(canBypassEditLimit, hasSelfEditAvailable) {
+  if (canBypassEditLimit) return "Edición libre por nivel interno.";
+  if (hasSelfEditAvailable) return "Disponible 1 corrección personal del perfil.";
+  return "La siguiente corrección requiere apoyo de Senior o Lead.";
+}
+
+function getHeaderEyebrowText(page) {
+  if (page === PAGE_DASHBOARD) return "Panel principal";
+  if (page === PAGE_USERS) return "Players y permisos";
+  return "Operación diaria";
 }
 
 function buildTemplateColumns(template) {
@@ -2243,8 +2938,8 @@ function toInventoryNumber(value) {
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
   const cleaned = String(value || "")
     .trim()
-    .replace(/,/g, ".")
-    .replace(/[^0-9.-]/g, "");
+    .replaceAll(",", ".")
+    .replaceAll(/[^0-9.-]/g, "");
   const parsed = Number(cleaned);
   return Number.isFinite(parsed) ? parsed : 0;
 }
@@ -2261,52 +2956,67 @@ function decodeCsvBuffer(buffer) {
   return new TextDecoder("windows-1252", { fatal: false }).decode(buffer);
 }
 
+function pushCsvRowIfNotEmpty(rows, currentRow, currentValue) {
+  const nextRow = currentRow.concat(currentValue);
+  if (nextRow.some((value) => String(value).trim() !== "")) {
+    rows.push(nextRow);
+  }
+}
+
+function isCsvRowBreak(character, isInsideQuotes) {
+  return !isInsideQuotes && (character === "\n" || character === "\r");
+}
+
+function isCsvColumnBreak(character, isInsideQuotes) {
+  return !isInsideQuotes && character === ",";
+}
+
+function consumeCsvCharacter(parserState, rows, character, nextCharacter) {
+  if (character === '"') {
+    if (parserState.isInsideQuotes && nextCharacter === '"') {
+      parserState.currentValue += '"';
+      return true;
+    }
+    parserState.isInsideQuotes = !parserState.isInsideQuotes;
+    return false;
+  }
+
+  if (isCsvColumnBreak(character, parserState.isInsideQuotes)) {
+    parserState.currentRow.push(parserState.currentValue);
+    parserState.currentValue = "";
+    return false;
+  }
+
+  if (isCsvRowBreak(character, parserState.isInsideQuotes)) {
+    pushCsvRowIfNotEmpty(rows, parserState.currentRow, parserState.currentValue);
+    parserState.currentRow = [];
+    parserState.currentValue = "";
+    return character === "\r" && nextCharacter === "\n";
+  }
+
+  parserState.currentValue += character;
+  return false;
+}
+
 function parseCsvTextToObjects(text) {
   const rows = [];
-  let currentRow = [];
-  let currentValue = "";
-  let isInsideQuotes = false;
+  const parserState = {
+    currentRow: [],
+    currentValue: "",
+    isInsideQuotes: false,
+  };
 
   for (let index = 0; index < text.length; index += 1) {
     const character = text[index];
     const nextCharacter = text[index + 1];
 
-    if (character === '"') {
-      if (isInsideQuotes && nextCharacter === '"') {
-        currentValue += '"';
-        index += 1;
-      } else {
-        isInsideQuotes = !isInsideQuotes;
-      }
-      continue;
+    const shouldSkipNext = consumeCsvCharacter(parserState, rows, character, nextCharacter);
+    if (shouldSkipNext) {
+      index += 1;
     }
-
-    if (character === "," && !isInsideQuotes) {
-      currentRow.push(currentValue);
-      currentValue = "";
-      continue;
-    }
-
-    if ((character === "\n" || character === "\r") && !isInsideQuotes) {
-      if (character === "\r" && nextCharacter === "\n") {
-        index += 1;
-      }
-      currentRow.push(currentValue);
-      if (currentRow.some((value) => String(value).trim() !== "")) {
-        rows.push(currentRow);
-      }
-      currentRow = [];
-      currentValue = "";
-      continue;
-    }
-
-    currentValue += character;
   }
 
-  currentRow.push(currentValue);
-  if (currentRow.some((value) => String(value).trim() !== "")) {
-    rows.push(currentRow);
-  }
+  pushCsvRowIfNotEmpty(rows, parserState.currentRow, parserState.currentValue);
 
   if (!rows.length) return [];
 
@@ -2341,7 +3051,7 @@ function sanitizeImportedText(value) {
 
   if (/Ã.|Â.|â./.test(value)) {
     try {
-      const bytes = Uint8Array.from(value, (character) => character.charCodeAt(0));
+      const bytes = Uint8Array.from(value, (character) => character.codePointAt(0) || 0);
       return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
     } catch {
       return value;
@@ -2352,7 +3062,7 @@ function sanitizeImportedText(value) {
 }
 
 function mapInventoryImportRow(row, index) {
-  const normalizedRow = Object.entries(row || {}).reduce((accumulator, [key, value]) => {
+  const normalizedRow = Object.entries(row ?? EMPTY_OBJECT).reduce((accumulator, [key, value]) => {
     const alias = INVENTORY_IMPORT_FIELD_ALIASES[normalizeImportHeader(key)];
     if (alias) accumulator[alias] = sanitizeImportedText(value);
     return accumulator;
@@ -2374,8 +3084,10 @@ function mapInventoryImportRow(row, index) {
     stockUnits: toInventoryNumber(normalizedRow.stockUnits),
     minStockUnits: toInventoryNumber(normalizedRow.minStockUnits),
     storageLocation: String(normalizedRow.storageLocation || "").trim(),
+    cleaningSite: normalizeCleaningSite(normalizedRow.cleaningSite),
     unitLabel: String(normalizedRow.unitLabel || "pzas").trim() || "pzas",
     activityCatalogIds: String(normalizedRow.activityCatalogIds || "").split(/[;,]/).map((entry) => entry.trim()).filter(Boolean),
+    activityConsumptions: normalizeInventoryActivityConsumptions(normalizedRow.activityConsumptions, normalizedRow.activityCatalogIds, toInventoryNumber(normalizedRow.consumptionPerStart)),
     consumptionPerStart: toInventoryNumber(normalizedRow.consumptionPerStart),
   };
 }
@@ -2428,15 +3140,15 @@ function excelColumnLettersToIndex(letters) {
   const normalized = String(letters || "").trim().toUpperCase();
   let total = 0;
   for (let index = 0; index < normalized.length; index += 1) {
-    total = total * 26 + (normalized.charCodeAt(index) - 64);
+    total = total * 26 + ((normalized.codePointAt(index) || 64) - 64);
   }
   return Math.max(0, total - 1);
 }
 
 function parseSimpleExcelFormula(formula) {
-  const expression = String(formula || "").trim().replace(/^=/, "").replace(/\$/g, "");
+  const expression = String(formula || "").trim().replace(/^=/, "").replaceAll("$", "");
   if (!expression || expression.includes("!")) return null;
-  const match = expression.match(/^([A-Z]+)\d+\s*([+\-*/])\s*([A-Z]+)\d+$/i);
+  const match = /^([A-Z]+)\d+\s*([+\-*/])\s*([A-Z]+)\d+$/i.exec(expression);
   if (!match) return null;
   return {
     leftColumnIndex: excelColumnLettersToIndex(match[1]),
@@ -2478,7 +3190,7 @@ function inferImportedFieldTypeFromSamples(samples) {
   const phoneScore = normalized.filter((value) => /^\+?[\d\s()-]{8,}$/.test(value)).length / normalized.length;
   if (phoneScore >= 0.9) return { type: "phone", options: [] };
 
-  const numericSamples = normalized.map((value) => Number(String(value).replace(/[$,%\s,]/g, ""))).filter((value) => Number.isFinite(value));
+  const numericSamples = normalized.map((value) => Number(String(value).replaceAll(/[,$%\s]/g, ""))).filter((item) => Number.isFinite(item));
   const numericScore = numericSamples.length / normalized.length;
 
   if (numericScore >= 0.9) {
@@ -2500,19 +3212,9 @@ function inferImportedFieldTypeFromSamples(samples) {
   return { type: "text", options: [] };
 }
 
-async function parseBoardStructureImportFile(file) {
-  const buffer = await file.arrayBuffer();
-  const ExcelJS = await getExcelJsModule();
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
-  const firstSheet = workbook.worksheets[0];
-
-  if (!firstSheet) {
-    throw new Error("No se encontró ninguna hoja en el archivo.");
-  }
-
-  const headerRow = firstSheet.getRow(1);
-  const columnCount = headerRow.actualCellCount || headerRow.cellCount || firstSheet.columnCount || 0;
+function getWorksheetHeaders(worksheet) {
+  const headerRow = worksheet.getRow(1);
+  const columnCount = headerRow.actualCellCount || headerRow.cellCount || worksheet.columnCount || 0;
   if (!columnCount) {
     throw new Error("El archivo no tiene encabezados en la primera fila.");
   }
@@ -2522,37 +3224,41 @@ async function parseBoardStructureImportFile(file) {
     headers.push(String(headerRow.getCell(columnIndex).text || `Campo ${columnIndex}`).trim() || `Campo ${columnIndex}`);
   }
 
+  return headers;
+}
+
+function collectBoardStructureCellData(cell, targetIndex, headers, rowByHeader, sampleValuesByColumn, formulaByColumn, styleHintByColumn) {
+  const raw = cell.value;
+  const textValue = String(cell.text || "").trim();
+  const { fillColor, textColor } = getExcelCellColors(cell);
+
+  if (!formulaByColumn[targetIndex] && raw && typeof raw === "object" && typeof raw.formula === "string") {
+    formulaByColumn[targetIndex] = raw.formula;
+  }
+  if (textValue) {
+    sampleValuesByColumn[targetIndex].push(textValue);
+  }
+  if (!styleHintByColumn[targetIndex].value && textValue && (fillColor || textColor)) {
+    styleHintByColumn[targetIndex] = { value: textValue, fillColor, textColor };
+  }
+
+  rowByHeader[headers[targetIndex]] = textValue;
+}
+
+function collectBoardStructureSheetData(worksheet, headers) {
   const sampleValuesByColumn = headers.map(() => []);
   const formulaByColumn = headers.map(() => "");
   const styleHintByColumn = headers.map(() => ({ value: "", fillColor: "", textColor: "" }));
   const importedRows = [];
 
-  for (let rowIndex = 2; rowIndex <= Math.min(firstSheet.rowCount, 60); rowIndex += 1) {
-    const worksheetRow = firstSheet.getRow(rowIndex);
+  for (let rowIndex = 2; rowIndex <= Math.min(worksheet.rowCount, 60); rowIndex += 1) {
+    const worksheetRow = worksheet.getRow(rowIndex);
     const rowByHeader = {};
+
     for (let columnIndex = 1; columnIndex <= headers.length; columnIndex += 1) {
       const cell = worksheetRow.getCell(columnIndex);
-      const raw = cell.value;
-      const textValue = String(cell.text || "").trim();
-      const { fillColor, textColor } = getExcelCellColors(cell);
-
-      if (!formulaByColumn[columnIndex - 1] && raw && typeof raw === "object" && typeof raw.formula === "string") {
-        formulaByColumn[columnIndex - 1] = raw.formula;
-      }
-
-      if (textValue) {
-        sampleValuesByColumn[columnIndex - 1].push(textValue);
-      }
-
-      if (!styleHintByColumn[columnIndex - 1].value && textValue && (fillColor || textColor)) {
-        styleHintByColumn[columnIndex - 1] = {
-          value: textValue,
-          fillColor,
-          textColor,
-        };
-      }
-
-      rowByHeader[headers[columnIndex - 1]] = textValue;
+      const targetIndex = columnIndex - 1;
+      collectBoardStructureCellData(cell, targetIndex, headers, rowByHeader, sampleValuesByColumn, formulaByColumn, styleHintByColumn);
     }
 
     if (Object.values(rowByHeader).some((value) => String(value || "").trim() !== "")) {
@@ -2560,23 +3266,34 @@ async function parseBoardStructureImportFile(file) {
     }
   }
 
-  const formulaOperationMap = {
-    "+": "add",
-    "-": "subtract",
-    "*": "multiply",
-    "/": "divide",
-  };
+  return { sampleValuesByColumn, formulaByColumn, styleHintByColumn, importedRows };
+}
 
+function buildImportedColorRules(styleHint) {
+  if (!styleHint?.value || !(styleHint?.fillColor || styleHint?.textColor)) {
+    return [];
+  }
+
+  return [{
+    operator: "equals",
+    value: styleHint.value,
+    color: styleHint.fillColor || "#fee2e2",
+    textColor: styleHint.textColor || "#111827",
+  }];
+}
+
+function buildImportedBoardFields(headers, formulaByColumn, sampleValuesByColumn, styleHintByColumn, sheetName) {
+  const formulaOperationMap = { "+": "add", "-": "subtract", "*": "multiply", "/": "divide" };
   const pendingFormulaMetaByFieldId = new Map();
   const unsupportedFormulaColumns = [];
   const unsupportedFormulaDetails = [];
   let supportedFormulaCount = 0;
-  const importedFields = headers.map((header, index) => {
+
+  const fields = headers.map((header, index) => {
     const sourceFormula = String(formulaByColumn[index] || "").trim();
     const formulaMeta = parseSimpleExcelFormula(sourceFormula);
     const hasUnsupportedFormula = Boolean(sourceFormula) && !formulaMeta;
     const inferred = formulaMeta ? { type: "formula", options: [] } : inferImportedFieldTypeFromSamples(sampleValuesByColumn[index]);
-    const styleHint = styleHintByColumn[index];
     const fieldId = makeId("fld");
 
     if (formulaMeta) {
@@ -2588,27 +3305,14 @@ async function parseBoardStructureImportFile(file) {
       });
     } else if (hasUnsupportedFormula) {
       unsupportedFormulaColumns.push(header);
-      unsupportedFormulaDetails.push({
-        header,
-        formula: sourceFormula,
-        columnIndex: index,
-      });
+      unsupportedFormulaDetails.push({ header, formula: sourceFormula, columnIndex: index });
     }
-
-    const importedColorRules = styleHint?.value && (styleHint?.fillColor || styleHint?.textColor)
-      ? [{
-          operator: "equals",
-          value: styleHint.value,
-          color: styleHint.fillColor || "#fee2e2",
-          textColor: styleHint.textColor || "#111827",
-        }]
-      : [];
 
     return {
       id: fieldId,
       label: header,
       type: inferred.type,
-      optionSource: inferred.type === "select" ? "manual" : "manual",
+      optionSource: "manual",
       optionCatalogCategory: "",
       options: inferred.options,
       inventoryProperty: "code",
@@ -2617,26 +3321,49 @@ async function parseBoardStructureImportFile(file) {
       formulaLeftFieldId: null,
       formulaRightFieldId: null,
       helpText: hasUnsupportedFormula
-        ? `Importado desde Excel (${firstSheet.name}). La fórmula original no es compatible para conversión automática; configúrala manualmente en el Studio.`
-        : `Importado desde Excel (${firstSheet.name}).`,
+        ? `Importado desde Excel (${sheetName}). La fórmula original no es compatible para conversión automática; configúrala manualmente en el Studio.`
+        : `Importado desde Excel (${sheetName}).`,
       placeholder: "",
       defaultValue: "",
       width: inferred.type === "textarea" ? "lg" : "md",
       required: false,
       groupName: "Importado",
       groupColor: "#dbeafe",
-      colorRules: importedColorRules,
+      colorRules: buildImportedColorRules(styleHintByColumn[index]),
     };
   });
 
-  importedFields.forEach((field) => {
+  fields.forEach((field) => {
     if (field.type !== "formula") return;
     const meta = pendingFormulaMetaByFieldId.get(field.id);
     if (!meta) return;
     field.formulaOperation = meta.operation;
-    field.formulaLeftFieldId = importedFields[meta.leftColumnIndex]?.id || null;
-    field.formulaRightFieldId = importedFields[meta.rightColumnIndex]?.id || null;
+    field.formulaLeftFieldId = fields[meta.leftColumnIndex]?.id || null;
+    field.formulaRightFieldId = fields[meta.rightColumnIndex]?.id || null;
   });
+
+  return { fields, supportedFormulaCount, unsupportedFormulaColumns, unsupportedFormulaDetails };
+}
+
+async function parseBoardStructureImportFile(file) {
+  const buffer = await file.arrayBuffer();
+  const ExcelJS = await getExcelJsModule();
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+  const firstSheet = workbook.worksheets[0];
+
+  if (!firstSheet) {
+    throw new Error("No se encontró ninguna hoja en el archivo.");
+  }
+
+  const headers = getWorksheetHeaders(firstSheet);
+  const { sampleValuesByColumn, formulaByColumn, styleHintByColumn, importedRows } = collectBoardStructureSheetData(firstSheet, headers);
+  const {
+    fields: importedFields,
+    supportedFormulaCount,
+    unsupportedFormulaColumns,
+    unsupportedFormulaDetails,
+  } = buildImportedBoardFields(headers, formulaByColumn, sampleValuesByColumn, styleHintByColumn, firstSheet.name);
 
   return {
     boardName: String(firstSheet.name || file.name.replace(/\.[^.]+$/, "")).trim() || "Tablero importado",
@@ -2650,6 +3377,75 @@ async function parseBoardStructureImportFile(file) {
       "Las fórmulas entre hojas o funciones avanzadas deben reconfigurarse manualmente en el Studio.",
     ],
   };
+}
+
+function buildImportedBoardRowValuesPatch(importedRow, columns, visibleUsers, inventoryItems, yesValues) {
+  const valuesPatch = {};
+
+  (columns || []).forEach((field) => {
+    const raw = importedRow?.[field.label];
+    if (raw === undefined || raw === null || String(raw).trim() === "") return;
+
+    if (["number", "currency", "percentage", "formula"].includes(field.type)) {
+      const parsed = Number(String(raw).replaceAll(/[,$%\s]/g, ""));
+      valuesPatch[field.id] = Number.isFinite(parsed) ? parsed : 0;
+      return;
+    }
+
+    if (field.type === "boolean") {
+      valuesPatch[field.id] = yesValues.has(String(raw).trim().toLowerCase()) ? "Si" : "No";
+      return;
+    }
+
+    if (field.type === "user") {
+      const match = visibleUsers.find((user) => normalizeKey(user.name) === normalizeKey(raw));
+      valuesPatch[field.id] = match?.id || "";
+      return;
+    }
+
+    if (isInventoryLookupFieldType(field.type)) {
+      const item = findInventoryItemByQuery(inventoryItems || [], raw);
+      valuesPatch[field.id] = item?.id || "";
+      return;
+    }
+
+    valuesPatch[field.id] = String(raw);
+  });
+
+  return valuesPatch;
+}
+
+function buildBoardSavePayload(controlBoardDraft, ownerId) {
+  const normalizedColumnOrder = getNormalizedBoardColumnOrder({
+    fields: controlBoardDraft.columns || [],
+    settings: controlBoardDraft.settings ?? EMPTY_OBJECT,
+  });
+
+  return {
+    normalizedColumnOrder,
+    payload: {
+      name: controlBoardDraft.name.trim(),
+      description: controlBoardDraft.description.trim(),
+      ownerId,
+      accessUserIds: Array.from(new Set((controlBoardDraft.accessUserIds || []).filter((userId) => userId && userId !== ownerId))),
+      settings: {
+        ...withDefaultBoardSettings(controlBoardDraft.settings),
+        columnOrder: normalizedColumnOrder,
+      },
+      columns: sortBoardFieldsByColumnOrder(cloneDraftColumns(controlBoardDraft.columns || []), normalizedColumnOrder),
+    },
+  };
+}
+
+function formatBoardExportFieldValue(field, value, inventoryItems, userMap) {
+  if (field.type === "inventoryLookup") {
+    const inventoryItem = (inventoryItems || []).find((item) => item.id === value);
+    return inventoryItem ? `${inventoryItem.name} · ${inventoryItem.presentation}` : "";
+  }
+  if (field.type === "user") {
+    return userMap.get(value)?.name || "";
+  }
+  return value;
 }
 
 async function downloadInventoryTemplateFile() {
@@ -2666,24 +3462,28 @@ async function downloadInventoryTemplateFile() {
     { header: "cajas_por_tarima", key: "cajas_por_tarima", width: 18 },
     { header: "stock_actual", key: "stock_actual", width: 18 },
     { header: "stock_minimo", key: "stock_minimo", width: 18 },
+    { header: "sede_limpieza", key: "sede_limpieza", width: 18 },
     { header: "ubicacion", key: "ubicacion", width: 24 },
     { header: "unidad", key: "unidad", width: 14 },
     { header: "actividad_catalogo_ids", key: "actividad_catalogo_ids", width: 28 },
     { header: "consumo_por_inicio", key: "consumo_por_inicio", width: 20 },
+    { header: "consumos_por_actividad", key: "consumos_por_actividad", width: 32 },
   ];
   worksheet.addRow({
-    codigo: "ALM-001",
-    dominio: "base",
+    codigo: "LIMP-001",
+    dominio: "cleaning",
     nombre: "Detergente industrial",
     presentacion: "Bidon 20L",
     piezas_por_caja: 4,
     cajas_por_tarima: 30,
     stock_actual: 18,
     stock_minimo: 8,
+    sede_limpieza: "C3",
     ubicacion: "Cuarto de limpieza",
     unidad: "bidones",
     actividad_catalogo_ids: "cat-piso;cat-oficinas",
     consumo_por_inicio: 1,
+    consumos_por_actividad: "cat-piso:1;cat-oficinas:2",
   });
 
   const buffer = await workbook.xlsx.writeBuffer();
@@ -2724,6 +3524,7 @@ function supportsManagedPermissionOverrides(role) {
 }
 
 function createUserModalState(overrides = {}) {
+  const permissionOverrides = overrides.permissionOverrides ?? EMPTY_OBJECT;
   return {
     open: false,
     mode: "create",
@@ -2737,11 +3538,10 @@ function createUserModalState(overrides = {}) {
     password: "",
     managerId: "",
     permissionPageId: "",
-    permissionOverrides: { pages: {}, actions: {} },
     ...overrides,
     permissionOverrides: {
-      pages: { ...(overrides.permissionOverrides?.pages || {}) },
-      actions: { ...(overrides.permissionOverrides?.actions || {}) },
+      pages: { ...(permissionOverrides.pages ?? EMPTY_OBJECT) },
+      actions: { ...(permissionOverrides.actions ?? EMPTY_OBJECT) },
     },
   };
 }
@@ -3013,8 +3813,8 @@ function buildSampleState() {
     normalizeInventoryItemRecord({ id: "inv-1", code: "ALM-001", name: "Tarima estándar", presentation: "Tarima", piecesPerBox: 1, boxesPerPallet: 1, domain: INVENTORY_DOMAIN_BASE, stockUnits: 36, minStockUnits: 10, storageLocation: "Almacén central", unitLabel: "pzas" }),
     normalizeInventoryItemRecord({ id: "inv-2", code: "ALM-002", name: "Caja master", presentation: "Paquete", piecesPerBox: 20, boxesPerPallet: 48, domain: INVENTORY_DOMAIN_BASE, stockUnits: 240, minStockUnits: 80, storageLocation: "Racks A-2", unitLabel: "pzas" }),
     normalizeInventoryItemRecord({ id: "inv-3", code: "ALM-003", name: "Playo transparente", presentation: "Rollo", piecesPerBox: 6, boxesPerPallet: 40, domain: INVENTORY_DOMAIN_BASE, stockUnits: 120, minStockUnits: 36, storageLocation: "Racks B-1", unitLabel: "rollos" }),
-    normalizeInventoryItemRecord({ id: "inv-4", code: "LIMP-001", name: "Detergente industrial", presentation: "Bidón 20L", piecesPerBox: 4, boxesPerPallet: 30, domain: INVENTORY_DOMAIN_CLEANING, stockUnits: 18, minStockUnits: 8, storageLocation: "Cuarto de limpieza", unitLabel: "bidones", activityCatalogIds: ["cat-piso", "cat-oficinas"], consumptionPerStart: 1 }),
-    normalizeInventoryItemRecord({ id: "inv-5", code: "LIMP-002", name: "Papel higiénico", presentation: "Paquete 12 rollos", piecesPerBox: 6, boxesPerPallet: 24, domain: INVENTORY_DOMAIN_CLEANING, stockUnits: 42, minStockUnits: 18, storageLocation: "Cuarto de limpieza", unitLabel: "paquetes", activityCatalogIds: ["cat-banos"], consumptionPerStart: 1 }),
+    normalizeInventoryItemRecord({ id: "inv-4", code: "LIMP-001", name: "Detergente industrial", presentation: "Bidón 20L", piecesPerBox: 4, boxesPerPallet: 30, domain: INVENTORY_DOMAIN_CLEANING, stockUnits: 18, minStockUnits: 8, cleaningSite: "C3", storageLocation: "Cuarto de limpieza", unitLabel: "bidones", activityConsumptions: [{ catalogActivityId: "cat-piso", quantity: 1 }, { catalogActivityId: "cat-oficinas", quantity: 1 }] }),
+    normalizeInventoryItemRecord({ id: "inv-5", code: "LIMP-002", name: "Papel higiénico", presentation: "Paquete 12 rollos", piecesPerBox: 6, boxesPerPallet: 24, domain: INVENTORY_DOMAIN_CLEANING, stockUnits: 42, minStockUnits: 18, cleaningSite: "C3", storageLocation: "Cuarto de limpieza", unitLabel: "paquetes", activityConsumptions: [{ catalogActivityId: "cat-banos", quantity: 1 }] }),
     normalizeInventoryItemRecord({ id: "inv-6", code: "PED-001", name: "Separador corrugado", presentation: "Fajo 25 piezas", piecesPerBox: 25, boxesPerPallet: 80, domain: INVENTORY_DOMAIN_ORDERS, stockUnits: 220, minStockUnits: 100, storageLocation: "Nave 2 · Estante 4", unitLabel: "pzas" }),
     normalizeInventoryItemRecord({ id: "inv-7", code: "PED-002", name: "Esquinero", presentation: "Paquete 50 piezas", piecesPerBox: 50, boxesPerPallet: 60, domain: INVENTORY_DOMAIN_ORDERS, stockUnits: 150, minStockUnits: 70, storageLocation: "Nave 1 · Jaula 2", unitLabel: "pzas" }),
   ];
@@ -3074,14 +3874,51 @@ function buildSampleState() {
   };
 }
 
-function normalizeWarehouseState(parsed) {
-  if (!parsed) return buildSampleState();
-  const sampleState = buildSampleState();
-  const shouldHydrateDemoWorkspace = !Array.isArray(parsed.users) || parsed.users.length === 0;
-  const sourceUsers = shouldHydrateDemoWorkspace ? sampleState.users : parsed.users;
-  const users = sourceUsers.map((user) => normalizeUserRecord(user, user.managerId ?? parsed.currentUserId ?? null));
-  const normalizedPermissions = normalizePermissions(remapPermissionsModel(parsed.permissions, users));
-  const normalizedState = {
+function normalizeBoardRowValues(row, timeFieldIds) {
+  return Object.entries(row.values || {}).reduce((accumulator, [fieldId, fieldValue]) => {
+    accumulator[fieldId] = timeFieldIds.has(fieldId) ? normalizeTimeValue24h(fieldValue) : fieldValue;
+    return accumulator;
+  }, {});
+}
+
+function normalizeControlBoard(board, users, normalizedPermissions) {
+  const timeFieldIds = new Set((board.fields || []).filter((field) => field.type === "time").map((field) => field.id));
+  const normalizedBoard = {
+    ...board,
+    createdById: board.createdById ?? users[0]?.id ?? null,
+    ownerId: board.ownerId ?? board.createdById ?? users[0]?.id ?? null,
+    accessUserIds: Array.isArray(board.accessUserIds) ? board.accessUserIds : [],
+    settings: withDefaultBoardSettings(board.settings),
+    rows: Array.isArray(board.rows)
+      ? board.rows.map((row) => ({
+          ...row,
+          values: normalizeBoardRowValues(row, timeFieldIds),
+        }))
+      : [],
+  };
+
+  return {
+    ...normalizedBoard,
+    permissions: normalizeBoardPermissions(board.permissions, normalizedPermissions, normalizedBoard),
+  };
+}
+
+function getNormalizedControlBoards(controlBoards, users, normalizedPermissions, sampleState) {
+  if (!Array.isArray(controlBoards)) {
+    return sampleState.controlBoards;
+  }
+  return controlBoards.map((board) => normalizeControlBoard(board, users, normalizedPermissions));
+}
+
+function resolveHydratedWorkspaceCollection(parsedCollection, sampleCollection, shouldHydrateDemoWorkspace, requireNonEmpty = false) {
+  if (!shouldHydrateDemoWorkspace) return parsedCollection;
+  if (!Array.isArray(parsedCollection)) return sampleCollection;
+  if (requireNonEmpty && parsedCollection.length === 0) return sampleCollection;
+  return parsedCollection;
+}
+
+function buildNormalizedWarehouseState(parsed, sampleState, users, normalizedPermissions, shouldHydrateDemoWorkspace) {
+  return {
     ...parsed,
     system: {
       masterBootstrapEnabled: parsed.system?.masterBootstrapEnabled ?? !hasLeadUser(users),
@@ -3089,45 +3926,32 @@ function normalizeWarehouseState(parsed) {
     },
     users,
     areaCatalog: buildAreaCatalog(users, parsed.areaCatalog),
-    weeks: shouldHydrateDemoWorkspace && (!Array.isArray(parsed.weeks) || parsed.weeks.length === 0) ? sampleState.weeks : parsed.weeks,
+    weeks: resolveHydratedWorkspaceCollection(parsed.weeks, sampleState.weeks, shouldHydrateDemoWorkspace, true),
     catalog: Array.isArray(parsed.catalog) && parsed.catalog.length ? parsed.catalog.map((item) => normalizeCatalogItemRecord(item)) : sampleState.catalog,
-    activities: shouldHydrateDemoWorkspace && (!Array.isArray(parsed.activities) || parsed.activities.length === 0) ? sampleState.activities : parsed.activities,
-    pauseLogs: shouldHydrateDemoWorkspace && !Array.isArray(parsed.pauseLogs) ? sampleState.pauseLogs : parsed.pauseLogs,
-    controlRows: shouldHydrateDemoWorkspace && (!Array.isArray(parsed.controlRows) || parsed.controlRows.length === 0) ? sampleState.controlRows : parsed.controlRows,
+    activities: resolveHydratedWorkspaceCollection(parsed.activities, sampleState.activities, shouldHydrateDemoWorkspace, true),
+    pauseLogs: resolveHydratedWorkspaceCollection(parsed.pauseLogs, sampleState.pauseLogs, shouldHydrateDemoWorkspace),
+    controlRows: resolveHydratedWorkspaceCollection(parsed.controlRows, sampleState.controlRows, shouldHydrateDemoWorkspace, true),
     boardWeeklyCycle: normalizeBoardWeeklyCycle(parsed.boardWeeklyCycle),
     boardWeekHistory: Array.isArray(parsed.boardWeekHistory)
       ? parsed.boardWeekHistory.map((snapshot) => normalizeBoardHistorySnapshot(snapshot))
       : sampleState.boardWeekHistory,
-    controlBoards: Array.isArray(parsed.controlBoards)
-      ? parsed.controlBoards.map((board) => {
-          const timeFieldIds = new Set((board.fields || []).filter((field) => field.type === "time").map((field) => field.id));
-          const normalizedBoard = {
-            ...board,
-            createdById: board.createdById ?? users[0]?.id ?? null,
-            ownerId: board.ownerId ?? board.createdById ?? users[0]?.id ?? null,
-            accessUserIds: Array.isArray(board.accessUserIds) ? board.accessUserIds : [],
-            rows: Array.isArray(board.rows)
-              ? board.rows.map((row) => ({
-                  ...row,
-                  values: Object.entries(row.values || {}).reduce((accumulator, [fieldId, fieldValue]) => {
-                    accumulator[fieldId] = timeFieldIds.has(fieldId) ? normalizeTimeValue24h(fieldValue) : fieldValue;
-                    return accumulator;
-                  }, {}),
-                }))
-              : [],
-          };
-          return {
-            ...normalizedBoard,
-            permissions: normalizeBoardPermissions(board.permissions, normalizedPermissions, normalizedBoard),
-          };
-        })
-      : sampleState.controlBoards,
+    controlBoards: getNormalizedControlBoards(parsed.controlBoards, users, normalizedPermissions, sampleState),
     inventoryItems: Array.isArray(parsed.inventoryItems) && parsed.inventoryItems.length ? parsed.inventoryItems.map((item) => normalizeInventoryItemRecord(item)) : sampleState.inventoryItems,
     inventoryMovements: Array.isArray(parsed.inventoryMovements) ? parsed.inventoryMovements : sampleState.inventoryMovements,
     boardTemplates: Array.isArray(parsed.boardTemplates) ? parsed.boardTemplates : [],
     permissions: normalizedPermissions,
     auditLog: Array.isArray(parsed.auditLog) ? parsed.auditLog : [],
   };
+}
+
+function normalizeWarehouseState(parsed) {
+  if (!parsed) return buildSampleState();
+  const sampleState = buildSampleState();
+  const shouldHydrateDemoWorkspace = !Array.isArray(parsed.users) || parsed.users.length === 0;
+  const sourceUsers = shouldHydrateDemoWorkspace ? sampleState.users : parsed.users;
+  const users = sourceUsers.map((user) => normalizeUserRecord(user, user.managerId ?? parsed.currentUserId ?? null));
+  const normalizedPermissions = normalizePermissions(remapPermissionsModel(parsed.permissions, users));
+  const normalizedState = buildNormalizedWarehouseState(parsed, sampleState, users, normalizedPermissions, shouldHydrateDemoWorkspace);
 
   return applyBoardWeeklyCutToState(normalizedState).state;
 }
@@ -3289,7 +4113,10 @@ function buildStarterWorkspace(leadUser, catalog, inventoryItems, permissions, w
     createdById: leadUser.id,
     ownerId: leadUser.id,
     accessUserIds: [],
-    settings: { showWorkflow: true, showMetrics: true, showAssignee: true, showDates: true, auxColumnsOrder: [...DEFAULT_BOARD_AUX_COLUMNS_ORDER], ...(sampleBoardTemplate?.settings || {}) },
+    settings: {
+      ...withDefaultBoardSettings(sampleBoardTemplate?.settings),
+      auxColumnsOrder: [...DEFAULT_BOARD_AUX_COLUMNS_ORDER],
+    },
     fields: sampleFields,
     rows: boardRows,
   };
@@ -3331,17 +4158,20 @@ function MetricCard({ label, value, hint, tone = "default" }) {
   );
 }
 
-function InventoryStockBar({ current, minimum, unitLabel = "pzas" }) {
+function InventoryStockBar({ current, minimum, unitLabel = "pzas", target = null, primaryLabel = "", secondaryLabel = "", className = "" }) {
   const safeCurrent = Math.max(0, Number(current || 0));
   const safeMinimum = Math.max(0, Number(minimum || 0));
-  const baseline = Math.max(safeCurrent, safeMinimum, 1);
+  const safeTarget = Math.max(0, Number(target || 0));
+  const baseline = Math.max(safeTarget || (safeMinimum > 0 ? safeMinimum * 2 : safeCurrent), 1);
   const percent = Math.min(100, (safeCurrent / baseline) * 100);
-  const isLow = safeCurrent <= safeMinimum;
+  const isLow = safeMinimum > 0 ? safeCurrent <= safeMinimum : safeCurrent === 0;
+  const resolvedPrimaryLabel = primaryLabel || `${safeCurrent} ${unitLabel}`;
+  const resolvedSecondaryLabel = secondaryLabel || (safeMinimum > 0 ? `Mínimo ${safeMinimum} ${unitLabel}` : `Objetivo ${baseline} ${unitLabel}`);
   return (
-    <div className="progress-row">
-      <div>
-        <span>{safeCurrent} {unitLabel}</span>
-        <small>Mínimo {safeMinimum} {unitLabel}</small>
+    <div className={`progress-row ${className}`.trim()}>
+      <div className="progress-row-head">
+        <span>{resolvedPrimaryLabel}</span>
+        <small>{resolvedSecondaryLabel}</small>
       </div>
       <div className="progress-track">
         <div className={`progress-fill ${isLow ? "danger" : ""}`} style={{ width: `${Math.max(8, percent)}%` }} />
@@ -3563,7 +4393,8 @@ function DashboardParetoChart({ rows }) {
 
   return (
     <div className="dashboard-pareto-chart-shell">
-      <svg viewBox={`0 0 ${width} ${height}`} className="dashboard-pareto-chart" role="img" aria-label="Gráfica de Pareto de incidencias e impacto">
+      <svg viewBox={`0 0 ${width} ${height}`} className="dashboard-pareto-chart" aria-labelledby="dashboard-pareto-chart-title">
+        <title id="dashboard-pareto-chart-title">Gráfica de Pareto de incidencias e impacto</title>
         <defs>
           <linearGradient id="paretoBarGradient" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stopColor="#0ea5e9" />
@@ -3701,7 +4532,7 @@ function InventoryLookupInput({ inventoryItems, value, onChange, placeholder, di
       if (!rect) return;
 
       const estimatedHeight = Math.min(260, Math.max(56, filteredItems.length * 58 + 12));
-      const viewportSpaceBelow = window.innerHeight - rect.bottom;
+      const viewportSpaceBelow = globalThis.innerHeight - rect.bottom;
       const shouldOpenAbove = viewportSpaceBelow < estimatedHeight && rect.top > estimatedHeight;
 
       setDropdownStyle({
@@ -3713,11 +4544,11 @@ function InventoryLookupInput({ inventoryItems, value, onChange, placeholder, di
     }
 
     updateDropdownPosition();
-    window.addEventListener("resize", updateDropdownPosition);
-    window.addEventListener("scroll", updateDropdownPosition, true);
+    globalThis.addEventListener("resize", updateDropdownPosition);
+    globalThis.addEventListener("scroll", updateDropdownPosition, true);
     return () => {
-      window.removeEventListener("resize", updateDropdownPosition);
-      window.removeEventListener("scroll", updateDropdownPosition, true);
+      globalThis.removeEventListener("resize", updateDropdownPosition);
+      globalThis.removeEventListener("scroll", updateDropdownPosition, true);
     };
   }, [filteredItems.length, isOpen]);
 
@@ -3731,7 +4562,7 @@ function InventoryLookupInput({ inventoryItems, value, onChange, placeholder, di
     setQuery("");
     onChange("");
     setIsOpen(false);
-    window.setTimeout(() => inputRef.current?.focus(), 0);
+    globalThis.setTimeout(() => inputRef.current?.focus(), 0);
   }
 
   function resolveQuery() {
@@ -3766,11 +4597,11 @@ function InventoryLookupInput({ inventoryItems, value, onChange, placeholder, di
             <span>{selectedItem.name}</span>
             <small>{selectedItem.presentation}</small>
           </div>
-          {!disabled ? (
+          {disabled ? null : (
             <button type="button" className="inventory-lookup-clear" onClick={clearSelection} aria-label="Quitar producto seleccionado" title="Quitar producto seleccionado">
               <X size={12} />
             </button>
-          ) : null}
+          )}
         </div>
       ) : (
         <input
@@ -3796,7 +4627,7 @@ function InventoryLookupInput({ inventoryItems, value, onChange, placeholder, di
 
             setIsOpen(true);
           }}
-          onBlur={() => window.setTimeout(resolveQuery, 120)}
+          onBlur={() => globalThis.setTimeout(resolveQuery, 120)}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               event.preventDefault();
@@ -4064,53 +4895,210 @@ function Sidebar({ currentUser, page, onPageChange, isOpen, isCollapsed, onClose
   );
 }
 
-function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChange, onSubmit, onClose, onLogout, onUpdateIdentity }) {
-  const [passwordPanelOpen, setPasswordPanelOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [identityForm, setIdentityForm] = useState({
+function InventoryActivityConsumptionEditor({ activeCatalogItems, activityConsumptions, onToggle, onQuantityChange }) {
+  if (!activeCatalogItems.length) {
+    return <p className="inventory-activity-consumption-empty">Primero agrega actividades activas al catalogo para definir el consumo automatico por inicio.</p>;
+  }
+
+  return (
+    <div className="inventory-activity-consumption-editor">
+      {activeCatalogItems.map((item) => {
+        const currentConsumption = activityConsumptions.find((entry) => entry.catalogActivityId === item.id);
+        const isEnabled = Boolean(currentConsumption);
+        return (
+          <article key={item.id} className={`inventory-activity-consumption-row ${isEnabled ? "active" : ""}`.trim()}>
+            <div className="inventory-activity-consumption-main">
+              <div className="inventory-activity-consumption-copy">
+                <strong>{item.name}</strong>
+              </div>
+              <button
+                type="button"
+                className={`switch-button ${isEnabled ? "on" : ""}`}
+                onClick={() => onToggle(item.id, !isEnabled)}
+                aria-pressed={isEnabled}
+                aria-label={`${isEnabled ? "Desactivar" : "Activar"} consumo para ${item.name}`}
+              >
+                <span className="switch-thumb" />
+              </button>
+            </div>
+            <label className="inventory-activity-consumption-quantity">
+              <span>Cantidad por inicio</span>
+              <input
+                type="number"
+                min="0"
+                value={currentConsumption?.quantity || ""}
+                onChange={(event) => onQuantityChange(item.id, event.target.value)}
+                disabled={!isEnabled}
+                placeholder={isEnabled ? "0" : "Activa la actividad"}
+              />
+            </label>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function createIdentityFormFromUser(currentUser) {
+  return {
     name: currentUser?.name || "",
     email: currentUser?.email || "",
     area: getUserArea(currentUser),
     jobTitle: getUserJobTitle(currentUser),
-  });
+  };
+}
+
+function EmployeeProfileSummarySection({ currentUser, identityForm, isEditMode, editAvailabilityMessage, onIdentityFieldChange }) {
+  return (
+    <div className="profile-summary-card">
+      <span className="avatar-circle profile-avatar">{currentUser.name.charAt(0).toUpperCase()}</span>
+      <div className="profile-summary-body">
+        <div className="profile-summary-topline">
+          <strong>Datos principales</strong>
+          <span className={`profile-status-pill ${currentUser.isActive ? "active" : "inactive"}`.trim()}>{currentUser.isActive ? "Activo" : "Inactivo"}</span>
+        </div>
+        {isEditMode ? (
+          <>
+            <label className="profile-summary-field">
+              <span>Nombre</span>
+              <input value={identityForm.name} onChange={(event) => onIdentityFieldChange("name", event.target.value)} placeholder="Nombre del player" />
+            </label>
+            <label className="profile-summary-field">
+              <span>Player de acceso</span>
+              <input value={identityForm.email} onChange={(event) => onIdentityFieldChange("email", event.target.value)} placeholder="Tu acceso" />
+            </label>
+          </>
+        ) : (
+          <div className="profile-summary-readonly-grid">
+            <article className="profile-static-field">
+              <span>Nombre</span>
+              <strong>{currentUser.name}</strong>
+            </article>
+            <article className="profile-static-field">
+              <span>Player de acceso</span>
+              <strong>{currentUser.email}</strong>
+            </article>
+          </div>
+        )}
+        <div className="profile-summary-meta">
+          <span>{(isEditMode ? identityForm.area : getUserArea(currentUser)).trim() || "Sin área asignada"}</span>
+          <small>{editAvailabilityMessage}</small>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmployeeProfileDetailsSection({ currentUser, identityForm, isEditMode, onIdentityFieldChange }) {
+  return (
+    <div className="profile-detail-grid">
+      {isEditMode ? (
+        <>
+          <label className="profile-detail-item profile-detail-item-editable profile-detail-item-wide">
+            <span>Cargo</span>
+            <input value={identityForm.jobTitle} onChange={(event) => onIdentityFieldChange("jobTitle", event.target.value)} placeholder="Ej: Encargado de Mejora Continua" />
+          </label>
+          <label className="profile-detail-item profile-detail-item-editable">
+            <span>Área</span>
+            <input value={identityForm.area} onChange={(event) => onIdentityFieldChange("area", event.target.value)} placeholder="Ej: Área de Mejora Continua" />
+          </label>
+        </>
+      ) : (
+        <article className="profile-detail-item profile-detail-item-wide">
+          <span>Cargo</span>
+          <strong>{getUserJobTitle(currentUser) || "Sin cargo asignado"}</strong>
+        </article>
+      )}
+      {isEditMode ? null : (
+        <article className="profile-detail-item">
+          <span>Área</span>
+          <strong>{getUserArea(currentUser) || "Sin área asignada"}</strong>
+        </article>
+      )}
+      <article className="profile-detail-item">
+        <span>Rol interno</span>
+        <strong>{currentUser.role}</strong>
+      </article>
+    </div>
+  );
+}
+
+function EmployeeProfilePasswordSection({ passwordPanelOpen, onToggle, passwordForm, onPasswordChange, onSubmit }) {
+  return (
+    <div className={`profile-password-shell ${passwordPanelOpen ? "open" : "collapsed"}`.trim()}>
+      <button type="button" className="profile-password-toggle" onClick={onToggle} aria-expanded={passwordPanelOpen}>
+        <div>
+          <strong>Contraseña</strong>
+          <span>{passwordPanelOpen ? "Ocultar cambio de contraseña" : "Presiona la flecha para cambiar la contraseña"}</span>
+        </div>
+        <span className={`profile-password-toggle-icon ${passwordPanelOpen ? "open" : ""}`.trim()}>
+          <ArrowDown size={16} />
+        </span>
+      </button>
+      {passwordPanelOpen ? (
+        <div className="profile-password-body">
+          <label className="app-modal-field">
+            <span>Nueva contraseña</span>
+            <input type="password" value={passwordForm.password} onChange={(event) => onPasswordChange((current) => ({ ...current, password: event.target.value, message: "" }))} />
+          </label>
+          <label className="app-modal-field">
+            <span>Confirmar nueva contraseña</span>
+            <input type="password" value={passwordForm.confirmPassword} onChange={(event) => onPasswordChange((current) => ({ ...current, confirmPassword: event.target.value, message: "" }))} />
+          </label>
+          <button type="button" className="primary-button profile-password-submit" onClick={onSubmit}>Guardar contraseña</button>
+          {passwordForm.message ? <p className="inline-message">{passwordForm.message}</p> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function EmployeeProfileMessages({ identityMessage, passwordMessage }) {
+  if (!identityMessage && !passwordMessage) {
+    return null;
+  }
+
+  return (
+    <div className="profile-action-messages">
+      {identityMessage ? <p className={identityMessage.includes("actualizados") ? "inline-success-message" : "validation-text"}>{identityMessage}</p> : null}
+      {passwordMessage ? <p className="inline-message">{passwordMessage}</p> : null}
+    </div>
+  );
+}
+
+function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChange, onSubmit, onClose, onLogout, onUpdateIdentity }) {
+  const [passwordPanelOpen, setPasswordPanelOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [identityForm, setIdentityForm] = useState(() => createIdentityFormFromUser(currentUser));
   const [identityMessage, setIdentityMessage] = useState("");
   const canBypassEditLimit = canBypassSelfProfileEditLimit(currentUser);
   const selfEditCount = Number(currentUser?.selfIdentityEditCount ?? 0);
   const hasSelfEditAvailable = canBypassEditLimit || selfEditCount < PROFILE_SELF_EDIT_LIMIT;
+  const editAvailabilityMessage = getProfileEditAvailabilityMessage(canBypassEditLimit, hasSelfEditAvailable);
 
   useEffect(() => {
-    setIdentityForm({
-      name: currentUser?.name || "",
-      email: currentUser?.email || "",
-      area: getUserArea(currentUser),
-      jobTitle: getUserJobTitle(currentUser),
-    });
+    setIdentityForm(createIdentityFormFromUser(currentUser));
     setIdentityMessage("");
     setIsEditMode(false);
   }, [currentUser]);
+
+  function handleIdentityFieldChange(key, value) {
+    setIdentityForm((current) => ({ ...current, [key]: value }));
+    setIdentityMessage("");
+  }
 
   function handleStartEditing() {
     if (!hasSelfEditAvailable) {
       setIdentityMessage("La autoedición del perfil ya fue utilizada. Desde ahora sólo un Senior o Lead puede corregir estos datos.");
       return;
     }
-    setIdentityForm({
-      name: currentUser?.name || "",
-      email: currentUser?.email || "",
-      area: getUserArea(currentUser),
-      jobTitle: getUserJobTitle(currentUser),
-    });
+    setIdentityForm(createIdentityFormFromUser(currentUser));
     setIsEditMode(true);
     setIdentityMessage("");
   }
 
   function handleCancelEditing() {
-    setIdentityForm({
-      name: currentUser?.name || "",
-      email: currentUser?.email || "",
-      area: getUserArea(currentUser),
-      jobTitle: getUserJobTitle(currentUser),
-    });
+    setIdentityForm(createIdentityFormFromUser(currentUser));
     setIsEditMode(false);
     setIdentityMessage("");
   }
@@ -4154,114 +5142,27 @@ function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChange, onS
       footerActions={footerActions}
     >
       <div className="modal-form-grid">
-        <div className="profile-summary-card">
-          <span className="avatar-circle profile-avatar">{currentUser.name.charAt(0).toUpperCase()}</span>
-          <div className="profile-summary-body">
-            <div className="profile-summary-topline">
-              <strong>Datos principales</strong>
-              <span className={`profile-status-pill ${currentUser.isActive ? "active" : "inactive"}`.trim()}>{currentUser.isActive ? "Activo" : "Inactivo"}</span>
-            </div>
-            {isEditMode ? (
-              <>
-                <label className="profile-summary-field">
-                  <span>Nombre</span>
-                  <input value={identityForm.name} onChange={(event) => {
-                    setIdentityForm((current) => ({ ...current, name: event.target.value }));
-                    setIdentityMessage("");
-                  }} placeholder="Nombre del player" />
-                </label>
-                <label className="profile-summary-field">
-                  <span>Player de acceso</span>
-                  <input value={identityForm.email} onChange={(event) => {
-                    setIdentityForm((current) => ({ ...current, email: event.target.value }));
-                    setIdentityMessage("");
-                  }} placeholder="Tu acceso" />
-                </label>
-              </>
-            ) : (
-              <div className="profile-summary-readonly-grid">
-                <article className="profile-static-field">
-                  <span>Nombre</span>
-                  <strong>{currentUser.name}</strong>
-                </article>
-                <article className="profile-static-field">
-                  <span>Player de acceso</span>
-                  <strong>{currentUser.email}</strong>
-                </article>
-              </div>
-            )}
-            <div className="profile-summary-meta">
-              <span>{(isEditMode ? identityForm.area : getUserArea(currentUser)).trim() || "Sin área asignada"}</span>
-              <small>{canBypassEditLimit ? "Edición libre por nivel interno." : hasSelfEditAvailable ? "Disponible 1 corrección personal del perfil." : "La siguiente corrección requiere apoyo de Senior o Lead."}</small>
-            </div>
-          </div>
-        </div>
-        <div className="profile-detail-grid">
-          {isEditMode ? (
-            <>
-              <label className="profile-detail-item profile-detail-item-editable profile-detail-item-wide">
-                <span>Cargo</span>
-                <input value={identityForm.jobTitle} onChange={(event) => {
-                  setIdentityForm((current) => ({ ...current, jobTitle: event.target.value }));
-                  setIdentityMessage("");
-                }} placeholder="Ej: Encargado de Mejora Continua" />
-              </label>
-              <label className="profile-detail-item profile-detail-item-editable">
-                <span>Área</span>
-                <input value={identityForm.area} onChange={(event) => {
-                  setIdentityForm((current) => ({ ...current, area: event.target.value }));
-                  setIdentityMessage("");
-                }} placeholder="Ej: Área de Mejora Continua" />
-              </label>
-            </>
-          ) : (
-            <article className="profile-detail-item profile-detail-item-wide">
-              <span>Cargo</span>
-              <strong>{getUserJobTitle(currentUser) || "Sin cargo asignado"}</strong>
-            </article>
-          )}
-          {!isEditMode ? (
-            <article className="profile-detail-item">
-              <span>Área</span>
-              <strong>{getUserArea(currentUser) || "Sin área asignada"}</strong>
-            </article>
-          ) : null}
-          <article className="profile-detail-item">
-            <span>Rol interno</span>
-            <strong>{currentUser.role}</strong>
-          </article>
-        </div>
-        <div className={`profile-password-shell ${passwordPanelOpen ? "open" : "collapsed"}`.trim()}>
-          <button type="button" className="profile-password-toggle" onClick={() => setPasswordPanelOpen((current) => !current)} aria-expanded={passwordPanelOpen}>
-            <div>
-              <strong>Contraseña</strong>
-              <span>{passwordPanelOpen ? "Ocultar cambio de contraseña" : "Presiona la flecha para cambiar la contraseña"}</span>
-            </div>
-            <span className={`profile-password-toggle-icon ${passwordPanelOpen ? "open" : ""}`.trim()}>
-              <ArrowDown size={16} />
-            </span>
-          </button>
-          {passwordPanelOpen ? (
-            <div className="profile-password-body">
-              <label className="app-modal-field">
-                <span>Nueva contraseña</span>
-                <input type="password" value={passwordForm.password} onChange={(event) => onPasswordChange((current) => ({ ...current, password: event.target.value, message: "" }))} />
-              </label>
-              <label className="app-modal-field">
-                <span>Confirmar nueva contraseña</span>
-                <input type="password" value={passwordForm.confirmPassword} onChange={(event) => onPasswordChange((current) => ({ ...current, confirmPassword: event.target.value, message: "" }))} />
-              </label>
-              <button type="button" className="primary-button profile-password-submit" onClick={onSubmit}>Guardar contraseña</button>
-              {passwordForm.message ? <p className="inline-message">{passwordForm.message}</p> : null}
-            </div>
-          ) : null}
-        </div>
-        {identityMessage || passwordForm.message ? (
-          <div className="profile-action-messages">
-            {identityMessage ? <p className={identityMessage.includes("actualizados") ? "inline-success-message" : "validation-text"}>{identityMessage}</p> : null}
-            {passwordForm.message ? <p className="inline-message">{passwordForm.message}</p> : null}
-          </div>
-        ) : null}
+        <EmployeeProfileSummarySection
+          currentUser={currentUser}
+          identityForm={identityForm}
+          isEditMode={isEditMode}
+          editAvailabilityMessage={editAvailabilityMessage}
+          onIdentityFieldChange={handleIdentityFieldChange}
+        />
+        <EmployeeProfileDetailsSection
+          currentUser={currentUser}
+          identityForm={identityForm}
+          isEditMode={isEditMode}
+          onIdentityFieldChange={handleIdentityFieldChange}
+        />
+        <EmployeeProfilePasswordSection
+          passwordPanelOpen={passwordPanelOpen}
+          onToggle={() => setPasswordPanelOpen((current) => !current)}
+          passwordForm={passwordForm}
+          onPasswordChange={onPasswordChange}
+          onSubmit={onSubmit}
+        />
+        <EmployeeProfileMessages identityMessage={identityMessage} passwordMessage={passwordForm.message} />
       </div>
     </Modal>
   );
@@ -4295,19 +5196,20 @@ function ForcedPasswordChangeModal({ passwordForm, onPasswordChange, onSubmit })
   );
 }
 
-function App() {
+function App() { // NOSONAR
   const [state, setState] = useState(loadState);
   const [page, setPage] = useState(INITIAL_ROUTE_STATE.page);
   const [dashboardSectionsOpen, setDashboardSectionsOpen] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(DASHBOARD_SECTIONS_KEY) || "null");
-      return { ...DEFAULT_DASHBOARD_SECTION_STATE, ...(saved || {}) };
+      const storedSections = saved && typeof saved === "object" ? saved : EMPTY_OBJECT;
+      return { ...DEFAULT_DASHBOARD_SECTION_STATE, ...storedSections };
     } catch {
       return DEFAULT_DASHBOARD_SECTION_STATE;
     }
   });
   const [adminTab, setAdminTab] = useState(() => normalizeAdminTab(INITIAL_ROUTE_STATE.adminTab));
-  const [selectedWeekId, setSelectedWeekId] = useState(() => {
+  const [selectedWeekId] = useState(() => {
     const initial = loadState();
     return INITIAL_ROUTE_STATE.selectedWeekId || initial.weeks.find((week) => week.isActive)?.id || initial.weeks[0]?.id || "";
   });
@@ -4315,8 +5217,8 @@ function App() {
     const initial = loadState();
     return INITIAL_ROUTE_STATE.selectedHistoryWeekId || initial.weeks[0]?.id || "";
   });
-  const [boardFilters, setBoardFilters] = useState({ responsibleId: "all", activityId: "all", status: "all" });
   const [inventoryTab, setInventoryTab] = useState(INVENTORY_DOMAIN_BASE);
+  const [inventoryCleaningSite, setInventoryCleaningSite] = useState(DEFAULT_CLEANING_SITE);
   const [inventoryActionsMenuOpen, setInventoryActionsMenuOpen] = useState(false);
   const [inventorySearch, setInventorySearch] = useState("");
   const [dashboardFilters, setDashboardFilters] = useState({ periodType: "week", periodKey: "all", responsibleId: "all", area: "all", source: "all", startDate: "", endDate: "" });
@@ -4352,12 +5254,18 @@ function App() {
   const [deleteBoardRowState, setDeleteBoardRowState] = useState({ open: false, boardId: null, rowId: null });
   const [inventoryModal, setInventoryModal] = useState(() => createInventoryModalState());
   const [inventoryMovementModal, setInventoryMovementModal] = useState(() => createInventoryMovementModalState());
-  const [inventoryTransferViewerOpen, setInventoryTransferViewerOpen] = useState(false);
+  const [inventoryTransferViewerState, setInventoryTransferViewerState] = useState({ open: false, itemId: null });
+  const [inventoryTransferConfirmModal, setInventoryTransferConfirmModal] = useState(() => createInventoryTransferConfirmModalState());
+  const [inventoryRestockModal, setInventoryRestockModal] = useState(() => createInventoryRestockModalState());
   const [inventoryImportFeedback, setInventoryImportFeedback] = useState({ tone: "", message: "" });
   const [permissionsFeedback, setPermissionsFeedback] = useState({ tone: "", message: "" });
+  const [appToasts, setAppToasts] = useState([]);
+  const [notificationInboxState, setNotificationInboxState] = useState(() => readNotificationInboxState());
+  const [notificationReadState, setNotificationReadState] = useState(() => readNotificationReadState());
+  const [notificationDeletedState, setNotificationDeletedState] = useState(() => readNotificationDeletedState());
+  const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
+  const [notificationPanelTab, setNotificationPanelTab] = useState("unread");
   const [selectedPermissionUserId, setSelectedPermissionUserId] = useState("");
-  const [openPermissionPageId, setOpenPermissionPageId] = useState("");
-  const [permissionEditorDraft, setPermissionEditorDraft] = useState(null);
   const [deleteInventoryId, setDeleteInventoryId] = useState(null);
   const [deleteBoardId, setDeleteBoardId] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -4380,6 +5288,7 @@ function App() {
   const isHydratedRef = useRef(false);
   const skipNextSyncRef = useRef(false);
   const contentShellRef = useRef(null);
+  const notificationCenterRef = useRef(null);
   const inventoryFileInputRef = useRef(null);
   const boardExcelFileInputRef = useRef(null);
   const permissionFileInputRef = useRef(null);
@@ -4387,17 +5296,143 @@ function App() {
   const inventoryActionsMenuRef = useRef(null);
   const sessionSnapshotRef = useRef({ userId: "", sessionVersion: 0 });
 
+  function dismissAppToast(toastId) {
+    setAppToasts((current) => current.map((toast) => (toast.id === toastId ? { ...toast, isClosing: true } : toast)));
+    globalThis.setTimeout(() => {
+      setAppToasts((current) => current.filter((toast) => toast.id !== toastId));
+    }, 180);
+  }
+
+  function pushAppToast(message, tone = "success") {
+    const trimmedMessage = String(message || "").trim();
+    if (!trimmedMessage) return;
+
+    const nextToastId = makeId("toast");
+    setAppToasts((current) => current.concat({ id: nextToastId, message: trimmedMessage, tone, isClosing: false }).slice(-4));
+    globalThis.setTimeout(() => {
+      dismissAppToast(nextToastId);
+    }, 3400);
+  }
+
+  function markNotificationIdsAsRead(notificationIds = []) {
+    if (!sessionUserId || !notificationIds.length) return;
+    setNotificationReadState((current) => {
+      const knownIds = new Set(Array.isArray(current[sessionUserId]) ? current[sessionUserId] : []);
+      notificationIds.forEach((notificationId) => {
+        if (notificationId) knownIds.add(notificationId);
+      });
+      return {
+        ...current,
+        [sessionUserId]: Array.from(knownIds).slice(-300),
+      };
+    });
+  }
+
+  function handleToggleNotificationPanel() {
+    setNotificationPanelOpen((current) => !current);
+  }
+
+  function deleteNotificationIds(notificationIds = []) {
+    if (!sessionUserId || !notificationIds.length) return;
+    setNotificationDeletedState((current) => {
+      const knownIds = new Set(Array.isArray(current[sessionUserId]) ? current[sessionUserId] : []);
+      notificationIds.forEach((notificationId) => {
+        if (notificationId) knownIds.add(notificationId);
+      });
+      return {
+        ...current,
+        [sessionUserId]: Array.from(knownIds).slice(-500),
+      };
+    });
+  }
+
+  function handleDeleteNotification(notificationId) {
+    deleteNotificationIds([notificationId]);
+  }
+
+  function handleDeleteAllReadNotifications() {
+    deleteNotificationIds(readNotifications.map((notification) => notification.id));
+  }
+
+  function handleOpenNotification(notification) {
+    if (!notification) return;
+    if (!notification.isLocked) {
+      markNotificationIdsAsRead([notification.id]);
+    }
+    setNotificationPanelOpen(false);
+
+    if (notification.targetAction === "profile") {
+      setProfileModalOpen(true);
+    }
+
+    if (notification.targetDomain) {
+      setInventoryTab(notification.targetDomain);
+    }
+    if (notification.targetPage) {
+      setPage(notification.targetPage);
+    }
+  }
+
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
+    const timer = globalThis.setInterval(() => setNow(Date.now()), 1000);
+    return () => globalThis.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem(NOTIFICATION_READ_KEY, JSON.stringify(notificationReadState));
+  }, [notificationReadState]);
+
+  useEffect(() => {
+    localStorage.setItem(NOTIFICATION_DELETED_KEY, JSON.stringify(notificationDeletedState));
+  }, [notificationDeletedState]);
+
+  useEffect(() => {
+    localStorage.setItem(NOTIFICATION_INBOX_KEY, JSON.stringify(notificationInboxState));
+  }, [notificationInboxState]);
+
+  useEffect(() => {
+    if (!notificationPanelOpen) return undefined;
+
+    function handleDocumentPointerDown(event) {
+      if (!notificationCenterRef.current?.contains(event.target)) {
+        setNotificationPanelOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleDocumentPointerDown);
+    return () => document.removeEventListener("mousedown", handleDocumentPointerDown);
+  }, [notificationPanelOpen]);
+
+  useEffect(() => {
+    if (!boardRuntimeFeedback.message) return;
+    pushAppToast(boardRuntimeFeedback.message, boardRuntimeFeedback.tone || "success");
+    setBoardRuntimeFeedback({ tone: "", message: "" });
+  }, [boardRuntimeFeedback]);
+
+  useEffect(() => {
+    if (!inventoryImportFeedback.message) return;
+    pushAppToast(inventoryImportFeedback.message, inventoryImportFeedback.tone || "success");
+    setInventoryImportFeedback({ tone: "", message: "" });
+  }, [inventoryImportFeedback]);
+
+  useEffect(() => {
+    if (!permissionsFeedback.message) return;
+    pushAppToast(permissionsFeedback.message, permissionsFeedback.tone || "success");
+    setPermissionsFeedback({ tone: "", message: "" });
+  }, [permissionsFeedback]);
+
+  useEffect(() => {
+    if (!controlBoardFeedback) return;
+    pushAppToast(controlBoardFeedback, inferFeedbackToneFromMessage(controlBoardFeedback));
+    setControlBoardFeedback("");
+  }, [controlBoardFeedback]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
 
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    globalThis.scrollTo({ top: 0, left: 0, behavior: "instant" });
     contentShellRef.current?.scrollTo?.({ top: 0, left: 0, behavior: "instant" });
   }, [page]);
 
@@ -4410,8 +5445,8 @@ function App() {
       }
     }
 
-    window.addEventListener("pointerdown", handlePointerDown);
-    return () => window.removeEventListener("pointerdown", handlePointerDown);
+    globalThis.addEventListener("pointerdown", handlePointerDown);
+    return () => globalThis.removeEventListener("pointerdown", handlePointerDown);
   }, [customBoardActionsMenuOpen]);
 
   useEffect(() => {
@@ -4423,8 +5458,8 @@ function App() {
       }
     }
 
-    window.addEventListener("pointerdown", handlePointerDown);
-    return () => window.removeEventListener("pointerdown", handlePointerDown);
+    globalThis.addEventListener("pointerdown", handlePointerDown);
+    return () => globalThis.removeEventListener("pointerdown", handlePointerDown);
   }, [inventoryActionsMenuOpen]);
 
   useEffect(() => {
@@ -4451,8 +5486,9 @@ function App() {
         })
       : "";
     const nextPath = shouldPersistRoute ? buildRoutePath(page) : "/";
-    const nextUrl = `${nextPath}${nextQuery ? `?${nextQuery}` : ""}${window.location.hash || ""}`;
-    window.history.replaceState(null, "", nextUrl);
+    const queryPrefix = nextQuery ? `?${nextQuery}` : "";
+    const nextUrl = `${nextPath}${queryPrefix}${globalThis.location.hash || ""}`;
+    globalThis.history.replaceState(null, "", nextUrl);
   }, [adminTab, page, selectedCustomBoardId, selectedHistoryWeekId, selectedWeekId, sessionUserId]);
 
   useEffect(() => {
@@ -4579,7 +5615,7 @@ function App() {
       return;
     }
 
-    const timer = window.setTimeout(async () => {
+    const timer = globalThis.setTimeout(async () => {
       try {
         const nextState = await requestJson("/warehouse/state", {
           method: "PUT",
@@ -4610,12 +5646,16 @@ function App() {
       }
     }, 250);
 
-    return () => window.clearTimeout(timer);
+    return () => globalThis.clearTimeout(timer);
   }, [sessionUserId, state]);
 
   const currentUser = useMemo(
     () => state.users.find((user) => user.id === sessionUserId) || null,
     [sessionUserId, state.users],
+  );
+  const managedUserIds = useMemo(
+    () => (currentUser ? getManagedUserIds(state.users, currentUser.id) : new Set()),
+    [currentUser, state.users],
   );
   const isBootstrapMasterSession = sessionUserId === BOOTSTRAP_MASTER_ID && loginDirectory.system?.masterBootstrapEnabled;
   const isForcedPasswordChange = Boolean(currentUser?.mustChangePassword && sessionUserId && !isBootstrapMasterSession);
@@ -4629,30 +5669,6 @@ function App() {
     () => state.weeks.find((week) => week.id === selectedHistoryWeekId) || state.weeks[0] || null,
     [selectedHistoryWeekId, state.weeks],
   );
-  const weekActivities = useMemo(
-    () => state.activities.filter((activity) => activity.weekId === activeWeek?.id),
-    [activeWeek?.id, state.activities],
-  );
-
-  const filteredBoardActivities = useMemo(() => {
-    return weekActivities.filter((activity) => {
-      const responsibleOk = boardFilters.responsibleId === "all" || activity.responsibleId === boardFilters.responsibleId;
-      const activityOk = boardFilters.activityId === "all" || activity.catalogActivityId === boardFilters.activityId;
-      const statusOk = boardFilters.status === "all" || activity.status === boardFilters.status;
-      return responsibleOk && activityOk && statusOk;
-    });
-  }, [boardFilters, weekActivities]);
-
-  const boardCounters = useMemo(
-    () => ({
-      [STATUS_PENDING]: weekActivities.filter((item) => item.status === STATUS_PENDING).length,
-      [STATUS_RUNNING]: weekActivities.filter((item) => item.status === STATUS_RUNNING).length,
-      [STATUS_PAUSED]: weekActivities.filter((item) => item.status === STATUS_PAUSED).length,
-      [STATUS_FINISHED]: weekActivities.filter((item) => item.status === STATUS_FINISHED).length,
-    }),
-    [weekActivities],
-  );
-
   const visibleDashboardActivities = useMemo(() => {
     const scopedIds = currentUser ? getManagedUserIds(state.users, currentUser.id) : new Set();
     return state.activities.filter((activity) => !currentUser || currentUser.role === ROLE_LEAD || activity.responsibleId === currentUser.id || scopedIds.has(activity.responsibleId));
@@ -4855,7 +5871,7 @@ function App() {
       averageMinutes,
       medianMinutes,
       fastest: sorted[0] || null,
-      slowest: sorted[sorted.length - 1] || null,
+      slowest: sorted.at(-1) || null,
       withinPercent: slaScoped.length ? (within / slaScoped.length) * 100 : 0,
       outsidePercent: slaScoped.length ? (exceeded.length / slaScoped.length) * 100 : 0,
       exceeded,
@@ -5150,13 +6166,24 @@ function App() {
 
   const canResetOtherPasswords = currentUser?.role === ROLE_LEAD || currentUser?.role === ROLE_SR;
 
+  const allInventoryItems = useMemo(
+    () => (state.inventoryItems || []).map((item) => normalizeInventoryItemRecord(item)),
+    [state.inventoryItems],
+  );
+
   const inventoryItems = useMemo(() => {
-    return (state.inventoryItems || []).map((item) => normalizeInventoryItemRecord(item)).filter((item) => {
+    return allInventoryItems.filter((item) => {
       const term = inventorySearch.trim().toLowerCase();
       if (!term) return true;
-      return [item.code, item.name, item.presentation, item.storageLocation].some((value) => String(value || "").toLowerCase().includes(term));
+      return [item.code, item.name, item.presentation, item.storageLocation, item.cleaningSite].some((value) => String(value || "").toLowerCase().includes(term));
     });
-  }, [inventorySearch, state.inventoryItems]);
+  }, [allInventoryItems, inventorySearch]);
+
+  const allInventoryItemsByDomain = useMemo(() => ({
+    [INVENTORY_DOMAIN_BASE]: allInventoryItems.filter((item) => item.domain === INVENTORY_DOMAIN_BASE),
+    [INVENTORY_DOMAIN_CLEANING]: allInventoryItems.filter((item) => item.domain === INVENTORY_DOMAIN_CLEANING),
+    [INVENTORY_DOMAIN_ORDERS]: allInventoryItems.filter((item) => item.domain === INVENTORY_DOMAIN_ORDERS),
+  }), [allInventoryItems]);
 
   const inventoryItemsByDomain = useMemo(() => ({
     [INVENTORY_DOMAIN_BASE]: inventoryItems.filter((item) => item.domain === INVENTORY_DOMAIN_BASE),
@@ -5165,11 +6192,25 @@ function App() {
   }), [inventoryItems]);
 
   const inventoryItemsById = useMemo(
-    () => new Map(inventoryItems.map((item) => [item.id, item])),
-    [inventoryItems],
+    () => new Map(allInventoryItems.map((item) => [item.id, item])),
+    [allInventoryItems],
   );
 
-  const currentInventoryItems = inventoryItemsByDomain[inventoryTab] || [];
+  const currentInventoryDomainItems = useMemo(() => {
+    const items = allInventoryItemsByDomain[inventoryTab] || [];
+    if (inventoryTab !== INVENTORY_DOMAIN_CLEANING) {
+      return items;
+    }
+    return items.filter((item) => item.cleaningSite === inventoryCleaningSite);
+  }, [allInventoryItemsByDomain, inventoryCleaningSite, inventoryTab]);
+
+  const currentInventoryItems = useMemo(() => {
+    const items = inventoryItemsByDomain[inventoryTab] || [];
+    if (inventoryTab !== INVENTORY_DOMAIN_CLEANING) {
+      return items;
+    }
+    return items.filter((item) => item.cleaningSite === inventoryCleaningSite);
+  }, [inventoryItemsByDomain, inventoryCleaningSite, inventoryTab]);
 
   const inventoryMovements = useMemo(
     () => (state.inventoryMovements || []).map((movement) => normalizeInventoryMovementRecord(movement)).sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt)),
@@ -5177,8 +6218,22 @@ function App() {
   );
 
   const currentInventoryMovements = useMemo(
-    () => inventoryMovements.filter((movement) => normalizeInventoryDomain(movement.domain) === inventoryTab),
-    [inventoryMovements, inventoryTab],
+    () => inventoryMovements.filter((movement) => {
+      if (normalizeInventoryDomain(movement.domain) !== inventoryTab) {
+        return false;
+      }
+      if (inventoryTab !== INVENTORY_DOMAIN_CLEANING) {
+        return true;
+      }
+      const movementItem = inventoryItemsById.get(movement.itemId);
+      return normalizeCleaningSite(movementItem?.cleaningSite || movement.cleaningSite) === inventoryCleaningSite;
+    }),
+    [inventoryCleaningSite, inventoryItemsById, inventoryMovements, inventoryTab],
+  );
+
+  const actionableLowStockInventoryItems = useMemo(
+    () => allInventoryItems.filter((item) => item.domain !== INVENTORY_DOMAIN_BASE && Number(item.stockUnits || 0) <= Number(item.minStockUnits || 0)),
+    [allInventoryItems],
   );
 
   const lowStockInventoryItems = useMemo(
@@ -5187,8 +6242,8 @@ function App() {
   );
 
   const inventoryLinkedCleaningRows = useMemo(
-    () => inventoryItemsByDomain[INVENTORY_DOMAIN_CLEANING].filter((item) => item.activityCatalogIds.length > 0),
-    [inventoryItemsByDomain],
+    () => currentInventoryDomainItems.filter((item) => item.domain === INVENTORY_DOMAIN_CLEANING && item.activityCatalogIds.length > 0),
+    [currentInventoryDomainItems],
   );
 
   const orderInventoryItems = inventoryItemsByDomain[INVENTORY_DOMAIN_ORDERS] || [];
@@ -5218,6 +6273,30 @@ function App() {
     [inventoryItemsById, inventoryMovementModal.itemId],
   );
 
+  const inventoryMovementSavedLocations = useMemo(
+    () => (inventoryMovementSelectedItem ? getInventorySavedStorageLocations(inventoryMovementSelectedItem, inventoryMovements) : []),
+    [inventoryMovementSelectedItem, inventoryMovements],
+  );
+
+  const inventoryMovementSavedDestinations = useMemo(
+    () => (inventoryMovementSelectedItem ? getInventorySavedTransferDestinations(inventoryMovementSelectedItem, inventoryMovements) : []),
+    [inventoryMovementSelectedItem, inventoryMovements],
+  );
+
+  const inventoryMovementSelectedSavedLocation = useMemo(() => {
+    const normalizedStorageLocation = normalizeKey(inventoryMovementModal.storageLocation);
+    return inventoryMovementSavedLocations.some((entry) => entry.key === normalizedStorageLocation)
+      ? normalizedStorageLocation
+      : "";
+  }, [inventoryMovementModal.storageLocation, inventoryMovementSavedLocations]);
+
+  const inventoryMovementSelectedSavedDestinationKey = useMemo(() => {
+    const destinationKey = buildInventoryTransferTargetKey(inventoryMovementModal.warehouse, inventoryMovementModal.storageLocation);
+    return inventoryMovementSavedDestinations.some((destination) => destination.destinationKey === destinationKey)
+      ? destinationKey
+      : "";
+  }, [inventoryMovementModal.storageLocation, inventoryMovementModal.warehouse, inventoryMovementSavedDestinations]);
+
   const inventoryMovementTransferTarget = useMemo(
     () => inventoryMovementModal.movementType === INVENTORY_MOVEMENT_TRANSFER && inventoryMovementSelectedItem?.domain === INVENTORY_DOMAIN_ORDERS
       ? findInventoryTransferTarget(inventoryMovementSelectedItem, inventoryMovementModal.warehouse, inventoryMovementModal.storageLocation)
@@ -5239,6 +6318,69 @@ function App() {
   const isOrderTransferMovementModal = inventoryMovementModal.movementType === INVENTORY_MOVEMENT_TRANSFER && inventoryMovementModal.domain === INVENTORY_DOMAIN_ORDERS;
   const inventoryMovementModalTitle = isOrderTransferMovementModal ? "Registrar transferencia" : "Registrar movimiento";
   const hasOrderTransferTargets = orderInventoryTransferSummary.some((item) => item.transferTargets.length > 0);
+  const inventoryTransferViewerItem = useMemo(
+    () => (inventoryTransferViewerState.itemId ? inventoryItemsById.get(inventoryTransferViewerState.itemId) || null : null),
+    [inventoryItemsById, inventoryTransferViewerState.itemId],
+  );
+
+  const viewedOrderInventoryTransferSummary = useMemo(
+    () => inventoryTransferViewerState.itemId
+      ? orderInventoryTransferSummary.filter((item) => item.id === inventoryTransferViewerState.itemId)
+      : orderInventoryTransferSummary,
+    [inventoryTransferViewerState.itemId, orderInventoryTransferSummary],
+  );
+
+  const viewedOrderInventoryTransferMovements = useMemo(
+    () => inventoryTransferViewerState.itemId
+      ? orderInventoryTransferMovements.filter((movement) => movement.itemId === inventoryTransferViewerState.itemId)
+      : orderInventoryTransferMovements,
+    [inventoryTransferViewerState.itemId, orderInventoryTransferMovements],
+  );
+
+  const currentInventorySupplyableItems = useMemo(
+    () => inventoryTab === INVENTORY_DOMAIN_BASE ? [] : currentInventoryDomainItems,
+    [currentInventoryDomainItems, inventoryTab],
+  );
+
+  const inventoryRestockModalItems = useMemo(
+    () => inventoryRestockModal.itemIds.map((itemId) => inventoryItemsById.get(itemId) || null).filter(Boolean),
+    [inventoryItemsById, inventoryRestockModal.itemIds],
+  );
+
+  const inventoryRestockModalTitle = inventoryRestockModal.itemIds.length === 1 ? "Surtir insumo" : "Surtido general";
+
+  const inventoryMovementTypeOptions = useMemo(() => {
+    if (inventoryMovementSelectedItem?.domain === INVENTORY_DOMAIN_CLEANING) {
+      return INVENTORY_MOVEMENT_OPTIONS.filter((option) => option.value === INVENTORY_MOVEMENT_CONSUME);
+    }
+
+    return INVENTORY_MOVEMENT_OPTIONS;
+  }, [inventoryMovementSelectedItem]);
+
+  const viewedOrderInventoryTransferTargets = useMemo(
+    () => viewedOrderInventoryTransferSummary.flatMap((item) => item.transferTargets.map((target) => ({
+      ...target,
+      itemId: item.id,
+      itemCode: item.code,
+      itemName: item.name,
+      itemUnitLabel: item.unitLabel || "pzas",
+    }))),
+    [viewedOrderInventoryTransferSummary],
+  );
+
+  const currentUserReadNotificationIds = useMemo(
+    () => new Set(Array.isArray(notificationReadState[sessionUserId]) ? notificationReadState[sessionUserId] : []),
+    [notificationReadState, sessionUserId],
+  );
+
+  const currentUserDeletedNotificationIds = useMemo(
+    () => new Set(Array.isArray(notificationDeletedState[sessionUserId]) ? notificationDeletedState[sessionUserId] : []),
+    [notificationDeletedState, sessionUserId],
+  );
+
+  const inventoryTransferViewerTitle = inventoryTransferViewerItem
+    ? `Historial de transferencias · ${inventoryTransferViewerItem.name}`
+    : "Transferencias por destino";
 
   const inventoryStats = useMemo(() => ({
     total: currentInventoryItems.length,
@@ -5320,10 +6462,9 @@ function App() {
 
   function handleAddAreaOption() {
     if (currentUser && currentUser.role !== ROLE_LEAD) {
-      return "";
+      return;
     }
     setAreaModal({ open: true, target: "user", name: "", error: "" });
-    return "";
   }
 
   function handleAddAreaToBootstrap() {
@@ -5435,6 +6576,169 @@ function App() {
   const currentInventoryManagePermission = actionPermissions[getInventoryManageActionId(inventoryTab)];
   const currentInventoryImportPermission = actionPermissions[getInventoryImportActionId(inventoryTab)];
 
+  const derivedNotifications = useMemo(() => {
+    if (!currentUser) return [];
+
+    const visibleResponsibleIds = new Set([currentUser.id]);
+    if ((ROLE_LEVEL[currentUser.role] || 0) >= ROLE_LEVEL[ROLE_SR]) {
+      managedUserIds.forEach((userId) => visibleResponsibleIds.add(userId));
+    }
+
+    const notifications = [];
+    const isOwnRecord = (responsibleId) => responsibleId === currentUser.id;
+
+    if (isForcedPasswordChange) {
+      notifications.push({
+        id: `security-password-${currentUser.id}`,
+        title: "Actualiza tu contraseña",
+        message: "Tu cuenta requiere cambio de contraseña antes de seguir operando con normalidad.",
+        tone: "danger",
+        timestamp: new Date(now).toISOString(),
+        targetAction: "profile",
+      });
+    }
+
+    dashboardRecords
+      .filter((record) => !String(record.id).startsWith("board-history-") && visibleResponsibleIds.has(record.responsibleId) && record.status === STATUS_PAUSED)
+      .slice(0, 6)
+      .forEach((record) => {
+        notifications.push({
+          id: `paused-${record.id}`,
+          title: isOwnRecord(record.responsibleId) ? "Tienes una actividad pausada" : `${record.responsibleName} tiene una actividad pausada`,
+          message: `${record.label} sigue en pausa dentro de ${record.sourceLabel.toLowerCase()}.`,
+          meta: record.boardName,
+          tone: "danger",
+          timestamp: record.occurredAt || new Date(now).toISOString(),
+          targetPage: PAGE_DASHBOARD,
+        });
+      });
+
+    dashboardRecords
+      .filter((record) => !String(record.id).startsWith("board-history-") && visibleResponsibleIds.has(record.responsibleId) && record.status !== STATUS_FINISHED && record.excessSeconds > 0)
+      .sort((left, right) => right.excessSeconds - left.excessSeconds)
+      .slice(0, 6)
+      .forEach((record) => {
+        notifications.push({
+          id: `overdue-${record.id}`,
+          title: isOwnRecord(record.responsibleId) ? "Tu actividad excedió el tiempo" : `${record.responsibleName} tiene retraso`,
+          message: `${record.label} acumula ${formatDurationClock(record.excessSeconds)} extra sobre el tiempo esperado.`,
+          meta: record.boardName,
+          tone: "danger",
+          timestamp: record.occurredAt || new Date(now).toISOString(),
+          targetPage: PAGE_DASHBOARD,
+        });
+      });
+
+    actionableLowStockInventoryItems
+      .filter((item) => actionPermissions[getInventoryManageActionId(item.domain)])
+      .slice(0, 8)
+      .forEach((item) => {
+        notifications.push({
+          id: `inventory-low-${item.id}`,
+          title: "Stock bajo en inventario",
+          message: `${item.name} quedó en ${item.stockUnits} ${item.unitLabel || "pzas"} y su mínimo es ${item.minStockUnits}.`,
+          meta: item.domain === INVENTORY_DOMAIN_ORDERS ? "Insumos para pedidos" : "Insumos de limpieza",
+          tone: "danger",
+          timestamp: item.updatedAt || item.createdAt || new Date(now).toISOString(),
+          targetPage: PAGE_INVENTORY,
+          targetDomain: item.domain,
+          isLocked: true,
+          keepUntilResolved: true,
+        });
+      });
+
+    if ((ROLE_LEVEL[currentUser.role] || 0) >= ROLE_LEVEL[ROLE_SR]) {
+      securityEvents
+        .slice(0, 5)
+        .forEach((event, index) => {
+          notifications.push({
+            id: `security-event-${event.timestamp || index}-${event.eventType || "audit"}`,
+            title: "Evento de seguridad",
+            message: `${event.eventType || "Evento"} en ${event.path || "ruta no disponible"}.`,
+            meta: event.details?.login || event.details?.reason || event.ip || "Revisar detalle en backend",
+            tone: "danger",
+            timestamp: event.timestamp || new Date(now).toISOString(),
+          });
+        });
+    }
+
+    return notifications.toSorted((left, right) => getComparableDateMs(right.timestamp) - getComparableDateMs(left.timestamp));
+  }, [
+    actionableLowStockInventoryItems,
+    actionPermissions,
+    currentUser,
+    dashboardRecords,
+    isForcedPasswordChange,
+    managedUserIds,
+    now,
+    securityEvents,
+  ]);
+
+  useEffect(() => {
+    if (!sessionUserId) return;
+
+    setNotificationInboxState((current) => {
+      const currentInbox = Array.isArray(current[sessionUserId]) ? current[sessionUserId] : [];
+      const mergedById = new Map(currentInbox.map((notification) => [notification.id, notification]));
+
+      derivedNotifications.forEach((notification) => {
+        mergedById.set(notification.id, {
+          ...mergedById.get(notification.id),
+          ...notification,
+        });
+      });
+
+      const activeIds = new Set(derivedNotifications.map((notification) => notification.id));
+      const nextInbox = Array.from(mergedById.values())
+        .filter((notification) => !notification.keepUntilResolved || activeIds.has(notification.id))
+        .toSorted((left, right) => getComparableDateMs(right.timestamp) - getComparableDateMs(left.timestamp))
+        .slice(0, 400);
+
+      const previousSerialized = JSON.stringify(currentInbox);
+      const nextSerialized = JSON.stringify(nextInbox);
+      if (previousSerialized === nextSerialized) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [sessionUserId]: nextInbox,
+      };
+    });
+  }, [derivedNotifications, sessionUserId]);
+
+  const currentUserInboxNotifications = useMemo(
+    () => Array.isArray(notificationInboxState[sessionUserId]) ? notificationInboxState[sessionUserId] : [],
+    [notificationInboxState, sessionUserId],
+  );
+
+  const appNotifications = useMemo(
+    () => currentUserInboxNotifications
+      .filter((notification) => notification.isLocked || !currentUserDeletedNotificationIds.has(notification.id))
+      .map((notification) => ({
+        ...notification,
+        isLocked: Boolean(notification.isLocked),
+        isUnread: notification.isLocked ? true : !currentUserReadNotificationIds.has(notification.id),
+      }))
+      .toSorted((left, right) => getComparableDateMs(right.timestamp) - getComparableDateMs(left.timestamp)),
+    [currentUserDeletedNotificationIds, currentUserInboxNotifications, currentUserReadNotificationIds],
+  );
+
+  const unreadNotificationsCount = useMemo(
+    () => appNotifications.filter((notification) => notification.isUnread).length,
+    [appNotifications],
+  );
+
+  const unreadNotifications = useMemo(
+    () => appNotifications.filter((notification) => notification.isUnread),
+    [appNotifications],
+  );
+
+  const readNotifications = useMemo(
+    () => appNotifications.filter((notification) => !notification.isUnread),
+    [appNotifications],
+  );
+
   const visibleControlBoards = useMemo(() => {
     if (!currentUser) return [];
     return (state.controlBoards || []).filter((board) => getBoardVisibleToUser(board, currentUser));
@@ -5485,6 +6789,15 @@ function App() {
     [currentUser, normalizedPermissions, selectedCustomBoard],
   );
 
+  const canChangeSelectedBoardOperationalContext = useMemo(() => {
+    if (!currentUser || !selectedCustomBoard || !canDoBoardAction(currentUser, selectedCustomBoard)) {
+      return false;
+    }
+
+    return canDoAction(currentUser, "boardWorkflow", normalizedPermissions)
+      || canDoAction(currentUser, "saveBoard", normalizedPermissions);
+  }, [currentUser, normalizedPermissions, selectedCustomBoard]);
+
   const availableBoardTemplates = useMemo(() => {
     if (!currentUser) return BOARD_TEMPLATES;
     const sharedTemplates = (state.boardTemplates || []).filter((template) => canUserAccessTemplate(template, currentUser));
@@ -5499,11 +6812,6 @@ function App() {
   const permissionManagedUsers = useMemo(
     () => visibleUsers.filter((user) => user.isActive),
     [visibleUsers],
-  );
-
-  const selectedPermissionUser = useMemo(
-    () => permissionManagedUsers.find((user) => user.id === selectedPermissionUserId) || permissionManagedUsers[0] || null,
-    [permissionManagedUsers, selectedPermissionUserId],
   );
 
   const permissionPages = useMemo(() => NAV_ITEMS, []);
@@ -5538,11 +6846,6 @@ function App() {
     [availableBoardTemplates, templatePreviewId],
   );
 
-  const selectedPreviewTemplateGroups = useMemo(
-    () => getTemplateFieldGroups(selectedPreviewTemplate),
-    [selectedPreviewTemplate],
-  );
-
   const editableVisibleBoards = useMemo(
     () => visibleControlBoards.filter((board) => canEditBoard(currentUser, board)),
     [currentUser, visibleControlBoards],
@@ -5569,11 +6872,7 @@ function App() {
 
   const filteredAuditLog = useMemo(() => {
     const nowMs = Date.now();
-    const periodMs = auditFilters.period === "7d"
-      ? 7 * 24 * 60 * 60 * 1000
-      : auditFilters.period === "30d"
-        ? 30 * 24 * 60 * 60 * 1000
-        : null;
+    const periodMs = getAuditPeriodMs(auditFilters.period);
     const searchTerm = auditFilters.search.trim().toLowerCase();
 
     return (state.auditLog || []).filter((entry) => {
@@ -5599,15 +6898,11 @@ function App() {
   useEffect(() => {
     if (!permissionManagedUsers.length) {
       if (selectedPermissionUserId) setSelectedPermissionUserId("");
-      setOpenPermissionPageId("");
-      setPermissionEditorDraft(null);
       return;
     }
 
     if (!permissionManagedUsers.some((user) => user.id === selectedPermissionUserId)) {
       setSelectedPermissionUserId(permissionManagedUsers[0].id);
-      setOpenPermissionPageId("");
-      setPermissionEditorDraft(null);
     }
   }, [permissionManagedUsers, selectedPermissionUserId]);
 
@@ -5707,96 +7002,6 @@ function App() {
     setLoginError(message || "");
   }
 
-  async function handleCreateWeek() {
-    if (!actionPermissions.createWeek) return;
-    try {
-      const nextState = await requestJson("/warehouse/weeks", { method: "POST" });
-      const activeId = nextState.weeks.find((item) => item.isActive)?.id || nextState.weeks.at(-1)?.id || "";
-      skipNextSyncRef.current = true;
-      setState(nextState);
-      setSelectedWeekId(activeId);
-      setSyncStatus("Sincronizado");
-      return;
-    } catch {
-      const nowDate = new Date();
-      const weekId = makeId("week");
-      const startDate = startOfWeek(nowDate);
-      const newWeek = {
-        id: weekId,
-        name: getWeekName(nowDate),
-        startDate: startDate.toISOString(),
-        endDate: endOfWeek(nowDate).toISOString(),
-        isActive: true,
-      };
-      const newActivities = buildWeekActivities(weekId, state.catalog, state.users);
-
-      setState((current) => ({
-        ...current,
-        weeks: current.weeks.map((week) => ({ ...week, isActive: false })).concat(newWeek),
-        activities: current.activities.concat(newActivities),
-      }));
-      setSelectedWeekId(weekId);
-    }
-  }
-
-  function updateActivity(activityId, updater) {
-    setState((current) => ({
-      ...current,
-      activities: current.activities.map((activity) => (activity.id === activityId ? updater(activity) : activity)),
-    }));
-  }
-
-  function assignResponsible(activityId, responsibleId) {
-    updateActivity(activityId, (activity) => ({
-      ...activity,
-      responsibleId: responsibleId || null,
-    }));
-  }
-
-  async function handleStart(activityId) {
-    const activity = state.activities.find((item) => item.id === activityId);
-    const linkedCleaningItems = (state.inventoryItems || [])
-      .map((item) => normalizeInventoryItemRecord(item))
-      .filter((item) => item.domain === INVENTORY_DOMAIN_CLEANING && item.activityCatalogIds.includes(activity?.catalogActivityId) && Number(item.consumptionPerStart || 0) > 0);
-    const isFirstStart = Boolean(activity && !activity.startTime);
-    const nowIso = new Date().toISOString();
-    updateActivity(activityId, (activity) => ({
-      ...activity,
-      status: STATUS_RUNNING,
-      startTime: activity.startTime || nowIso,
-      lastResumedAt: nowIso,
-    }));
-
-    if (!isFirstStart || !linkedCleaningItems.length || !actionPermissions.manageCleaningInventory) {
-      return;
-    }
-
-    try {
-      let latestInventoryState = null;
-      for (const item of linkedCleaningItems) {
-        const result = await requestJson("/warehouse/inventory/movements", {
-          method: "POST",
-          body: JSON.stringify({
-            itemId: item.id,
-            movementType: INVENTORY_MOVEMENT_CONSUME,
-            quantity: Number(item.consumptionPerStart || 0),
-            notes: `Consumo automático al iniciar ${getActivityLabel(activity, catalogMap)}`,
-            activityId: activity.id,
-            catalogActivityId: activity.catalogActivityId,
-            storageLocation: item.storageLocation,
-            unitLabel: item.unitLabel,
-          }),
-        });
-        latestInventoryState = result.data.state;
-      }
-      if (latestInventoryState) {
-        applyRemoteInventorySnapshot(latestInventoryState);
-      }
-    } catch (error) {
-      setInventoryImportFeedback({ tone: "danger", message: error?.message || "No se pudo descontar el insumo ligado a la actividad." });
-    }
-  }
-
   function handleConfirmPause() {
     if (!pauseState.reason.trim()) {
       setPauseState((current) => ({ ...current, error: "El motivo es obligatorio para poder pausar." }));
@@ -5829,30 +7034,6 @@ function App() {
     setPauseState({ open: false, activityId: null, reason: "", error: "" });
   }
 
-  function handleResume(activityId) {
-    const nowIso = new Date().toISOString();
-    setState((current) => ({
-      ...current,
-      activities: current.activities.map((activity) =>
-        activity.id === activityId
-          ? {
-              ...activity,
-              status: STATUS_RUNNING,
-              lastResumedAt: nowIso,
-            }
-          : activity,
-      ),
-      pauseLogs: current.pauseLogs.map((log) => {
-        if (log.weekActivityId !== activityId || log.resumedAt) return log;
-        return {
-          ...log,
-          resumedAt: nowIso,
-          pauseDurationSeconds: Math.max(0, Math.floor((new Date(nowIso) - new Date(log.pausedAt)) / 1000)),
-        };
-      }),
-    }));
-  }
-
   function openBoardPauseModal(boardId, rowId) {
     const board = (state.controlBoards || []).find((item) => item.id === boardId);
     const row = board?.rows?.find((item) => item.id === rowId);
@@ -5878,18 +7059,6 @@ function App() {
     }).catch((error) => {
       setBoardPauseState((current) => ({ ...current, error: error?.message || "No se pudo pausar la fila." }));
     });
-  }
-
-  function handleFinish(activityId) {
-    const nowIso = new Date().toISOString();
-    updateActivity(activityId, (activity) => ({
-      ...activity,
-      status: STATUS_FINISHED,
-      startTime: activity.startTime || nowIso,
-      endTime: nowIso,
-      accumulatedSeconds: updateElapsedForFinish(activity, nowIso),
-      lastResumedAt: null,
-    }));
   }
 
   function openCatalogCreate(preferredCategory = "General") {
@@ -5973,10 +7142,11 @@ function App() {
   }
 
   function buildUserRecordFromModalDraft(draft, fallbackId = "user-modal-preview") {
+    const fallbackEmail = normalizeKey(draft.name || draft.role || "player").split(/\s+/).filter(Boolean).join(".") || "player";
     return normalizeUserRecord({
       id: draft.id || fallbackId,
       name: draft.name || "Nuevo player",
-      email: draft.username || draft.email || normalizeKey(draft.name || draft.role || "player").replace(/\s+/g, ".") || "player",
+      email: draft.username || draft.email || fallbackEmail,
       role: draft.role,
       area: draft.area || getUserArea(currentUser),
       department: draft.area || getUserArea(currentUser),
@@ -6187,34 +7357,6 @@ function App() {
     }
   }
 
-  function updateControlRow(rowId, key, value) {
-    setState((current) => ({
-      ...current,
-      controlRows: current.controlRows.map((row) => (row.id === rowId ? { ...row, [key]: value } : row)),
-    }));
-  }
-
-  function addControlRow() {
-    setState((current) => ({
-      ...current,
-      controlRows: current.controlRows.concat({
-        id: makeId("ctrl"),
-        product: "",
-        pallets: 0,
-        boxes: 0,
-        responsibleId: current.users.find((user) => user.isActive)?.id || current.users[0]?.id || "",
-        status: CONTROL_STATUS_OPTIONS[0],
-      }),
-    }));
-  }
-
-  function removeControlRow(rowId) {
-    setState((current) => ({
-      ...current,
-      controlRows: current.controlRows.filter((row) => row.id !== rowId),
-    }));
-  }
-
   function addDraftColumn() {
     if (!controlBoardDraft.fieldLabel.trim()) {
       setControlBoardFeedback("Escribe una etiqueta para el campo antes de agregarlo.");
@@ -6260,23 +7402,14 @@ function App() {
       ? buildInventoryBundleFields(controlBoardDraft, editingDraftColumnId || null)
       : [field];
     setControlBoardDraft((current) => {
-      const nextColumns = editingDraftColumnId
-        ? current.columns.flatMap((column) => {
-          if (isBundleField) {
-            const derivedIds = new Set(getInventoryBundleEditableFields(current.columns, editingDraftColumnId).map((item) => item.id));
-            if (column.id === editingDraftColumnId) return fieldsToInsert;
-            if (derivedIds.has(column.id)) return [];
-            return [column];
-          }
-          return column.id === editingDraftColumnId ? fieldsToInsert : [column];
-        })
-        : current.columns.concat(fieldsToInsert);
-      const nextColumnOrder = syncBoardFieldOrderIntoColumnOrder(nextColumns, current.settings || {});
+      const nextColumns = buildUpdatedDraftColumns(current.columns, editingDraftColumnId, isBundleField, fieldsToInsert);
+      const currentSettings = current.settings ?? EMPTY_OBJECT;
+      const nextColumnOrder = syncBoardFieldOrderIntoColumnOrder(nextColumns, currentSettings);
       return {
         ...current,
         columns: nextColumns,
         settings: {
-          ...current.settings,
+          ...currentSettings,
           columnOrder: nextColumnOrder,
         },
         ...createEmptyFieldDraft(),
@@ -6284,18 +7417,25 @@ function App() {
     });
     setEditingDraftColumnId(null);
     setComponentStudioOpen(false);
-    setControlBoardFeedback(editingDraftColumnId ? "Componente actualizado correctamente." : fieldsToInsert.length > 1 ? "Buscador agregado con sus columnas automáticas." : "Componente agregado al tablero borrador.");
+    let feedbackMessage = "Componente agregado al tablero borrador.";
+    if (editingDraftColumnId) {
+      feedbackMessage = "Componente actualizado correctamente.";
+    } else if (fieldsToInsert.length > 1) {
+      feedbackMessage = "Buscador agregado con sus columnas automáticas.";
+    }
+    setControlBoardFeedback(feedbackMessage);
   }
 
   function removeDraftColumn(columnId) {
     setControlBoardDraft((current) => {
       const nextColumns = current.columns.filter((column) => column.id !== columnId);
+      const currentSettings = current.settings ?? EMPTY_OBJECT;
       return {
         ...current,
         columns: nextColumns,
         settings: {
-          ...current.settings,
-          columnOrder: getNormalizedBoardColumnOrder({ fields: nextColumns, settings: current.settings || {} }),
+          ...currentSettings,
+          columnOrder: getNormalizedBoardColumnOrder({ fields: nextColumns, settings: currentSettings }),
         },
       };
     });
@@ -6318,6 +7458,7 @@ function App() {
     setControlBoardDraft((current) => {
       const index = current.columns.findIndex((item) => item.id === columnId);
       if (index === -1) return current;
+      const currentSettings = current.settings ?? EMPTY_OBJECT;
       const source = current.columns[index];
       const duplicate = {
         ...source,
@@ -6330,8 +7471,8 @@ function App() {
         ...current,
         columns: nextColumns,
         settings: {
-          ...current.settings,
-          columnOrder: syncBoardFieldOrderIntoColumnOrder(nextColumns, current.settings || {}),
+          ...currentSettings,
+          columnOrder: syncBoardFieldOrderIntoColumnOrder(nextColumns, currentSettings),
         },
       };
     });
@@ -6342,6 +7483,7 @@ function App() {
     setControlBoardDraft((current) => {
       const index = current.columns.findIndex((item) => item.id === columnId);
       if (index === -1) return current;
+      const currentSettings = current.settings ?? EMPTY_OBJECT;
       const targetIndex = direction === "up" ? index - 1 : index + 1;
       if (targetIndex < 0 || targetIndex >= current.columns.length) return current;
       const nextColumns = [...current.columns];
@@ -6351,8 +7493,8 @@ function App() {
         ...current,
         columns: nextColumns,
         settings: {
-          ...current.settings,
-          columnOrder: syncBoardFieldOrderIntoColumnOrder(nextColumns, current.settings || {}),
+          ...currentSettings,
+          columnOrder: syncBoardFieldOrderIntoColumnOrder(nextColumns, currentSettings),
         },
       };
     });
@@ -6364,6 +7506,7 @@ function App() {
       const sourceIndex = current.columns.findIndex((item) => item.id === sourceColumnId);
       const targetIndex = current.columns.findIndex((item) => item.id === targetColumnId);
       if (sourceIndex === -1 || targetIndex === -1) return current;
+      const currentSettings = current.settings ?? EMPTY_OBJECT;
       const nextColumns = [...current.columns];
       const [moved] = nextColumns.splice(sourceIndex, 1);
       nextColumns.splice(targetIndex, 0, moved);
@@ -6371,8 +7514,8 @@ function App() {
         ...current,
         columns: nextColumns,
         settings: {
-          ...current.settings,
-          columnOrder: syncBoardFieldOrderIntoColumnOrder(nextColumns, current.settings || {}),
+          ...currentSettings,
+          columnOrder: syncBoardFieldOrderIntoColumnOrder(nextColumns, currentSettings),
         },
       };
     });
@@ -6382,14 +7525,17 @@ function App() {
     const template = availableBoardTemplates.find((item) => item.id === templateId);
     if (!template) return;
 
-    setControlBoardDraft((current) => ({
-      ...current,
-      name: template.name,
-      description: template.description,
-      settings: { ...current.settings, ...(template.settings || {}), columnOrder: [] },
-      columns: buildTemplateColumns(template),
-      ...createEmptyFieldDraft(),
-    }));
+    setControlBoardDraft((current) => {
+      const templateSettings = template.settings && typeof template.settings === "object" ? template.settings : undefined;
+      return {
+        ...current,
+        name: template.name,
+        description: template.description,
+        settings: withDefaultBoardSettings({ ...current.settings, ...templateSettings, columnOrder: [] }),
+        columns: buildTemplateColumns(template),
+        ...createEmptyFieldDraft(),
+      };
+    });
     setEditingDraftColumnId(null);
     setTemplatePreviewId(null);
     setControlBoardFeedback(`Plantilla ${template.name} cargada al borrador. Puedes agregar, cambiar o quitar componentes antes de guardar.`);
@@ -6401,64 +7547,6 @@ function App() {
 
   function getPagePermissionActions(pageId) {
     return ACTION_DEFINITIONS.filter((item) => (PAGE_ACTION_GROUPS[pageId] || []).includes(item.id));
-  }
-
-  function buildUserPermissionDraft(user, pageId) {
-    if (!user) return null;
-    return {
-      pageId,
-      pageEnabled: canAccessPage(user, pageId, normalizedPermissions),
-      actions: Object.fromEntries(getPagePermissionActions(pageId).map((item) => [item.id, canDoAction(user, item.id, normalizedPermissions)])),
-    };
-  }
-
-  function openPermissionPanel(pageId) {
-    if (!selectedPermissionUser) return;
-    if (openPermissionPageId === pageId) {
-      setOpenPermissionPageId("");
-      setPermissionEditorDraft(null);
-      return;
-    }
-    setOpenPermissionPageId(pageId);
-    setPermissionEditorDraft(buildUserPermissionDraft(selectedPermissionUser, pageId));
-  }
-
-  function togglePermissionDraftValue(kind, key) {
-    setPermissionEditorDraft((current) => {
-      if (!current) return current;
-      if (kind === "page") {
-        return { ...current, pageEnabled: !current.pageEnabled };
-      }
-      return {
-        ...current,
-        actions: {
-          ...current.actions,
-          [key]: !current.actions[key],
-        },
-      };
-    });
-  }
-
-  async function savePermissionPanel() {
-    if (!selectedPermissionUser || !permissionEditorDraft || !actionPermissions.managePermissions) return;
-
-    try {
-      const result = await requestJson(`/warehouse/permissions/users/${selectedPermissionUser.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          pages: {
-            [permissionEditorDraft.pageId]: permissionEditorDraft.pageEnabled,
-          },
-          actions: permissionEditorDraft.actions,
-        }),
-      });
-      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
-      setPermissionsFeedback({ tone: "success", message: `Permisos guardados para ${selectedPermissionUser.name}.` });
-      setOpenPermissionPageId("");
-      setPermissionEditorDraft(null);
-    } catch (error) {
-      setPermissionsFeedback({ tone: "danger", message: error?.message || "No se pudieron guardar los permisos directos." });
-    }
   }
 
   async function updatePermissionEntry(scope, key, field, value) {
@@ -6500,6 +7588,38 @@ function App() {
       applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
     } catch (error) {
       setPermissionsFeedback({ tone: "danger", message: error?.message || "No se pudo actualizar la asignación del tablero." });
+    }
+  }
+
+  async function updateBoardOperationalContext(boardId, operationalContextValue) {
+    if (!currentUser || !boardId) return;
+
+    const board = (state.controlBoards || []).find((item) => item.id === boardId);
+    if (!board || !canDoBoardAction(currentUser, board)) return;
+
+    const canUpdateContext = canDoAction(currentUser, "boardWorkflow", normalizedPermissions)
+      || canDoAction(currentUser, "saveBoard", normalizedPermissions);
+    if (!canUpdateContext) return;
+
+    const normalizedSettings = withDefaultBoardSettings(board.settings);
+    try {
+      const result = await requestJson(`/warehouse/boards/${boardId}/context`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          operationalContextValue: normalizeBoardOperationalContextValue(
+            operationalContextValue,
+            normalizedSettings.operationalContextType,
+            normalizedSettings.operationalContextOptions,
+          ),
+        }),
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setBoardRuntimeFeedback({
+        tone: "success",
+        message: `${normalizedSettings.operationalContextLabel || "Contexto operativo"} actualizado a ${result.data.operationalContextValue || operationalContextValue}.`,
+      });
+    } catch (error) {
+      setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo actualizar el contexto del tablero." });
     }
   }
 
@@ -6617,20 +7737,6 @@ function App() {
     }
   }
 
-  function openEditBoardTemplate(template) {
-    if (!template?.isCustom || !actionPermissions.editTemplate) return;
-    setTemplateEditorModal({
-      open: true,
-      id: template.id,
-      name: template.name || "",
-      description: template.description || "",
-      category: getBoardTemplateCategory(template),
-      visibilityType: template.visibilityType || "department",
-      sharedDepartments: template.sharedDepartments || [],
-      sharedUserIds: template.sharedUserIds || [],
-    });
-  }
-
   async function submitBoardTemplateEdit() {
     if (!templateEditorModal.id || !templateEditorModal.name.trim() || !actionPermissions.editTemplate) {
       setControlBoardFeedback("La plantilla debe tener nombre para guardar los cambios.");
@@ -6657,17 +7763,36 @@ function App() {
     }
   }
 
-  async function deleteBoardTemplate(templateId) {
-    if (!actionPermissions.deleteTemplate) return;
-    try {
-      const result = await requestJson(`/warehouse/templates/${templateId}`, {
-        method: "DELETE",
+  async function importDraftRowsIntoBoard(createdBoardId, payload, initialState) {
+    let latestRemoteState = initialState;
+    const rowsToImport = boardImportedRowsDraft.slice(0, 200);
+    const yesValues = new Set(["si", "sí", "true", "1", "yes", "y"]);
+
+    for (const importedRow of rowsToImport) {
+      const createdRowState = await requestJson(`/warehouse/boards/${createdBoardId}/rows`, {
+        method: "POST",
       });
-      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
-      setControlBoardFeedback("Plantilla personalizada eliminada.");
-    } catch (error) {
-      setControlBoardFeedback(error?.message || "No se pudo eliminar la plantilla.");
+
+      const boardAfterCreate = (createdRowState.controlBoards || []).find((item) => item.id === createdBoardId);
+      const rowId = boardAfterCreate?.rows?.[boardAfterCreate.rows.length - 1]?.id;
+      if (!rowId) {
+        latestRemoteState = createdRowState;
+        continue;
+      }
+
+      const valuesPatch = buildImportedBoardRowValuesPatch(importedRow, payload.columns, visibleUsers, state.inventoryItems || [], yesValues);
+      if (!Object.keys(valuesPatch).length) {
+        latestRemoteState = createdRowState;
+        continue;
+      }
+
+      latestRemoteState = await requestJson(`/warehouse/boards/${createdBoardId}/rows/${rowId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ values: valuesPatch }),
+      });
     }
+
+    return latestRemoteState;
   }
 
   async function saveControlBoard() {
@@ -6678,21 +7803,7 @@ function App() {
     const isEditing = boardBuilderModal.mode === "edit" && boardBuilderModal.boardId;
 
     const ownerId = controlBoardDraft.ownerId || currentUser.id;
-    const normalizedColumnOrder = getNormalizedBoardColumnOrder({
-      fields: controlBoardDraft.columns || [],
-      settings: controlBoardDraft.settings || {},
-    });
-    const payload = {
-      name: controlBoardDraft.name.trim(),
-      description: controlBoardDraft.description.trim(),
-      ownerId,
-      accessUserIds: Array.from(new Set((controlBoardDraft.accessUserIds || []).filter((userId) => userId && userId !== ownerId))),
-      settings: {
-        ...controlBoardDraft.settings,
-        columnOrder: normalizedColumnOrder,
-      },
-      columns: sortBoardFieldsByColumnOrder(cloneDraftColumns(controlBoardDraft.columns || []), normalizedColumnOrder),
-    };
+    const { payload } = buildBoardSavePayload(controlBoardDraft, ownerId);
 
     try {
       const result = await requestJson(
@@ -6706,63 +7817,7 @@ function App() {
       const createdBoardId = result.data.boardId || boardBuilderModal.boardId || "";
 
       if (!isEditing && createdBoardId && boardImportedRowsDraft.length) {
-        let latestRemoteState = result.data.state;
-        const rowsToImport = boardImportedRowsDraft.slice(0, 200);
-        const yesValues = new Set(["si", "sí", "true", "1", "yes", "y"]);
-
-        for (const importedRow of rowsToImport) {
-          const createdRowState = await requestJson(`/warehouse/boards/${createdBoardId}/rows`, {
-            method: "POST",
-          });
-
-          const boardAfterCreate = (createdRowState.controlBoards || []).find((item) => item.id === createdBoardId);
-          const rowId = boardAfterCreate?.rows?.[boardAfterCreate.rows.length - 1]?.id;
-          if (!rowId) {
-            latestRemoteState = createdRowState;
-            continue;
-          }
-
-          const valuesPatch = {};
-          (payload.columns || []).forEach((field) => {
-            const raw = importedRow?.[field.label];
-            if (raw === undefined || raw === null || String(raw).trim() === "") return;
-
-            if (["number", "currency", "percentage", "formula"].includes(field.type)) {
-              const parsed = Number(String(raw).replace(/[$,%\s,]/g, ""));
-              valuesPatch[field.id] = Number.isFinite(parsed) ? parsed : 0;
-              return;
-            }
-
-            if (field.type === "boolean") {
-              valuesPatch[field.id] = yesValues.has(String(raw).trim().toLowerCase()) ? "Si" : "No";
-              return;
-            }
-
-            if (field.type === "user") {
-              const match = visibleUsers.find((user) => normalizeKey(user.name) === normalizeKey(raw));
-              valuesPatch[field.id] = match?.id || "";
-              return;
-            }
-
-            if (isInventoryLookupFieldType(field.type)) {
-              const item = findInventoryItemByQuery(state.inventoryItems || [], raw);
-              valuesPatch[field.id] = item?.id || "";
-              return;
-            }
-
-            valuesPatch[field.id] = String(raw);
-          });
-
-          if (Object.keys(valuesPatch).length) {
-            latestRemoteState = await requestJson(`/warehouse/boards/${createdBoardId}/rows/${rowId}`, {
-              method: "PATCH",
-              body: JSON.stringify({ values: valuesPatch }),
-            });
-          } else {
-            latestRemoteState = createdRowState;
-          }
-        }
-
+        const latestRemoteState = await importDraftRowsIntoBoard(createdBoardId, payload, result.data.state);
         applyRemoteWarehouseState(latestRemoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
         setBoardRuntimeFeedback({
           tone: "success",
@@ -6834,10 +7889,10 @@ function App() {
         method: "DELETE",
       });
       applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
-      const remainingVisibleBoards = (result.data.state?.controlBoards || []).filter((board) => getBoardVisibleToUser(board, currentUser));
+      const nextVisibleBoard = (result.data.state?.controlBoards || []).find((board) => getBoardVisibleToUser(board, currentUser));
       setDeleteBoardId(null);
       setCustomBoardActionsMenuOpen(false);
-      setSelectedCustomBoardId(remainingVisibleBoards[0]?.id || "");
+      setSelectedCustomBoardId(nextVisibleBoard?.id || "");
       setBoardRuntimeFeedback({ tone: "success", message: `Se eliminó el tablero ${boardToDelete.name}.` });
     } catch (error) {
       setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo eliminar el tablero." });
@@ -6851,20 +7906,14 @@ function App() {
     setControlBoardFeedback("");
   }
 
-  function applyRemoteInventorySnapshot(remoteState) {
-    setState((current) => ({
-      ...current,
-      revision: remoteState?.revision ?? current.revision,
-      updatedAt: remoteState?.updatedAt ?? current.updatedAt,
-      inventoryItems: Array.isArray(remoteState?.inventoryItems) ? remoteState.inventoryItems : current.inventoryItems,
-      inventoryMovements: Array.isArray(remoteState?.inventoryMovements) ? remoteState.inventoryMovements : current.inventoryMovements,
-    }));
-  }
-
   function openCreateInventoryItem(domain = inventoryTab) {
     if (!actionPermissions[getInventoryManageActionId(domain)]) return;
     setInventoryImportFeedback({ tone: "", message: "" });
-    setInventoryModal({ ...createInventoryModalState("create", {}, domain), open: true });
+    setInventoryModal({
+      ...createInventoryModalState("create", {}, domain),
+      cleaningSite: domain === INVENTORY_DOMAIN_CLEANING ? inventoryCleaningSite : DEFAULT_CLEANING_SITE,
+      open: true,
+    });
   }
 
   function openEditInventoryItem(item) {
@@ -6872,25 +7921,68 @@ function App() {
     setInventoryModal({ ...createInventoryModalState("edit", item, item.domain), open: true });
   }
 
+  function toggleInventoryModalActivityCatalog(itemId, isChecked) {
+    setInventoryModal((current) => {
+      const nextActivityCatalogIds = isChecked
+        ? Array.from(new Set(current.activityCatalogIds.concat(itemId)))
+        : current.activityCatalogIds.filter((catalogId) => catalogId !== itemId);
+      const nextActivityConsumptions = isChecked
+        ? current.activityConsumptions.some((entry) => entry.catalogActivityId === itemId)
+          ? current.activityConsumptions
+          : current.activityConsumptions.concat({ catalogActivityId: itemId, quantity: "" })
+        : current.activityConsumptions.filter((entry) => entry.catalogActivityId !== itemId);
+
+      return {
+        ...current,
+        activityCatalogIds: nextActivityCatalogIds,
+        activityConsumptions: nextActivityConsumptions,
+      };
+    });
+  }
+
+  function updateInventoryModalActivityConsumption(itemId, value) {
+    setInventoryModal((current) => ({
+      ...current,
+      activityConsumptions: current.activityConsumptions.map((entry) => (
+        entry.catalogActivityId === itemId ? { ...entry, quantity: value } : entry
+      )),
+    }));
+  }
+
   function closeInventoryMovementModal() {
     setInventoryMovementModal(createInventoryMovementModalState());
+  }
+
+  function closeInventoryTransferConfirmModal(shouldReopenMovementModal = false) {
+    if (shouldReopenMovementModal && inventoryTransferConfirmModal.draftMovementModal) {
+      setInventoryMovementModal(inventoryTransferConfirmModal.draftMovementModal);
+    }
+    setInventoryTransferConfirmModal(createInventoryTransferConfirmModalState());
   }
 
   function updateInventoryMovementModal(updates) {
     setInventoryMovementModal((current) => {
       const next = { ...current, ...updates };
-      const hasItemChange = Object.prototype.hasOwnProperty.call(updates, "itemId");
-      const hasWarehouseChange = Object.prototype.hasOwnProperty.call(updates, "warehouse");
-      const hasStorageChange = Object.prototype.hasOwnProperty.call(updates, "storageLocation");
-      const hasMovementTypeChange = Object.prototype.hasOwnProperty.call(updates, "movementType");
+      const hasItemChange = Object.hasOwn(updates, "itemId");
+      const hasWarehouseChange = Object.hasOwn(updates, "warehouse");
+      const hasStorageChange = Object.hasOwn(updates, "storageLocation");
+      const hasMovementTypeChange = Object.hasOwn(updates, "movementType");
       const selectedItem = next.itemId ? inventoryItemsById.get(next.itemId) || null : null;
+      const defaultTransferDestination = next.movementType === INVENTORY_MOVEMENT_TRANSFER && selectedItem?.domain === INVENTORY_DOMAIN_ORDERS
+        ? getInventoryDefaultTransferDestination(selectedItem, inventoryMovements)
+        : null;
 
       if (hasItemChange) {
         next.itemCode = selectedItem?.code || "";
         next.itemName = selectedItem?.name || "";
         next.unitLabel = selectedItem?.unitLabel || "pzas";
         next.domain = selectedItem?.domain || current.domain;
-        if (next.movementType !== INVENTORY_MOVEMENT_TRANSFER) {
+        if (next.movementType === INVENTORY_MOVEMENT_TRANSFER && selectedItem?.domain === INVENTORY_DOMAIN_ORDERS) {
+          next.warehouse = defaultTransferDestination?.warehouse || "";
+          next.storageLocation = defaultTransferDestination?.storageLocation || "";
+          next.recipientName = defaultTransferDestination?.recipientName || "";
+          next.transferTargetKey = defaultTransferDestination?.destinationKey || "";
+        } else {
           next.storageLocation = selectedItem?.storageLocation || "";
         }
       }
@@ -6925,22 +8017,165 @@ function App() {
   function openInventoryMovement(item, movementType = INVENTORY_MOVEMENT_RESTOCK) {
     if (!actionPermissions[getInventoryManageActionId(item?.domain)]) return;
     setInventoryImportFeedback({ tone: "", message: "" });
-    setInventoryMovementModal({ ...createInventoryMovementModalState(item, movementType, item?.domain || inventoryTab), open: true });
+    const defaultTransferDestination = movementType === INVENTORY_MOVEMENT_TRANSFER && item?.domain === INVENTORY_DOMAIN_ORDERS
+      ? getInventoryDefaultTransferDestination(item, inventoryMovements)
+      : null;
+    setInventoryMovementModal({ ...createInventoryMovementModalState(item, movementType, item?.domain || inventoryTab, { defaultDestination: defaultTransferDestination }), open: true });
   }
 
   function openOrderInventoryTransfer(item = null) {
     if (!actionPermissions[getInventoryManageActionId(INVENTORY_DOMAIN_ORDERS)]) return;
     setInventoryImportFeedback({ tone: "", message: "" });
-    setInventoryMovementModal({ ...createInventoryMovementModalState(item, INVENTORY_MOVEMENT_TRANSFER, INVENTORY_DOMAIN_ORDERS), open: true });
+    const defaultTransferDestination = item ? getInventoryDefaultTransferDestination(item, inventoryMovements) : null;
+    setInventoryMovementModal({ ...createInventoryMovementModalState(item, INVENTORY_MOVEMENT_TRANSFER, INVENTORY_DOMAIN_ORDERS, { defaultDestination: defaultTransferDestination }), open: true });
   }
 
   function openInventoryTransferViewer() {
     if (!actionPermissions[getInventoryManageActionId(INVENTORY_DOMAIN_ORDERS)]) return;
-    setInventoryTransferViewerOpen(true);
+    setInventoryTransferViewerState({ open: true, itemId: null });
+  }
+
+  function openInventoryTransferHistory(item = null) {
+    if (!actionPermissions[getInventoryManageActionId(INVENTORY_DOMAIN_ORDERS)]) return;
+    setInventoryTransferViewerState({ open: true, itemId: item?.id || null });
+  }
+
+  function closeInventoryRestockModal() {
+    setInventoryRestockModal(createInventoryRestockModalState(inventoryTab));
+  }
+
+  function openInventoryRestockModal(item) {
+    if (!item || item.domain === INVENTORY_DOMAIN_BASE || !actionPermissions[getInventoryManageActionId(item.domain)]) return;
+    setInventoryImportFeedback({ tone: "", message: "" });
+    setInventoryRestockModal({
+      ...createInventoryRestockModalState(item.domain, [item.id]),
+      open: true,
+    });
+  }
+
+  function openInventoryBulkRestockModal(domain = inventoryTab) {
+    if (domain === INVENTORY_DOMAIN_BASE || !actionPermissions[getInventoryManageActionId(domain)]) return;
+    const items = domain === INVENTORY_DOMAIN_CLEANING
+      ? currentInventoryDomainItems
+      : allInventoryItemsByDomain[domain] || [];
+    if (!items.length) {
+      setInventoryImportFeedback({ tone: "danger", message: "No hay insumos disponibles para surtir en esta sección." });
+      return;
+    }
+    setInventoryImportFeedback({ tone: "", message: "" });
+    setInventoryRestockModal({
+      ...createInventoryRestockModalState(domain, items.map((item) => item.id)),
+      open: true,
+    });
+  }
+
+  function updateInventoryRestockQuantity(itemId, value) {
+    setInventoryRestockModal((current) => ({
+      ...current,
+      quantities: {
+        ...current.quantities,
+        [itemId]: value,
+      },
+    }));
+  }
+
+  function applySavedInventoryLocation(locationKey) {
+    const selectedLocation = inventoryMovementSavedLocations.find((entry) => entry.key === locationKey);
+    if (!selectedLocation) return;
+    updateInventoryMovementModal({ storageLocation: selectedLocation.label });
+  }
+
+  function applySavedInventoryDestination(destinationKey) {
+    if (!destinationKey) {
+      updateInventoryMovementModal({
+        warehouse: "",
+        storageLocation: "",
+        recipientName: "",
+      });
+      return;
+    }
+    const selectedDestination = inventoryMovementSavedDestinations.find((entry) => entry.destinationKey === destinationKey);
+    if (!selectedDestination) return;
+    updateInventoryMovementModal({
+      warehouse: selectedDestination.warehouse,
+      storageLocation: selectedDestination.storageLocation,
+      recipientName: selectedDestination.recipientName,
+    });
+  }
+
+  async function requestInventoryMovement(payload) {
+    const result = await requestJson("/warehouse/inventory/movements", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+    return result;
+  }
+
+  async function persistInventoryMovement(payload, successMessage) {
+    try {
+      await requestInventoryMovement(payload);
+      setInventoryTransferConfirmModal(createInventoryTransferConfirmModalState());
+      closeInventoryMovementModal();
+      setInventoryImportFeedback({ tone: "success", message: successMessage });
+    } catch (error) {
+      setInventoryImportFeedback({ tone: "danger", message: error?.message || "No se pudo registrar el movimiento." });
+    }
+  }
+
+  async function submitInventoryRestockModal() {
+    if (!actionPermissions[getInventoryManageActionId(inventoryRestockModal.domain)]) return;
+
+    const pendingRestocks = inventoryRestockModalItems
+      .map((item) => ({
+        item,
+        quantity: Number(inventoryRestockModal.quantities[item.id] || 0),
+      }))
+      .filter(({ quantity }) => quantity > 0 && !Number.isNaN(quantity));
+
+    if (!pendingRestocks.length) {
+      closeInventoryRestockModal();
+      setInventoryImportFeedback({ tone: "success", message: "No se agregó surtido porque todas las cantidades quedaron en 0." });
+      return;
+    }
+
+    try {
+      for (const { item, quantity } of pendingRestocks) {
+        await requestInventoryMovement({
+          itemId: item.id,
+          movementType: INVENTORY_MOVEMENT_RESTOCK,
+          quantity,
+          notes: inventoryRestockModal.itemIds.length === 1 ? "Surtido por insumo" : "Surtido general",
+          warehouse: "",
+          recipientName: "",
+          storageLocation: item.storageLocation || "",
+          unitLabel: item.unitLabel || "pzas",
+          remainingUnits: null,
+        });
+      }
+
+      closeInventoryRestockModal();
+      setInventoryImportFeedback({
+        tone: "success",
+        message: pendingRestocks.length === 1
+          ? `Surtido registrado para ${pendingRestocks[0].item.name}.`
+          : `Surtido general aplicado a ${pendingRestocks.length} insumos.`,
+      });
+    } catch (error) {
+      setInventoryImportFeedback({ tone: "danger", message: error?.message || "No se pudo registrar el surtido." });
+    }
   }
 
   async function submitInventoryModal() {
     if (!actionPermissions[getInventoryManageActionId(inventoryModal.domain)]) return;
+    const normalizedActivityConsumptions = inventoryModal.domain === INVENTORY_DOMAIN_CLEANING
+      ? inventoryModal.activityConsumptions
+        .map((entry) => ({
+          catalogActivityId: entry.catalogActivityId,
+          quantity: Number(entry.quantity || 0),
+        }))
+        .filter((entry) => entry.catalogActivityId)
+      : [];
     const payload = {
       domain: inventoryModal.domain,
       code: inventoryModal.code.trim(),
@@ -6951,9 +8186,11 @@ function App() {
       stockUnits: inventoryModal.domain === INVENTORY_DOMAIN_BASE ? 0 : Number(inventoryModal.stockUnits || 0),
       minStockUnits: inventoryModal.domain === INVENTORY_DOMAIN_BASE ? 0 : Number(inventoryModal.minStockUnits || 0),
       storageLocation: inventoryModal.domain === INVENTORY_DOMAIN_BASE ? "" : inventoryModal.storageLocation.trim(),
+      cleaningSite: inventoryModal.domain === INVENTORY_DOMAIN_CLEANING ? normalizeCleaningSite(inventoryModal.cleaningSite) : "",
       unitLabel: inventoryModal.unitLabel.trim() || "pzas",
-      activityCatalogIds: inventoryModal.domain === INVENTORY_DOMAIN_CLEANING ? inventoryModal.activityCatalogIds : [],
-      consumptionPerStart: inventoryModal.domain === INVENTORY_DOMAIN_CLEANING ? Number(inventoryModal.consumptionPerStart || 0) : 0,
+      activityCatalogIds: inventoryModal.domain === INVENTORY_DOMAIN_CLEANING ? normalizedActivityConsumptions.map((entry) => entry.catalogActivityId) : [],
+      activityConsumptions: normalizedActivityConsumptions,
+      consumptionPerStart: inventoryModal.domain === INVENTORY_DOMAIN_CLEANING ? Number(normalizedActivityConsumptions[0]?.quantity || 0) : 0,
     };
 
     if (!payload.code || !payload.name) return;
@@ -6988,11 +8225,7 @@ function App() {
 
     if (isOrderTransfer) {
       if (!inventoryMovementModal.warehouse.trim() && !inventoryMovementModal.storageLocation.trim()) {
-        setInventoryImportFeedback({ tone: "danger", message: "Define una nave o un resguardo para registrar la transferencia." });
-        return;
-      }
-      if (inventoryMovementTransferTarget && !hasInventoryBalanceInput(inventoryMovementModal.remainingUnits)) {
-        setInventoryImportFeedback({ tone: "danger", message: "Antes de volver a transferir a ese destino, indica cuántas unidades le quedan." });
+        setInventoryImportFeedback({ tone: "danger", message: "Define una nave destino o un punto de entrega destino para registrar la transferencia." });
         return;
       }
       if (quantity > inventoryMovementAvailableUnits) {
@@ -7001,27 +8234,58 @@ function App() {
       }
     }
 
-    try {
-      const result = await requestJson("/warehouse/inventory/movements", {
-        method: "POST",
-        body: JSON.stringify({
-          itemId: selectedItem.id,
-          movementType: inventoryMovementModal.movementType,
-          quantity,
-          notes: inventoryMovementModal.notes.trim(),
-          warehouse: inventoryMovementModal.warehouse.trim(),
-          recipientName: inventoryMovementModal.recipientName.trim(),
-          storageLocation: inventoryMovementModal.storageLocation.trim(),
-          unitLabel: inventoryMovementModal.unitLabel.trim() || "pzas",
-          remainingUnits: hasInventoryBalanceInput(inventoryMovementModal.remainingUnits) ? Number(inventoryMovementModal.remainingUnits || 0) : null,
-        }),
+    const payload = {
+      itemId: selectedItem.id,
+      movementType: inventoryMovementModal.movementType,
+      quantity,
+      notes: inventoryMovementModal.notes.trim(),
+      warehouse: inventoryMovementModal.warehouse.trim(),
+      recipientName: inventoryMovementModal.recipientName.trim(),
+      storageLocation: inventoryMovementModal.storageLocation.trim(),
+      unitLabel: inventoryMovementModal.unitLabel.trim() || "pzas",
+      remainingUnits: hasInventoryBalanceInput(inventoryMovementModal.remainingUnits) ? Number(inventoryMovementModal.remainingUnits || 0) : null,
+    };
+
+    if (isOrderTransfer && inventoryMovementTransferTarget && !hasInventoryBalanceInput(inventoryMovementModal.remainingUnits)) {
+      setInventoryTransferConfirmModal({
+        open: true,
+        itemId: selectedItem.id,
+        itemName: selectedItem.name,
+        warehouse: payload.warehouse,
+        storageLocation: payload.storageLocation,
+        recipientName: payload.recipientName,
+        quantity,
+        unitLabel: payload.unitLabel,
+        remainingUnits: "",
+        lastKnownUnits: inventoryMovementTransferTarget.availableUnits,
+        pendingPayload: payload,
+        draftMovementModal: { ...inventoryMovementModal, open: true },
       });
-      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
-      closeInventoryMovementModal();
-      setInventoryImportFeedback({ tone: "success", message: isOrderTransfer ? "Transferencia registrada." : "Movimiento de inventario registrado." });
-    } catch (error) {
-      setInventoryImportFeedback({ tone: "danger", message: error?.message || "No se pudo registrar el movimiento." });
+      setInventoryMovementModal((current) => ({ ...current, open: false }));
+      return;
     }
+
+    await persistInventoryMovement(payload, isOrderTransfer ? "Transferencia registrada." : "Movimiento de inventario registrado.");
+  }
+
+  async function submitInventoryTransferConfirmModal() {
+    const quantity = Number(inventoryTransferConfirmModal.quantity || 0);
+    const remainingUnits = Number(inventoryTransferConfirmModal.remainingUnits || 0);
+
+    if (!inventoryTransferConfirmModal.pendingPayload || !quantity || Number.isNaN(quantity)) {
+      setInventoryImportFeedback({ tone: "danger", message: "No se encontró la transferencia pendiente para confirmar." });
+      return;
+    }
+
+    if (!hasInventoryBalanceInput(inventoryTransferConfirmModal.remainingUnits) || Number.isNaN(remainingUnits)) {
+      setInventoryImportFeedback({ tone: "danger", message: "Indica cuántas piezas quedan actualmente en ese destino para completar la transferencia." });
+      return;
+    }
+
+    await persistInventoryMovement({
+      ...inventoryTransferConfirmModal.pendingPayload,
+      remainingUnits,
+    }, "Transferencia registrada y saldo destino actualizado.");
   }
 
   async function handleInventoryImport(event) {
@@ -7075,10 +8339,6 @@ function App() {
     } catch (error) {
       setInventoryImportFeedback({ tone: "danger", message: error?.message || "No se pudo eliminar el artículo de inventario." });
     }
-  }
-
-  function resetBoardFilters() {
-    setBoardFilters({ responsibleId: "all", activityId: "all", status: "all" });
   }
 
   function updateLoginField(key, value) {
@@ -7206,19 +8466,6 @@ function App() {
     });
   }
 
-  function updateBoardRow(boardId, rowId, updater) {
-    setState((current) => ({
-      ...current,
-      controlBoards: current.controlBoards.map((board) => {
-        if (board.id !== boardId) return board;
-        return {
-          ...board,
-          rows: (board.rows || []).map((row) => (row.id === rowId ? updater(row) : row)),
-        };
-      }),
-    }));
-  }
-
   function deleteBoardRow(boardId, rowId) {
     const board = (state.controlBoards || []).find((item) => item.id === boardId);
     const row = board?.rows?.find((item) => item.id === rowId);
@@ -7261,17 +8508,8 @@ function App() {
       const exportRow = {};
 
       (board.fields || []).forEach((field) => {
-        let value = getBoardFieldValue(board, row, field);
-
-        if (field.type === "inventoryLookup") {
-          const inventoryItem = (state.inventoryItems || []).find((item) => item.id === value);
-          value = inventoryItem ? `${inventoryItem.name} · ${inventoryItem.presentation}` : "";
-        }
-
-        if (field.type === "user") {
-          value = userMap.get(value)?.name || "";
-        }
-
+        const rawValue = getBoardFieldValue(board, row, field);
+        const value = formatBoardExportFieldValue(field, rawValue, state.inventoryItems || [], userMap);
         exportRow[field.label] = value;
       });
 
@@ -7331,7 +8569,7 @@ function App() {
     if (status === STATUS_FINISHED) {
       const missingFields = (board.fields || []).filter((field) => {
         if (!field.required) return false;
-        const effectiveValue = Object.prototype.hasOwnProperty.call(autoTimeValues, field.id)
+        const effectiveValue = Object.hasOwn(autoTimeValues, field.id)
           ? autoTimeValues[field.id]
           : getBoardFieldValue(board, row, field);
         return !isBoardFieldValueFilled(effectiveValue, field.type);
@@ -7387,7 +8625,7 @@ function App() {
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Tablero");
       const exportRows = rows.length ? rows : [{ Estado: "Sin filas registradas" }];
-      const headers = Object.keys(exportRows[0] || {});
+      const headers = Object.keys(exportRows[0] ?? EMPTY_OBJECT);
 
       worksheet.columns = headers.map((header) => ({ header, key: header, width: Math.max(header.length + 4, 18) }));
       exportRows.forEach((row) => {
@@ -7397,7 +8635,7 @@ function App() {
       const buffer = await workbook.xlsx.writeBuffer();
       triggerBrowserDownload(
         buffer,
-        `${normalizeKey(selectedCustomBoard.name).replace(/\s+/g, "-") || "tablero-operativo"}.xlsx`,
+        `${normalizeKey(selectedCustomBoard.name).replaceAll(/\s+/g, "-") || "tablero-operativo"}.xlsx`,
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       );
       setBoardRuntimeFeedback({ tone: "success", message: `Se exportó ${selectedCustomBoard.name} a Excel.` });
@@ -7406,38 +8644,114 @@ function App() {
     }
   }
 
+  function getSelectedBoardPdfColumns(board) {
+    const visibleColumns = getOrderedBoardColumns(board).filter((column) => !(column.kind !== "field" && column.id === "workflow"));
+    const pdfColumns = visibleColumns.map((column) => ({
+      key: column.token,
+      label: column.kind === "field"
+        ? column.label
+        : column.id === "time"
+          ? "Tiempo acumulado"
+          : column.label,
+      sectionName: column.sectionName || "General",
+      sectionColor: column.sectionColor || "#e2f4ec",
+      kind: column.kind,
+      id: column.id,
+      field: column.field,
+    }));
+
+    if (board?.settings?.showDates !== false) {
+      pdfColumns.push({
+        key: "createdAt",
+        label: "Creado el",
+        sectionName: "Registro",
+        sectionColor: "#f3f5f8",
+        kind: "meta",
+        id: "createdAt",
+      });
+    }
+
+    return pdfColumns;
+  }
+
+  function getSelectedBoardPdfRows(board, pdfColumns) {
+    return (board?.rows || []).map((row) => pdfColumns.map((column) => {
+      if (column.kind === "field") {
+        const rawValue = getBoardFieldValue(board, row, column.field);
+        return String(formatBoardExportFieldValue(column.field, rawValue, state.inventoryItems || [], userMap) ?? "");
+      }
+
+      if (column.id === "assignee") {
+        return userMap.get(row.responsibleId)?.name || "";
+      }
+
+      if (column.id === "status") {
+        return row.status || STATUS_PENDING;
+      }
+
+      if (column.id === "time") {
+        return formatDurationClock(getElapsedSeconds(row, Date.now()));
+      }
+
+      if (column.id === "createdAt") {
+        return formatDateTime(row.createdAt);
+      }
+
+      return "";
+    }));
+  }
+
   async function buildSelectedBoardPdfDocument() {
     if (!selectedCustomBoard) return null;
 
+    const boardView = selectedCustomBoardDisplay || selectedCustomBoard;
     const [{ jsPDF }, { default: autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
-    const rows = getBoardExportRows(selectedCustomBoard);
+    const pdfColumns = getSelectedBoardPdfColumns(boardView);
+    const body = getSelectedBoardPdfRows(boardView, pdfColumns);
     const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
-    const descriptionLines = selectedCustomBoard.description ? doc.splitTextToSize(selectedCustomBoard.description, 760) : [];
-    const subtitle = `Filas: ${selectedCustomBoard.rows?.length || 0} · Exportado ${new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short", hour12: false }).format(new Date())}`;
-    const columns = rows.length ? Object.keys(rows[0]) : ["Estado"];
-    const body = rows.length ? rows.map((row) => columns.map((column) => String(row[column] ?? ""))) : [["Sin filas registradas"]];
+    const subtitleParts = [
+      isHistoricalCustomBoardView ? (selectedCustomBoardSnapshot?.weekName || "Histórico") : "Semana actual",
+      `Filas: ${boardView?.rows?.length || 0}`,
+      `Exportado ${new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short", hour12: false }).format(new Date())}`,
+    ];
+    const operationalContextLabel = String(boardView?.settings?.operationalContextLabel || "").trim();
+    const operationalContextValue = String(boardView?.settings?.operationalContextValue || "").trim();
+    if (operationalContextLabel && operationalContextValue) {
+      subtitleParts.splice(1, 0, `${operationalContextLabel}: ${operationalContextValue}`);
+    }
+    const descriptionLines = boardView?.description ? doc.splitTextToSize(boardView.description, 760) : [];
 
     doc.setFillColor(19, 61, 51);
     doc.roundedRect(26, 18, 790, 54, 10, 10, "F");
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(16);
-    doc.text(selectedCustomBoard.name, 42, 42);
+    doc.text(boardView?.name || selectedCustomBoard.name, 42, 42);
     doc.setFontSize(9);
-    doc.text(subtitle, 42, 58);
+    doc.text(subtitleParts.join(" · "), 42, 58);
 
+    let nextStartY = 92;
     if (descriptionLines.length) {
       doc.setTextColor(54, 81, 81);
       doc.setFontSize(10);
-      doc.text(descriptionLines, 40, 92);
+      doc.text(descriptionLines, 40, nextStartY);
+      nextStartY += descriptionLines.length * 12 + 8;
     }
 
     autoTable(doc, {
-      head: [columns],
-      body,
-      startY: descriptionLines.length ? 92 + descriptionLines.length * 12 : 92,
-      styles: { fontSize: 8, cellPadding: 4, overflow: "linebreak", lineColor: [221, 231, 226] },
-      headStyles: { fillColor: [19, 61, 51] },
+      head: [pdfColumns.map((column) => column.label)],
+      body: body.length ? body : [["Sin filas registradas"].concat(Array(Math.max(0, pdfColumns.length - 1)).fill(""))],
+      startY: nextStartY,
+      styles: { fontSize: 8, cellPadding: 4, overflow: "linebreak", lineColor: [221, 231, 226], textColor: [38, 61, 61] },
+      headStyles: { fillColor: [19, 61, 51], textColor: [255, 255, 255], fontStyle: "bold" },
       alternateRowStyles: { fillColor: [247, 250, 248] },
+      bodyStyles: { valign: "middle" },
+      margin: { left: 26, right: 26 },
+      didParseCell: (hookData) => {
+        if (hookData.section !== "head") return;
+        const column = pdfColumns[hookData.column.index];
+        if (!column) return;
+        hookData.cell.styles.fillColor = [19, 61, 51];
+      },
     });
 
     return doc;
@@ -7446,15 +8760,22 @@ function App() {
   async function previewSelectedBoardPdf() {
     if (!selectedCustomBoard || !canDoBoardAction(currentUser, selectedCustomBoard)) return;
 
+    const previewWindow = globalThis.open("", "_blank");
+
     try {
       const doc = await buildSelectedBoardPdfDocument();
-      const blob = doc.output("blob");
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener,noreferrer");
-      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
-      setBoardRuntimeFeedback({ tone: "success", message: `Vista previa PDF abierta para ${selectedCustomBoard.name}.` });
+      if (!doc) throw new Error("pdf_preview_unavailable");
+      const pdfBlob = doc.output("blob");
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      if (previewWindow) {
+        previewWindow.location.href = pdfUrl;
+      } else {
+        globalThis.open(pdfUrl, "_blank", "noopener,noreferrer");
+      }
+      globalThis.setTimeout(() => URL.revokeObjectURL(pdfUrl), 60000);
     } catch {
-      setBoardRuntimeFeedback({ tone: "danger", message: "No se pudo abrir la vista previa del PDF." });
+      previewWindow?.close();
+      setBoardRuntimeFeedback({ tone: "danger", message: "No se pudo generar la vista previa del tablero en PDF." });
     }
   }
 
@@ -7462,8 +8783,9 @@ function App() {
     if (!selectedCustomBoard || !canDoBoardAction(currentUser, selectedCustomBoard)) return;
 
     try {
-      const fileBaseName = normalizeKey(selectedCustomBoard.name).replace(/\s+/g, "-") || "tablero-operativo";
+      const fileBaseName = normalizeKey(selectedCustomBoard.name).replaceAll(/\s+/g, "-") || "tablero-operativo";
       const doc = await buildSelectedBoardPdfDocument();
+      if (!doc) throw new Error("pdf_export_unavailable");
       doc.save(`${fileBaseName}.pdf`);
       setBoardRuntimeFeedback({ tone: "success", message: `Se exportó ${selectedCustomBoard.name} a PDF.` });
     } catch {
@@ -7606,32 +8928,6 @@ function App() {
     setControlBoardFeedback("");
   }
 
-  function getFieldColorRule(field, value) {
-    return (field.colorRules || []).find((rule) => {
-      const normalizedValue = normalizeKey(value);
-      const normalizedRuleValue = normalizeKey(rule.value);
-      const valueList = parseRuleValueList(rule.value);
-
-      if (rule.operator === "isEmpty") return isEmptyRuleValue(value);
-      if (rule.operator === "isNotEmpty") return !isEmptyRuleValue(value);
-      if (rule.operator === "isTrue") return isTruthyRuleValue(value);
-      if (rule.operator === "isFalse") return isFalsyRuleValue(value);
-      if (rule.operator === "equals") return normalizedValue === normalizedRuleValue;
-      if (rule.operator === "notEquals") return normalizedValue !== normalizedRuleValue;
-      if (rule.operator === ">=") return compareRuleValues(value, rule.value) >= 0;
-      if (rule.operator === "<=") return compareRuleValues(value, rule.value) <= 0;
-      if (rule.operator === ">") return compareRuleValues(value, rule.value) > 0;
-      if (rule.operator === "<") return compareRuleValues(value, rule.value) < 0;
-      if (rule.operator === "contains") return normalizedValue.includes(normalizedRuleValue);
-      if (rule.operator === "notContains") return !normalizedValue.includes(normalizedRuleValue);
-      if (rule.operator === "startsWith") return normalizedValue.startsWith(normalizedRuleValue);
-      if (rule.operator === "endsWith") return normalizedValue.endsWith(normalizedRuleValue);
-      if (rule.operator === "inList") return valueList.includes(normalizedValue);
-      if (rule.operator === "notInList") return !valueList.includes(normalizedValue);
-      return false;
-    }) || null;
-  }
-
   async function submitPasswordReset() {
     if (!passwordForm.password || passwordForm.password !== passwordForm.confirmPassword) {
       setPasswordForm((current) => ({ ...current, message: "Las contraseñas no coinciden o están vacías." }));
@@ -7691,6 +8987,13 @@ function App() {
     [PAGE_ADMIN]: "Creador de tableros",
     [PAGE_NOT_FOUND]: "Página no encontrada",
   }[page];
+  const headerEyebrow = getHeaderEyebrowText(page);
+  const shouldShowUserPermissionNote = !supportsManagedPermissionOverrides(userModal.role);
+  const shouldShowInventoryStockFields = inventoryModal.domain !== INVENTORY_DOMAIN_BASE;
+  const shouldShowCleaningLinkFields = inventoryModal.domain === INVENTORY_DOMAIN_CLEANING;
+  const shouldShowTransferTargetEmptyState = !hasOrderTransferTargets;
+  const shouldShowTransferRemainingUnits = (movement) => movement.remainingUnits !== null;
+  const shouldShowTransferMovementEmptyState = orderInventoryTransferMovements.length === 0;
 
   const boardSectionOptions = useMemo(() => {
     const options = new Set(DEFAULT_BOARD_SECTION_OPTIONS);
@@ -7806,6 +9109,7 @@ function App() {
     editableVisibleBoards,
     exportPermissionRules,
     exportSelectedBoardToExcel,
+    previewSelectedBoardPdf,
     exportSelectedBoardToPdf,
     filteredAuditLog,
     filteredBoardTemplates,
@@ -7841,9 +9145,17 @@ function App() {
     inventoryFileInputRef,
     inventoryImportFeedback,
     inventoryLinkedCleaningRows,
+    inventoryMovementSavedDestinations,
+    inventoryMovementSavedLocations,
+    currentInventorySupplyableCount: currentInventorySupplyableItems.length,
+    inventoryCleaningSite,
     inventorySearch,
     inventoryStats,
     inventoryTab,
+    CLEANING_SITE_OPTIONS,
+    openInventoryBulkRestockModal,
+    openInventoryRestockModal,
+    openInventoryTransferHistory,
     openInventoryTransferViewer,
     openOrderInventoryTransfer,
     orderInventoryTransferMovements,
@@ -7853,6 +9165,7 @@ function App() {
     INVENTORY_DOMAIN_BASE,
     INVENTORY_DOMAIN_CLEANING,
     INVENTORY_DOMAIN_ORDERS,
+    INVENTORY_MOVEMENT_CONSUME,
     INVENTORY_MOVEMENT_RESTOCK,
     INVENTORY_MOVEMENT_TRANSFER,
     LayoutDashboard,
@@ -7903,6 +9216,7 @@ function App() {
     selectedCustomBoardSnapshot,
     selectedCustomBoardViewId,
     selectedCustomBoardSections,
+    canChangeSelectedBoardOperationalContext,
     selectedPermissionBoard,
     setAdminTab,
     setAuditFilters,
@@ -7918,11 +9232,13 @@ function App() {
     setEditWeekId,
     setHistoryPauseActivityId,
     setInventoryActionsMenuOpen,
+    setInventoryCleaningSite,
     setInventorySearch,
     setInventoryTab,
     setLoginDirectory,
     setPage,
     setSelectedCustomBoardId,
+    updateBoardOperationalContext,
     setSelectedHistoryWeekId,
     setSelectedPermissionBoardId,
     setState,
@@ -7976,6 +9292,7 @@ function App() {
 
   return (
     <main className={`warehouse-app ${isSidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+      <AppToastStack toasts={appToasts} onDismiss={dismissAppToast} />
       <button type="button" className={`sidebar-overlay ${isSidebarOpen ? "visible" : ""}`} onClick={() => setIsSidebarOpen(false)} aria-label="Cerrar menú lateral" />
       <Sidebar
         currentUser={currentUser}
@@ -7996,14 +9313,30 @@ function App() {
             <span>Menú</span>
           </button>
           <div>
-            <p className="eyebrow">{page === PAGE_DASHBOARD ? "Panel principal" : page === PAGE_USERS ? "Players y permisos" : "Operación diaria"}</p>
+            <p className="eyebrow">{headerEyebrow}</p>
             <h2>{page === PAGE_DASHBOARD ? "Dashboard" : pageTitle}</h2>
             {page === PAGE_DASHBOARD ? <span className="dashboard-header-subtitle">Vista en tiempo real · {activeWeek?.name || "Semana actual"}</span> : null}
           </div>
-          <div className="header-meta">
-            <span>{new Intl.DateTimeFormat("es-MX", { dateStyle: "medium" }).format(new Date(now))}</span>
-            <span>{syncStatus}</span>
-            <strong>{currentUser.role}</strong>
+          <div className="header-tools">
+            <div ref={notificationCenterRef}>
+              <AppNotificationCenter
+                unreadNotifications={unreadNotifications}
+                readNotifications={readNotifications}
+                unreadCount={unreadNotificationsCount}
+                activeTab={notificationPanelTab}
+                isOpen={notificationPanelOpen}
+                onToggle={handleToggleNotificationPanel}
+                onTabChange={setNotificationPanelTab}
+                onDeleteAllRead={handleDeleteAllReadNotifications}
+                onDeleteNotification={handleDeleteNotification}
+                onOpenNotification={handleOpenNotification}
+              />
+            </div>
+            <div className="header-meta">
+              <span>{new Intl.DateTimeFormat("es-MX", { dateStyle: "medium" }).format(new Date(now))}</span>
+              <span>{syncStatus}</span>
+              <strong>{currentUser.role}</strong>
+            </div>
           </div>
         </header>
 
@@ -8135,12 +9468,7 @@ function App() {
                   <option value="">Seleccionar área...</option>
                   {userAreaOptions.map((area) => <option key={area} value={area}>{area}</option>)}
                 </select>
-                {currentUser?.role === ROLE_LEAD ? <button type="button" className="icon-button area-add-button" onClick={() => {
-                  const nextArea = handleAddAreaOption();
-                  if (nextArea) {
-                    setUserModal((current) => ({ ...current, area: nextArea }));
-                  }
-                }} aria-label="Agregar nueva área"><Plus size={16} /></button> : null}
+                {currentUser?.role === ROLE_LEAD ? <button type="button" className="icon-button area-add-button" onClick={handleAddAreaOption} aria-label="Agregar nueva área"><Plus size={16} /></button> : null}
               </div>
             </label>
             <label className="app-modal-field">
@@ -8171,8 +9499,8 @@ function App() {
                 />
               </label>
             ) : null}
-            <label className="app-modal-field user-status-switch-field">
-              <span>Estado inicial</span>
+            <fieldset className="app-modal-field user-status-switch-field">
+              <legend>Estado inicial</legend>
               <div className="user-status-switch-row">
                 <button
                   type="button"
@@ -8185,7 +9513,7 @@ function App() {
                 </button>
                 <strong>{userModal.isActive === "true" ? "Activo" : "Inactivo"}</strong>
               </div>
-            </label>
+            </fieldset>
           </div>
 
           {actionPermissions.managePermissions && supportsManagedPermissionOverrides(userModal.role) ? (
@@ -8264,12 +9592,12 @@ function App() {
             </div>
           ) : null}
 
-          {!supportsManagedPermissionOverrides(userModal.role) ? (
+          {shouldShowUserPermissionNote && (
             <article className="user-permission-note">
               <strong>{userModal.role === ROLE_SSR ? "Semi-Senior con alcance operativo" : "Acceso operativo por tablero"}</strong>
               <p>{userModal.role === ROLE_SSR ? "Semi-Senior solo puede crear perfiles Junior y trabajar con los tableros que tenga asignados." : "Junior solo accede a Mis tableros y verá únicamente los tableros que tenga asignados."}</p>
             </article>
-          ) : null}
+          )}
         </div>
       </Modal>
 
@@ -8348,6 +9676,7 @@ function App() {
         userMap={userMap}
         inventoryItems={state.inventoryItems}
         contextoConstructor={contextoConstructor}
+        boardOperationalContextOptions={BOARD_OPERATIONAL_CONTEXT_OPTIONS}
         canSaveTemplate={actionPermissions.saveTemplate}
         canSaveBoard={actionPermissions.saveBoard}
       />
@@ -8412,7 +9741,7 @@ function App() {
         </div>
       </Modal>
 
-      <Modal open={inventoryModal.open} title={inventoryModal.mode === "create" ? "Agregar artículo" : "Editar artículo"} confirmLabel={inventoryModal.mode === "create" ? "Guardar artículo" : "Guardar cambios"} cancelLabel="Cancelar" onClose={() => setInventoryModal(createInventoryModalState())} onConfirm={submitInventoryModal}>
+      <Modal className="inventory-item-modal" open={inventoryModal.open} title={inventoryModal.mode === "create" ? "Agregar artículo" : "Editar artículo"} confirmLabel={inventoryModal.mode === "create" ? "Guardar artículo" : "Guardar cambios"} cancelLabel="Cancelar" onClose={() => setInventoryModal(createInventoryModalState())} onConfirm={submitInventoryModal}>
         <div className="modal-form-grid">
           <label className="app-modal-field">
             <span>Dominio</span>
@@ -8440,7 +9769,7 @@ function App() {
             <span>Cajas por tarima</span>
             <input type="number" value={inventoryModal.boxesPerPallet} onChange={(event) => setInventoryModal((current) => ({ ...current, boxesPerPallet: event.target.value }))} />
           </label>
-          {inventoryModal.domain !== INVENTORY_DOMAIN_BASE ? (
+          {shouldShowInventoryStockFields && (
             <>
               <label className="app-modal-field">
                 <span>Stock actual</span>
@@ -8459,32 +9788,23 @@ function App() {
                 <input value={inventoryModal.storageLocation} onChange={(event) => setInventoryModal((current) => ({ ...current, storageLocation: event.target.value }))} placeholder="Ej: Nave 2 · Estante 4" />
               </label>
             </>
-          ) : null}
-          {inventoryModal.domain === INVENTORY_DOMAIN_CLEANING ? (
+          )}
+          {shouldShowCleaningLinkFields ? (
             <>
               <label className="app-modal-field">
-                <span>Consumo por inicio</span>
-                <input type="number" value={inventoryModal.consumptionPerStart} onChange={(event) => setInventoryModal((current) => ({ ...current, consumptionPerStart: event.target.value }))} />
+                <span>Sede de limpieza</span>
+                <select value={inventoryModal.cleaningSite} onChange={(event) => setInventoryModal((current) => ({ ...current, cleaningSite: event.target.value }))}>
+                  {CLEANING_SITE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
               </label>
-              <div className="app-modal-field">
-                <span>Actividades ligadas</span>
-                <div className="saved-board-list board-builder-launch-list">
-                  {activeCatalogItems.map((item) => (
-                    <label key={item.id} className="chip" style={{ cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={inventoryModal.activityCatalogIds.includes(item.id)}
-                        onChange={(event) => setInventoryModal((current) => ({
-                          ...current,
-                          activityCatalogIds: event.target.checked
-                            ? Array.from(new Set(current.activityCatalogIds.concat(item.id)))
-                            : current.activityCatalogIds.filter((catalogId) => catalogId !== item.id),
-                        }))}
-                      />
-                      {item.name}
-                    </label>
-                  ))}
-                </div>
+              <div className="app-modal-field app-modal-field-full inventory-activity-consumption-field">
+                <span>Actividades y consumo por inicio</span>
+                <InventoryActivityConsumptionEditor
+                  activeCatalogItems={activeCatalogItems}
+                  activityConsumptions={inventoryModal.activityConsumptions}
+                  onToggle={toggleInventoryModalActivityCatalog}
+                  onQuantityChange={updateInventoryModalActivityConsumption}
+                />
               </div>
             </>
           ) : null}
@@ -8513,7 +9833,7 @@ function App() {
               <input value="Transferencia" readOnly />
             ) : (
               <select value={inventoryMovementModal.movementType} onChange={(event) => updateInventoryMovementModal({ movementType: event.target.value })}>
-                {INVENTORY_MOVEMENT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                {inventoryMovementTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
             )}
           </label>
@@ -8521,38 +9841,64 @@ function App() {
             <span>{isOrderTransferMovementModal ? "Cantidad a transferir" : "Cantidad"}</span>
             <input type="number" min="0" value={inventoryMovementModal.quantity} onChange={(event) => updateInventoryMovementModal({ quantity: event.target.value })} />
           </label>
-          <label className="app-modal-field">
-            <span>{isOrderTransferMovementModal ? "Resguardo / punto de entrega" : "Ubicación / resguardo"}</span>
-            <input value={inventoryMovementModal.storageLocation} onChange={(event) => updateInventoryMovementModal({ storageLocation: event.target.value })} placeholder={isOrderTransferMovementModal ? "Ej: Estación de empaque A" : "Ej: Nave 2 · Estante 4"} />
-          </label>
+          {!isOrderTransferMovementModal && inventoryMovementSavedLocations.length ? (
+            <label className="app-modal-field">
+              <span>Ubicaciones guardadas</span>
+              <select value={inventoryMovementSelectedSavedLocation} onChange={(event) => applySavedInventoryLocation(event.target.value)}>
+                <option value="">Selecciona una ubicación previa</option>
+                {inventoryMovementSavedLocations.map((entry) => <option key={entry.key} value={entry.key}>{entry.label}</option>)}
+              </select>
+            </label>
+          ) : null}
+          {!isOrderTransferMovementModal ? (
+            <label className="app-modal-field">
+              <span>Ubicación / resguardo</span>
+              <input value={inventoryMovementModal.storageLocation} onChange={(event) => updateInventoryMovementModal({ storageLocation: event.target.value })} placeholder="Ej: Nave 2 · Estante 4" />
+            </label>
+          ) : null}
           {isOrderTransferMovementModal ? (
             <>
               <label className="app-modal-field">
-                <span>Nave / destino</span>
-                <input value={inventoryMovementModal.warehouse} onChange={(event) => updateInventoryMovementModal({ warehouse: event.target.value })} placeholder="Ej: Nave 1" />
+                <span>Resguardo actual del insumo</span>
+                <input value={inventoryMovementSelectedItem?.storageLocation || "Sin resguardo asignado"} readOnly />
               </label>
-              <label className="app-modal-field">
-                <span>Quién tomó el material</span>
-                <input value={inventoryMovementModal.recipientName} onChange={(event) => updateInventoryMovementModal({ recipientName: event.target.value })} placeholder="Nombre del responsable" />
-              </label>
+              {inventoryMovementSavedDestinations.length ? (
+                <label className="app-modal-field">
+                  <span>Destino guardado</span>
+                  <select value={inventoryMovementSelectedSavedDestinationKey} onChange={(event) => applySavedInventoryDestination(event.target.value)}>
+                    <option value="">Agregar nuevo destino</option>
+                    {inventoryMovementSavedDestinations.map((destination) => <option key={destination.destinationKey} value={destination.destinationKey}>{formatInventoryTransferDestinationLabel(destination)}</option>)}
+                  </select>
+                </label>
+              ) : null}
+              {!inventoryMovementSavedDestinations.length || !inventoryMovementSelectedSavedDestinationKey ? (
+                <>
+                  <label className="app-modal-field">
+                    <span>Punto de entrega destino</span>
+                    <input value={inventoryMovementModal.storageLocation} onChange={(event) => updateInventoryMovementModal({ storageLocation: event.target.value })} placeholder="Ej: Estación de empaque A" />
+                  </label>
+                  <label className="app-modal-field">
+                    <span>Nave destino</span>
+                    <input value={inventoryMovementModal.warehouse} onChange={(event) => updateInventoryMovementModal({ warehouse: event.target.value })} placeholder="Ej: Nave 1" />
+                  </label>
+                  <label className="app-modal-field">
+                    <span>Quién recibe el material</span>
+                    <input value={inventoryMovementModal.recipientName} onChange={(event) => updateInventoryMovementModal({ recipientName: event.target.value })} placeholder="Nombre del responsable destino" />
+                  </label>
+                </>
+              ) : null}
               <div className="app-modal-field app-modal-field-full inventory-transfer-modal-summary">
                 <span>Resumen actual</span>
                 <div className="inventory-transfer-modal-summary-grid">
-                  <p><strong>Stock general:</strong> {inventoryMovementSelectedItem?.stockUnits || 0} {inventoryMovementSelectedItem?.unitLabel || "pzas"}</p>
+                  <p><strong>Stock origen:</strong> {inventoryMovementSelectedItem?.stockUnits || 0} {inventoryMovementSelectedItem?.unitLabel || "pzas"}</p>
                   <p><strong>Disponible para transferir:</strong> {inventoryMovementAvailableUnits} {inventoryMovementSelectedItem?.unitLabel || "pzas"}</p>
                 </div>
                 {inventoryMovementTransferTarget ? (
-                  <p className="subtle-line">Último saldo registrado en {inventoryMovementTransferTarget.warehouse || "sin nave"} / {inventoryMovementTransferTarget.storageLocation || "sin resguardo"}: {inventoryMovementTransferTarget.availableUnits} {inventoryMovementTransferTarget.unitLabel || inventoryMovementSelectedItem?.unitLabel || "pzas"}.</p>
+                  <p className="subtle-line">Último saldo registrado en el destino {inventoryMovementTransferTarget.warehouse || "sin nave"} / {inventoryMovementTransferTarget.storageLocation || "sin punto de entrega"}: {inventoryMovementTransferTarget.availableUnits} {inventoryMovementTransferTarget.unitLabel || inventoryMovementSelectedItem?.unitLabel || "pzas"}. Ese saldo solo actualiza el destino y no devuelve piezas al stock origen.</p>
                 ) : (
                   <p className="subtle-line">Este destino se registrará como un nuevo punto de resguardo para el insumo seleccionado.</p>
                 )}
               </div>
-              {inventoryMovementTransferTarget ? (
-                <label className="app-modal-field app-modal-field-full">
-                  <span>¿Cuántas unidades quedan ahora en ese destino?</span>
-                  <input type="number" min="0" value={inventoryMovementModal.remainingUnits} onChange={(event) => updateInventoryMovementModal({ remainingUnits: event.target.value })} placeholder={`Último saldo: ${inventoryMovementTransferTarget.availableUnits}`} />
-                </label>
-              ) : null}
             </>
           ) : null}
           <label className="app-modal-field">
@@ -8562,42 +9908,65 @@ function App() {
         </div>
       </Modal>
 
-      <Modal open={inventoryTransferViewerOpen} title="Transferencias por destino" confirmLabel="Cerrar" hideCancel onClose={() => setInventoryTransferViewerOpen(false)}>
+      <Modal open={inventoryTransferConfirmModal.open} title="Confirmar saldo del destino" confirmLabel="Aplicar ajuste y transferir" cancelLabel="Volver" onClose={() => closeInventoryTransferConfirmModal(true)} onConfirm={submitInventoryTransferConfirmModal}>
+        <div className="modal-form-grid">
+          <div className="app-modal-field app-modal-field-full inventory-transfer-modal-summary">
+            <span>Destino a actualizar</span>
+            <div className="inventory-transfer-modal-summary-grid">
+              <p><strong>Insumo:</strong> {inventoryTransferConfirmModal.itemName || "Sin insumo"}</p>
+              <p><strong>Nueva transferencia:</strong> {inventoryTransferConfirmModal.quantity || 0} {inventoryTransferConfirmModal.unitLabel || "pzas"}</p>
+              <p><strong>Nave destino:</strong> {inventoryTransferConfirmModal.warehouse || "Sin nave"}</p>
+              <p><strong>Punto de entrega destino:</strong> {inventoryTransferConfirmModal.storageLocation || "Sin punto de entrega"}</p>
+            </div>
+            <p className="subtle-line">Antes de sumar esta nueva transferencia, confirma cuántas piezas siguen quedando actualmente en ese mismo destino. Ese dato solo ajusta el control del destino.</p>
+          </div>
+          <label className="app-modal-field app-modal-field-full">
+            <span>¿Cuántas piezas quedan ahorita en ese destino?</span>
+            <input type="number" min="0" value={inventoryTransferConfirmModal.remainingUnits} onChange={(event) => setInventoryTransferConfirmModal((current) => ({ ...current, remainingUnits: event.target.value }))} placeholder={inventoryTransferConfirmModal.lastKnownUnits === null ? "Ej: 50" : `Último saldo registrado: ${inventoryTransferConfirmModal.lastKnownUnits}`} />
+          </label>
+        </div>
+      </Modal>
+
+      <Modal open={inventoryRestockModal.open} title={inventoryRestockModalTitle} confirmLabel="Surtir" cancelLabel="Cancelar" onClose={closeInventoryRestockModal} onConfirm={submitInventoryRestockModal}>
+        <div className="inventory-restock-modal">
+          <p className="subtle-line">Escribe solo las cantidades a sumar. Si una queda en 0, no se agrega nada a ese insumo.</p>
+          <div className="inventory-restock-modal-list">
+            {inventoryRestockModalItems.map((item) => (
+              <label key={item.id} className="inventory-restock-row">
+                <span className="inventory-restock-name">{item.name}</span>
+                <input type="number" min="0" value={inventoryRestockModal.quantities[item.id] || ""} onChange={(event) => updateInventoryRestockQuantity(item.id, event.target.value)} placeholder="0" />
+              </label>
+            ))}
+            {inventoryRestockModalItems.length ? null : <p className="subtle-line">No hay insumos disponibles para surtir.</p>}
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={inventoryTransferViewerState.open} title={inventoryTransferViewerTitle} confirmLabel="Cerrar" hideCancel onClose={() => setInventoryTransferViewerState({ open: false, itemId: null })}>
         <div className="inventory-transfer-view">
           <section className="surface-card inventory-transfer-view-card">
             <div className="card-header-row">
               <div>
-                <h3>Saldos actuales</h3>
-                <p>Consulta cuánto stock queda en cada nave o resguardo y cuánto sigue disponible para nuevas transferencias.</p>
+                <h3>Saldos por destino</h3>
+                <p>Resumen compacto de lo que sigue disponible en cada destino.</p>
               </div>
-              <span className="chip primary">{orderInventoryTransferMovements.length}</span>
+              <span className="chip primary">{viewedOrderInventoryTransferTargets.length}</span>
             </div>
-            <div className="saved-board-list board-builder-launch-list">
-              {orderInventoryTransferSummary.filter((item) => item.transferTargets.length > 0).map((item) => (
-                <article key={item.id} className="surface-card inventory-transfer-summary-card">
-                  <div className="card-header-row">
-                    <div>
-                      <strong>{item.name}</strong>
-                      <p>{item.code} · Stock general {item.stockUnits} {item.unitLabel || "pzas"}</p>
-                    </div>
-                    <span className="chip primary">Disponible · {item.availableToTransferUnits}</span>
+            <div className="inventory-transfer-compact-list">
+              {viewedOrderInventoryTransferTargets.map((target) => (
+                <article key={`${target.itemId}-${target.destinationKey}`} className="inventory-transfer-compact-row">
+                  <div className="inventory-transfer-compact-main">
+                    <strong>{target.warehouse || target.storageLocation || "Destino sin nombre"}</strong>
+                    {inventoryTransferViewerItem ? null : <p>{target.itemCode} · {target.itemName}</p>}
+                    <p className="subtle-line">{target.storageLocation || "Sin punto de entrega"}{target.recipientName ? ` · ${target.recipientName}` : ""}</p>
                   </div>
-                  <div className="saved-board-list board-builder-launch-list">
-                    {item.transferTargets.map((target) => (
-                      <article key={target.destinationKey} className="inventory-transfer-destination-card">
-                        <div>
-                          <strong>{target.warehouse || "Sin nave"}</strong>
-                          <p>{target.storageLocation || "Sin resguardo"}</p>
-                        </div>
-                        <span className="chip">{target.availableUnits} {target.unitLabel || item.unitLabel || "pzas"}</span>
-                        <p className="subtle-line">Responsable: {target.recipientName || "Sin responsable"}</p>
-                        <p className="subtle-line">Actualizado: {target.updatedAt ? formatDateTime(target.updatedAt) : "Sin fecha"}</p>
-                      </article>
-                    ))}
+                  <div className="inventory-transfer-compact-side">
+                    <span className="chip">{target.availableUnits} {target.unitLabel || target.itemUnitLabel}</span>
+                    <small>{target.updatedAt ? formatDateTime(target.updatedAt) : "Sin fecha"}</small>
                   </div>
                 </article>
               ))}
-              {!hasOrderTransferTargets ? <p className="subtle-line">Todavía no hay saldos por destino registrados.</p> : null}
+              {!viewedOrderInventoryTransferTargets.length && <p className="subtle-line">Todavía no hay saldos por destino registrados para este filtro.</p>}
             </div>
           </section>
 
@@ -8605,25 +9974,25 @@ function App() {
             <div className="card-header-row">
               <div>
                 <h3>Movimientos recientes</h3>
-                <p>Historial rápido de las últimas transferencias registradas.</p>
+                <p>Últimas transferencias registradas, sin detalle duplicado.</p>
               </div>
+              <span className="chip">{Math.min(viewedOrderInventoryTransferMovements.length, 10)}</span>
             </div>
-            <div className="saved-board-list board-builder-launch-list">
-              {orderInventoryTransferMovements.slice(0, 12).map((movement) => (
-                <article key={movement.id} className="surface-card inventory-transfer-summary-card">
-                  <div className="card-header-row">
-                    <div>
-                      <strong>{movement.itemName || movement.itemCode}</strong>
-                      <p>{movement.quantity} {movement.unitLabel || "pzas"} hacia {movement.warehouse || "Sin nave"}</p>
-                    </div>
-                    <span className="chip">Saldo destino · {movement.destinationBalanceUnits ?? movement.quantity}</span>
+            <div className="inventory-transfer-compact-list">
+              {viewedOrderInventoryTransferMovements.slice(0, 10).map((movement) => (
+                <article key={movement.id} className="inventory-transfer-compact-row">
+                  <div className="inventory-transfer-compact-main">
+                    <strong>{movement.warehouse || movement.storageLocation || "Destino sin nombre"}</strong>
+                    <p>{movement.quantity} {movement.unitLabel || "pzas"}{movement.recipientName ? ` · ${movement.recipientName}` : ""}</p>
+                    <p className="subtle-line">{movement.storageLocation || "Sin punto de entrega"}{shouldShowTransferRemainingUnits(movement) ? ` · Antes quedaban ${movement.remainingUnits} ${movement.unitLabel || "pzas"}` : ""}</p>
                   </div>
-                  <p className="subtle-line">{movement.storageLocation || "Sin resguardo"} · {movement.recipientName || "Sin responsable"}</p>
-                  {movement.remainingUnits !== null ? <p className="subtle-line">Se reportaron {movement.remainingUnits} {movement.unitLabel || "pzas"} restantes antes de esta transferencia.</p> : null}
-                  <p className="subtle-line">{formatDateTime(movement.createdAt)}</p>
+                  <div className="inventory-transfer-compact-side">
+                    <span className="chip">Saldo {movement.destinationBalanceUnits ?? movement.quantity}</span>
+                    <small>{formatDateTime(movement.createdAt)}</small>
+                  </div>
                 </article>
               ))}
-              {!orderInventoryTransferMovements.length ? <p className="subtle-line">No hay transferencias registradas todavía.</p> : null}
+              {!viewedOrderInventoryTransferMovements.length && <p className="subtle-line">No hay transferencias registradas para este filtro.</p>}
             </div>
           </section>
         </div>

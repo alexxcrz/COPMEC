@@ -40,6 +40,10 @@
   width: min(100%, 1080px);
 }
 
+.sicfla-modal.inventory-item-modal {
+  width: min(100%, 1220px);
+}
+
 .sicfla-modal.user-management-modal .sicfla-modal-body {
   padding-right: 0.3rem;
 }

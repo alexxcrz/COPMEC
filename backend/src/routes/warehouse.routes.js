@@ -25,6 +25,7 @@ import {
   subscribeWarehouseState,
   updateWarehouseBoard,
   updateWarehouseBoardAssignment,
+  updateWarehouseBoardOperationalContext,
   updateWarehouseCatalogItem,
   updateWarehouseInventoryItem,
   updateWarehousePermissionOverride,
@@ -313,6 +314,31 @@ warehouseRouter.patch("/boards/:boardId/assignment", requireWarehouseAction("man
     revision: result.state?.revision,
   });
   res.json({ ok: true, data: { state: result.state, boardId: result.boardId, boardName: result.boardName } });
+});
+
+warehouseRouter.patch("/boards/:boardId/context", requireAuth, (req, res) => {
+  const result = updateWarehouseBoardOperationalContext(req.auth, req.params.boardId, req.body || {});
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "board_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
+    res.status(status).json({ ok: false, message: "No fue posible actualizar el contexto del tablero." });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_board_context_updated", req, {
+    boardId: result.boardId,
+    boardName: result.boardName,
+    operationalContextValue: result.operationalContextValue,
+    revision: result.state?.revision,
+  });
+  res.json({
+    ok: true,
+    data: {
+      state: result.state,
+      boardId: result.boardId,
+      boardName: result.boardName,
+      operationalContextValue: result.operationalContextValue,
+    },
+  });
 });
 
 warehouseRouter.post("/users", requireWarehouseAction("manageUsers"), (req, res) => {
