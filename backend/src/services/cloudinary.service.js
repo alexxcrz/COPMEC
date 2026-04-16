@@ -45,11 +45,13 @@ export async function uploadCellFile(file, folder = "copmec/cells") {
   }
 
   const isImage = String(file.mimetype).startsWith("image/");
-  const resourceType = isImage ? "image" : "raw";
+  const isPdf = file.mimetype === "application/pdf";
+  // PDFs y imágenes se suben como resource_type "image" (Cloudinary los soporta)
+  // Otros (xlsx, docx, txt) como "raw"
+  const resourceType = (isImage || isPdf) ? "image" : "raw";
 
   let result;
-  if (isImage) {
-    // Imágenes: data URI funciona bien
+  if (isImage || isPdf) {
     result = await cloudinary.uploader.upload(toDataUri(file), {
       folder,
       resource_type: "image",
@@ -57,7 +59,7 @@ export async function uploadCellFile(file, folder = "copmec/cells") {
       unique_filename: true,
     });
   } else {
-    // Archivos raw (PDF, Excel, Word, txt): usar upload_stream con buffer
+    // Archivos raw (Excel, Word, txt): usar upload_stream con buffer
     result = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {

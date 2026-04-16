@@ -24,7 +24,6 @@ export async function uploadBibliotecaFileController(req, res, next) {
     const { area = "General", description = "" } = req.body;
 
     const uploadResult = await uploadCellFile(req.file, "copmec/biblioteca");
-
     const entry = addBibliotecaFile({
       area: String(area).trim() || "General",
       description: String(description).trim(),
@@ -41,6 +40,7 @@ export async function uploadBibliotecaFileController(req, res, next) {
 
     return res.status(201).json({ ok: true, data: entry });
   } catch (error) {
+    console.error("[biblioteca] upload error:", error?.message, error?.http_code);
     return next(error);
   }
 }
