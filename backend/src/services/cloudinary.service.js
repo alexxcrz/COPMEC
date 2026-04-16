@@ -38,8 +38,8 @@ export async function uploadCellFile(file, folder = "copmec/cells") {
     throw new Error("Cloudinary environment variables are missing.");
   }
 
-  const isPdf = file.mimetype === "application/pdf";
-  const resourceType = isPdf ? "raw" : "image";
+  const isImage = String(file.mimetype).startsWith("image/");
+  const resourceType = isImage ? "image" : "raw";
 
   const result = await cloudinary.uploader.upload(toDataUri(file), {
     folder,
