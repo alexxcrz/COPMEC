@@ -1,5 +1,5 @@
 {
-  "revision": 2157,
+  "revision": 2153,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro"
@@ -9116,18 +9116,34 @@
           "lastPauseReason": "baño"
         },
         {
+          "id": "row-6h86i16e",
+          "values": {
+            "fld-pjabusyf": "Oficinas",
+            "fld-x1jzjoxm": "15:54",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "En curso",
+          "startTime": "2026-04-16T21:54:41.483Z",
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": "2026-04-16T21:54:41.483Z",
+          "createdAt": "2026-04-14T14:27:45.55Z"
+        },
+        {
           "id": "row-q8qik4ng",
           "values": {
             "fld-pjabusyf": "Portones",
-            "fld-x1jzjoxm": "15:55",
-            "fld-gtp4zz3s": "15:55",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
             "fld-eaq0jvax": ""
           },
-          "responsibleId": "usr-a2hd8qtb",
-          "status": "Terminado",
-          "startTime": "2026-04-16T21:55:22.626Z",
-          "endTime": "2026-04-16T21:55:44.795Z",
-          "accumulatedSeconds": 22,
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
           "lastResumedAt": null,
           "createdAt": "2026-04-14T14:27:45.55Z"
         },
@@ -9421,7 +9437,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-16T21:55:44.807Z",
+  "updatedAt": "2026-04-16T21:54:41.510Z",
   "permissions": {
     "pages": {
       "index": {

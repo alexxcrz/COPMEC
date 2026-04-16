@@ -111,7 +111,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/boards", requireAuth, boardRouter);
 app.use("/api/imports", requireAuth, uploadLimiter, importRouter);
 app.use("/api/uploads", requireAuth, uploadLimiter, uploadRouter);
-app.use("/api/biblioteca", requireAuth, uploadLimiter, bibliotecaRouter);
+app.use("/api/biblioteca", requireAuth, bibliotecaRouter);
 app.use("/api/warehouse", requireAuth, warehouseRouter);
 
 if (hasFrontendBuild) {

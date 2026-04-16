@@ -569,7 +569,7 @@ export function BoardBuilderModal({
   const resizeStateRef = useRef({ kind: "", id: "", startX: 0, startWidth: 0 });
   const previewSections = getBoardSectionGroups(previewBoard);
   const previewRows = previewBoard?.rows?.slice(0, 2) || [];
-  const orderedPreviewColumns = getOrderedBoardColumns(previewBoard || { fields: draft.columns, settings: draft.settings });
+  const orderedPreviewColumns = getOrderedBoardColumns(previewBoard || { fields: draft.columns, settings: draft.settings }, true);
   const activeUsers = visibleUsers.filter((user) => user.isActive);
   const availableOperationalUsers = activeUsers.filter((user) => user.id !== draft.ownerId);
   const normalizedDepartmentOptions = Array.from(new Set((departmentOptions || []).map((option) => String(option || "").trim()).filter(Boolean)));
@@ -982,6 +982,7 @@ export function BoardBuilderModal({
                 <span className="switch-thumb" />
               </button>
             </div>
+
             <div className="builder-card compact-builder-card board-context-card">
               <div className="board-context-grid">
                 <label className="app-modal-field">
@@ -1150,6 +1151,20 @@ export function BoardBuilderModal({
                 </div>
               </div>
               <div className="board-preview-head-side">
+                <div className="board-preview-switches-top">
+                  <div className="board-preview-switch-pill">
+                    <span>Acumulado</span>
+                    <button type="button" className={draft.settings.showTotalTime !== false ? "switch-button on" : "switch-button"} aria-label="Alternar columna acumulado" aria-pressed={draft.settings.showTotalTime !== false} onClick={() => onChange((current) => ({ ...current, settings: { ...current.settings, showTotalTime: current.settings.showTotalTime === false } }))}>
+                      <span className="switch-thumb" />
+                    </button>
+                  </div>
+                  <div className="board-preview-switch-pill">
+                    <span>Eficiencia</span>
+                    <button type="button" className={draft.settings.showEfficiency !== false ? "switch-button on" : "switch-button"} aria-label="Alternar columna eficiencia" aria-pressed={draft.settings.showEfficiency !== false} onClick={() => onChange((current) => ({ ...current, settings: { ...current.settings, showEfficiency: current.settings.showEfficiency === false } }))}>
+                      <span className="switch-thumb" />
+                    </button>
+                  </div>
+                </div>
                 <div className="board-builder-toolbar" ref={actionMenuRef}>
                   <button
                     type="button"
@@ -1245,6 +1260,8 @@ export function BoardBuilderModal({
                           if (column.id === "assignee") return <td key={`${row.id}-${column.token}`} style={getPreviewAuxCellStyle(column.id)}>{userMap.get(row.responsibleId)?.name || currentUser?.name || "Player"}</td>;
                           if (column.id === "status") return <td key={`${row.id}-${column.token}`} style={getPreviewAuxCellStyle(column.id)}><span className="chip">{row.status || STATUS_PENDING}</span></td>;
                           if (column.id === "time") return <td key={`${row.id}-${column.token}`} style={getPreviewAuxCellStyle(column.id)}>{row.accumulatedSeconds ? `${Math.round(row.accumulatedSeconds / 60)} min` : "0 min"}</td>;
+                          if (column.id === "totalTime") return <td key={`${row.id}-${column.token}`} style={getPreviewAuxCellStyle(column.id)}>{"00:00:00"}</td>;
+                          if (column.id === "efficiency") return <td key={`${row.id}-${column.token}`} style={getPreviewAuxCellStyle(column.id)}><span style={{ color: "#16a34a", fontWeight: 600 }}>{"—"}</span></td>;
                           return <td key={`${row.id}-${column.token}`} style={getPreviewAuxCellStyle(column.id)}><span className={row.status === STATUS_RUNNING ? "chip success" : "chip"}>Inicia · Pausa · Fin</span></td>;
                         })}
                       </tr>

@@ -114,7 +114,7 @@ export default function TablerosCreados({ contexto }) {
           </div>
           <div className="creator-tabs-actions">
             {creatorTab === "boards" ? (
-              <button type="button" className="primary-button" onClick={openCreateBoardBuilder} disabled={!actionPermissions.saveBoard}>
+              <button type="button" className="primary-button" onClick={openCreateBoardBuilder} disabled={!actionPermissions.createBoard}>
                 <Plus size={16} /> Crear tablero
               </button>
             ) : null}
@@ -164,17 +164,13 @@ export default function TablerosCreados({ contexto }) {
                   }}>
                     <LayoutDashboard size={16} /> Abrir en Mis tableros
                   </button>
-                  {actionPermissions.duplicateBoard && canDoBoardAction(currentUser, board) ? (
-                    <button type="button" className="icon-button" onClick={() => duplicateBoardRecord(board)}>
+                  {(actionPermissions.duplicateBoardWithRows || actionPermissions.duplicateBoard) && canDoBoardAction(currentUser, board) ? (
+                    <button type="button" className="icon-button" onClick={() => duplicateBoardRecord(board, false)}>
                       <Copy size={15} /> Duplicar
                     </button>
                   ) : null}
-                  {actionPermissions.duplicateBoardWithRows && canDoBoardAction(currentUser, board) ? (
-                    <button type="button" className="icon-button" onClick={() => duplicateBoardRecord(board, true)}>
-                      <Copy size={15} /> Duplicar con filas
-                    </button>
-                  ) : null}
-                  {actionPermissions.saveBoard && canEditBoard(currentUser, board) ? (
+
+                  {actionPermissions.editBoard && canEditBoard(currentUser, board) ? (
                     <button type="button" className="icon-button" onClick={() => openEditBoardBuilder(board)}>
                       <Pencil size={15} /> Editar tablero
                     </button>

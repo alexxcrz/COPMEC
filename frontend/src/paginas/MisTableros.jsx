@@ -138,12 +138,16 @@ export default function MisTableros({ contexto }) {
     assignee: 220,
     status: 150,
     time: 130,
+    totalTime: 130,
+    efficiency: 120,
     workflow: 190,
   };
   const auxMinWidths = {
     assignee: 190,
     status: 140,
     time: 120,
+    totalTime: 120,
+    efficiency: 100,
     workflow: 160,
   };
   const getAuxColumnStyle = (auxId) => {
@@ -162,7 +166,8 @@ export default function MisTableros({ contexto }) {
     ? renderBoardFieldLabel
     : (label, required = false) => `${label}${required ? " *" : ""}`;
   const boardView = selectedCustomBoardDisplay || selectedCustomBoard;
-  const boardColumns = boardView ? getOrderedBoardColumns(boardView) : [];
+  const isBoardOwner = Boolean(selectedCustomBoard && currentUser && (currentUser.role === "Lead" || selectedCustomBoard.createdById === currentUser.id || selectedCustomBoard.ownerId === currentUser.id));
+  const boardColumns = boardView ? getOrderedBoardColumns(boardView, isBoardOwner) : [];
   const boardOperationalContextType = String(boardView?.settings?.operationalContextType || "none");
   const boardOperationalContextLabel = String(boardView?.settings?.operationalContextLabel || "").trim()
     || (boardOperationalContextType === "cleaningSite" ? "Sede de limpieza" : "Ubicación operativa");
@@ -172,6 +177,25 @@ export default function MisTableros({ contexto }) {
       ? boardView.settings.operationalContextOptions.map((option) => String(option || "").trim()).filter(Boolean)
       : [];
   const boardOperationalContextValue = String(boardView?.settings?.operationalContextValue || "").trim();
+
+  // Compute available cleaning naves from inventory items that have activity consumptions
+  const cleaningNaveOptions = (() => {
+    const cleaningItems = (state.inventoryItems || []).filter(
+      (item) => item.domain === "cleaning" && (item.activityConsumptions || []).length > 0
+    );
+    return [...new Set(cleaningItems.map((item) => item.cleaningSite).filter(Boolean))].sort();
+  })();
+
+  // Auto-detect: board has an activity list field (catalogByCategory) + cleaning inventory exists
+  const boardHasActivityListField = (boardView?.fields || []).some(
+    (f) => f.type === "select" && f.optionSource === "catalogByCategory"
+  );
+  const showCleaningNaveSelector = boardOperationalContextType === "cleaningSite"
+    || (boardHasActivityListField && cleaningNaveOptions.length > 0);
+  const effectiveCleaningNaves = (cleaningNaveOptions.length > 0)
+    ? cleaningNaveOptions
+    : ["C1", "C2", "C3"];
+  const cleaningNaveValue = boardOperationalContextValue || effectiveCleaningNaves[0] || "C3";
 
   return (
     <section className="admin-page-layout">
@@ -213,7 +237,18 @@ export default function MisTableros({ contexto }) {
                     ))}
                   </select>
                 </label>
-                {boardOperationalContextType !== "none" ? (
+                {showCleaningNaveSelector ? (
+                  <label className="board-top-select min-width">
+                    <span>Nave de limpieza</span>
+                    <select
+                      value={cleaningNaveValue}
+                      onChange={(event) => updateBoardOperationalContext(selectedCustomBoard.id, event.target.value)}
+                      disabled={isHistoricalCustomBoardView || !canChangeSelectedBoardOperationalContext}
+                    >
+                      {effectiveCleaningNaves.map((nave) => <option key={nave} value={nave}>{nave}</option>)}
+                    </select>
+                  </label>
+                ) : boardOperationalContextType !== "none" ? (
                   <label className="board-top-select min-width">
                     <span>{boardOperationalContextLabel}</span>
                     <select
@@ -332,7 +367,32 @@ export default function MisTableros({ contexto }) {
                             }
 
                             if (column.id === "time") {
-                              return <td key={`${row.id}-${column.token}`} style={getAuxColumnStyle(column.id)}>{formatDurationClock(getElapsedSeconds(row, now))}</td>;
+                              const effectiveNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : now;
+                              return <td key={`${row.id}-${column.token}`} style={getAuxColumnStyle(column.id)}>{formatDurationClock(getElapsedSeconds(row, effectiveNow))}</td>;
+                            }
+
+                            if (column.id === "totalTime") {
+                              const effectiveNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : now;
+                              const prodSecs = getElapsedSeconds(row, effectiveNow);
+                              const totalSecs = row.startTime
+                                ? Math.max(prodSecs, Math.floor((effectiveNow - new Date(row.startTime).getTime()) / 1000))
+                                : 0;
+                              return <td key={`${row.id}-${column.token}`} style={getAuxColumnStyle(column.id)}>{formatDurationClock(totalSecs)}</td>;
+                            }
+
+                            if (column.id === "efficiency") {
+                              const effectiveNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : now;
+                              const prodSecs = getElapsedSeconds(row, effectiveNow);
+                              const totalSecs = row.startTime
+                                ? Math.max(prodSecs, Math.floor((effectiveNow - new Date(row.startTime).getTime()) / 1000))
+                                : prodSecs;
+                              const pct = totalSecs > 0 ? Math.round((prodSecs / totalSecs) * 100) : (row.startTime ? 100 : 0);
+                              const color = pct >= 80 ? "#16a34a" : pct >= 50 ? "#d97706" : "#dc2626";
+                              return (
+                                <td key={`${row.id}-${column.token}`} style={getAuxColumnStyle(column.id)}>
+                                  <span style={{ color, fontWeight: 600 }}>{row.startTime ? `${pct}%` : "—"}</span>
+                                </td>
+                              );
                             }
 
                             return (
@@ -498,6 +558,78 @@ export default function MisTableros({ contexto }) {
                                   <option value="">Seleccionar player...</option>
                                   {visibleUsers.filter((user) => user.isActive).map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
                                 </select>
+                              </td>
+                            );
+                          }
+
+                          if (field.type === "rating") {
+                            const ratingVal = Math.min(5, Math.max(0, Number(row.values?.[field.id] || 0)));
+                            return (
+                              <td key={field.id} style={columnStyle}>
+                                <div style={{ display: "flex", gap: "2px" }}>
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <button
+                                      key={star}
+                                      type="button"
+                                      onClick={() => rowFieldEditable && updateBoardRowValue(selectedCustomBoard.id, row.id, field, star)}
+                                      style={{ background: "none", border: "none", cursor: rowFieldEditable ? "pointer" : "default", fontSize: "16px", padding: "0", color: star <= ratingVal ? "#f59e0b" : "#d1d5db" }}
+                                      disabled={!rowFieldEditable}
+                                      aria-label={`${star} estrella${star !== 1 ? "s" : ""}`}
+                                    >★</button>
+                                  ))}
+                                </div>
+                              </td>
+                            );
+                          }
+
+                          if (field.type === "progress") {
+                            const progVal = Math.min(100, Math.max(0, Number(row.values?.[field.id] || 0)));
+                            const progColor = progVal >= 80 ? "#16a34a" : progVal >= 50 ? "#d97706" : "#dc2626";
+                            return (
+                              <td key={field.id} style={columnStyle}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                  <div style={{ flex: 1, height: "6px", borderRadius: "999px", background: "#e5e7eb", overflow: "hidden" }}>
+                                    <div style={{ width: `${progVal}%`, height: "100%", background: progColor, borderRadius: "999px", transition: "width 0.2s" }} />
+                                  </div>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={progVal}
+                                    onChange={(event) => rowFieldEditable && updateBoardRowValue(selectedCustomBoard.id, row.id, field, Math.min(100, Math.max(0, Number(event.target.value || 0))))}
+                                    style={{ width: "44px", fontSize: "11px", textAlign: "right", border: "none", background: "transparent" }}
+                                    disabled={!rowFieldEditable}
+                                  />
+                                  <span style={{ fontSize: "11px", color: "#6b7280" }}>%</span>
+                                </div>
+                              </td>
+                            );
+                          }
+
+                          if (field.type === "counter") {
+                            const counterVal = Number(row.values?.[field.id] || 0);
+                            return (
+                              <td key={field.id} style={columnStyle}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                  <button type="button" onClick={() => rowFieldEditable && updateBoardRowValue(selectedCustomBoard.id, row.id, field, Math.max(0, counterVal - 1))} disabled={!rowFieldEditable || counterVal <= 0} style={{ width: "22px", height: "22px", borderRadius: "50%", border: "1px solid #d1d5db", background: "#f9fafb", cursor: "pointer", fontSize: "14px", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                                  <span style={{ minWidth: "28px", textAlign: "center", fontWeight: 600, fontSize: "13px" }}>{counterVal}</span>
+                                  <button type="button" onClick={() => rowFieldEditable && updateBoardRowValue(selectedCustomBoard.id, row.id, field, counterVal + 1)} disabled={!rowFieldEditable} style={{ width: "22px", height: "22px", borderRadius: "50%", border: "1px solid #d1d5db", background: "#f9fafb", cursor: "pointer", fontSize: "14px", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                                </div>
+                              </td>
+                            );
+                          }
+
+                          if (field.type === "tags") {
+                            return (
+                              <td key={field.id} style={columnStyle}>
+                                <input
+                                  value={row.values?.[field.id] || ""}
+                                  onChange={(event) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, event.target.value)}
+                                  placeholder={field.placeholder || "tag1, tag2, tag3"}
+                                  style={controlStyle}
+                                  title={field.helpText || field.label}
+                                  disabled={!rowFieldEditable}
+                                />
                               </td>
                             );
                           }

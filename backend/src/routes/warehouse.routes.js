@@ -5,6 +5,7 @@ import {
   addWarehouseArea,
   createWarehouseCatalogItem,
   createWarehouseBoard,
+  bulkImportWarehouseBoardRows,
   createWarehouseBoardRow,
   createWarehouseInventoryItem,
   createWarehouseInventoryMovement,
@@ -34,6 +35,10 @@ import {
   updateWarehouseTemplate,
   updateWarehouseUser,
   toggleWarehouseUserActive,
+  getCustomRoles,
+  createCustomRole,
+  updateCustomRole,
+  deleteCustomRole,
 } from "../services/warehouse.store.js";
 
 export const warehouseRouter = Router();
@@ -488,6 +493,22 @@ warehouseRouter.delete("/catalog/:itemId", requireWarehouseAction("manageCatalog
   res.json({ ok: true, data: { state: result.state, itemId: result.itemId, itemName: result.itemName } });
 });
 
+warehouseRouter.post("/boards/:boardId/rows/bulk", (req, res) => {
+  const rows = Array.isArray(req.body?.rows) ? req.body.rows : [];
+  const result = bulkImportWarehouseBoardRows(req.auth, req.params.boardId, rows);
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "board_not_found" ? 404 : 403;
+    res.status(status).json({ ok: false, message: "No fue posible importar las filas." });
+    return;
+  }
+  auditSecurityEvent("warehouse_board_rows_bulk_imported", req, {
+    boardId: req.params.boardId,
+    count: result.count,
+    revision: result.state?.revision,
+  });
+  res.status(201).json(result.state);
+});
+
 warehouseRouter.post("/boards/:boardId/rows", (req, res) => {
   const result = createWarehouseBoardRow(req.auth, req.params.boardId);
   if (!result.ok) {
@@ -534,6 +555,35 @@ warehouseRouter.delete("/boards/:boardId/rows/:rowId", (req, res) => {
     revision: result.state?.revision,
   });
   res.json(result.state);
+});
+
+// ─── Roles personalizados ──────────────────────────────────────────────────
+warehouseRouter.get("/roles", requireAuth, (_req, res) => {
+  res.json({ ok: true, data: getCustomRoles() });
+});
+
+warehouseRouter.post("/roles", requireWarehouseAction("managePermissions"), (req, res) => {
+  try {
+    const role = createCustomRole(req.body?.name);
+    res.status(201).json({ ok: true, data: role });
+  } catch (err) {
+    res.status(400).json({ ok: false, message: err.message });
+  }
+});
+
+warehouseRouter.patch("/roles/:roleId", requireWarehouseAction("managePermissions"), (req, res) => {
+  try {
+    const role = updateCustomRole(req.params.roleId, req.body?.name);
+    if (!role) return res.status(404).json({ ok: false, message: "Rol no encontrado." });
+    res.json({ ok: true, data: role });
+  } catch (err) {
+    res.status(400).json({ ok: false, message: err.message });
+  }
+});
+
+warehouseRouter.delete("/roles/:roleId", requireWarehouseAction("managePermissions"), (req, res) => {
+  deleteCustomRole(req.params.roleId);
+  res.json({ ok: true });
 });
 
 warehouseRouter.get("/events", (req, res) => {

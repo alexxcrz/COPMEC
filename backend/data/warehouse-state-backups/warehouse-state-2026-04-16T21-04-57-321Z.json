@@ -1,5 +1,5 @@
 {
-  "revision": 2157,
+  "revision": 2135,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro"
@@ -36,9 +36,9 @@
       "createdById": "usr-lead-nu7wt83h",
       "selfIdentityEditCount": 0,
       "mustChangePassword": false,
-      "temporaryPasswordIssuedAt": "2026-04-16T21:53:21.077Z",
-      "passwordHash": "scrypt$a19ecf285a1fd00b679b45aca96fcab0$888b12b330a61bdcc7819de0d393120db2e3fff60d94c24a383531e755ed93e2fa3edb84b87fcc4fdcdf85948381330eade29218480c0498d13c987b75f0934d",
-      "sessionVersion": 10
+      "temporaryPasswordIssuedAt": "2026-04-12T17:35:08.27Z",
+      "passwordHash": "scrypt$182d5e96b8fca80cefd9b85276f1dc16$7b5fabf9bc6e6095e7675e20ba2b17a0e3c825982f3a1e13bd4236a691ea23510326e91a1e7e0700cda03e6ef831cf0803dca71d20ed69f207743fd93bc3954d",
+      "sessionVersion": 8
     },
     {
       "id": "usr-sqtdyayn",
@@ -70,9 +70,9 @@
       "createdById": "usr-lead-nu7wt83h",
       "selfIdentityEditCount": 0,
       "mustChangePassword": false,
-      "temporaryPasswordIssuedAt": "2026-04-16T21:47:14.490Z",
-      "passwordHash": "scrypt$ec041b6580f32597baa149b1a86c7392$64753419c7f2ca50052253c3ed262adb9f635f27f89de8af1b438d3f0bb30440c4c8bae11eb16486762051babbac5c487bb7ab519888b5c7be8949165ce07524",
-      "sessionVersion": 3
+      "temporaryPasswordIssuedAt": null,
+      "passwordHash": "scrypt$89be8677ac4dd3e745f44dfb6e6a0550$0ef5fa8c5f5a379fb808dad582405c37a85869089635a4c0ba1b91b6d240a9b1cf0d58a0d18addd01854cf51aee75b3524ff1a239c4bbf96077dd6c9ace582e0",
+      "sessionVersion": 1
     }
   ],
   "weeks": [
@@ -8933,21 +8933,16 @@
       "ownerId": "usr-lead-nu7wt83h",
       "accessUserIds": [
         "usr-sqtdyayn",
-        "usr-06t9ibth",
-        "usr-a2hd8qtb"
+        "usr-06t9ibth"
       ],
       "settings": {
         "showWorkflow": true,
         "showMetrics": true,
         "showAssignee": true,
         "showDates": true,
-        "showTotalTime": false,
-        "showEfficiency": false,
         "auxColumnsOrder": [
           "status",
           "time",
-          "totalTime",
-          "efficiency",
           "workflow",
           "assignee"
         ],
@@ -8966,8 +8961,7 @@
           "aux:time",
           "aux:status",
           "fld-eaq0jvax",
-          "aux:totalTime",
-          "aux:efficiency"
+          "fld-bgotqy3o"
         ],
         "operationalContextType": "none",
         "operationalContextLabel": "",
@@ -9062,6 +9056,28 @@
           "groupName": "Cierre",
           "groupColor": "#e2f4ec",
           "colorRules": []
+        },
+        {
+          "id": "fld-bgotqy3o",
+          "label": "suma",
+          "type": "formula",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "subtract",
+          "formulaLeftFieldId": "fld-x1jzjoxm",
+          "formulaRightFieldId": "fld-gtp4zz3s",
+          "helpText": "",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "md",
+          "widthPx": null,
+          "required": false,
+          "groupName": "General",
+          "groupColor": "#e2f4ec",
+          "colorRules": []
         }
       ],
       "rows": [
@@ -9071,7 +9087,8 @@
             "fld-pjabusyf": "Piso de Produccíon",
             "fld-x1jzjoxm": "11:15",
             "fld-gtp4zz3s": "11:15",
-            "fld-eaq0jvax": ""
+            "fld-eaq0jvax": "",
+            "fld-bgotqy3o": ""
           },
           "responsibleId": "usr-lead-nu7wt83h",
           "status": "Terminado",
@@ -9087,7 +9104,8 @@
             "fld-pjabusyf": "Inspeccíon General de Naves",
             "fld-x1jzjoxm": "11:15",
             "fld-gtp4zz3s": "11:16",
-            "fld-eaq0jvax": ""
+            "fld-eaq0jvax": "",
+            "fld-bgotqy3o": ""
           },
           "responsibleId": "usr-lead-nu7wt83h",
           "status": "Terminado",
@@ -9103,31 +9121,49 @@
           "values": {
             "fld-pjabusyf": "Baños",
             "fld-x1jzjoxm": "15:04",
-            "fld-gtp4zz3s": "15:05",
-            "fld-eaq0jvax": ""
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": "",
+            "fld-bgotqy3o": ""
           },
           "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Terminado",
+          "status": "En curso",
           "startTime": "2026-04-16T21:04:45.908Z",
-          "endTime": "2026-04-16T21:05:21.490Z",
-          "accumulatedSeconds": 18,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": "2026-04-16T21:04:45.908Z",
+          "createdAt": "2026-04-14T14:27:45.55Z"
+        },
+        {
+          "id": "row-6h86i16e",
+          "values": {
+            "fld-pjabusyf": "Oficinas",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": "",
+            "fld-bgotqy3o": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
           "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.55Z",
-          "lastPauseReason": "baño"
+          "createdAt": "2026-04-14T14:27:45.55Z"
         },
         {
           "id": "row-q8qik4ng",
           "values": {
             "fld-pjabusyf": "Portones",
-            "fld-x1jzjoxm": "15:55",
-            "fld-gtp4zz3s": "15:55",
-            "fld-eaq0jvax": ""
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": "",
+            "fld-bgotqy3o": ""
           },
-          "responsibleId": "usr-a2hd8qtb",
-          "status": "Terminado",
-          "startTime": "2026-04-16T21:55:22.626Z",
-          "endTime": "2026-04-16T21:55:44.795Z",
-          "accumulatedSeconds": 22,
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
           "lastResumedAt": null,
           "createdAt": "2026-04-14T14:27:45.55Z"
         },
@@ -9137,7 +9173,8 @@
             "fld-pjabusyf": "Rampas",
             "fld-x1jzjoxm": "",
             "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
+            "fld-eaq0jvax": "",
+            "fld-bgotqy3o": ""
           },
           "responsibleId": "usr-lead-nu7wt83h",
           "status": "Pendiente",
@@ -9153,7 +9190,8 @@
             "fld-pjabusyf": "Racks",
             "fld-x1jzjoxm": "",
             "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
+            "fld-eaq0jvax": "",
+            "fld-bgotqy3o": ""
           },
           "responsibleId": "usr-lead-nu7wt83h",
           "status": "Pendiente",
@@ -9169,7 +9207,8 @@
             "fld-pjabusyf": "Comedor 1ra",
             "fld-x1jzjoxm": "",
             "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
+            "fld-eaq0jvax": "",
+            "fld-bgotqy3o": ""
           },
           "responsibleId": "usr-lead-nu7wt83h",
           "status": "Pendiente",
@@ -9185,7 +9224,8 @@
             "fld-pjabusyf": "Comedor 2da",
             "fld-x1jzjoxm": "",
             "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
+            "fld-eaq0jvax": "",
+            "fld-bgotqy3o": ""
           },
           "responsibleId": "usr-lead-nu7wt83h",
           "status": "Pendiente",
@@ -9201,7 +9241,8 @@
             "fld-pjabusyf": "Protección Civil",
             "fld-x1jzjoxm": "",
             "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
+            "fld-eaq0jvax": "",
+            "fld-bgotqy3o": ""
           },
           "responsibleId": "usr-lead-nu7wt83h",
           "status": "Pendiente",
@@ -9217,7 +9258,8 @@
             "fld-pjabusyf": "Recolección Basura",
             "fld-x1jzjoxm": "",
             "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
+            "fld-eaq0jvax": "",
+            "fld-bgotqy3o": ""
           },
           "responsibleId": "usr-lead-nu7wt83h",
           "status": "Pendiente",
@@ -9233,7 +9275,8 @@
             "fld-pjabusyf": "Sala de Juntas",
             "fld-x1jzjoxm": "",
             "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
+            "fld-eaq0jvax": "",
+            "fld-bgotqy3o": ""
           },
           "responsibleId": "usr-lead-nu7wt83h",
           "status": "Pendiente",
@@ -9249,7 +9292,8 @@
             "fld-pjabusyf": "Vidrios",
             "fld-x1jzjoxm": "",
             "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
+            "fld-eaq0jvax": "",
+            "fld-bgotqy3o": ""
           },
           "responsibleId": "usr-lead-nu7wt83h",
           "status": "Pendiente",
@@ -9265,7 +9309,8 @@
             "fld-pjabusyf": "Tarimas",
             "fld-x1jzjoxm": "",
             "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
+            "fld-eaq0jvax": "",
+            "fld-bgotqy3o": ""
           },
           "responsibleId": "usr-lead-nu7wt83h",
           "status": "Pendiente",
@@ -9281,7 +9326,8 @@
             "fld-pjabusyf": "Muebles Picking",
             "fld-x1jzjoxm": "",
             "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
+            "fld-eaq0jvax": "",
+            "fld-bgotqy3o": ""
           },
           "responsibleId": "usr-lead-nu7wt83h",
           "status": "Pendiente",
@@ -9297,7 +9343,8 @@
             "fld-pjabusyf": "Barrido de Colindancia",
             "fld-x1jzjoxm": "",
             "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
+            "fld-eaq0jvax": "",
+            "fld-bgotqy3o": ""
           },
           "responsibleId": "usr-lead-nu7wt83h",
           "status": "Pendiente",
@@ -9313,7 +9360,8 @@
             "fld-pjabusyf": "Limpieza de Patio",
             "fld-x1jzjoxm": "",
             "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
+            "fld-eaq0jvax": "",
+            "fld-bgotqy3o": ""
           },
           "responsibleId": "usr-lead-nu7wt83h",
           "status": "Pendiente",
@@ -9329,7 +9377,8 @@
             "fld-pjabusyf": "Deshierbe en Grietas y Jardineras",
             "fld-x1jzjoxm": "",
             "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
+            "fld-eaq0jvax": "",
+            "fld-bgotqy3o": ""
           },
           "responsibleId": "usr-lead-nu7wt83h",
           "status": "Pendiente",
@@ -9419,9 +9468,2604 @@
       },
       "visibilityType": "users",
       "sharedDepartments": []
+    },
+    {
+      "id": "board-kn3z5b87",
+      "name": "Control de Actividades de Limpieza",
+      "description": "Copia de Control de Actividades de Limpieza.",
+      "createdById": "usr-lead-nu7wt83h",
+      "ownerId": "usr-lead-nu7wt83h",
+      "accessUserIds": [
+        "usr-sqtdyayn",
+        "usr-06t9ibth"
+      ],
+      "settings": {
+        "showWorkflow": true,
+        "showMetrics": true,
+        "showAssignee": true,
+        "showDates": true,
+        "auxColumnsOrder": [
+          "status",
+          "time",
+          "workflow",
+          "assignee"
+        ],
+        "auxColumnWidths": {
+          "status": 90,
+          "time": 90,
+          "workflow": 109,
+          "assignee": 190
+        },
+        "columnOrder": [
+          "fld-g9sfbwpf",
+          "fld-m8jepz54",
+          "fld-w64whk7v",
+          "aux:assignee",
+          "aux:workflow",
+          "aux:time",
+          "aux:status",
+          "fld-wwqphfbf"
+        ],
+        "operationalContextType": "none",
+        "operationalContextLabel": "",
+        "operationalContextOptions": [],
+        "operationalContextValue": ""
+      },
+      "fields": [
+        {
+          "id": "fld-g9sfbwpf",
+          "label": "Actividad",
+          "type": "select",
+          "optionSource": "catalogByCategory",
+          "optionCatalogCategory": "Limpieza",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "sm",
+          "widthPx": 190,
+          "required": false,
+          "groupName": "Operación",
+          "groupColor": "#e2f4ec",
+          "colorRules": []
+        },
+        {
+          "id": "fld-m8jepz54",
+          "label": "Inicio",
+          "type": "time",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "sm",
+          "required": false,
+          "groupName": "Seguimiento",
+          "groupColor": "#e2f4ec",
+          "colorRules": [],
+          "widthPx": 90
+        },
+        {
+          "id": "fld-w64whk7v",
+          "label": "Fin",
+          "type": "time",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "sm",
+          "widthPx": 130,
+          "required": false,
+          "groupName": "Seguimiento",
+          "groupColor": "#e2f4ec",
+          "colorRules": []
+        },
+        {
+          "id": "fld-wwqphfbf",
+          "label": "Observaciones",
+          "type": "text",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "md",
+          "widthPx": 260,
+          "required": false,
+          "groupName": "Cierre",
+          "groupColor": "#e2f4ec",
+          "colorRules": []
+        }
+      ],
+      "rows": [
+        {
+          "id": "row-zcey10i2",
+          "values": {
+            "fld-g9sfbwpf": "Piso de Produccíon",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.55Z"
+        },
+        {
+          "id": "row-16zybu9b",
+          "values": {
+            "fld-g9sfbwpf": "Inspeccíon General de Naves",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.55Z"
+        },
+        {
+          "id": "row-kv1uwwy7",
+          "values": {
+            "fld-g9sfbwpf": "Baños",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.55Z"
+        },
+        {
+          "id": "row-7aqaz7rv",
+          "values": {
+            "fld-g9sfbwpf": "Oficinas",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.55Z"
+        },
+        {
+          "id": "row-y710p0vi",
+          "values": {
+            "fld-g9sfbwpf": "Portones",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.55Z"
+        },
+        {
+          "id": "row-4t9j1k1d",
+          "values": {
+            "fld-g9sfbwpf": "Rampas",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.55Z"
+        },
+        {
+          "id": "row-s4fjbfzs",
+          "values": {
+            "fld-g9sfbwpf": "Racks",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.55Z"
+        },
+        {
+          "id": "row-dv51po9r",
+          "values": {
+            "fld-g9sfbwpf": "Comedor 1ra",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.55Z"
+        },
+        {
+          "id": "row-84ozd0hg",
+          "values": {
+            "fld-g9sfbwpf": "Comedor 2da",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.55Z"
+        },
+        {
+          "id": "row-uvo0utv2",
+          "values": {
+            "fld-g9sfbwpf": "Protección Civil",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-ksgl47de",
+          "values": {
+            "fld-g9sfbwpf": "Recolección Basura",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-s4offl6s",
+          "values": {
+            "fld-g9sfbwpf": "Sala de Juntas",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-ksb9dwo5",
+          "values": {
+            "fld-g9sfbwpf": "Vidrios",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-bj7dxap6",
+          "values": {
+            "fld-g9sfbwpf": "Tarimas",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-f9bowd58",
+          "values": {
+            "fld-g9sfbwpf": "Muebles Picking",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-sv8kvhjl",
+          "values": {
+            "fld-g9sfbwpf": "Barrido de Colindancia",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-jbrj91aj",
+          "values": {
+            "fld-g9sfbwpf": "Limpieza de Patio",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-dxsrxar8",
+          "values": {
+            "fld-g9sfbwpf": "Deshierbe en Grietas y Jardineras",
+            "fld-m8jepz54": "",
+            "fld-w64whk7v": "",
+            "fld-wwqphfbf": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        }
+      ],
+      "permissions": {
+        "isEnabled": false,
+        "visibility": {
+          "roles": [],
+          "userIds": [
+            "usr-lead-nu7wt83h",
+            "usr-sqtdyayn",
+            "usr-06t9ibth"
+          ],
+          "departments": []
+        },
+        "actions": {
+          "createBoardRow": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)",
+              "Junior (Jr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "boardWorkflow": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)",
+              "Junior (Jr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "exportBoardExcel": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "previewBoardPdf": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "exportBoardPdf": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "duplicateBoard": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "duplicateBoardWithRows": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)"
+            ],
+            "userIds": [],
+            "departments": []
+          }
+        }
+      },
+      "visibilityType": "users",
+      "sharedDepartments": []
+    },
+    {
+      "id": "board-4ufyf048",
+      "name": "Control de Actividades de Limpieza copia",
+      "description": "Copia de Control de Actividades de Limpieza.",
+      "createdById": "usr-lead-nu7wt83h",
+      "ownerId": "usr-lead-nu7wt83h",
+      "accessUserIds": [
+        "usr-sqtdyayn",
+        "usr-06t9ibth"
+      ],
+      "settings": {
+        "showWorkflow": true,
+        "showMetrics": true,
+        "showAssignee": true,
+        "showDates": true,
+        "auxColumnsOrder": [
+          "status",
+          "time",
+          "workflow",
+          "assignee"
+        ],
+        "auxColumnWidths": {
+          "status": 90,
+          "time": 90,
+          "workflow": 109,
+          "assignee": 190
+        },
+        "columnOrder": [
+          "fld-5uu94mlw",
+          "fld-bwreph3p",
+          "fld-pgd415df",
+          "aux:assignee",
+          "aux:workflow",
+          "aux:time",
+          "aux:status",
+          "fld-p8fa4uca"
+        ],
+        "operationalContextType": "none",
+        "operationalContextLabel": "",
+        "operationalContextOptions": [],
+        "operationalContextValue": ""
+      },
+      "fields": [
+        {
+          "id": "fld-5uu94mlw",
+          "label": "Actividad",
+          "type": "select",
+          "optionSource": "catalogByCategory",
+          "optionCatalogCategory": "Limpieza",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "sm",
+          "widthPx": 190,
+          "required": false,
+          "groupName": "Operación",
+          "groupColor": "#e2f4ec",
+          "colorRules": []
+        },
+        {
+          "id": "fld-bwreph3p",
+          "label": "Inicio",
+          "type": "time",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "sm",
+          "required": false,
+          "groupName": "Seguimiento",
+          "groupColor": "#e2f4ec",
+          "colorRules": [],
+          "widthPx": 90
+        },
+        {
+          "id": "fld-pgd415df",
+          "label": "Fin",
+          "type": "time",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "sm",
+          "widthPx": 130,
+          "required": false,
+          "groupName": "Seguimiento",
+          "groupColor": "#e2f4ec",
+          "colorRules": []
+        },
+        {
+          "id": "fld-p8fa4uca",
+          "label": "Observaciones",
+          "type": "text",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "md",
+          "widthPx": 260,
+          "required": false,
+          "groupName": "Cierre",
+          "groupColor": "#e2f4ec",
+          "colorRules": []
+        }
+      ],
+      "rows": [
+        {
+          "id": "row-u72bukt2",
+          "values": {
+            "fld-5uu94mlw": "Piso de Produccíon",
+            "fld-bwreph3p": "",
+            "fld-pgd415df": "",
+            "fld-p8fa4uca": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T19:46:18.416Z"
+        },
+        {
+          "id": "row-2au4gomf",
+          "values": {
+            "fld-5uu94mlw": "Inspeccíon General de Naves",
+            "fld-bwreph3p": "",
+            "fld-pgd415df": "",
+            "fld-p8fa4uca": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T19:46:21.183Z"
+        },
+        {
+          "id": "row-6r4hdhuj",
+          "values": {
+            "fld-5uu94mlw": "Baños",
+            "fld-bwreph3p": "",
+            "fld-pgd415df": "",
+            "fld-p8fa4uca": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T19:46:27.198Z"
+        },
+        {
+          "id": "row-f3g6mu06",
+          "values": {
+            "fld-5uu94mlw": "Oficinas",
+            "fld-bwreph3p": "",
+            "fld-pgd415df": "",
+            "fld-p8fa4uca": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T19:46:32.024Z"
+        },
+        {
+          "id": "row-whq4d98j",
+          "values": {
+            "fld-5uu94mlw": "Portones",
+            "fld-bwreph3p": "",
+            "fld-pgd415df": "",
+            "fld-p8fa4uca": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T19:46:32.217Z"
+        },
+        {
+          "id": "row-ejx80lk1",
+          "values": {
+            "fld-5uu94mlw": "Rampas",
+            "fld-bwreph3p": "",
+            "fld-pgd415df": "",
+            "fld-p8fa4uca": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T19:46:32.491Z"
+        },
+        {
+          "id": "row-0z9mnmwy",
+          "values": {
+            "fld-5uu94mlw": "Racks",
+            "fld-bwreph3p": "",
+            "fld-pgd415df": "",
+            "fld-p8fa4uca": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T19:46:32.545Z"
+        },
+        {
+          "id": "row-845rbsem",
+          "values": {
+            "fld-5uu94mlw": "Comedor 1ra",
+            "fld-bwreph3p": "",
+            "fld-pgd415df": "",
+            "fld-p8fa4uca": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T19:46:32.768Z"
+        },
+        {
+          "id": "row-95o8e351",
+          "values": {
+            "fld-5uu94mlw": "Comedor 2da",
+            "fld-bwreph3p": "",
+            "fld-pgd415df": "",
+            "fld-p8fa4uca": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T19:46:32.976Z"
+        },
+        {
+          "id": "row-frrm4lt1",
+          "values": {
+            "fld-5uu94mlw": "Protección Civil",
+            "fld-bwreph3p": "",
+            "fld-pgd415df": "",
+            "fld-p8fa4uca": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T19:46:33.030Z"
+        },
+        {
+          "id": "row-f6kl7kzp",
+          "values": {
+            "fld-5uu94mlw": "Recolección Basura",
+            "fld-bwreph3p": "",
+            "fld-pgd415df": "",
+            "fld-p8fa4uca": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T19:46:33.183Z"
+        },
+        {
+          "id": "row-yrrgishd",
+          "values": {
+            "fld-5uu94mlw": "Sala de Juntas",
+            "fld-bwreph3p": "",
+            "fld-pgd415df": "",
+            "fld-p8fa4uca": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T19:46:33.404Z"
+        },
+        {
+          "id": "row-h14alcwm",
+          "values": {
+            "fld-5uu94mlw": "Vidrios",
+            "fld-bwreph3p": "",
+            "fld-pgd415df": "",
+            "fld-p8fa4uca": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T19:46:36.112Z"
+        },
+        {
+          "id": "row-7dufxud1",
+          "values": {
+            "fld-5uu94mlw": "Tarimas",
+            "fld-bwreph3p": "",
+            "fld-pgd415df": "",
+            "fld-p8fa4uca": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T19:46:36.229Z"
+        },
+        {
+          "id": "row-mwsp0l8c",
+          "values": {
+            "fld-5uu94mlw": "Muebles Picking",
+            "fld-bwreph3p": "",
+            "fld-pgd415df": "",
+            "fld-p8fa4uca": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T19:46:36.420Z"
+        },
+        {
+          "id": "row-1jwbm2t6",
+          "values": {
+            "fld-5uu94mlw": "Barrido de Colindancia",
+            "fld-bwreph3p": "",
+            "fld-pgd415df": "",
+            "fld-p8fa4uca": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T19:46:39.131Z"
+        },
+        {
+          "id": "row-lp10sitd",
+          "values": {
+            "fld-5uu94mlw": "Limpieza de Patio",
+            "fld-bwreph3p": "",
+            "fld-pgd415df": "",
+            "fld-p8fa4uca": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T19:46:39.276Z"
+        },
+        {
+          "id": "row-edsinx8l",
+          "values": {
+            "fld-5uu94mlw": "Deshierbe en Grietas y Jardineras",
+            "fld-bwreph3p": "",
+            "fld-pgd415df": "",
+            "fld-p8fa4uca": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T19:46:39.427Z"
+        }
+      ],
+      "permissions": {
+        "isEnabled": false,
+        "visibility": {
+          "roles": [],
+          "userIds": [
+            "usr-lead-nu7wt83h",
+            "usr-sqtdyayn",
+            "usr-06t9ibth"
+          ],
+          "departments": []
+        },
+        "actions": {
+          "createBoardRow": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)",
+              "Junior (Jr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "boardWorkflow": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)",
+              "Junior (Jr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "exportBoardExcel": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "previewBoardPdf": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "exportBoardPdf": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "duplicateBoard": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "duplicateBoardWithRows": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)"
+            ],
+            "userIds": [],
+            "departments": []
+          }
+        }
+      },
+      "visibilityType": "users",
+      "sharedDepartments": []
+    },
+    {
+      "id": "board-gx7qg4gu",
+      "name": "SEMANA 1",
+      "description": "Tablero importado desde Excel.",
+      "createdById": "usr-lead-nu7wt83h",
+      "ownerId": "usr-lead-nu7wt83h",
+      "visibilityType": "users",
+      "sharedDepartments": [],
+      "accessUserIds": [],
+      "settings": {
+        "showWorkflow": true,
+        "showMetrics": true,
+        "showAssignee": true,
+        "showDates": true,
+        "auxColumnsOrder": [
+          "status",
+          "time",
+          "workflow",
+          "assignee"
+        ],
+        "columnOrder": [
+          "fld-0fxdkr42",
+          "fld-v0cmqqbh",
+          "fld-0lp1687j",
+          "fld-42cs4cgf",
+          "fld-qabgdgt1",
+          "fld-8f62iqeo",
+          "fld-8ci40agq",
+          "fld-wkij11k1",
+          "fld-u8m4vov0",
+          "fld-fzr93odv",
+          "fld-q1e00gvp",
+          "fld-nsvkliug",
+          "fld-c4wzc6qv",
+          "fld-eo4l85tr",
+          "fld-vv4qdq15",
+          "fld-rz2z5yg1",
+          "aux:status",
+          "aux:time",
+          "aux:workflow",
+          "aux:assignee"
+        ],
+        "auxColumnWidths": {},
+        "operationalContextType": "none",
+        "operationalContextLabel": "",
+        "operationalContextOptions": [],
+        "operationalContextValue": ""
+      },
+      "fields": [
+        {
+          "id": "fld-0fxdkr42",
+          "label": "Codigo",
+          "type": "text",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Importado desde Excel (SEMANA 1).",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "md",
+          "required": false,
+          "groupName": "Importado",
+          "groupColor": "#dbeafe",
+          "colorRules": [
+            {
+              "operator": "equals",
+              "value": "VEOI40709",
+              "color": "#00ff00",
+              "textColor": "#434343"
+            }
+          ]
+        },
+        {
+          "id": "fld-v0cmqqbh",
+          "label": "Nombre de producto",
+          "type": "text",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Importado desde Excel (SEMANA 1). La fórmula original no es compatible para conversión automática; configúrala manualmente en el Studio.",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "md",
+          "required": false,
+          "groupName": "Importado",
+          "groupColor": "#dbeafe",
+          "colorRules": []
+        },
+        {
+          "id": "fld-0lp1687j",
+          "label": "Cajas",
+          "type": "number",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Importado desde Excel (SEMANA 1).",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "md",
+          "required": false,
+          "groupName": "Importado",
+          "groupColor": "#dbeafe",
+          "colorRules": []
+        },
+        {
+          "id": "fld-42cs4cgf",
+          "label": "Pz X caja",
+          "type": "number",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Importado desde Excel (SEMANA 1).",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "md",
+          "required": false,
+          "groupName": "Importado",
+          "groupColor": "#dbeafe",
+          "colorRules": []
+        },
+        {
+          "id": "fld-qabgdgt1",
+          "label": "extras",
+          "type": "text",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Importado desde Excel (SEMANA 1).",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "md",
+          "required": false,
+          "groupName": "Importado",
+          "groupColor": "#dbeafe",
+          "colorRules": []
+        },
+        {
+          "id": "fld-8f62iqeo",
+          "label": "Total de PZ",
+          "type": "date",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Importado desde Excel (SEMANA 1).",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "md",
+          "required": false,
+          "groupName": "Importado",
+          "groupColor": "#dbeafe",
+          "colorRules": []
+        },
+        {
+          "id": "fld-8ci40agq",
+          "label": "Solicitud",
+          "type": "date",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Importado desde Excel (SEMANA 1).",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "md",
+          "required": false,
+          "groupName": "Importado",
+          "groupColor": "#dbeafe",
+          "colorRules": []
+        },
+        {
+          "id": "fld-wkij11k1",
+          "label": "Surtido",
+          "type": "date",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Importado desde Excel (SEMANA 1).",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "md",
+          "required": false,
+          "groupName": "Importado",
+          "groupColor": "#dbeafe",
+          "colorRules": []
+        },
+        {
+          "id": "fld-u8m4vov0",
+          "label": "Fecha",
+          "type": "date",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Importado desde Excel (SEMANA 1).",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "md",
+          "required": false,
+          "groupName": "Importado",
+          "groupColor": "#dbeafe",
+          "colorRules": []
+        },
+        {
+          "id": "fld-fzr93odv",
+          "label": "Retraso",
+          "type": "text",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Importado desde Excel (SEMANA 1).",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "md",
+          "required": false,
+          "groupName": "Importado",
+          "groupColor": "#dbeafe",
+          "colorRules": []
+        },
+        {
+          "id": "fld-q1e00gvp",
+          "label": "Campo 11",
+          "type": "text",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Importado desde Excel (SEMANA 1).",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "md",
+          "required": false,
+          "groupName": "Importado",
+          "groupColor": "#dbeafe",
+          "colorRules": []
+        },
+        {
+          "id": "fld-nsvkliug",
+          "label": "Prodcutos Surtidos",
+          "type": "text",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Importado desde Excel (SEMANA 1). La fórmula original no es compatible para conversión automática; configúrala manualmente en el Studio.",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "md",
+          "required": false,
+          "groupName": "Importado",
+          "groupColor": "#dbeafe",
+          "colorRules": []
+        },
+        {
+          "id": "fld-c4wzc6qv",
+          "label": "TOTAL CAJAS",
+          "type": "number",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Importado desde Excel (SEMANA 1). La fórmula original no es compatible para conversión automática; configúrala manualmente en el Studio.",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "md",
+          "required": false,
+          "groupName": "Importado",
+          "groupColor": "#dbeafe",
+          "colorRules": []
+        },
+        {
+          "id": "fld-eo4l85tr",
+          "label": "TOTAL PZ",
+          "type": "text",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Importado desde Excel (SEMANA 1). La fórmula original no es compatible para conversión automática; configúrala manualmente en el Studio.",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "md",
+          "required": false,
+          "groupName": "Importado",
+          "groupColor": "#dbeafe",
+          "colorRules": []
+        },
+        {
+          "id": "fld-vv4qdq15",
+          "label": "Campo 15",
+          "type": "text",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Importado desde Excel (SEMANA 1).",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "md",
+          "required": false,
+          "groupName": "Importado",
+          "groupColor": "#dbeafe",
+          "colorRules": []
+        },
+        {
+          "id": "fld-rz2z5yg1",
+          "label": "PRODUCTO",
+          "type": "text",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Importado desde Excel (SEMANA 1). La fórmula original no es compatible para conversión automática; configúrala manualmente en el Studio.",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "md",
+          "required": false,
+          "groupName": "Importado",
+          "groupColor": "#dbeafe",
+          "colorRules": []
+        }
+      ],
+      "rows": [
+        {
+          "id": "row-h79kpqdt",
+          "values": {
+            "fld-0fxdkr42": "VEOI40709",
+            "fld-v0cmqqbh": "MENS BLEND 90 CAPS",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 13,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 02:39:01 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 02:39:05 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "GOMITAS DFN KIDS",
+            "fld-c4wzc6qv": 1,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": "GOMITAS DFN KIDS"
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:15.311Z"
+        },
+        {
+          "id": "row-lt5g66jh",
+          "values": {
+            "fld-0fxdkr42": "850065168678",
+            "fld-v0cmqqbh": "ASHWAGANDHA",
+            "fld-0lp1687j": 2,
+            "fld-42cs4cgf": 30,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 02:59:35 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 02:59:44 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "200 BILLONES 120",
+            "fld-c4wzc6qv": 1,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": "200 BILLONES 120"
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:16.100Z"
+        },
+        {
+          "id": "row-0wqxule1",
+          "values": {
+            "fld-0fxdkr42": "PBAO42520",
+            "fld-v0cmqqbh": "3 MAG 100 CAPS",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 30,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 03:03:29 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 03:03:30 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "3 MAG 100 CAPS",
+            "fld-c4wzc6qv": 2,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": "3 MAG 100 CAPS"
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:16.874Z"
+        },
+        {
+          "id": "row-zzlypgcd",
+          "values": {
+            "fld-0fxdkr42": "THFG45340",
+            "fld-v0cmqqbh": "MYO & D-CHIRO INOSITOL PLATINUM 120 PORCIONES",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 16,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 03:11:31 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 03:11:32 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "3 MAG 200 CAPS",
+            "fld-c4wzc6qv": 4,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": "3 MAG 200 CAPS"
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:17.648Z"
+        },
+        {
+          "id": "row-b0xwerwu",
+          "values": {
+            "fld-0fxdkr42": "UMPW96240",
+            "fld-v0cmqqbh": "FACE WASH",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 44,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 03:26:05 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 03:26:04 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "3 MAG PLATINUM",
+            "fld-c4wzc6qv": 1,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": "3 MAG PLATINUM"
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:18.416Z"
+        },
+        {
+          "id": "row-4pscxh2v",
+          "values": {
+            "fld-0fxdkr42": "QNRT42874",
+            "fld-v0cmqqbh": "MYO INOSITOL 90 CAPS",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 30,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 03:30:32 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 03:30:34 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "60 BILLONES 120",
+            "fld-c4wzc6qv": 1,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": "60 BILLONES 120"
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:19.718Z"
+        },
+        {
+          "id": "row-1h5a3qfi",
+          "values": {
+            "fld-0fxdkr42": "WJKN05664",
+            "fld-v0cmqqbh": "ORGANIC APPLE VINEGAR PLATINUM",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 30,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 03:33:14 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 03:34:41 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "60 BILLONES WOMENS",
+            "fld-c4wzc6qv": 1,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": "60 BILLONES WOMENS"
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:20.980Z"
+        },
+        {
+          "id": "row-pilpjdv0",
+          "values": {
+            "fld-0fxdkr42": "GFQS27757",
+            "fld-v0cmqqbh": "THREONATE MAG",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 48,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 03:35:02 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 03:37:23 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "80 BILLONES 120",
+            "fld-c4wzc6qv": 1,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": "80 BILLONES 120"
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:22.009Z"
+        },
+        {
+          "id": "row-1nz7a1i8",
+          "values": {
+            "fld-0fxdkr42": "ERSM46817",
+            "fld-v0cmqqbh": "9 MAG PLATINUM",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 50,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 03:37:29 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 03:37:30 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "9 MAG PLATINUM",
+            "fld-c4wzc6qv": 2,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": "9 MAG PLATINUM"
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:23.152Z"
+        },
+        {
+          "id": "row-0g6u276u",
+          "values": {
+            "fld-0fxdkr42": "ZWBX56393",
+            "fld-v0cmqqbh": "GLYCINATE MAG 240 CAPS",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 43,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 03:44:39 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 03:44:41 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "Ally blend 180 caps",
+            "fld-c4wzc6qv": 1,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": "Ally blend 180 caps"
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:24.329Z"
+        },
+        {
+          "id": "row-41oz93z6",
+          "values": {
+            "fld-0fxdkr42": "THFG45340",
+            "fld-v0cmqqbh": "MYO & D-CHIRO INOSITOL PLATINUM 120 PORCIONES",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 16,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 03:49:41 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 03:49:41 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "ALPHA LIPOIC ACID",
+            "fld-c4wzc6qv": 1,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": "ALPHA LIPOIC ACID"
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:25.651Z"
+        },
+        {
+          "id": "row-ve9k2hmp",
+          "values": {
+            "fld-0fxdkr42": "BAGD73134",
+            "fld-v0cmqqbh": "OMEGA 3 FISH OIL",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 30,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 03:51:40 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 03:51:42 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "ASHWAGANDHA",
+            "fld-c4wzc6qv": 10,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": "ASHWAGANDHA"
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:27.347Z"
+        },
+        {
+          "id": "row-k3rk2oiz",
+          "values": {
+            "fld-0fxdkr42": "X003JKSZOH",
+            "fld-v0cmqqbh": "Bug Free Balm",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 30,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 04:01:10 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 04:01:11 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "B YEST BLEN 180 CAPS",
+            "fld-c4wzc6qv": 1,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": "B YEST BLEN 180 CAPS"
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:28.698Z"
+        },
+        {
+          "id": "row-3rdake8j",
+          "values": {
+            "fld-0fxdkr42": "810197170192",
+            "fld-v0cmqqbh": "Digestive Prebiotics",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 29,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 04:19:45 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 04:19:47 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "BCAA'S",
+            "fld-c4wzc6qv": 2,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": "BCAA'S"
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:30.628Z"
+        },
+        {
+          "id": "row-j6bo4oql",
+          "values": {
+            "fld-0fxdkr42": "810197170512",
+            "fld-v0cmqqbh": "CREATINA MONOHIDRATADA 120 PORCIONES",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 18,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 04:33:48 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 04:33:49 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "BEEF LIVER GRASSFED",
+            "fld-c4wzc6qv": 1,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": "BEEF LIVER GRASSFED"
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:32.639Z"
+        },
+        {
+          "id": "row-zv5px91t",
+          "values": {
+            "fld-0fxdkr42": "IFDT42900",
+            "fld-v0cmqqbh": "CITRATE MAG 120 CAPS",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 30,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 04:46:25 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 04:46:27 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "BETA ALANINE",
+            "fld-c4wzc6qv": 1,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:33.846Z"
+        },
+        {
+          "id": "row-omjegwbh",
+          "values": {
+            "fld-0fxdkr42": "BAGD73134",
+            "fld-v0cmqqbh": "OMEGA 3 FISH OIL",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 30,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 04:48:32 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 04:48:33 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "BPS BLEN 180 CAPS",
+            "fld-c4wzc6qv": 1,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": "Prodcutos"
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:35.172Z"
+        },
+        {
+          "id": "row-0z07txjw",
+          "values": {
+            "fld-0fxdkr42": "DGHU85461",
+            "fld-v0cmqqbh": "ORGANIC VEGAN PROTEIN VAINILLA",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 8,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 05:07:26 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 05:07:27 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "Bug Free Balm",
+            "fld-c4wzc6qv": 1,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": "#N/A"
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:38.235Z"
+        },
+        {
+          "id": "row-wz17qmvw",
+          "values": {
+            "fld-0fxdkr42": "WDWD11711",
+            "fld-v0cmqqbh": "MYO & D-CHIRO INOSITOL PLATINUM 60 PORCIONES",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 20,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 05:10:32 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 05:10:32 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "C BLEN 240 CAPS",
+            "fld-c4wzc6qv": 2,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:39.678Z"
+        },
+        {
+          "id": "row-ofrp4qyr",
+          "values": {
+            "fld-0fxdkr42": "VZBG60531",
+            "fld-v0cmqqbh": "OMEGA 3 SALMON OIL 180 CAPS",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 40,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 05:12:33 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 05:12:33 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "CALCIUM & D3",
+            "fld-c4wzc6qv": 1,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:41.825Z"
+        },
+        {
+          "id": "row-cc3d6qmq",
+          "values": {
+            "fld-0fxdkr42": "810197170123",
+            "fld-v0cmqqbh": "OMEGA 3 PLATINUM 180 CAPS",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 30,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 05:12:47 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 05:12:50 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "CALTRATO & D3",
+            "fld-c4wzc6qv": 1,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:43.813Z"
+        },
+        {
+          "id": "row-kvgkakxk",
+          "values": {
+            "fld-0fxdkr42": "VZBG60531",
+            "fld-v0cmqqbh": "OMEGA 3 SALMON OIL 180 CAPS",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 40,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 05:12:59 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 05:13:03 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "CARNITINE BLEND",
+            "fld-c4wzc6qv": 1,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:45.132Z"
+        },
+        {
+          "id": "row-giu83e0y",
+          "values": {
+            "fld-0fxdkr42": "LSAS39907",
+            "fld-v0cmqqbh": "IRON BLEND",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 50,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 05:27:58 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 05:28:00 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "CHROMIUM BLEND",
+            "fld-c4wzc6qv": 1,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:46.938Z"
+        },
+        {
+          "id": "row-r6mvt0ed",
+          "values": {
+            "fld-0fxdkr42": "TFXM57191",
+            "fld-v0cmqqbh": "COLLAGEN POWDER BLEN",
+            "fld-0lp1687j": 2,
+            "fld-42cs4cgf": 9,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 05:51:06 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 05:51:11 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "CITRATE MAG 120 CAPS",
+            "fld-c4wzc6qv": 4,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:48.342Z"
+        },
+        {
+          "id": "row-xyixi0l7",
+          "values": {
+            "fld-0fxdkr42": "VZBG60531",
+            "fld-v0cmqqbh": "OMEGA 3 SALMON OIL 180 CAPS",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 40,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 06:10:08 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 06:10:07 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "CITRATE MAG 240 CAPS",
+            "fld-c4wzc6qv": 8,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:50.531Z"
+        },
+        {
+          "id": "row-mxogs69x",
+          "values": {
+            "fld-0fxdkr42": "850065168104",
+            "fld-v0cmqqbh": "CITRATE MAG 240 CAPS",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 30,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 06:12:22 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 06:12:23 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "CITRATE MAG 500 CAPS",
+            "fld-c4wzc6qv": 2,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:52.457Z"
+        },
+        {
+          "id": "row-mv85ra02",
+          "values": {
+            "fld-0fxdkr42": "810197170024",
+            "fld-v0cmqqbh": "Glycinate Mg 60 Caps",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 80,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 06:25:00 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 06:25:03 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "CLARITY PLATINUM",
+            "fld-c4wzc6qv": 1,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:53.755Z"
+        },
+        {
+          "id": "row-4rffhzth",
+          "values": {
+            "fld-0fxdkr42": "NUCH43456",
+            "fld-v0cmqqbh": "OMEGA 3 SALMON OIL 90 CAPS",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 56,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 06:25:08 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 06:25:11 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "CO Q-10 BLEND",
+            "fld-c4wzc6qv": 3,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:55.601Z"
+        },
+        {
+          "id": "row-1vbfpkml",
+          "values": {
+            "fld-0fxdkr42": "DGVH02456",
+            "fld-v0cmqqbh": "OMEGA 3 PLATINUM 180 CAPS",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 30,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 06:34:11 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 06:34:12 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "COCONUT D3+K2 300 caps",
+            "fld-c4wzc6qv": 3,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:57.007Z"
+        },
+        {
+          "id": "row-gsd3yo28",
+          "values": {
+            "fld-0fxdkr42": "QWRW74849",
+            "fld-v0cmqqbh": "OMEGA 3 PLATINUM 90 CAPS",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 56,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 06:34:15 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 06:34:15 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "COLLAGEN BIO 200 CAPS",
+            "fld-c4wzc6qv": 2,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:50:58.721Z"
+        },
+        {
+          "id": "row-438vp2lq",
+          "values": {
+            "fld-0fxdkr42": "EJXK41865",
+            "fld-v0cmqqbh": "RESVERATROL 90 CAPS",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 30,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 06:50:29 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 06:50:31 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "COLLAGEN BLEND 180 CAPS",
+            "fld-c4wzc6qv": 2,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:51:00.016Z"
+        },
+        {
+          "id": "row-3s7jkzzq",
+          "values": {
+            "fld-0fxdkr42": "850065168678",
+            "fld-v0cmqqbh": "ASHWAGANDHA",
+            "fld-0lp1687j": 2,
+            "fld-42cs4cgf": 30,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 08:08:07 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 08:08:08 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "COLLAGEN BLEND 90 CAPS",
+            "fld-c4wzc6qv": 3,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:51:01.620Z"
+        },
+        {
+          "id": "row-8oxti0qz",
+          "values": {
+            "fld-0fxdkr42": "LQEV80448",
+            "fld-v0cmqqbh": "ORGANIC VEGAN PROTEIN CHOCOLATE",
+            "fld-0lp1687j": 2,
+            "fld-42cs4cgf": 8,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 08:22:05 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 08:22:06 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "COLLAGEN BLEND I II III V X 180 CAPS",
+            "fld-c4wzc6qv": 3,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:51:03.126Z"
+        },
+        {
+          "id": "row-6uciys9m",
+          "values": {
+            "fld-0fxdkr42": "DGHU85461",
+            "fld-v0cmqqbh": "ORGANIC VEGAN PROTEIN VAINILLA",
+            "fld-0lp1687j": 2,
+            "fld-42cs4cgf": 8,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 08:22:23 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 08:22:24 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "COLLAGEN BLEND I II III V X 400 CAPS",
+            "fld-c4wzc6qv": 1,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:51:04.859Z"
+        },
+        {
+          "id": "row-lvcw2p7p",
+          "values": {
+            "fld-0fxdkr42": "YAHN56774",
+            "fld-v0cmqqbh": "COCONUT D3+K2 300 caps",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 30,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 08:41:43 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 08:41:45 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "COLLAGEN DARK",
+            "fld-c4wzc6qv": 1,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:51:06.130Z"
+        },
+        {
+          "id": "row-g7zdaq9x",
+          "values": {
+            "fld-0fxdkr42": "DFRI78275",
+            "fld-v0cmqqbh": "CARNITINE BLEND",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 30,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 08:43:50 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 08:43:52 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "COLLAGEN POWDER BLEN",
+            "fld-c4wzc6qv": 3,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:51:07.633Z"
+        },
+        {
+          "id": "row-6ye33r8q",
+          "values": {
+            "fld-0fxdkr42": "APFU59234",
+            "fld-v0cmqqbh": "CALCIUM & D3",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 39,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 08:58:01 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 08:58:02 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "COLOSTRUM",
+            "fld-c4wzc6qv": 1,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:51:09.307Z"
+        },
+        {
+          "id": "row-bzaq8je3",
+          "values": {
+            "fld-0fxdkr42": "WDWD11711",
+            "fld-v0cmqqbh": "MYO & D-CHIRO INOSITOL PLATINUM 60 PORCIONES",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 30,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 08:59:24 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 08:59:29 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "CREATINA MONOHIDRATADA 120 PORCIONES",
+            "fld-c4wzc6qv": 7,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:51:13.282Z"
+        },
+        {
+          "id": "row-0omd4pw0",
+          "values": {
+            "fld-0fxdkr42": "ZTHM72602",
+            "fld-v0cmqqbh": "COLOSTRUM",
+            "fld-0lp1687j": 1,
+            "fld-42cs4cgf": 30,
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "Sat Dec 30 1899 09:01:57 GMT-0636 (hora estándar central)",
+            "fld-8ci40agq": "Sat Dec 30 1899 09:02:00 GMT-0636 (hora estándar central)",
+            "fld-wkij11k1": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-u8m4vov0": "Sun Mar 01 2026 18:00:00 GMT-0600 (hora estándar central)",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "CREATINA MONOHIDRATADA 200 PORCIONES",
+            "fld-c4wzc6qv": 1,
+            "fld-eo4l85tr": "#N/A",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:51:18.948Z"
+        },
+        {
+          "id": "row-qaafkwlt",
+          "values": {
+            "fld-0fxdkr42": "",
+            "fld-v0cmqqbh": "",
+            "fld-0lp1687j": "",
+            "fld-42cs4cgf": "",
+            "fld-qabgdgt1": "",
+            "fld-8f62iqeo": "2026-04-16",
+            "fld-8ci40agq": "2026-04-16",
+            "fld-wkij11k1": "2026-04-16",
+            "fld-u8m4vov0": "2026-04-16",
+            "fld-fzr93odv": "",
+            "fld-q1e00gvp": "",
+            "fld-nsvkliug": "",
+            "fld-c4wzc6qv": "",
+            "fld-eo4l85tr": "",
+            "fld-vv4qdq15": "",
+            "fld-rz2z5yg1": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-16T20:51:24.318Z"
+        }
+      ],
+      "permissions": {
+        "isEnabled": false,
+        "visibility": {
+          "roles": [],
+          "userIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "departments": []
+        },
+        "actions": {
+          "createBoardRow": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)",
+              "Junior (Jr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "boardWorkflow": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)",
+              "Junior (Jr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "exportBoardExcel": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "previewBoardPdf": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "exportBoardPdf": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "duplicateBoard": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "duplicateBoardWithRows": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)"
+            ],
+            "userIds": [],
+            "departments": []
+          }
+        }
+      }
     }
   ],
-  "updatedAt": "2026-04-16T21:55:44.807Z",
+  "updatedAt": "2026-04-16T21:04:45.964Z",
   "permissions": {
     "pages": {
       "index": {
@@ -9795,58 +12439,7 @@
         "departments": []
       }
     },
-    "userOverrides": {
-      "usr-a2hd8qtb": {
-        "pages": {
-          "index": false,
-          "customBoards": null,
-          "admin": null,
-          "dashboard": false,
-          "history": false,
-          "inventory": false,
-          "users": false,
-          "biblioteca": null
-        },
-        "actions": {
-          "createWeek": null,
-          "createCatalog": null,
-          "editCatalog": null,
-          "deleteCatalog": null,
-          "manageWeeks": null,
-          "managePermissions": true,
-          "createUsers": null,
-          "editUsers": null,
-          "deleteUsers": null,
-          "resetPasswords": null,
-          "manageInventory": null,
-          "deleteInventory": null,
-          "importInventory": null,
-          "manageCleaningInventory": null,
-          "deleteCleaningInventory": null,
-          "importCleaningInventory": null,
-          "manageOrderInventory": null,
-          "deleteOrderInventory": null,
-          "importOrderInventory": null,
-          "createBoard": null,
-          "editBoard": null,
-          "deleteBoard": null,
-          "saveTemplate": null,
-          "editTemplate": null,
-          "deleteTemplate": null,
-          "createBoardFromTemplate": null,
-          "createBoardRow": null,
-          "editFinishedBoardRow": null,
-          "boardWorkflow": null,
-          "duplicateBoard": null,
-          "duplicateBoardWithRows": null,
-          "exportBoardExcel": false,
-          "previewBoardPdf": false,
-          "exportBoardPdf": false,
-          "uploadBiblioteca": false,
-          "deleteBiblioteca": false
-        }
-      }
-    }
+    "userOverrides": {}
   },
   "auditLog": [
     {

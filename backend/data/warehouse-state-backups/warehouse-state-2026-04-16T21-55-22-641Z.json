@@ -1,5 +1,5 @@
 {
-  "revision": 2157,
+  "revision": 2155,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro"
@@ -9119,15 +9119,15 @@
           "id": "row-q8qik4ng",
           "values": {
             "fld-pjabusyf": "Portones",
-            "fld-x1jzjoxm": "15:55",
-            "fld-gtp4zz3s": "15:55",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
             "fld-eaq0jvax": ""
           },
           "responsibleId": "usr-a2hd8qtb",
-          "status": "Terminado",
-          "startTime": "2026-04-16T21:55:22.626Z",
-          "endTime": "2026-04-16T21:55:44.795Z",
-          "accumulatedSeconds": 22,
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
           "lastResumedAt": null,
           "createdAt": "2026-04-14T14:27:45.55Z"
         },
@@ -9421,7 +9421,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-16T21:55:44.807Z",
+  "updatedAt": "2026-04-16T21:55:20.179Z",
   "permissions": {
     "pages": {
       "index": {

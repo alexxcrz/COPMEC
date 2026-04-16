@@ -1,6 +1,8 @@
 export default function GestionUsuarios({ contexto }) {
   const {
     creatableRoles,
+    allRoles,
+    customRoles,
     openCreateUser,
     actionPermissions,
     Plus,
@@ -29,6 +31,17 @@ export default function GestionUsuarios({ contexto }) {
     currentUser,
     Pencil,
     Trash2,
+    roleModalOpen,
+    roleModalName,
+    setRoleModalName,
+    roleModalEditId,
+    roleModalError,
+    roleSaving,
+    openCreateRoleModal,
+    openEditRoleModal,
+    submitRoleModal,
+    handleDeleteCustomRole,
+    setRoleModalOpen,
   } = contexto;
 
   return (
@@ -38,7 +51,10 @@ export default function GestionUsuarios({ contexto }) {
           <h3>Players</h3>
           <p>Consulta perfiles, accesos y permisos desde un solo lugar.</p>
         </div>
-        {creatableRoles.length ? <button type="button" className="primary-button" onClick={openCreateUser} disabled={!actionPermissions.manageUsers}><Plus size={16} /> Nuevo perfil</button> : null}
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          {creatableRoles.length ? <button type="button" className="primary-button" onClick={openCreateUser} disabled={!actionPermissions.manageUsers}><Plus size={16} /> Nuevo perfil</button> : null}
+          {actionPermissions.managePermissions ? <button type="button" className="primary-button" onClick={openCreateRoleModal}><Plus size={16} /> Nuevo rol</button> : null}
+        </div>
       </article>
 
       <section className="page-grid">
@@ -67,7 +83,7 @@ export default function GestionUsuarios({ contexto }) {
                 <span>Rol interno</span>
                 <select value={userRoleFilter} onChange={(event) => setUserRoleFilter(event.target.value)}>
                   <option>Todos los roles</option>
-                  {USER_ROLES.map((role) => <option key={role}>{role}</option>)}
+                  {(allRoles || USER_ROLES).map((role) => <option key={role}>{role}</option>)}
                 </select>
               </label>
             </div>
@@ -118,7 +134,7 @@ export default function GestionUsuarios({ contexto }) {
                       </td>
                       <td>
                         <div className="row-actions compact">
-                          <button type="button" className="user-row-button" onClick={() => openEditUser(user)} disabled={!actionPermissions.manageUsers}><Pencil size={15} /> Editar</button>
+                          <button type="button" className="user-row-button" onClick={() => openEditUser(user)} disabled={!actionPermissions.editUsers}><Pencil size={15} /> Editar</button>
                           <button type="button" className="user-row-button danger" onClick={() => setDeleteUserId(user.id)} disabled={!actionPermissions.deleteUsers}><Trash2 size={15} /> Eliminar</button>
                         </div>
                       </td>
@@ -207,7 +223,67 @@ export default function GestionUsuarios({ contexto }) {
             <span>{currentUser.role} · Acceso actual</span>
           </div>
         </article>
+
+        {/* ── Gestión de roles personalizados ── */}
+        {actionPermissions.managePermissions && customRoles.length > 0 ? (
+          <article className="surface-card full-width">
+            <div className="card-header-row">
+              <div>
+                <h3>Roles personalizados</h3>
+              </div>
+            </div>
+
+            <div className="saved-board-list board-builder-launch-list" style={{ marginTop: "0.75rem" }}>
+              {customRoles.map((role) => (
+                <div key={role.id} className="surface-card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
+                  <div>
+                    <strong style={{ fontSize: "0.9rem" }}>{role.name}</strong>
+                    <p style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "2px" }}>
+                      Creado el {new Date(role.createdAt).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
+                    </p>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <button type="button" className="icon-button" title="Editar nombre" onClick={() => openEditRoleModal(role)}>
+                      <Pencil size={14} />
+                    </button>
+                    <button type="button" className="icon-button danger" title="Eliminar rol" onClick={() => handleDeleteCustomRole(role.id)}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </article>
+        ) : null}
       </section>
+
+      {/* Modal de rol */}
+      {roleModalOpen ? (
+        <div className="biblioteca-preview-backdrop" onClick={() => setRoleModalOpen(false)} style={{ zIndex: 9000 }}>
+          <div className="biblioteca-preview-panel" style={{ maxWidth: "420px", padding: "1.5rem" }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginBottom: "1rem" }}>{roleModalEditId ? "Editar rol" : "Nuevo rol personalizado"}</h3>
+            <div className="field-group" style={{ marginBottom: "1rem" }}>
+              <label style={{ display: "block", marginBottom: "0.35rem", fontSize: "0.8rem", fontWeight: 600 }}>Nombre del rol</label>
+              <input
+                className="field-input"
+                type="text"
+                placeholder="Ej. Auditor, Coordinador regional…"
+                value={roleModalName}
+                onChange={(e) => setRoleModalName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") submitRoleModal(); if (e.key === "Escape") setRoleModalOpen(false); }}
+                autoFocus
+              />
+              {roleModalError ? <p style={{ color: "#ef4444", fontSize: "0.8rem", marginTop: "0.35rem" }}>{roleModalError}</p> : null}
+            </div>
+            <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+              <button type="button" className="secondary-button sm-button" onClick={() => setRoleModalOpen(false)}>Cancelar</button>
+              <button type="button" className="primary-button sm-button" onClick={submitRoleModal} disabled={roleSaving}>
+                {roleSaving ? "Guardando…" : roleModalEditId ? "Guardar cambios" : "Crear rol"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

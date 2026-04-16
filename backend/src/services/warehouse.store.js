@@ -39,33 +39,42 @@ const PAGE_PERMISSIONS = {
 };
 
 const ACTION_PERMISSIONS = {
-  createWeek: [ROLE_LEAD, ROLE_SR],
-  manageCatalog: [ROLE_LEAD, ROLE_SR],
-  manageWeeks: [ROLE_LEAD, ROLE_SR],
-  managePermissions: [ROLE_LEAD],
-  manageUsers: [ROLE_LEAD, ROLE_SR, ROLE_SSR],
-  deleteUsers: [ROLE_LEAD, ROLE_SR],
-  resetPasswords: [ROLE_LEAD, ROLE_SR],
-  manageInventory: [ROLE_LEAD, ROLE_SR],
-  importInventory: [ROLE_LEAD, ROLE_SR],
+  createWeek:              [ROLE_LEAD, ROLE_SR],
+  createCatalog:           [ROLE_LEAD, ROLE_SR],
+  editCatalog:             [ROLE_LEAD, ROLE_SR],
+  deleteCatalog:           [ROLE_LEAD, ROLE_SR],
+  manageWeeks:             [ROLE_LEAD, ROLE_SR],
+  managePermissions:       [ROLE_LEAD],
+  createUsers:             [ROLE_LEAD, ROLE_SR, ROLE_SSR],
+  editUsers:               [ROLE_LEAD, ROLE_SR, ROLE_SSR],
+  deleteUsers:             [ROLE_LEAD, ROLE_SR],
+  resetPasswords:          [ROLE_LEAD, ROLE_SR],
+  manageInventory:         [ROLE_LEAD, ROLE_SR],
+  deleteInventory:         [ROLE_LEAD, ROLE_SR],
+  importInventory:         [ROLE_LEAD, ROLE_SR],
   manageCleaningInventory: [ROLE_LEAD, ROLE_SR],
+  deleteCleaningInventory: [ROLE_LEAD, ROLE_SR],
   importCleaningInventory: [ROLE_LEAD, ROLE_SR],
-  manageOrderInventory: [ROLE_LEAD, ROLE_SR],
-  importOrderInventory: [ROLE_LEAD, ROLE_SR],
-  saveBoard: [ROLE_LEAD, ROLE_SR],
-  deleteBoard: [ROLE_LEAD, ROLE_SR],
-  saveTemplate: [ROLE_LEAD, ROLE_SR],
-  editTemplate: [ROLE_LEAD, ROLE_SR],
-  deleteTemplate: [ROLE_LEAD, ROLE_SR],
+  manageOrderInventory:    [ROLE_LEAD, ROLE_SR],
+  deleteOrderInventory:    [ROLE_LEAD, ROLE_SR],
+  importOrderInventory:    [ROLE_LEAD, ROLE_SR],
+  createBoard:             [ROLE_LEAD, ROLE_SR],
+  editBoard:               [ROLE_LEAD, ROLE_SR],
+  deleteBoard:             [ROLE_LEAD, ROLE_SR],
+  saveTemplate:            [ROLE_LEAD, ROLE_SR],
+  editTemplate:            [ROLE_LEAD, ROLE_SR],
+  deleteTemplate:          [ROLE_LEAD, ROLE_SR],
   createBoardFromTemplate: [ROLE_LEAD, ROLE_SR],
-  createBoardRow: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
-  editFinishedBoardRow: [ROLE_LEAD, ROLE_SR, ROLE_SSR],
-  boardWorkflow: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
-  duplicateBoard: [ROLE_LEAD, ROLE_SR],
-  duplicateBoardWithRows: [ROLE_LEAD, ROLE_SR],
-  exportBoardExcel: [ROLE_LEAD, ROLE_SR, ROLE_SSR],
-  previewBoardPdf: [ROLE_LEAD, ROLE_SR, ROLE_SSR],
-  exportBoardPdf: [ROLE_LEAD, ROLE_SR, ROLE_SSR],
+  createBoardRow:          [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  editFinishedBoardRow:    [ROLE_LEAD, ROLE_SR, ROLE_SSR],
+  boardWorkflow:           [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  duplicateBoard:          [ROLE_LEAD, ROLE_SR],
+  duplicateBoardWithRows:  [ROLE_LEAD, ROLE_SR],
+  exportBoardExcel:        [ROLE_LEAD, ROLE_SR, ROLE_SSR],
+  previewBoardPdf:         [ROLE_LEAD, ROLE_SR, ROLE_SSR],
+  exportBoardPdf:          [ROLE_LEAD, ROLE_SR, ROLE_SSR],
+  uploadBiblioteca:        [ROLE_LEAD, ROLE_SR],
+  deleteBiblioteca:        [ROLE_LEAD, ROLE_SR],
 };
 
 function normalizeRole(role) {
@@ -889,6 +898,8 @@ function normalizeState(state, previousState = null) {
         })
       : [],
     bibliotecaFiles: Array.isArray(state.bibliotecaFiles) ? state.bibliotecaFiles : [],
+    bibliotecaNotifications: Array.isArray(state.bibliotecaNotifications) ? state.bibliotecaNotifications : [],
+    customRoles: Array.isArray(state.customRoles) ? state.customRoles : [],
   };
 }
 
@@ -1268,7 +1279,7 @@ export function createWarehouseUser(auth, payload = {}) {
   if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
 
   const currentState = getRawWarehouseState();
-  if (!canUserDoWarehouseAction(currentUser, "manageUsers", currentState.permissions)) return { ok: false, reason: "forbidden" };
+  if (!canUserDoWarehouseAction(currentUser, "createUsers", currentState.permissions)) return { ok: false, reason: "forbidden" };
 
   const temporaryPassword = String(payload.password || "").trim();
   if (!isTemporaryPassword(temporaryPassword)) {
@@ -1318,7 +1329,7 @@ export function updateWarehouseUser(auth, userId, payload = {}) {
   if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
 
   const currentState = getRawWarehouseState();
-  if (!canUserDoWarehouseAction(currentUser, "manageUsers", currentState.permissions)) return { ok: false, reason: "forbidden" };
+  if (!canUserDoWarehouseAction(currentUser, "editUsers", currentState.permissions)) return { ok: false, reason: "forbidden" };
 
   const existingUser = (currentState.users || []).find((user) => user.id === userId);
   if (!existingUser) return { ok: false, reason: "user_not_found" };
@@ -1387,7 +1398,7 @@ export function toggleWarehouseUserActive(auth, userId) {
   if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
 
   const currentState = getRawWarehouseState();
-  if (!canUserDoWarehouseAction(currentUser, "manageUsers", currentState.permissions)) return { ok: false, reason: "forbidden" };
+  if (!canUserDoWarehouseAction(currentUser, "editUsers", currentState.permissions)) return { ok: false, reason: "forbidden" };
 
   const targetUser = (currentState.users || []).find((user) => user.id === userId);
   if (!targetUser) return { ok: false, reason: "user_not_found" };
@@ -1503,6 +1514,10 @@ function getBoardFieldDefaultValue(field, currentUserId) {
   if (field?.type === "user") return currentUserId || "";
   if (field?.type === "boolean") return "No";
   if (field?.type === "date") return new Date().toISOString().slice(0, 10);
+  if (field?.type === "rating") return 0;
+  if (field?.type === "progress") return 0;
+  if (field?.type === "counter") return 0;
+  if (field?.type === "tags") return "";
   return "";
 }
 
@@ -1957,7 +1972,7 @@ export function deleteWarehouseInventoryItem(auth, itemId) {
   const currentState = getRawWarehouseState();
   const currentItem = (currentState.inventoryItems || []).find((entry) => entry.id === itemId);
   if (!currentItem) return { ok: false, reason: "item_not_found" };
-  if (!canUserDoWarehouseAction(currentUser, getInventoryManageActionId(currentItem.domain), currentState.permissions)) {
+  if (!canUserDoWarehouseAction(currentUser, getInventoryDeleteActionId(currentItem.domain), currentState.permissions)) {
     return { ok: false, reason: "forbidden" };
   }
 
@@ -2090,7 +2105,7 @@ export function addWarehouseArea(auth, areaName) {
   if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
 
   const currentState = getRawWarehouseState();
-  if (!canUserDoWarehouseAction(currentUser, "manageUsers", currentState.permissions)) {
+  if (!canUserDoWarehouseAction(currentUser, "editUsers", currentState.permissions)) {
     return { ok: false, reason: "forbidden" };
   }
 
@@ -2169,7 +2184,7 @@ export function createWarehouseCatalogItem(auth, payload = {}) {
   const currentUser = findWarehouseUserById(auth?.userId);
   if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
   const currentState = getRawWarehouseState();
-  if (!canUserDoWarehouseAction(currentUser, "manageCatalog", currentState.permissions)) return { ok: false, reason: "forbidden" };
+  if (!canUserDoWarehouseAction(currentUser, "createCatalog", currentState.permissions)) return { ok: false, reason: "forbidden" };
 
   const item = sanitizeCatalogItemDraft(payload);
   if (!item.name || item.timeLimitMinutes <= 0) return { ok: false, reason: "invalid_payload" };
@@ -2186,7 +2201,7 @@ export function updateWarehouseCatalogItem(auth, itemId, payload = {}) {
   const currentUser = findWarehouseUserById(auth?.userId);
   if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
   const currentState = getRawWarehouseState();
-  if (!canUserDoWarehouseAction(currentUser, "manageCatalog", currentState.permissions)) return { ok: false, reason: "forbidden" };
+  if (!canUserDoWarehouseAction(currentUser, "editCatalog", currentState.permissions)) return { ok: false, reason: "forbidden" };
 
   const existingItem = (currentState.catalog || []).find((item) => item.id === itemId);
   if (!existingItem) return { ok: false, reason: "item_not_found" };
@@ -2206,7 +2221,7 @@ export function deleteWarehouseCatalogItem(auth, itemId) {
   const currentUser = findWarehouseUserById(auth?.userId);
   if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
   const currentState = getRawWarehouseState();
-  if (!canUserDoWarehouseAction(currentUser, "manageCatalog", currentState.permissions)) return { ok: false, reason: "forbidden" };
+  if (!canUserDoWarehouseAction(currentUser, "deleteCatalog", currentState.permissions)) return { ok: false, reason: "forbidden" };
 
   const existingItem = (currentState.catalog || []).find((item) => item.id === itemId);
   if (!existingItem) return { ok: false, reason: "item_not_found" };
@@ -2451,7 +2466,7 @@ export function createWarehouseBoard(auth, draft) {
   if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
 
   const currentState = getRawWarehouseState();
-  if (!canUserDoWarehouseAction(currentUser, "saveBoard", currentState.permissions)) {
+  if (!canUserDoWarehouseAction(currentUser, "createBoard", currentState.permissions)) {
     return { ok: false, reason: "forbidden" };
   }
 
@@ -2474,12 +2489,34 @@ export function createWarehouseBoard(auth, draft) {
     rows: buildBoardRowsFromActivityList(normalizedDraft.fields, currentState.catalog, normalizedDraft.ownerId, [], []),
   };
 
+  // Auto-save as template (no permission check — creation implies permission)
+  const autoTemplate = {
+    id: makeId("tpl"),
+    name: board.name,
+    description: board.description || `Plantilla generada automáticamente para ${board.name}.`,
+    category: "Personalizada",
+    visibilityType: board.visibilityType || "users",
+    sharedDepartments: [...(board.sharedDepartments || [])],
+    sharedUserIds: [...(board.accessUserIds || [])],
+    settings: board.settings,
+    columns: (board.fields || []).map((field) => ({
+      ...field,
+      templateKey: field.id,
+      options: Array.isArray(field.options) ? [...field.options] : [],
+      colorRules: Array.isArray(field.colorRules) ? field.colorRules.map((rule) => ({ ...rule })) : [],
+    })),
+    isCustom: true,
+    createdAt: new Date().toISOString(),
+    createdById: currentUser.id,
+  };
+
   const nextState = {
     ...currentState,
     controlBoards: currentState.controlBoards.concat({
       ...board,
       permissions: buildBoardPermissions(currentState.permissions, board),
     }),
+    boardTemplates: [...(currentState.boardTemplates || []), autoTemplate],
   };
 
   return { ok: true, state: replaceWarehouseState(nextState), boardId: board.id, boardName: board.name };
@@ -2492,7 +2529,7 @@ export function updateWarehouseBoard(auth, boardId, draft) {
   const currentState = getRawWarehouseState();
   const { boardIndex, board } = findBoardAndRow(currentState, boardId);
   if (!board) return { ok: false, reason: "board_not_found" };
-  if (!canEditWarehouseBoard(currentUser, board) || !canUserDoWarehouseAction(currentUser, "saveBoard", currentState.permissions)) {
+  if (!canEditWarehouseBoard(currentUser, board) || !canUserDoWarehouseAction(currentUser, "editBoard", currentState.permissions)) {
     return { ok: false, reason: "forbidden" };
   }
 
@@ -2545,13 +2582,13 @@ export function updateWarehouseBoardOperationalContext(auth, boardId, patch = {}
 
   const canUpdateContextValue = canManageWarehouseBoard(currentUser, board)
     && (canUserDoWarehouseAction(currentUser, "boardWorkflow", currentState.permissions)
-      || canUserDoWarehouseAction(currentUser, "saveBoard", currentState.permissions));
+      || canUserDoWarehouseAction(currentUser, "editBoard", currentState.permissions));
   const requestedStructureChange = hasOwn(patch, "operationalContextType")
     || hasOwn(patch, "operationalContextLabel")
     || hasOwn(patch, "operationalContextOptions");
 
   if (requestedStructureChange) {
-    if (!canEditWarehouseBoard(currentUser, board) || !canUserDoWarehouseAction(currentUser, "saveBoard", currentState.permissions)) {
+    if (!canEditWarehouseBoard(currentUser, board) || !canUserDoWarehouseAction(currentUser, "editBoard", currentState.permissions)) {
       return { ok: false, reason: "forbidden" };
     }
   } else if (!hasOwn(patch, "operationalContextValue") || !canUpdateContextValue) {
@@ -2625,7 +2662,7 @@ export function duplicateWarehouseBoard(auth, boardId, includeRows = false) {
   const duplicatedBoard = {
     ...board,
     id: duplicatedBoardId,
-    name: `${board.name} copia${includeRows ? " con filas" : ""}`,
+    name: `${board.name} copia`,
     description: board.description || `Copia de ${board.name}.`,
     createdById: currentUser.id,
     ownerId: board.ownerId || currentUser.id,
@@ -2800,6 +2837,39 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
   return { ok: true, state: replaceWarehouseState(nextState), row: nextRow };
 }
 
+export function bulkImportWarehouseBoardRows(auth, boardId, rowsPayload) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) {
+    return { ok: false, reason: "auth_required" };
+  }
+
+  const currentState = getRawWarehouseState();
+  const { boardIndex, board } = findBoardAndRow(currentState, boardId);
+  if (!board) {
+    return { ok: false, reason: "board_not_found" };
+  }
+  if (!canManageWarehouseBoard(currentUser, board) || !canUserDoWarehouseAction(currentUser, "createBoardRow", currentState.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const safeRows = Array.isArray(rowsPayload) ? rowsPayload.slice(0, 500) : [];
+  const newRows = safeRows.map((item) => {
+    const row = createBoardRowRecord(board.fields || [], currentUser.id);
+    if (item && typeof item === "object" && item.values && typeof item.values === "object") {
+      row.values = { ...row.values, ...item.values };
+    }
+    return row;
+  });
+
+  const nextState = {
+    ...currentState,
+    controlBoards: currentState.controlBoards.map((item, index) => (
+      index === boardIndex ? { ...item, rows: [...(item.rows || []), ...newRows] } : item
+    )),
+  };
+  return { ok: true, state: replaceWarehouseState(nextState), count: newRows.length };
+}
+
 export function deleteWarehouseBoardRow(auth, boardId, rowId) {
   const currentUser = findWarehouseUserById(auth?.userId);
   if (!currentUser?.isActive) {
@@ -2899,7 +2969,7 @@ function validateUserMutations(currentUser, currentState, nextUsers, nextUserMap
 
   for (const nextRecord of nextUsers) {
     const existsInCurrentState = currentState.users.some((item) => item.id === nextRecord.id);
-    if (!existsInCurrentState && !canUserDoWarehouseAction(currentUser, "manageUsers", currentState.permissions)) {
+    if (!existsInCurrentState && !canUserDoWarehouseAction(currentUser, "createUsers", currentState.permissions)) {
       return { ok: false, reason: "user_list_changed" };
     }
   }
@@ -2935,12 +3005,12 @@ function validateExistingUserMutation(currentUser, currentState, currentRecord, 
   }
 
   const profileChanged = getUserProfileSnapshot(currentRecord) !== getUserProfileSnapshot(nextRecord);
-  if (profileChanged && currentRecord.id !== currentUser.id && !canUserDoWarehouseAction(currentUser, "manageUsers", currentState.permissions)) {
+  if (profileChanged && currentRecord.id !== currentUser.id && !canUserDoWarehouseAction(currentUser, "editUsers", currentState.permissions)) {
     return { ok: false, reason: "restricted_section_changed", section: "users" };
   }
 
   const adminFieldsChanged = getUserAdminSnapshot(currentRecord) !== getUserAdminSnapshot(nextRecord);
-  if (adminFieldsChanged && !canUserDoWarehouseAction(currentUser, "manageUsers", currentState.permissions)) {
+  if (adminFieldsChanged && !canUserDoWarehouseAction(currentUser, "editUsers", currentState.permissions)) {
     return { ok: false, reason: "restricted_section_changed", section: "users" };
   }
 
@@ -2972,7 +3042,9 @@ function validateBoardListMutationByRole(normalizedRole, currentUser, currentSta
     return null;
   }
 
-  if (nextBoards.length !== currentState.controlBoards.length && !canUserDoWarehouseAction(currentUser, "saveBoard", currentState.permissions)) {
+  if (nextBoards.length !== currentState.controlBoards.length
+    && !canUserDoWarehouseAction(currentUser, "createBoard", currentState.permissions)
+    && !canUserDoWarehouseAction(currentUser, "deleteBoard", currentState.permissions)) {
     return { ok: false, reason: "board_list_changed" };
   }
 
@@ -3013,7 +3085,7 @@ function validateBoardMutations(currentUser, currentState, nextBoards, nextBoard
 function validateAddedBoards(currentUser, currentState, nextBoards) {
   for (const nextBoard of nextBoards) {
     const existsInCurrentState = currentState.controlBoards.some((item) => item.id === nextBoard.id);
-    if (!existsInCurrentState && !canUserDoWarehouseAction(currentUser, "saveBoard", currentState.permissions)) {
+    if (!existsInCurrentState && !canUserDoWarehouseAction(currentUser, "createBoard", currentState.permissions)) {
       return { ok: false, reason: "board_list_changed" };
     }
   }
@@ -3023,7 +3095,7 @@ function validateAddedBoards(currentUser, currentState, nextBoards) {
 
 function validateExistingBoardMutation(currentUser, currentState, currentBoard, nextBoard) {
   if (!nextBoard) {
-    if (!canUserDoWarehouseAction(currentUser, "saveBoard", currentState.permissions)) {
+    if (!canUserDoWarehouseAction(currentUser, "deleteBoard", currentState.permissions)) {
       return { ok: false, reason: "board_missing", boardId: currentBoard.id };
     }
     return null;
@@ -3033,7 +3105,7 @@ function validateExistingBoardMutation(currentUser, currentState, currentBoard, 
   const currentStructure = getBoardStructureSnapshot(currentBoard);
   const nextStructure = getBoardStructureSnapshot(nextBoard);
   if (currentStructure !== nextStructure) {
-    if (!canManage || !canUserDoWarehouseAction(currentUser, "saveBoard", currentState.permissions)) {
+    if (!canManage || !canUserDoWarehouseAction(currentUser, "editBoard", currentState.permissions)) {
       return { ok: false, reason: "board_structure_changed", boardId: currentBoard.id };
     }
   }
@@ -3194,6 +3266,12 @@ function getInventoryManageActionId(domain) {
   return "manageInventory";
 }
 
+function getInventoryDeleteActionId(domain) {
+  if (normalizeInventoryDomain(domain) === "cleaning") return "deleteCleaningInventory";
+  if (normalizeInventoryDomain(domain) === "orders") return "deleteOrderInventory";
+  return "deleteInventory";
+}
+
 function getInventoryImportActionId(domain) {
   if (normalizeInventoryDomain(domain) === "cleaning") return "importCleaningInventory";
   if (normalizeInventoryDomain(domain) === "orders") return "importOrderInventory";
@@ -3213,11 +3291,13 @@ export function addBibliotecaFile(payload) {
     area: payload.area || "General",
     description: payload.description || "",
     originalName: payload.originalName || "archivo",
-    fileUrl: payload.fileUrl,
+    fileName: payload.fileName || null,
+    fileUrl: payload.fileUrl || null,
     fileThumbUrl: payload.fileThumbUrl || null,
-    filePublicId: payload.filePublicId,
+    filePublicId: payload.filePublicId || null,
     fileMimeType: payload.fileMimeType || "application/octet-stream",
     bytes: payload.bytes || 0,
+    priority: payload.priority || "baja",
     uploadedById: payload.uploadedById,
     uploadedByName: payload.uploadedByName || "Sistema",
     uploadedAt: new Date().toISOString(),
@@ -3240,4 +3320,62 @@ export function deleteBibliotecaFile(fileId) {
   };
   replaceWarehouseState(nextState);
   return { ok: true };
+}
+
+export function addBibliotecaNotification(payload) {
+  const currentState = getRawWarehouseState();
+  const notif = {
+    id: makeId("bibn"),
+    fileId: payload.fileId,
+    originalName: payload.originalName,
+    area: payload.area || "General",
+    priority: payload.priority || "baja",
+    authorName: payload.authorName || "Sistema",
+    createdAt: new Date().toISOString(),
+  };
+  // Mantener las últimas 100 notificaciones de biblioteca
+  const next = [...(currentState.bibliotecaNotifications || []), notif].slice(-100);
+  replaceWarehouseState({ ...currentState, bibliotecaNotifications: next });
+  return notif;
+}
+
+export function getBibliotecaNotifications() {
+  return getRawWarehouseState().bibliotecaNotifications || [];
+}
+
+// ─── Roles personalizados ───────────────────────────────────────────────────
+
+export function getCustomRoles() {
+  return getRawWarehouseState().customRoles || [];
+}
+
+export function createCustomRole(name) {
+  const currentState = getRawWarehouseState();
+  const trimmed = String(name || "").trim();
+  if (!trimmed) throw new Error("El nombre del rol no puede estar vacío.");
+  if ((currentState.customRoles || []).some((r) => r.name.toLowerCase() === trimmed.toLowerCase())) {
+    throw new Error("Ya existe un rol con ese nombre.");
+  }
+  const newRole = { id: `custom_${Date.now()}`, name: trimmed, createdAt: new Date().toISOString() };
+  replaceWarehouseState({ ...currentState, customRoles: [...(currentState.customRoles || []), newRole] });
+  return newRole;
+}
+
+export function updateCustomRole(roleId, name) {
+  const currentState = getRawWarehouseState();
+  const trimmed = String(name || "").trim();
+  if (!trimmed) throw new Error("El nombre del rol no puede estar vacío.");
+  const roles = (currentState.customRoles || []);
+  if (roles.some((r) => r.id !== roleId && r.name.toLowerCase() === trimmed.toLowerCase())) {
+    throw new Error("Ya existe un rol con ese nombre.");
+  }
+  const updated = roles.map((r) => r.id === roleId ? { ...r, name: trimmed } : r);
+  replaceWarehouseState({ ...currentState, customRoles: updated });
+  return updated.find((r) => r.id === roleId);
+}
+
+export function deleteCustomRole(roleId) {
+  const currentState = getRawWarehouseState();
+  const roles = (currentState.customRoles || []).filter((r) => r.id !== roleId);
+  replaceWarehouseState({ ...currentState, customRoles: roles });
 }

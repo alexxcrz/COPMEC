@@ -4,8 +4,10 @@ import {
   Download,
   ExternalLink,
   FileText,
-  Filter,
+  FolderUp,
   Loader2,
+  Maximize2,
+  Minimize2,
   Search,
   Trash2,
   Upload,
@@ -15,6 +17,11 @@ import { Modal } from "../components/Modal.jsx";
 import "./BibliotecaPage.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "/api";
+
+const PREDEFINED_AREAS = ["NOM"];
+
+const getFileUrl = (f) =>
+  f?.fileName ? `${API_BASE}/biblioteca/files/${encodeURIComponent(f.fileName)}` : f?.fileUrl || null;
 
 const MIME_LABELS = {
   "application/pdf": "PDF",
@@ -53,12 +60,12 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-export default function BibliotecaPage({ currentUser, canManage }) {
+export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
-  const [areaFilter, setAreaFilter] = useState("Todas");
+  const [areaFilter, setAreaFilter] = useState("General");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadArea, setUploadArea] = useState("General");
@@ -68,7 +75,53 @@ export default function BibliotecaPage({ currentUser, canManage }) {
   const [uploadError, setUploadError] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const [previewFile, setPreviewFile] = useState(null);
+  const [previewBlobUrl, setPreviewBlobUrl] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [contentFullscreen, setContentFullscreen] = useState(false);
+  // Prioridad y notificación — subida individual
+  const [uploadPriority, setUploadPriority] = useState("baja");
+  const [uploadNotify, setUploadNotify] = useState(false);
+  // Carga masiva
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkFiles, setBulkFiles] = useState([]);
+  const [bulkArea, setBulkArea] = useState("General");
+  const [bulkCustomArea, setBulkCustomArea] = useState("");
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
+  const [bulkErrors, setBulkErrors] = useState([]);
+  // Prioridad y notificación — carga masiva
+  const [bulkPriority, setBulkPriority] = useState("baja");
+  const [bulkNotify, setBulkNotify] = useState(false);
   const fileInputRef = useRef(null);
+  const bulkFileInputRef = useRef(null);
+
+  // Cargar archivo como blob para preview autenticado
+  useEffect(() => {
+    if (!previewFile) {
+      setPreviewBlobUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
+      setContentFullscreen(false);
+      return;
+    }
+    const url = getFileUrl(previewFile);
+    if (!url || (!isImage(previewFile.fileMimeType) && !isPdf(previewFile.fileMimeType))) return;
+    let revoked = false;
+    setPreviewLoading(true);
+    setPreviewBlobUrl(null);
+    fetch(url, { credentials: "include" })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.blob();
+      })
+      .then((blob) => {
+        if (!revoked) setPreviewBlobUrl(URL.createObjectURL(blob));
+      })
+      .catch(() => { if (!revoked) setPreviewBlobUrl(null); })
+      .finally(() => { if (!revoked) setPreviewLoading(false); });
+    return () => {
+      revoked = true;
+      setPreviewLoading(false);
+    };
+  }, [previewFile]);
 
   const fetchFiles = useCallback(async () => {
     setLoading(true);
@@ -88,14 +141,14 @@ export default function BibliotecaPage({ currentUser, canManage }) {
   useEffect(() => { fetchFiles(); }, [fetchFiles]);
 
   const areas = useMemo(() => {
-    const set = new Set(files.map((f) => f.area || "General"));
-    return ["Todas", ...Array.from(set).sort()];
+    const set = new Set([...PREDEFINED_AREAS, ...files.map((f) => f.area || "General")]);
+    return Array.from(set);
   }, [files]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     return files.filter((f) => {
-      const matchArea = areaFilter === "Todas" || f.area === areaFilter;
+      const matchArea = f.area === areaFilter;
       const matchSearch = !q ||
         f.originalName?.toLowerCase().includes(q) ||
         f.description?.toLowerCase().includes(q) ||
@@ -123,6 +176,8 @@ export default function BibliotecaPage({ currentUser, canManage }) {
     form.append("file", uploadFile);
     form.append("area", resolvedArea);
     form.append("description", uploadDescription);
+    form.append("priority", uploadPriority);
+    form.append("notifyPlayers", String(uploadNotify));
     try {
       const res = await fetch(`${API_BASE}/biblioteca`, {
         method: "POST",
@@ -137,6 +192,8 @@ export default function BibliotecaPage({ currentUser, canManage }) {
       setUploadDescription("");
       setUploadArea("General");
       setUploadCustomArea("");
+      setUploadPriority("baja");
+      setUploadNotify(false);
     } catch (err) {
       setUploadError(err.message);
     } finally {
@@ -160,10 +217,47 @@ export default function BibliotecaPage({ currentUser, canManage }) {
   }
 
   const existingAreas = useMemo(() => {
-    const set = new Set(files.map((f) => f.area || "General").filter(Boolean));
-    set.add("General");
-    return Array.from(set).sort();
+    const set = new Set([...PREDEFINED_AREAS, ...files.map((f) => f.area || "General").filter(Boolean)]);
+    return Array.from(set);
   }, [files]);
+
+  async function handleBulkUpload() {
+    if (!bulkFiles.length) return;
+    const resolvedArea = bulkArea === "__custom__" ? bulkCustomArea.trim() || "General" : bulkArea;
+    setBulkUploading(true);
+    setBulkErrors([]);
+    setBulkProgress({ done: 0, total: bulkFiles.length });
+    const added = [];
+    const errors = [];
+    for (let i = 0; i < bulkFiles.length; i++) {
+      const file = bulkFiles[i];
+      const form = new FormData();
+      form.append("file", file);
+      form.append("area", resolvedArea);
+      form.append("priority", bulkPriority);
+      form.append("notifyPlayers", i === 0 ? String(bulkNotify) : "false");
+      try {
+        const res = await fetch(`${API_BASE}/biblioteca`, { method: "POST", credentials: "include", body: form });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.message || "Error");
+        added.push(json.data);
+      } catch (err) {
+        errors.push(`${file.name}: ${err.message}`);
+      }
+      setBulkProgress({ done: i + 1, total: bulkFiles.length });
+    }
+    if (added.length) setFiles((prev) => [...prev, ...added]);
+    setBulkErrors(errors);
+    setBulkUploading(false);
+    if (!errors.length) {
+      setBulkOpen(false);
+      setBulkFiles([]);
+      setBulkArea("General");
+      setBulkCustomArea("");
+      setBulkPriority("baja");
+      setBulkNotify(false);
+    }
+  }
 
   return (
     <div className="biblioteca-page">
@@ -185,22 +279,30 @@ export default function BibliotecaPage({ currentUser, canManage }) {
           ) : null}
         </div>
 
-        <div className="biblioteca-area-filter-wrap">
-          <Filter size={14} />
-          <select
-            className="biblioteca-area-select"
-            value={areaFilter}
-            onChange={(e) => setAreaFilter(e.target.value)}
-          >
-            {areas.map((a) => <option key={a} value={a}>{a}</option>)}
-          </select>
-        </div>
-
-        {canManage ? (
-          <button type="button" className="primary-button sm-button" onClick={() => setUploadOpen(true)}>
-            <Upload size={14} /> Subir archivo
-          </button>
+        {canUpload ? (
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button type="button" className="primary-button sm-button" onClick={() => setUploadOpen(true)}>
+              <Upload size={14} /> Subir archivo
+            </button>
+            <button type="button" className="primary-button sm-button" onClick={() => setBulkOpen(true)} title="Carga masiva">
+              <FolderUp size={14} /> Carga masiva
+            </button>
+          </div>
         ) : null}
+      </div>
+
+      {/* Tabs de área (hojas) */}
+      <div className="biblioteca-area-tabs">
+        {areas.map((a) => (
+          <button
+            key={a}
+            type="button"
+            className={`biblioteca-area-tab${areaFilter === a ? " active" : ""}`}
+            onClick={() => setAreaFilter(a)}
+          >
+            {a}
+          </button>
+        ))}
       </div>
 
       {/* Body */}
@@ -218,7 +320,7 @@ export default function BibliotecaPage({ currentUser, canManage }) {
         <div className="biblioteca-empty">
           <BookOpen size={40} />
           <p>{files.length === 0 ? "La biblioteca está vacía." : "No hay archivos que coincidan con la búsqueda."}</p>
-          {canManage && files.length === 0 ? (
+          {canUpload && files.length === 0 ? (
             <button type="button" className="primary-button sm-button" onClick={() => setUploadOpen(true)}>
               <Upload size={14} /> Subir primer archivo
             </button>
@@ -239,7 +341,7 @@ export default function BibliotecaPage({ currentUser, canManage }) {
                       title="Ver archivo"
                     >
                       {isImage(f.fileMimeType) ? (
-                        <img src={f.fileThumbUrl || f.fileUrl} alt={f.originalName} className="biblioteca-thumb" />
+                        <img src={f.fileThumbUrl || getFileUrl(f)} alt={f.originalName} className="biblioteca-thumb" />
                       ) : (
                         <div className="biblioteca-file-icon">
                           <FileText size={28} />
@@ -254,7 +356,7 @@ export default function BibliotecaPage({ currentUser, canManage }) {
                     </div>
                     <div className="biblioteca-file-actions">
                       <a
-                        href={f.fileUrl}
+                        href={getFileUrl(f)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="icon-button"
@@ -262,10 +364,10 @@ export default function BibliotecaPage({ currentUser, canManage }) {
                       >
                         <ExternalLink size={14} />
                       </a>
-                      {canManage ? (
+                      {canDelete ? (
                         <>
                           <a
-                            href={f.fileUrl}
+                            href={getFileUrl(f)}
                             download={f.originalName}
                             className="icon-button"
                             title="Descargar"
@@ -298,8 +400,16 @@ export default function BibliotecaPage({ currentUser, canManage }) {
             <div className="biblioteca-preview-header">
               <span className="biblioteca-preview-title">{previewFile.originalName}</span>
               <div className="biblioteca-preview-header-actions">
+                <button
+                  type="button"
+                  className="icon-button"
+                  title={contentFullscreen ? "Reducir" : "Expandir archivo"}
+                  onClick={() => setContentFullscreen((v) => !v)}
+                >
+                  {contentFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+                </button>
                 <a
-                  href={previewFile.fileUrl}
+                  href={getFileUrl(previewFile)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="icon-button"
@@ -307,8 +417,8 @@ export default function BibliotecaPage({ currentUser, canManage }) {
                 >
                   <ExternalLink size={15} />
                 </a>
-                {canManage ? (
-                  <a href={previewFile.fileUrl} download={previewFile.originalName} className="icon-button" title="Descargar">
+                {canDelete ? (
+                  <a href={getFileUrl(previewFile)} download={previewFile.originalName} className="icon-button" title="Descargar">
                     <Download size={15} />
                   </a>
                 ) : null}
@@ -318,20 +428,26 @@ export default function BibliotecaPage({ currentUser, canManage }) {
               </div>
             </div>
             <div className="biblioteca-preview-body">
-              {isImage(previewFile.fileMimeType) ? (
-                <img src={previewFile.fileUrl} alt={previewFile.originalName} className="biblioteca-preview-img" />
+              {previewLoading ? (
+                <div className="biblioteca-loading"><Loader2 size={24} className="spin" /><span>Cargando…</span></div>
+              ) : isImage(previewFile.fileMimeType) ? (
+                <img
+                  src={previewBlobUrl || getFileUrl(previewFile)}
+                  alt={previewFile.originalName}
+                  className={contentFullscreen ? "biblioteca-content-fullscreen" : "biblioteca-preview-img"}
+                />
               ) : isPdf(previewFile.fileMimeType) ? (
-                <iframe
-                  src={previewFile.fileUrl}
-                  title={previewFile.originalName}
-                  className="biblioteca-preview-iframe"
+                <embed
+                  src={previewBlobUrl || getFileUrl(previewFile)}
+                  type="application/pdf"
+                  className={contentFullscreen ? "biblioteca-content-fullscreen" : "biblioteca-preview-iframe"}
                 />
               ) : (
                 <div className="biblioteca-preview-unsupported">
                   <FileText size={48} />
                   <p>Vista previa no disponible para este tipo de archivo.</p>
                   <a
-                    href={previewFile.fileUrl}
+                    href={getFileUrl(previewFile)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="primary-button sm-button"
@@ -354,24 +470,24 @@ export default function BibliotecaPage({ currentUser, canManage }) {
         title="Subir archivo a la biblioteca"
         confirmLabel={uploading ? "Subiendo…" : "Subir archivo"}
         onConfirm={handleUpload}
-        onClose={() => { setUploadOpen(false); setUploadFile(null); setUploadError(null); }}
+        onClose={() => { setUploadOpen(false); setUploadFile(null); setUploadError(null); setUploadPriority("baja"); setUploadNotify(false); }}
         className="biblioteca-upload-modal"
       >
         <div className="modal-form-grid" style={{ gridTemplateColumns: "1fr" }}>
           <div className="field-group">
-            <label>Área</label>
+            <label>Hoja / Sección</label>
             <select
               className="field-input"
               value={uploadArea}
               onChange={(e) => setUploadArea(e.target.value)}
             >
               {existingAreas.map((a) => <option key={a} value={a}>{a}</option>)}
-              <option value="__custom__">+ Nueva área…</option>
+              <option value="__custom__">+ Nueva sección…</option>
             </select>
           </div>
           {uploadArea === "__custom__" ? (
             <div className="field-group">
-              <label>Nombre del área nueva</label>
+              <label>Nombre de la nueva sección</label>
               <input
                 className="field-input"
                 type="text"
@@ -389,6 +505,29 @@ export default function BibliotecaPage({ currentUser, canManage }) {
               placeholder="Ej. HAT actualizado Q1 2026"
               value={uploadDescription}
               onChange={(e) => setUploadDescription(e.target.value)}
+            />
+          </div>
+          <div className="field-group">
+            <label>Prioridad del documento</label>
+            <div className="biblioteca-priority-selector">
+              {[["alta", "🔴 Alta"], ["media", "🟡 Media"], ["baja", "⚪ Baja"]].map(([val, lbl]) => (
+                <button
+                  key={val}
+                  type="button"
+                  className={`biblioteca-priority-btn ${val}${uploadPriority === val ? " active" : ""}`}
+                  onClick={() => setUploadPriority(val)}
+                >{lbl}</button>
+              ))}
+            </div>
+          </div>
+          <div className="field-group biblioteca-notify-row">
+            <span>Notificar a todos los players</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={uploadNotify}
+              className={`biblioteca-switch${uploadNotify ? " on" : ""}`}
+              onClick={() => setUploadNotify((v) => !v)}
             />
           </div>
           <div className="field-group">
@@ -421,6 +560,91 @@ export default function BibliotecaPage({ currentUser, canManage }) {
         onClose={() => setDeleteId(null)}
       >
         <p>¿Estás seguro de que quieres eliminar este archivo? Esta acción no se puede deshacer.</p>
+      </Modal>
+
+      {/* Carga masiva */}
+      <Modal
+        open={bulkOpen}
+        title="Carga masiva de archivos"
+        confirmLabel={bulkUploading ? `Subiendo ${bulkProgress.done}/${bulkProgress.total}…` : "Subir todos"}
+        onConfirm={handleBulkUpload}
+        onClose={() => { if (!bulkUploading) { setBulkOpen(false); setBulkFiles([]); setBulkErrors([]); setBulkArea("General"); setBulkCustomArea(""); setBulkPriority("baja"); setBulkNotify(false); } }}
+        className="biblioteca-upload-modal"
+      >
+        <div className="modal-form-grid" style={{ gridTemplateColumns: "1fr" }}>
+          <div className="field-group">
+            <label>Hoja / Sección para todos los archivos</label>
+            <select className="field-input" value={bulkArea} onChange={(e) => setBulkArea(e.target.value)}>
+              {existingAreas.map((a) => <option key={a} value={a}>{a}</option>)}
+              <option value="__custom__">+ Nueva sección…</option>
+            </select>
+          </div>
+          {bulkArea === "__custom__" ? (
+            <div className="field-group">
+              <label>Nombre de la nueva sección</label>
+              <input className="field-input" type="text" placeholder="Ej. Normas Internas" value={bulkCustomArea} onChange={(e) => setBulkCustomArea(e.target.value)} />
+            </div>
+          ) : null}
+          <div className="field-group">
+            <label>Prioridad de los archivos</label>
+            <div className="biblioteca-priority-selector">
+              {[["alta", "🔴 Alta"], ["media", "🟡 Media"], ["baja", "⚪ Baja"]].map(([val, lbl]) => (
+                <button
+                  key={val}
+                  type="button"
+                  className={`biblioteca-priority-btn ${val}${bulkPriority === val ? " active" : ""}`}
+                  onClick={() => setBulkPriority(val)}
+                >{lbl}</button>
+              ))}
+            </div>
+          </div>
+          <div className="field-group biblioteca-notify-row">
+            <span>Notificar a todos los players</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={bulkNotify}
+              className={`biblioteca-switch${bulkNotify ? " on" : ""}`}
+              onClick={() => setBulkNotify((v) => !v)}
+            />
+          </div>
+          <div className="field-group">
+            <label>Archivos ({bulkFiles.length} seleccionados)</label>
+            <div
+              className="biblioteca-upload-dropzone"
+              onClick={() => bulkFileInputRef.current?.click()}
+            >
+              {bulkFiles.length ? (
+                <div className="biblioteca-bulk-list">
+                  {bulkFiles.map((f, i) => (
+                    <span key={i} className="biblioteca-bulk-item"><FileText size={12} /> {f.name}</span>
+                  ))}
+                </div>
+              ) : (
+                <span className="biblioteca-upload-placeholder"><FolderUp size={16} /> Haz clic para seleccionar archivos (puedes seleccionar varios)</span>
+              )}
+            </div>
+            <input
+              ref={bulkFileInputRef}
+              type="file"
+              multiple
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.xlsx,.xls,.docx,.doc,.txt"
+              style={{ display: "none" }}
+              onChange={(e) => { setBulkFiles(Array.from(e.target.files)); e.target.value = ""; }}
+            />
+          </div>
+          {bulkUploading ? (
+            <div className="biblioteca-bulk-progress">
+              <div className="biblioteca-bulk-bar" style={{ width: `${Math.round((bulkProgress.done / bulkProgress.total) * 100)}%` }} />
+              <span>{bulkProgress.done} de {bulkProgress.total} archivos</span>
+            </div>
+          ) : null}
+          {bulkErrors.length ? (
+            <div className="biblioteca-upload-error">
+              {bulkErrors.map((e, i) => <p key={i}>{e}</p>)}
+            </div>
+          ) : null}
+        </div>
       </Modal>
     </div>
   );

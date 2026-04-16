@@ -13,6 +13,7 @@ export default function GestionInventario({ contexto }) {
     inventoryActionsMenuRef,
     openCreateInventoryItem,
     currentInventoryManagePermission,
+    currentInventoryDeletePermission,
     Plus,
     Menu,
     inventoryActionsMenuOpen,
@@ -47,6 +48,7 @@ export default function GestionInventario({ contexto }) {
     openOrderInventoryTransfer,
     orderInventoryTransferMovements,
     orderInventoryTransferSummary,
+    actionPermissions,
   } = contexto;
 
   const getTransferredUnits = (item) => (item?.transferTargets || []).reduce((sum, target) => sum + Number(target?.availableUnits || 0), 0);
@@ -131,9 +133,15 @@ export default function GestionInventario({ contexto }) {
         <div className="card-header-row">
           <div>
             <div className="tab-strip">
-              <button type="button" className={inventoryTab === INVENTORY_DOMAIN_BASE ? "tab active" : "tab"} onClick={() => setInventoryTab(INVENTORY_DOMAIN_BASE)}>Productos</button>
-              <button type="button" className={inventoryTab === INVENTORY_DOMAIN_CLEANING ? "tab active" : "tab"} onClick={() => setInventoryTab(INVENTORY_DOMAIN_CLEANING)}>Insumos de limpieza</button>
-              <button type="button" className={inventoryTab === INVENTORY_DOMAIN_ORDERS ? "tab active" : "tab"} onClick={() => setInventoryTab(INVENTORY_DOMAIN_ORDERS)}>Insumos para pedidos</button>
+              {(actionPermissions.manageInventory || actionPermissions.deleteInventory || actionPermissions.importInventory) ? (
+                <button type="button" className={inventoryTab === INVENTORY_DOMAIN_BASE ? "tab active" : "tab"} onClick={() => setInventoryTab(INVENTORY_DOMAIN_BASE)}>Productos</button>
+              ) : null}
+              {(actionPermissions.manageCleaningInventory || actionPermissions.deleteCleaningInventory || actionPermissions.importCleaningInventory) ? (
+                <button type="button" className={inventoryTab === INVENTORY_DOMAIN_CLEANING ? "tab active" : "tab"} onClick={() => setInventoryTab(INVENTORY_DOMAIN_CLEANING)}>Insumos de limpieza</button>
+              ) : null}
+              {(actionPermissions.manageOrderInventory || actionPermissions.deleteOrderInventory || actionPermissions.importOrderInventory) ? (
+                <button type="button" className={inventoryTab === INVENTORY_DOMAIN_ORDERS ? "tab active" : "tab"} onClick={() => setInventoryTab(INVENTORY_DOMAIN_ORDERS)}>Insumos para pedidos</button>
+              ) : null}
             </div>
             {inventoryTab === INVENTORY_DOMAIN_CLEANING ? (
               <div className="tab-strip inventory-subtab-strip">
@@ -329,7 +337,7 @@ export default function GestionInventario({ contexto }) {
                           {!isBaseInventoryTab ? <button type="button" className="icon-button" onClick={() => openInventoryRestockModal(item)} disabled={!currentInventoryManagePermission}><Plus size={15} /> Surtir</button> : null}
                           {!isBaseInventoryTab ? <button type="button" className="icon-button" onClick={() => isOrderInventoryTab ? openOrderInventoryTransfer(item) : openInventoryMovement(item, INVENTORY_MOVEMENT_CONSUME)} disabled={!currentInventoryManagePermission}><ArrowUp size={15} /> {isOrderInventoryTab ? "Transferir" : "Descontar"}</button> : null}
                           <button type="button" className="icon-button" onClick={() => openEditInventoryItem(item)} disabled={!currentInventoryManagePermission}><Pencil size={15} /> Editar</button>
-                          <button type="button" className="icon-button danger" onClick={() => setDeleteInventoryId(item.id)} disabled={!currentInventoryManagePermission}><Trash2 size={15} /> Eliminar</button>
+                          <button type="button" className="icon-button danger" onClick={() => setDeleteInventoryId(item.id)} disabled={!currentInventoryDeletePermission}><Trash2 size={15} /> Eliminar</button>
                         </div>
                       </td>
                     </tr>

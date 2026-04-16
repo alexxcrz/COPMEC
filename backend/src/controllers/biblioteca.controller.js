@@ -1,10 +1,22 @@
-import { uploadCellFile } from "../services/cloudinary.service.js";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { auditSecurityEvent } from "../services/security-events.service.js";
 import {
   getBibliotecaFiles,
   addBibliotecaFile,
+  addBibliotecaNotification,
   deleteBibliotecaFile,
 } from "../services/warehouse.store.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const dataDirectory = process.env.RENDER ? "/var/data" : path.resolve(__dirname, "../../data");
+const bibliotecaDirectory = path.join(dataDirectory, "biblioteca");
+
+if (!fs.existsSync(bibliotecaDirectory)) {
+  fs.mkdirSync(bibliotecaDirectory, { recursive: true });
+}
 
 export async function getBibliotecaController(req, res, next) {
   try {
@@ -21,26 +33,63 @@ export async function uploadBibliotecaFileController(req, res, next) {
       return res.status(400).json({ ok: false, message: "Archivo requerido." });
     }
 
-    const { area = "General", description = "" } = req.body;
+    const { area = "General", description = "", priority = "baja", notifyPlayers = "false" } = req.body;
+    const shouldNotify = notifyPlayers === "true" || notifyPlayers === true;
+    const validPriority = ["alta", "media", "baja"].includes(priority) ? priority : "baja";
 
-    const uploadResult = await uploadCellFile(req.file, "copmec/biblioteca");
+    const safeName = req.file.originalname.replaceAll(/[^a-zA-Z0-9._-]/g, "_");
+    const uniqueName = `${Date.now()}_${safeName}`;
+    const filePath = path.join(bibliotecaDirectory, uniqueName);
+
+    fs.writeFileSync(filePath, req.file.buffer);
+
     const entry = addBibliotecaFile({
       area: String(area).trim() || "General",
       description: String(description).trim(),
+      priority: validPriority,
       uploadedById: req.auth.userId,
       uploadedByName: req.auth.user?.name || "Sistema",
-      ...uploadResult,
+      originalName: req.file.originalname,
+      fileName: uniqueName,
+      fileMimeType: req.file.mimetype,
+      bytes: req.file.size,
     });
+
+    if (shouldNotify) {
+      addBibliotecaNotification({
+        fileId: entry.id,
+        originalName: req.file.originalname,
+        area: entry.area,
+        priority: validPriority,
+        authorName: req.auth.user?.name || "Sistema",
+      });
+    }
 
     auditSecurityEvent("biblioteca_file_uploaded", req, {
       fileId: entry.id,
-      originalName: uploadResult.originalName,
+      originalName: req.file.originalname,
       area,
     });
 
     return res.status(201).json({ ok: true, data: entry });
   } catch (error) {
-    console.error("[biblioteca] upload error:", error?.message, error?.http_code);
+    console.error("[biblioteca] upload error:", error?.message);
+    return next(error);
+  }
+}
+
+export async function serveBibliotecaFileController(req, res, next) {
+  try {
+    const { fileName } = req.params;
+    if (!fileName || /[/\\]/.test(fileName)) {
+      return res.status(400).json({ ok: false, message: "Nombre de archivo inválido." });
+    }
+    const filePath = path.join(bibliotecaDirectory, fileName);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ ok: false, message: "Archivo no encontrado." });
+    }
+    res.sendFile(filePath);
+  } catch (error) {
     return next(error);
   }
 }
@@ -48,14 +97,20 @@ export async function uploadBibliotecaFileController(req, res, next) {
 export async function deleteBibliotecaFileController(req, res, next) {
   try {
     const { fileId } = req.params;
-    const result = deleteBibliotecaFile(fileId);
+    const files = getBibliotecaFiles();
+    const file = files.find((f) => f.id === fileId);
 
+    const result = deleteBibliotecaFile(fileId);
     if (!result.ok) {
       return res.status(404).json({ ok: false, message: result.message || "Archivo no encontrado." });
     }
 
-    auditSecurityEvent("biblioteca_file_deleted", req, { fileId });
+    if (file?.fileName) {
+      const filePath = path.join(bibliotecaDirectory, file.fileName);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }
 
+    auditSecurityEvent("biblioteca_file_deleted", req, { fileId });
     return res.json({ ok: true });
   } catch (error) {
     return next(error);

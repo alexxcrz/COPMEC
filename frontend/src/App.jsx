@@ -54,6 +54,7 @@ import "./App.css";
 
 const STORAGE_KEY = "sicfla.almacen.state.v1";
 const SIDEBAR_COLLAPSED_KEY = "sicfla.almacen.sidebarCollapsed.v1";
+const ACTIVE_PAGE_KEY = "sicfla.almacen.activePage.v1";
 const DASHBOARD_SECTIONS_KEY = "sicfla.almacen.dashboardSections.v1";
 const NOTIFICATION_READ_KEY = "sicfla.almacen.notifications.read.v1";
 const NOTIFICATION_DELETED_KEY = "sicfla.almacen.notifications.deleted.v1";
@@ -231,17 +232,19 @@ const BOARD_FIELD_TYPES = [
   { value: "currency", label: "Monto ($)" },
   { value: "percentage", label: "Porcentaje (%)" },
   { value: "time", label: "Hora" },
+  { value: "date", label: "Fecha" },
+  { value: "textarea", label: "Notas" },
+  { value: "boolean", label: "Sí / No" },
+  { value: "select", label: "Menú desplegable" },
+  { value: "rating", label: "Calificación (1-5 ★)" },
+  { value: "progress", label: "Progreso (0-100%)" },
+  { value: "counter", label: "Contador (clic +1)" },
+  { value: "tags", label: "Etiquetas / Tags" },
+  { value: "formula", label: "Fórmula" },
   { value: "inventoryLookup", label: "Buscador de inventario" },
   { value: INVENTORY_LOOKUP_LOGISTICS_FIELD, label: "Buscador de inventario + empaque" },
   { value: "inventoryProperty", label: "Dato derivado de inventario" },
   { value: BOARD_ACTIVITY_LIST_FIELD, label: "Lista de actividades" },
-  { value: "select", label: "Menú desplegable" },
-  { value: "formula", label: "Fórmula" },
-  { value: "user", label: "Player" },
-  { value: "status", label: "Estado" },
-  { value: "date", label: "Fecha" },
-  { value: "textarea", label: "Notas" },
-  { value: "boolean", label: "Sí / No" },
 ];
 
 const BOARD_FIELD_TYPE_DETAILS = {
@@ -264,6 +267,10 @@ const BOARD_FIELD_TYPE_DETAILS = {
   date: "Guarda fechas clave como entrega, turno o corte.",
   textarea: "Sirve para observaciones o instrucciones más largas.",
   boolean: "Marca algo como Sí o No en un clic.",
+  rating: "Calificación visual de 1 a 5 estrellas. Útil para evaluar calidad, prioridad o satisfacción.",
+  progress: "Barra de avance del 0 al 100%. Útil para seguimiento de cumplimiento o llenado.",
+  counter: "Contador incremental con botones + y −. Útil para conteos de piezas, rechazos o eventos.",
+  tags: "Lista de etiquetas separadas por coma. Útil para categorías, lotes o marcadores múltiples.",
 };
 
 const BOARD_FIELD_WIDTHS = [
@@ -307,7 +314,7 @@ const BOARD_FIELD_MIN_WIDTH_BY_TYPE = {
   date: 140,
 };
 
-const DEFAULT_BOARD_AUX_COLUMNS_ORDER = ["status", "time", "workflow", "assignee"];
+const DEFAULT_BOARD_AUX_COLUMNS_ORDER = ["status", "time", "totalTime", "efficiency", "workflow", "assignee"];
 const BOARD_AUX_COLUMN_DEFINITIONS = {
   status: {
     id: "status",
@@ -324,6 +331,22 @@ const BOARD_AUX_COLUMN_DEFINITIONS = {
     sectionColor: "#f3f5f8",
     defaultWidth: 130,
     minWidth: 120,
+  },
+  totalTime: {
+    id: "totalTime",
+    label: "Acumulado",
+    sectionName: "Acumulado",
+    sectionColor: "#f0f4ff",
+    defaultWidth: 130,
+    minWidth: 120,
+  },
+  efficiency: {
+    id: "efficiency",
+    label: "Eficiencia",
+    sectionName: "Eficiencia",
+    sectionColor: "#f0fdf4",
+    defaultWidth: 120,
+    minWidth: 100,
   },
   workflow: {
     id: "workflow",
@@ -362,10 +385,12 @@ function getBoardFields(board) {
   return [];
 }
 
-function getBoardVisibleAuxColumnIds(settings = {}) {
+function getBoardVisibleAuxColumnIds(settings = {}, isOwner = false) {
   const visible = [];
   if (settings?.showWorkflow !== false) visible.push("status");
   if (settings?.showDates !== false) visible.push("time");
+  if (isOwner || settings?.showTotalTime !== false) visible.push("totalTime");
+  if (isOwner || settings?.showEfficiency !== false) visible.push("efficiency");
   if (settings?.showWorkflow !== false) visible.push("workflow");
   if (settings?.showAssignee !== false) visible.push("assignee");
   return visible;
@@ -431,10 +456,10 @@ function reorderBoardColumnOrderTokens(sourceToken, targetToken, columnOrder = [
   return nextOrder;
 }
 
-function getOrderedBoardColumns(board) {
+function getOrderedBoardColumns(board, isOwner = false) {
   const fields = getBoardFields(board);
   const fieldMap = new Map(fields.map((field) => [field.id, field]));
-  const visibleAuxIds = new Set(getBoardVisibleAuxColumnIds(board?.settings ?? EMPTY_OBJECT));
+  const visibleAuxIds = new Set(getBoardVisibleAuxColumnIds(board?.settings ?? EMPTY_OBJECT, isOwner));
 
   return getNormalizedBoardColumnOrder(board).flatMap((token) => {
     if (isBoardAuxColumnToken(token)) {
@@ -1234,6 +1259,12 @@ function getInventoryDefaultTransferDestination(item, movements = []) {
   return getInventorySavedTransferDestinations(item, movements)[0] || null;
 }
 
+function getInventoryDeleteActionId(domain) {
+  if (domain === INVENTORY_DOMAIN_CLEANING) return "deleteCleaningInventory";
+  if (domain === INVENTORY_DOMAIN_ORDERS) return "deleteOrderInventory";
+  return "deleteInventory";
+}
+
 function getInventoryManageActionId(domain) {
   if (domain === INVENTORY_DOMAIN_CLEANING) return "manageCleaningInventory";
   if (domain === INVENTORY_DOMAIN_ORDERS) return "manageOrderInventory";
@@ -1380,7 +1411,7 @@ function AppToastStack({ toasts, onDismiss }) {
   );
 }
 
-function AppNotificationCenter({ unreadNotifications, readNotifications, unreadCount, activeTab, isOpen, onToggle, onTabChange, onDeleteAllRead, onDeleteNotification, onOpenNotification }) {
+function AppNotificationCenter({ unreadNotifications, readNotifications, unreadCount, activeTab, isOpen, onToggle, onTabChange, onDeleteAllRead, onMarkAllRead, onDeleteNotification, onOpenNotification }) {
   const visibleNotifications = activeTab === "read" ? readNotifications : unreadNotifications;
 
   return (
@@ -1393,7 +1424,10 @@ function AppNotificationCenter({ unreadNotifications, readNotifications, unreadC
         <section className="app-notification-panel" aria-label="Centro de alertas">
           <div className="app-notification-panel-header">
             <strong>Alertas</strong>
-            {activeTab === "read" && readNotifications.length ? <button type="button" className="app-notification-action" onClick={onDeleteAllRead}>Borrar todo</button> : null}
+            <div style={{ display: "flex", gap: "0.55rem", alignItems: "center" }}>
+              {activeTab === "unread" && unreadNotifications.length ? <button type="button" className="app-notification-action" onClick={onMarkAllRead}>Marcar todo leído</button> : null}
+              {activeTab === "read" && readNotifications.length ? <button type="button" className="app-notification-action" onClick={onDeleteAllRead}>Borrar todo</button> : null}
+            </div>
           </div>
           <div className="app-notification-tabs" role="tablist" aria-label="Filtros de alertas">
             <button type="button" role="tab" aria-selected={activeTab === "unread"} className={activeTab === "unread" ? "app-notification-tab active" : "app-notification-tab"} onClick={() => onTabChange("unread")}>Sin leer</button>
@@ -1429,43 +1463,51 @@ function AppNotificationCenter({ unreadNotifications, readNotifications, unreadC
 }
 
 const NAV_ITEMS = [
-  { id: PAGE_DASHBOARD, label: "Dashboard", icon: BarChart3, roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
-  { id: PAGE_CUSTOM_BOARDS, label: "Mis tableros", icon: LayoutDashboard, roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
-  { id: PAGE_BOARD, label: "Creador de tableros", icon: ClipboardList, roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
-  { id: PAGE_HISTORY, label: "Historial", icon: CalendarDays, roles: [ROLE_LEAD, ROLE_SR] },
-  { id: PAGE_INVENTORY, label: "Inventario", icon: Package, roles: [ROLE_LEAD, ROLE_SR] },
-  { id: PAGE_USERS, label: "Players", icon: Users, roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
-  { id: PAGE_BIBLIOTECA, label: "Biblioteca", icon: BookOpen, roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
+  { id: PAGE_DASHBOARD,      label: "Dashboard",           icon: BarChart3,       group: "General",    roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
+  { id: PAGE_CUSTOM_BOARDS,  label: "Mis tableros",         icon: LayoutDashboard, group: "General",    roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
+  { id: PAGE_BOARD,          label: "Creador de tableros",  icon: ClipboardList,   group: "Producción", roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
+  { id: PAGE_HISTORY,        label: "Historial",            icon: CalendarDays,    group: "Producción", roles: [ROLE_LEAD, ROLE_SR] },
+  { id: PAGE_INVENTORY,      label: "Inventario",           icon: Package,         group: "Producción", roles: [ROLE_LEAD, ROLE_SR] },
+  { id: PAGE_BIBLIOTECA,     label: "Biblioteca",           icon: BookOpen,        group: "Recursos",   roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
+  { id: PAGE_USERS,          label: "Players",              icon: Users,           group: "Equipo",     roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
 ];
 
 const ACTION_DEFINITIONS = [
-  { id: "createWeek", label: "Crear nueva semana", category: "Operación semanal", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "manageCatalog", label: "Crear y editar catálogo", category: "Administración", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "manageWeeks", label: "Editar semanas", category: "Administración", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "managePermissions", label: "Editar permisos", category: "Permisos", defaultRoles: [ROLE_LEAD] },
-  { id: "manageUsers", label: "Crear y editar players", category: "Players", defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
-  { id: "deleteUsers", label: "Eliminar players", category: "Players", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "resetPasswords", label: "Restablecer contraseñas", category: "Players", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "manageInventory", label: "Crear y editar inventario base", category: "Inventario", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "importInventory", label: "Importar inventario base", category: "Inventario", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "manageCleaningInventory", label: "Crear y editar insumos de limpieza", category: "Inventario", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "importCleaningInventory", label: "Importar insumos de limpieza", category: "Inventario", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "manageOrderInventory", label: "Crear y editar insumos para pedidos", category: "Inventario", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "importOrderInventory", label: "Importar insumos para pedidos", category: "Inventario", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "saveBoard", label: "Crear y editar tableros", category: "Creador de tableros", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "deleteBoard", label: "Eliminar tableros", category: "Tableros creados", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "saveTemplate", label: "Guardar plantillas", category: "Creador de tableros", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "editTemplate", label: "Editar plantillas", category: "Creador de tableros", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "deleteTemplate", label: "Eliminar plantillas", category: "Creador de tableros", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "createBoardRow", label: "Agregar filas en Mis tableros", category: "Mis tableros", defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
-  { id: "editFinishedBoardRow", label: "Editar filas terminadas", category: "Mis tableros", defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
-  { id: "boardWorkflow", label: "Ejecutar flujo del tablero", category: "Mis tableros", defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
-  { id: "duplicateBoard", label: "Duplicar tablero vacío", category: "Tableros creados", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "duplicateBoardWithRows", label: "Duplicar tablero con filas", category: "Tableros creados", defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "exportBoardExcel", label: "Exportar tablero a Excel", category: "Mis tableros", defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
-  { id: "previewBoardPdf", label: "Vista previa PDF", category: "Mis tableros", defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
-  { id: "exportBoardPdf", label: "Exportar tablero a PDF", category: "Mis tableros", defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
-  { id: "manageBiblioteca", label: "Subir y eliminar en Biblioteca", category: "Biblioteca", defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "createWeek",              label: "Crear nueva semana",                     category: "Operación semanal",     defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "createCatalog",          label: "Crear elementos de catálogo",             category: "Catálogo",              defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "editCatalog",            label: "Editar elementos de catálogo",            category: "Catálogo",              defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "deleteCatalog",          label: "Eliminar elementos de catálogo",          category: "Catálogo",              defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "manageWeeks",            label: "Editar semanas",                          category: "Administración",        defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "managePermissions",      label: "Editar permisos",                         category: "Permisos",              defaultRoles: [ROLE_LEAD] },
+  { id: "createUsers",            label: "Crear nuevos players",                    category: "Players",               defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
+  { id: "editUsers",              label: "Editar players existentes",               category: "Players",               defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
+  { id: "deleteUsers",            label: "Eliminar players",                        category: "Players",               defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "resetPasswords",         label: "Restablecer contraseñas",                 category: "Players",               defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "manageInventory",        label: "Crear y editar inventario base",          category: "Inventario",            defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "deleteInventory",        label: "Eliminar artículos de inventario base",   category: "Inventario",            defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "importInventory",        label: "Importar inventario base",                category: "Inventario",            defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "manageCleaningInventory",label: "Crear y editar insumos de limpieza",      category: "Inventario",            defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "deleteCleaningInventory",label: "Eliminar insumos de limpieza",            category: "Inventario",            defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "importCleaningInventory",label: "Importar insumos de limpieza",            category: "Inventario",            defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "manageOrderInventory",   label: "Crear y editar insumos para pedidos",     category: "Inventario",            defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "deleteOrderInventory",   label: "Eliminar insumos para pedidos",           category: "Inventario",            defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "importOrderInventory",   label: "Importar insumos para pedidos",           category: "Inventario",            defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "createBoard",            label: "Crear nuevos tableros",                   category: "Creador de tableros",   defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "editBoard",              label: "Editar tableros existentes",              category: "Creador de tableros",   defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "deleteBoard",            label: "Eliminar tableros",                       category: "Tableros creados",      defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "saveTemplate",           label: "Guardar plantillas",                      category: "Creador de tableros",   defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "editTemplate",           label: "Editar plantillas",                       category: "Creador de tableros",   defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "deleteTemplate",         label: "Eliminar plantillas",                     category: "Creador de tableros",   defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "createBoardRow",         label: "Agregar filas en Mis tableros",           category: "Mis tableros",          defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
+  { id: "editFinishedBoardRow",   label: "Editar filas terminadas",                 category: "Mis tableros",          defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
+  { id: "boardWorkflow",          label: "Ejecutar flujo del tablero",              category: "Mis tableros",          defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
+  { id: "duplicateBoard",         label: "Duplicar tablero vacío",                  category: "Tableros creados",      defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "duplicateBoardWithRows", label: "Duplicar tablero con filas",              category: "Tableros creados",      defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "exportBoardExcel",       label: "Exportar tablero a Excel",                category: "Mis tableros",          defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
+  { id: "previewBoardPdf",        label: "Vista previa PDF",                        category: "Mis tableros",          defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
+  { id: "exportBoardPdf",         label: "Exportar tablero a PDF",                  category: "Mis tableros",          defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
+  { id: "uploadBiblioteca",       label: "Subir archivos a Biblioteca",             category: "Biblioteca",            defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "deleteBiblioteca",       label: "Eliminar archivos de Biblioteca",         category: "Biblioteca",            defaultRoles: [ROLE_LEAD, ROLE_SR] },
 ];
 
 const BOARD_PERMISSION_ACTION_IDS = new Set([
@@ -1482,12 +1524,12 @@ const BOARD_PERMISSION_ACTIONS = ACTION_DEFINITIONS.filter((item) => BOARD_PERMI
 const PAGE_ACTION_GROUPS = {
   [PAGE_CUSTOM_BOARDS]: ["createBoardRow", "editFinishedBoardRow", "boardWorkflow", "exportBoardExcel", "previewBoardPdf", "exportBoardPdf"],
   [PAGE_DASHBOARD]: [],
-  [PAGE_BOARD]: ["manageCatalog", "saveBoard", "saveTemplate", "editTemplate", "deleteTemplate", "duplicateBoard", "duplicateBoardWithRows", "deleteBoard"],
+  [PAGE_BOARD]: ["createCatalog", "editCatalog", "deleteCatalog", "createBoard", "editBoard", "saveTemplate", "editTemplate", "deleteTemplate", "duplicateBoard", "duplicateBoardWithRows", "deleteBoard"],
   [PAGE_ADMIN]: [],
   [PAGE_HISTORY]: [],
-  [PAGE_INVENTORY]: ["manageInventory", "importInventory", "manageCleaningInventory", "importCleaningInventory", "manageOrderInventory", "importOrderInventory"],
-  [PAGE_USERS]: ["manageUsers", "deleteUsers", "resetPasswords", "managePermissions"],
-  [PAGE_BIBLIOTECA]: ["manageBiblioteca"],
+  [PAGE_INVENTORY]: ["manageInventory", "deleteInventory", "importInventory", "manageCleaningInventory", "deleteCleaningInventory", "importCleaningInventory", "manageOrderInventory", "deleteOrderInventory", "importOrderInventory"],
+  [PAGE_USERS]: ["createUsers", "editUsers", "deleteUsers", "resetPasswords", "managePermissions"],
+  [PAGE_BIBLIOTECA]: ["uploadBiblioteca", "deleteBiblioteca"],
 };
 
 const PERMISSION_PRESETS = [
@@ -1517,57 +1559,16 @@ const RESPONSIBLE_VISUALS = {
   default: { accent: "#60a5fa", soft: "#3b82f6", badge: "#4f8adf" },
 };
 
+// ROLE_PERMISSION_MATRIX: por defecto todos los roles tienen acceso a todas las pestañas.
+// Los permisos reales se configuran manualmente en el panel de Permisos.
+const ALL_PAGES = [PAGE_DASHBOARD, PAGE_CUSTOM_BOARDS, PAGE_BOARD, PAGE_HISTORY, PAGE_INVENTORY, PAGE_USERS, PAGE_BIBLIOTECA];
+const ALL_ACTION_IDS = ACTION_DEFINITIONS.map((item) => item.id);
+
 const ROLE_PERMISSION_MATRIX = {
-  [ROLE_LEAD]: {
-    pages: [PAGE_DASHBOARD, PAGE_CUSTOM_BOARDS, PAGE_BOARD, PAGE_HISTORY, PAGE_INVENTORY, PAGE_USERS],
-    actions: ACTION_DEFINITIONS.map((item) => item.id),
-  },
-  [ROLE_SR]: {
-    pages: [PAGE_DASHBOARD, PAGE_CUSTOM_BOARDS, PAGE_BOARD, PAGE_HISTORY, PAGE_INVENTORY, PAGE_USERS],
-    actions: [
-      "createWeek",
-      "manageCatalog",
-      "manageWeeks",
-      "manageUsers",
-      "deleteUsers",
-      "resetPasswords",
-      "manageInventory",
-      "importInventory",
-      "manageCleaningInventory",
-      "importCleaningInventory",
-      "manageOrderInventory",
-      "importOrderInventory",
-      "saveBoard",
-      "deleteBoard",
-      "saveTemplate",
-      "editTemplate",
-      "deleteTemplate",
-      "createBoardRow",
-      "editFinishedBoardRow",
-      "boardWorkflow",
-      "duplicateBoard",
-      "duplicateBoardWithRows",
-      "exportBoardExcel",
-      "previewBoardPdf",
-      "exportBoardPdf",
-    ],
-  },
-  [ROLE_SSR]: {
-    pages: [PAGE_DASHBOARD, PAGE_CUSTOM_BOARDS, PAGE_BOARD, PAGE_USERS],
-    actions: [
-      "manageUsers",
-      "createBoardRow",
-      "editFinishedBoardRow",
-      "boardWorkflow",
-      "exportBoardExcel",
-      "previewBoardPdf",
-      "exportBoardPdf",
-    ],
-  },
-  [ROLE_JR]: {
-    pages: [PAGE_CUSTOM_BOARDS],
-    actions: ["createBoardRow", "boardWorkflow"],
-  },
+  [ROLE_LEAD]: { pages: ALL_PAGES, actions: ALL_ACTION_IDS },
+  [ROLE_SR]:   { pages: ALL_PAGES, actions: ALL_ACTION_IDS },
+  [ROLE_SSR]:  { pages: ALL_PAGES, actions: ALL_ACTION_IDS },
+  [ROLE_JR]:   { pages: ALL_PAGES, actions: ALL_ACTION_IDS },
 };
 
 const KPI_STYLES = {
@@ -1579,24 +1580,18 @@ const KPI_STYLES = {
   slate: { iconBg: "#eef1f7", iconColor: "#8a94a6" },
 };
 
-function buildDefaultPermissions() {
+function buildDefaultPermissions(extraRoles = []) {
+  // Todos los roles (base + personalizados) tienen acceso a todo por defecto.
+  const allRoles = [...USER_ROLES, ...extraRoles];
   return {
     version: PERMISSION_SCHEMA_VERSION,
     pages: Object.fromEntries(NAV_ITEMS.map((item) => [
       item.id,
-      {
-        roles: USER_ROLES.filter((role) => (ROLE_PERMISSION_MATRIX[role]?.pages || []).includes(item.id)),
-        userIds: [],
-        departments: [],
-      },
+      { roles: [...allRoles], userIds: [], departments: [] },
     ])),
     actions: Object.fromEntries(ACTION_DEFINITIONS.map((item) => [
       item.id,
-      {
-        roles: USER_ROLES.filter((role) => (ROLE_PERMISSION_MATRIX[role]?.actions || []).includes(item.id)),
-        userIds: [],
-        departments: [],
-      },
+      { roles: [...allRoles], userIds: [], departments: [] },
     ])),
   };
 }
@@ -1713,18 +1708,25 @@ function buildPermissionsFromPreset(presetId) {
     permissions.pages[PAGE_USERS].roles = [ROLE_LEAD, ROLE_SR];
     permissions.pages[PAGE_INVENTORY].roles = [ROLE_LEAD, ROLE_SR];
 
-    permissions.actions.manageCatalog.roles = [ROLE_LEAD];
+    permissions.actions.createCatalog.roles = [ROLE_LEAD];
+    permissions.actions.editCatalog.roles = [ROLE_LEAD];
+    permissions.actions.deleteCatalog.roles = [ROLE_LEAD];
     permissions.actions.manageWeeks.roles = [ROLE_LEAD, ROLE_SR];
-    permissions.actions.manageUsers.roles = [ROLE_LEAD, ROLE_SR];
+    permissions.actions.createUsers.roles = [ROLE_LEAD, ROLE_SR];
+    permissions.actions.editUsers.roles = [ROLE_LEAD, ROLE_SR];
     permissions.actions.deleteUsers.roles = [ROLE_LEAD];
     permissions.actions.resetPasswords.roles = [ROLE_LEAD, ROLE_SR];
     permissions.actions.manageInventory.roles = [ROLE_LEAD, ROLE_SR];
+    permissions.actions.deleteInventory.roles = [ROLE_LEAD];
     permissions.actions.importInventory.roles = [ROLE_LEAD];
     permissions.actions.manageCleaningInventory.roles = [ROLE_LEAD, ROLE_SR];
+    permissions.actions.deleteCleaningInventory.roles = [ROLE_LEAD];
     permissions.actions.importCleaningInventory.roles = [ROLE_LEAD];
     permissions.actions.manageOrderInventory.roles = [ROLE_LEAD, ROLE_SR];
+    permissions.actions.deleteOrderInventory.roles = [ROLE_LEAD];
     permissions.actions.importOrderInventory.roles = [ROLE_LEAD];
-    permissions.actions.saveBoard.roles = [ROLE_LEAD, ROLE_SR];
+    permissions.actions.createBoard.roles = [ROLE_LEAD, ROLE_SR];
+    permissions.actions.editBoard.roles = [ROLE_LEAD, ROLE_SR];
     permissions.actions.deleteBoard.roles = [ROLE_LEAD, ROLE_SR];
     permissions.actions.saveTemplate.roles = [ROLE_LEAD, ROLE_SR];
     permissions.actions.editTemplate.roles = [ROLE_LEAD, ROLE_SR];
@@ -1956,6 +1958,8 @@ function withDefaultBoardSettings(settings) {
     showMetrics: true,
     showAssignee: true,
     showDates: true,
+    showTotalTime: true,
+    showEfficiency: true,
     ...resolvedSettings,
     operationalContextType,
     operationalContextLabel: normalizeBoardOperationalContextLabel(resolvedSettings?.operationalContextLabel, operationalContextType),
@@ -3007,7 +3011,7 @@ function getTemplateFieldDetail(field) {
 }
 
 function isBoardFieldValueFilled(value, fieldType) {
-  if (["number", "currency", "percentage"].includes(fieldType)) return value !== "" && value !== null && value !== undefined && Number.isFinite(Number(value));
+  if (["number", "currency", "percentage", "rating", "progress", "counter"].includes(fieldType)) return value !== "" && value !== null && value !== undefined && Number.isFinite(Number(value));
   if (fieldType === "boolean") return value === "Si" || value === "No";
   if (fieldType === "formula") return value !== null && value !== undefined;
   return String(value ?? "").trim() !== "";
@@ -3327,28 +3331,50 @@ function inferImportedFieldTypeFromSamples(samples) {
   const isUrl = normalized.every((value) => /^https?:\/\//i.test(value));
   if (isUrl) return { type: "url", options: [] };
 
-  const isTime = normalized.every((value) => /^([01]?\d|2[0-3]):[0-5]\d$/.test(value));
+  const isTime = normalized.every((value) => /^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(value));
   if (isTime) return { type: "time", options: [] };
 
   const phoneScore = normalized.filter((value) => /^\+?[\d\s()-]{8,}$/.test(value)).length / normalized.length;
   if (phoneScore >= 0.9) return { type: "phone", options: [] };
+
+  // Boolean yes/no detection
+  const boolTokens = new Set(["si", "sí", "no", "yes", "true", "false", "1", "0", "verdadero", "falso"]);
+  const boolScore = normalized.filter((value) => boolTokens.has(value.toLowerCase())).length / normalized.length;
+  if (boolScore >= 0.9 && normalized.length >= 2) return { type: "boolean", options: [] };
 
   const numericSamples = normalized.map((value) => Number(String(value).replaceAll(/[,$%\s]/g, ""))).filter((item) => Number.isFinite(item));
   const numericScore = numericSamples.length / normalized.length;
 
   if (numericScore >= 0.9) {
     const isPercentage = normalized.some((value) => String(value).includes("%"));
-    const isCurrency = normalized.some((value) => /[$€£]/.test(value));
+    const isCurrency = normalized.some((value) => /[$€£¥]/.test(value));
     if (isPercentage) return { type: "percentage", options: [] };
     if (isCurrency) return { type: "currency", options: [] };
+    // Rating detection: all integers 1-5 with limited unique values
+    const allInts = numericSamples.every((n) => Number.isInteger(n) && n >= 1 && n <= 5);
+    const uniqueNums = new Set(numericSamples);
+    if (allInts && uniqueNums.size <= 5 && numericSamples.length >= 3) return { type: "rating", options: [] };
+    // Progress detection: values 0-100
+    const allProgress = numericSamples.every((n) => n >= 0 && n <= 100);
+    if (allProgress && numericSamples.some((n) => n > 1)) return { type: "progress", options: [] };
     return { type: "number", options: [] };
   }
 
-  const dateScore = normalized.filter((value) => !Number.isNaN(new Date(value).getTime())).length / normalized.length;
+  // Date detection (ISO, localized, or Excel date string)
+  const dateScore = normalized.filter((value) => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return true;
+    if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(value)) return true;
+    const d = new Date(value);
+    return !Number.isNaN(d.getTime()) && value.length >= 6;
+  }).length / normalized.length;
   if (dateScore >= 0.8) return { type: "date", options: [] };
 
+  // Long text detection
+  const avgLength = normalized.reduce((sum, v) => sum + v.length, 0) / normalized.length;
+  if (avgLength > 80) return { type: "textarea", options: [] };
+
   const uniqueValues = Array.from(new Set(normalized));
-  if (uniqueValues.length >= 2 && uniqueValues.length <= 12 && normalized.length >= 3) {
+  if (uniqueValues.length >= 2 && uniqueValues.length <= 15 && normalized.length >= 3) {
     return { type: "select", options: uniqueValues };
   }
 
@@ -3370,13 +3396,37 @@ function getWorksheetHeaders(worksheet) {
   return headers;
 }
 
+function getCellTextValue(cell) {
+  const raw = cell.value;
+  if (raw === null || raw === undefined) return "";
+  // Handle ExcelJS rich text
+  if (raw && typeof raw === "object" && Array.isArray(raw.richText)) {
+    return raw.richText.map((segment) => segment.text || "").join("").trim();
+  }
+  // Handle formula result
+  if (raw && typeof raw === "object" && typeof raw.result !== "undefined") {
+    if (raw.result === null || raw.result === undefined) return "";
+    return String(raw.result).trim();
+  }
+  // Handle Date objects from ExcelJS
+  if (raw instanceof Date) {
+    if (Number.isNaN(raw.getTime())) return "";
+    return raw.toISOString().slice(0, 10);
+  }
+  // Handle numeric-type cell with date format heuristic (Excel date serial)
+  const text = String(cell.text || "").trim();
+  return text;
+}
+
 function collectBoardStructureCellData(cell, targetIndex, headers, rowByHeader, sampleValuesByColumn, formulaByColumn, styleHintByColumn) {
   const raw = cell.value;
-  const textValue = String(cell.text || "").trim();
+  const textValue = getCellTextValue(cell);
   const { fillColor, textColor } = getExcelCellColors(cell);
 
   if (!formulaByColumn[targetIndex] && raw && typeof raw === "object" && typeof raw.formula === "string") {
     formulaByColumn[targetIndex] = raw.formula;
+  } else if (!formulaByColumn[targetIndex] && raw && typeof raw === "object" && typeof raw.sharedFormula === "string") {
+    formulaByColumn[targetIndex] = raw.sharedFormula;
   }
   if (textValue) {
     sampleValuesByColumn[targetIndex].push(textValue);
@@ -3393,15 +3443,34 @@ function collectBoardStructureSheetData(worksheet, headers) {
   const formulaByColumn = headers.map(() => "");
   const styleHintByColumn = headers.map(() => ({ value: "", fillColor: "", textColor: "" }));
   const importedRows = [];
+  // Sample up to 200 rows for type inference, import all non-empty rows up to 500
+  const maxRows = Math.min(worksheet.rowCount, 500);
+  const maxSampleRows = Math.min(worksheet.rowCount, 200);
 
-  for (let rowIndex = 2; rowIndex <= Math.min(worksheet.rowCount, 60); rowIndex += 1) {
+  for (let rowIndex = 2; rowIndex <= maxRows; rowIndex += 1) {
     const worksheetRow = worksheet.getRow(rowIndex);
     const rowByHeader = {};
+    const isSampleRow = rowIndex <= maxSampleRows;
 
     for (let columnIndex = 1; columnIndex <= headers.length; columnIndex += 1) {
       const cell = worksheetRow.getCell(columnIndex);
       const targetIndex = columnIndex - 1;
-      collectBoardStructureCellData(cell, targetIndex, headers, rowByHeader, sampleValuesByColumn, formulaByColumn, styleHintByColumn);
+      const raw = cell.value;
+      const textValue = getCellTextValue(cell);
+      const { fillColor, textColor } = getExcelCellColors(cell);
+
+      if (!formulaByColumn[targetIndex] && raw && typeof raw === "object" && typeof raw.formula === "string") {
+        formulaByColumn[targetIndex] = raw.formula;
+      } else if (!formulaByColumn[targetIndex] && raw && typeof raw === "object" && typeof raw.sharedFormula === "string") {
+        formulaByColumn[targetIndex] = raw.sharedFormula;
+      }
+      if (isSampleRow && textValue) {
+        sampleValuesByColumn[targetIndex].push(textValue);
+      }
+      if (!styleHintByColumn[targetIndex].value && textValue && (fillColor || textColor)) {
+        styleHintByColumn[targetIndex] = { value: textValue, fillColor, textColor };
+      }
+      rowByHeader[headers[targetIndex]] = textValue;
     }
 
     if (Object.values(rowByHeader).some((value) => String(value || "").trim() !== "")) {
@@ -3535,6 +3604,24 @@ function buildImportedBoardRowValuesPatch(importedRow, columns, visibleUsers, in
       return;
     }
 
+    if (field.type === "rating") {
+      const parsed = Math.min(5, Math.max(0, Math.round(Number(String(raw).replaceAll(/[^\d.]/g, "")) || 0)));
+      valuesPatch[field.id] = parsed;
+      return;
+    }
+
+    if (field.type === "progress") {
+      const parsed = Math.min(100, Math.max(0, Number(String(raw).replaceAll(/[%\s]/g, "")) || 0));
+      valuesPatch[field.id] = parsed;
+      return;
+    }
+
+    if (field.type === "counter") {
+      const parsed = Math.max(0, Math.round(Number(String(raw).replaceAll(/[^\d]/g, "")) || 0));
+      valuesPatch[field.id] = parsed;
+      return;
+    }
+
     if (field.type === "boolean") {
       valuesPatch[field.id] = yesValues.has(String(raw).trim().toLowerCase()) ? "Si" : "No";
       return;
@@ -3549,6 +3636,34 @@ function buildImportedBoardRowValuesPatch(importedRow, columns, visibleUsers, in
     if (isInventoryLookupFieldType(field.type)) {
       const item = findInventoryItemByQuery(inventoryItems || [], raw);
       valuesPatch[field.id] = item?.id || "";
+      return;
+    }
+
+    if (field.type === "date") {
+      // Handle Excel date serials (numbers) or parseable strings
+      const rawStr = String(raw).trim();
+      // Try ISO date
+      if (/^\d{4}-\d{2}-\d{2}$/.test(rawStr)) {
+        valuesPatch[field.id] = rawStr;
+        return;
+      }
+      // Try localized formats dd/mm/yyyy or mm/dd/yyyy
+      const parts = rawStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+      if (parts) {
+        const year = parts[3].length === 2 ? `20${parts[3]}` : parts[3];
+        const isoDate = `${year}-${String(parts[2]).padStart(2, "0")}-${String(parts[1]).padStart(2, "0")}`;
+        const test = new Date(isoDate);
+        if (!Number.isNaN(test.getTime())) {
+          valuesPatch[field.id] = isoDate;
+          return;
+        }
+      }
+      const parsed = new Date(rawStr);
+      if (!Number.isNaN(parsed.getTime())) {
+        valuesPatch[field.id] = parsed.toISOString().slice(0, 10);
+        return;
+      }
+      valuesPatch[field.id] = rawStr;
       return;
     }
 
@@ -3590,6 +3705,16 @@ function formatBoardExportFieldValue(field, value, inventoryItems, userMap) {
   }
   if (field.type === "user") {
     return userMap.get(value)?.name || "";
+  }
+  if (field.type === "rating") {
+    const stars = Math.min(5, Math.max(0, Number(value || 0)));
+    return stars ? `${"★".repeat(stars)}${"☆".repeat(5 - stars)}` : "";
+  }
+  if (field.type === "progress") {
+    return value !== "" && value !== undefined ? `${Number(value || 0)}%` : "";
+  }
+  if (field.type === "counter") {
+    return value !== "" && value !== undefined ? String(Number(value || 0)) : "";
   }
   return value;
 }
@@ -3657,16 +3782,15 @@ function normalizeRole(role) {
   return ROLE_JR;
 }
 
-function canCreateRole(actorRole, targetRole) {
-  if (actorRole === ROLE_LEAD) return true;
-  if (actorRole === ROLE_SR) return [ROLE_SSR, ROLE_JR].includes(targetRole);
-  if (actorRole === ROLE_SSR) return targetRole === ROLE_JR;
-  return false;
+// Cualquier usuario con permiso manageUsers puede crear/editar players con cualquier rol.
+// La restricción real la controla el permiso manageUsers en el panel de permisos.
+function canCreateRole(_actorRole, _targetRole) {
+  return true;
 }
 
-function supportsManagedPermissionOverrides(role) {
-  const normalizedRole = normalizeRole(role);
-  return normalizedRole === ROLE_LEAD || normalizedRole === ROLE_SR;
+// Todos los roles pueden tener overrides individuales de permisos.
+function supportsManagedPermissionOverrides(_role) {
+  return true;
 }
 
 function createUserModalState(overrides = {}) {
@@ -3827,14 +3951,12 @@ function userMatchesPermissionEntry(user, entry) {
 function canAccessPage(user, pageId, permissions) {
   const override = permissions?.userOverrides?.[user?.id]?.pages?.[pageId];
   if (typeof override === "boolean") return override;
-  if (user?.role === ROLE_LEAD) return true;
   return userMatchesPermissionEntry(user, permissions?.pages?.[pageId]);
 }
 
 function canDoAction(user, actionId, permissions) {
   const override = permissions?.userOverrides?.[user?.id]?.actions?.[actionId];
   if (typeof override === "boolean") return override;
-  if (user?.role === ROLE_LEAD) return true;
   return userMatchesPermissionEntry(user, permissions?.actions?.[actionId]);
 }
 
@@ -4574,6 +4696,109 @@ function DashboardColumnChart({ rows, color = "linear-gradient(180deg, #0ea5e9 0
   );
 }
 
+const DASHBOARD_LINE_PALETTE = ["#0ea5e9", "#14b8a6", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899"];
+
+function DashboardLineChart({ series = [], emptyLabel = "No hay datos para la gráfica." }) {
+  if (!series.length || series.every((s) => !s.data?.length)) {
+    return <p className="dashboard-empty-state">{emptyLabel}</p>;
+  }
+
+  const width = 520;
+  const height = 220;
+  const padLeft = 36;
+  const padRight = 12;
+  const padTop = 16;
+  const padBottom = 32;
+  const chartW = width - padLeft - padRight;
+  const chartH = height - padTop - padBottom;
+
+  const allValues = series.flatMap((s) => s.data.map((d) => d.y));
+  const maxVal = Math.max(...allValues, 1);
+  const minVal = Math.min(...allValues.filter((v) => v > 0), 0);
+  const range = Math.max(maxVal - minVal, 1);
+
+  const xLabels = series[0]?.data.map((d) => d.label) ?? [];
+  const pointCount = xLabels.length;
+  const xStep = pointCount > 1 ? chartW / (pointCount - 1) : 0;
+
+  function toX(index) { return padLeft + index * xStep; }
+  function toY(value) { return padTop + chartH - ((value - minVal) / range) * chartH; }
+
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => Math.round(minVal + t * range));
+
+  return (
+    <div className="dashboard-linechart-shell">
+      <svg viewBox={`0 0 ${width} ${height}`} className="dashboard-line-chart" aria-label="Gráfico de líneas">
+        <defs>
+          {series.map((s, idx) => {
+            const color = s.color || DASHBOARD_LINE_PALETTE[idx % DASHBOARD_LINE_PALETTE.length];
+            return (
+              <linearGradient key={`lg-${s.key || idx}`} id={`lineArea-${s.key || idx}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={color} stopOpacity="0.22" />
+                <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+              </linearGradient>
+            );
+          })}
+        </defs>
+
+        {/* Grid lines */}
+        {yTicks.map((tick) => (
+          <g key={tick}>
+            <line x1={padLeft} y1={toY(tick)} x2={width - padRight} y2={toY(tick)} className="dashboard-grid-line" />
+            <text x={padLeft - 4} y={toY(tick) + 4} className="dashboard-axis-label" textAnchor="end">{tick > 999 ? `${(tick / 1000).toFixed(1)}k` : tick}</text>
+          </g>
+        ))}
+
+        {/* Axes */}
+        <line x1={padLeft} y1={padTop} x2={padLeft} y2={height - padBottom} className="dashboard-axis-line" />
+        <line x1={padLeft} y1={height - padBottom} x2={width - padRight} y2={height - padBottom} className="dashboard-axis-line" />
+
+        {/* X labels */}
+        {xLabels.map((label, idx) => (
+          <text key={label} x={toX(idx)} y={height - 8} className="dashboard-axis-label" textAnchor="middle">{label}</text>
+        ))}
+
+        {/* Series: fill area then line then dots */}
+        {series.map((s, idx) => {
+          if (!s.data?.length) return null;
+          const color = s.color || DASHBOARD_LINE_PALETTE[idx % DASHBOARD_LINE_PALETTE.length];
+          const pts = s.data.map((d, i) => `${toX(i)},${toY(d.y)}`).join(" ");
+          const fillPath = `M${toX(0)},${height - padBottom} `
+            + s.data.map((d, i) => `L${toX(i)},${toY(d.y)}`).join(" ")
+            + ` L${toX(s.data.length - 1)},${height - padBottom} Z`;
+
+          return (
+            <g key={s.key || idx}>
+              <path d={fillPath} fill={`url(#lineArea-${s.key || idx})`} />
+              <polyline points={pts} fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+              {s.data.map((d, i) => (
+                <circle key={i} cx={toX(i)} cy={toY(d.y)} r="4" fill={color} stroke="#fff" strokeWidth="1.8">
+                  <title>{`${s.label}: ${d.y}${s.valueSuffix || ""}`}</title>
+                </circle>
+              ))}
+            </g>
+          );
+        })}
+      </svg>
+
+      {/* Legend */}
+      {series.length > 1 && (
+        <div className="dashboard-linechart-legend">
+          {series.map((s, idx) => {
+            const color = s.color || DASHBOARD_LINE_PALETTE[idx % DASHBOARD_LINE_PALETTE.length];
+            return (
+              <span key={s.key || idx} className="dashboard-linechart-legend-item">
+                <span className="dashboard-linechart-legend-dot" style={{ background: color }} />
+                {s.label}
+              </span>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DashboardParetoChart({ rows }) {
   if (!rows.length) {
     return <p className="dashboard-empty-state">No hay datos suficientes para la gráfica de Pareto.</p>;
@@ -5059,7 +5284,7 @@ function BootstrapLeadSetup({ setupForm, onChange, onSubmit, error, areaOptions,
 
 function Sidebar({ currentUser, page, onPageChange, isOpen, isCollapsed, onClose, onOpenProfile, onToggleCollapsed, allowedNavItems }) {
   return (
-    <aside className={`sidebar-shell ${isOpen ? "open" : ""} ${isCollapsed ? "collapsed" : ""}`}>
+    <aside className={`sidebar-shell ${isOpen ? "open" : ""} ${isCollapsed && !isOpen ? "collapsed" : ""}`}>
       <div className="sidebar-mobile-actions">
         <button type="button" className="sidebar-close-button" onClick={onClose} aria-label="Cerrar menú">
           <X size={18} />
@@ -5075,18 +5300,32 @@ function Sidebar({ currentUser, page, onPageChange, isOpen, isCollapsed, onClose
       </div>
 
       <nav className="sidebar-nav">
-        {allowedNavItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <button key={item.id} type="button" className={`nav-item ${page === item.id ? "active" : ""}`} title={item.label} aria-label={item.label} onClick={() => {
-              onPageChange(item.id);
-              onClose?.();
-            }}>
-              <Icon size={18} />
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
+        {(() => {
+          let lastGroup = null;
+          const elements = [];
+          allowedNavItems.forEach((item) => {
+            const Icon = item.icon;
+            const showGroupLabel = item.group && item.group !== lastGroup;
+            if (showGroupLabel) {
+              lastGroup = item.group;
+              elements.push(
+                <div key={`group-${item.group}`} className="nav-group-separator">
+                  <span className="nav-group-label">{item.group}</span>
+                </div>,
+              );
+            }
+            elements.push(
+              <button key={item.id} type="button" className={`nav-item ${page === item.id ? "active" : ""}`} title={item.label} aria-label={item.label} onClick={() => {
+                onPageChange(item.id);
+                onClose?.();
+              }}>
+                <Icon size={18} />
+                <span>{item.label}</span>
+              </button>,
+            );
+          });
+          return elements;
+        })()}
       </nav>
 
       <button type="button" className="sidebar-profile-card" onClick={onOpenProfile} title={currentUser.name}>
@@ -5403,7 +5642,16 @@ function ForcedPasswordChangeModal({ passwordForm, onPasswordChange, onSubmit })
 
 function App() { // NOSONAR
   const [state, setState] = useState(loadState);
-  const [page, setPage] = useState(INITIAL_ROUTE_STATE.page);
+  const [page, setPage] = useState(() => {
+    const urlPage = INITIAL_ROUTE_STATE.page;
+    if (urlPage && urlPage !== PAGE_DASHBOARD) return urlPage;
+    try {
+      const saved = localStorage.getItem(ACTIVE_PAGE_KEY);
+      return saved && PAGE_ROUTE_ALIASES[saved] ? PAGE_ROUTE_ALIASES[saved] : urlPage;
+    } catch {
+      return urlPage;
+    }
+  });
   const [dashboardSectionsOpen, setDashboardSectionsOpen] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(DASHBOARD_SECTIONS_KEY) || "null");
@@ -5486,6 +5734,7 @@ function App() { // NOSONAR
   const [bootstrapLeadError, setBootstrapLeadError] = useState("");
   const [auditFilters, setAuditFilters] = useState({ scope: "all", userId: "all", period: "all", search: "" });
   const [sessionUserId, setSessionUserId] = useState("");
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [now, setNow] = useState(Date.now());
   const [syncStatus, setSyncStatus] = useState("Conectando");
   const [securityEvents, setSecurityEvents] = useState([]);
@@ -5672,6 +5921,10 @@ function App() { // NOSONAR
   }, [isSidebarCollapsed]);
 
   useEffect(() => {
+    try { localStorage.setItem(ACTIVE_PAGE_KEY, page); } catch { /* noop */ }
+  }, [page]);
+
+  useEffect(() => {
     localStorage.setItem(DASHBOARD_SECTIONS_KEY, JSON.stringify(dashboardSectionsOpen));
   }, [dashboardSectionsOpen]);
 
@@ -5728,6 +5981,8 @@ function App() { // NOSONAR
           isHydratedRef.current = true;
           setSyncStatus("Modo local");
         }
+      } finally {
+        if (active) setIsAuthChecking(false);
       }
     }
 
@@ -5938,6 +6193,10 @@ function App() { // NOSONAR
     const boardRecords = dashboardVisibleControlBoards.flatMap((board) => (board.rows || []).map((row) => {
       const responsibleUser = userMap.get(row.responsibleId || board.ownerId);
       const durationSeconds = getElapsedSeconds(row, now);
+      const totalElapsedSeconds = row.startTime
+        ? Math.max(durationSeconds, Math.floor((now - new Date(row.startTime).getTime()) / 1000))
+        : durationSeconds;
+      const pauseSeconds = Math.max(0, totalElapsedSeconds - durationSeconds);
       return {
         id: `board-${board.id}-${row.id}`,
         rawId: row.id,
@@ -5951,17 +6210,22 @@ function App() { // NOSONAR
         occurredAt: row.endTime || row.createdAt || row.startTime || row.lastResumedAt,
         status: row.status || STATUS_PENDING,
         durationSeconds,
+        totalElapsedSeconds,
         limitMinutes: 0,
         excessSeconds: 0,
-        pauseCount: 0,
-        pauseSeconds: 0,
-        pauseReasons: [],
+        pauseCount: pauseSeconds > 0 ? 1 : 0,
+        pauseSeconds,
+        pauseReasons: row.lastPauseReason ? [row.lastPauseReason] : [],
       };
     }));
 
     const historicalBoardRecords = dashboardVisibleBoardHistorySnapshots.flatMap((snapshot) => (snapshot.rows || []).map((row) => {
       const responsibleUser = userMap.get(row.responsibleId || snapshot.ownerId);
       const durationSeconds = getElapsedSeconds(row, now);
+      const totalElapsedSeconds = row.startTime
+        ? Math.max(durationSeconds, Math.floor((now - new Date(row.startTime).getTime()) / 1000))
+        : durationSeconds;
+      const pauseSeconds = Math.max(0, totalElapsedSeconds - durationSeconds);
       return {
         id: `board-history-${snapshot.id}-${row.id}`,
         rawId: `${snapshot.id}-${row.id}`,
@@ -5975,11 +6239,12 @@ function App() { // NOSONAR
         occurredAt: row.endTime || row.createdAt || row.startTime || row.lastResumedAt || snapshot.archivedAt,
         status: row.status || STATUS_PENDING,
         durationSeconds,
+        totalElapsedSeconds,
         limitMinutes: 0,
         excessSeconds: 0,
-        pauseCount: 0,
-        pauseSeconds: 0,
-        pauseReasons: [],
+        pauseCount: pauseSeconds > 0 ? 1 : 0,
+        pauseSeconds,
+        pauseReasons: row.lastPauseReason ? [row.lastPauseReason] : [],
       };
     }));
 
@@ -6064,6 +6329,11 @@ function App() { // NOSONAR
     const within = slaScoped.filter((record) => record.durationSeconds <= record.limitMinutes * 60).length;
     const exceeded = slaScoped.filter((record) => record.durationSeconds > record.limitMinutes * 60);
     const totalPauseSeconds = dashboardPauseLogs.reduce((sum, log) => sum + (log.pauseDurationSeconds || 0), 0);
+    const boardPauseSeconds = filteredDashboardRecords.filter((r) => r.source === "board").reduce((sum, r) => sum + (r.pauseSeconds || 0), 0);
+    const allPauseSeconds = totalPauseSeconds + boardPauseSeconds;
+    const totalProductionSeconds = filteredDashboardRecords.reduce((sum, r) => sum + (r.durationSeconds || 0), 0);
+    const totalElapsedSeconds = filteredDashboardRecords.reduce((sum, r) => sum + (r.totalElapsedSeconds || r.durationSeconds || 0), 0);
+    const globalEfficiency = totalElapsedSeconds > 0 ? (totalProductionSeconds / totalElapsedSeconds) * 100 : 100;
     const catalogMandatoryCount = catalogItemsSnapshot.filter((item) => item.isMandatory).length;
     const catalogOptionalCount = Math.max(0, catalogItemsSnapshot.length - catalogMandatoryCount);
     const catalogFrequencyTypes = new Set(catalogItemsSnapshot.map((item) => String(item.frequency || "daily"))).size;
@@ -6080,8 +6350,10 @@ function App() { // NOSONAR
       withinPercent: slaScoped.length ? (within / slaScoped.length) * 100 : 0,
       outsidePercent: slaScoped.length ? (exceeded.length / slaScoped.length) * 100 : 0,
       exceeded,
-      pauseCount: dashboardPauseLogs.length,
-      pauseHours: totalPauseSeconds / 3600,
+      pauseCount: dashboardPauseLogs.length + filteredDashboardRecords.filter((r) => r.source === "board" && r.pauseSeconds > 0).length,
+      pauseHours: allPauseSeconds / 3600,
+      productionHours: totalProductionSeconds / 3600,
+      efficiency: globalEfficiency,
       areaCount: new Set(filteredDashboardRecords.map((record) => record.area)).size,
       boardCount: new Set(filteredDashboardRecords.map((record) => record.boardName)).size,
       catalogActiveCount: catalogItemsSnapshot.length,
@@ -6298,7 +6570,13 @@ function App() { // NOSONAR
   }, [currentUser, state.users]);
   const activeAssignableUsers = useMemo(() => visibleUsers.filter((user) => user.isActive), [visibleUsers]);
 
-  const creatableRoles = useMemo(() => USER_ROLES.filter((role) => currentUser ? canCreateRole(currentUser.role, role) : false), [currentUser]);
+  // Todos los roles disponibles: base + personalizados
+  const allRoles = useMemo(() => [
+    ...USER_ROLES,
+    ...(state.customRoles || []).map((r) => r.name),
+  ], [state.customRoles]);
+
+  const creatableRoles = useMemo(() => currentUser ? allRoles : [], [currentUser, allRoles]);
 
   const filteredUsers = useMemo(() => {
     return visibleUsers.filter((user) => {
@@ -6368,8 +6646,6 @@ function App() { // NOSONAR
       }))
       .sort((left, right) => left.creatorName.localeCompare(right.creatorName));
   }, [filteredUsers, userMap]);
-
-  const canResetOtherPasswords = currentUser?.role === ROLE_LEAD || currentUser?.role === ROLE_SR;
 
   const allInventoryItems = useMemo(
     () => (state.inventoryItems || []).map((item) => normalizeInventoryItemRecord(item)),
@@ -6720,6 +6996,7 @@ function App() { // NOSONAR
   const allowedPagesKey = useMemo(() => allowedPages.join("|"), [allowedPages]);
 
   useEffect(() => {
+    if (!currentUser) return;
     if (!allowedPages.includes(page) && page !== PAGE_NOT_FOUND) {
       const fallbackPage = allowedPages[0] || PAGE_DASHBOARD;
       setPage(fallbackPage);
@@ -6779,7 +7056,10 @@ function App() { // NOSONAR
   );
 
   const currentInventoryManagePermission = actionPermissions[getInventoryManageActionId(inventoryTab)];
+  const currentInventoryDeletePermission = actionPermissions[getInventoryDeleteActionId(inventoryTab)];
   const currentInventoryImportPermission = actionPermissions[getInventoryImportActionId(inventoryTab)];
+
+  const canResetOtherPasswords = actionPermissions.resetPasswords;
 
   const derivedNotifications = useMemo(() => {
     if (!currentUser) return [];
@@ -6853,19 +7133,30 @@ function App() { // NOSONAR
       });
 
     if ((ROLE_LEVEL[currentUser.role] || 0) >= ROLE_LEVEL[ROLE_SR]) {
-      securityEvents
-        .slice(0, 5)
-        .forEach((event, index) => {
-          notifications.push({
-            id: `security-event-${event.timestamp || index}-${event.eventType || "audit"}`,
-            title: "Evento de seguridad",
-            message: `${event.eventType || "Evento"} en ${event.path || "ruta no disponible"}.`,
-            meta: event.details?.login || event.details?.reason || event.ip || "Revisar detalle en backend",
-            tone: "danger",
-            timestamp: event.timestamp || new Date(now).toISOString(),
-          });
-        });
+      // Eventos de seguridad: solo en logs internos, no en notificaciones visibles
     }
+
+    (state.bibliotecaNotifications || [])
+      .slice(-20)
+      .forEach((notif) => {
+        const toneMap = { alta: "danger", media: "warning", baja: "success" };
+        notifications.push({
+          id: `biblioteca-notif-${notif.id}`,
+          title:
+            notif.priority === "alta"
+              ? "🔴 Documento urgente en Biblioteca"
+              : notif.priority === "media"
+                ? "🟡 Nuevo documento en Biblioteca"
+                : "📄 Documento disponible en Biblioteca",
+          message: `${notif.authorName} subió "${notif.originalName}" en la sección ${notif.area}.`,
+          meta: `Prioridad: ${notif.priority ? notif.priority.charAt(0).toUpperCase() + notif.priority.slice(1) : "Baja"}`,
+          tone: toneMap[notif.priority] || "success",
+          timestamp: notif.createdAt,
+          targetPage: PAGE_BIBLIOTECA,
+          isLocked: notif.priority === "alta",
+          keepUntilResolved: notif.priority === "alta",
+        });
+      });
 
     return notifications.toSorted((left, right) => getComparableDateMs(right.timestamp) - getComparableDateMs(left.timestamp));
   }, [
@@ -6877,6 +7168,7 @@ function App() { // NOSONAR
     managedUserIds,
     now,
     securityEvents,
+    state.bibliotecaNotifications,
   ]);
 
   useEffect(() => {
@@ -7023,13 +7315,11 @@ function App() { // NOSONAR
 
   const userModalRoleOptions = useMemo(() => {
     if (!currentUser) return [];
-    if (currentUser.role === ROLE_LEAD) return USER_ROLES;
-    const allowedRoles = new Set(creatableRoles);
-    if (userModal.mode === "edit" && userModal.role) {
-      allowedRoles.add(userModal.role);
-    }
-    return USER_ROLES.filter((role) => allowedRoles.has(role));
-  }, [creatableRoles, currentUser, userModal.mode, userModal.role]);
+    // Siempre muestra todos los roles; el control real es el permiso manageUsers
+    const options = new Set(allRoles);
+    if (userModal.mode === "edit" && userModal.role) options.add(userModal.role);
+    return Array.from(options);
+  }, [allRoles, currentUser, userModal.mode, userModal.role]);
 
   const templateCategories = useMemo(() => {
     const categories = availableBoardTemplates.map((template) => getBoardTemplateCategory(template));
@@ -7419,7 +7709,7 @@ function App() { // NOSONAR
   }
 
   function openCreateUser() {
-    if (!actionPermissions.manageUsers) return;
+    if (!actionPermissions.createUsers) return;
     const defaultRole = creatableRoles[0] || ROLE_JR;
     const nextModal = createUserModalState({
       open: true,
@@ -7441,7 +7731,7 @@ function App() { // NOSONAR
   }
 
   function openEditUser(user) {
-    if (!actionPermissions.manageUsers) return;
+    if (!actionPermissions.editUsers) return;
     const nextModal = createUserModalState({
       open: true,
       mode: "edit",
@@ -7462,7 +7752,8 @@ function App() { // NOSONAR
   }
 
   async function submitUserModal() {
-    if (!currentUser || !actionPermissions.manageUsers || !canCreateRole(currentUser.role, userModal.role) && userModal.mode === "create") return;
+    const requiredPermission = userModal.mode === "create" ? actionPermissions.createUsers : actionPermissions.editUsers;
+    if (!currentUser || !requiredPermission) return;
     const trimmedPassword = userModal.password.trim();
     const resolvedPlayerAccess = userModal.username.trim() || buildUniquePlayerAccess(
       userModal.name || userModal.role || "player",
@@ -7500,9 +7791,15 @@ function App() { // NOSONAR
         },
       );
       applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      pushAppToast(
+        userModal.mode === "create"
+          ? `Player ${payload.name} creado correctamente.`
+          : `Cambios de ${payload.name} guardados correctamente.`,
+        "success",
+      );
       closeUserModal();
-    } catch {
-      // The modal already exposes validation context; keep it open on failure.
+    } catch (error) {
+      pushAppToast(error?.message || "No se pudieron guardar los cambios. Intenta de nuevo.", "danger");
     }
   }
 
@@ -7569,6 +7866,61 @@ function App() { // NOSONAR
       applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
     } catch {
       // Ignore UI toggle failures silently for now.
+    }
+  }
+
+  // ── Roles personalizados ──────────────────────────────────────────────────
+  const [roleModalOpen, setRoleModalOpen] = useState(false);
+  const [roleModalName, setRoleModalName] = useState("");
+  const [roleModalEditId, setRoleModalEditId] = useState(null);
+  const [roleModalError, setRoleModalError] = useState(null);
+  const [roleSaving, setRoleSaving] = useState(false);
+
+  function openCreateRoleModal() {
+    setRoleModalEditId(null);
+    setRoleModalName("");
+    setRoleModalError(null);
+    setRoleModalOpen(true);
+  }
+
+  function openEditRoleModal(role) {
+    setRoleModalEditId(role.id);
+    setRoleModalName(role.name);
+    setRoleModalError(null);
+    setRoleModalOpen(true);
+  }
+
+  async function submitRoleModal() {
+    if (!roleModalName.trim()) { setRoleModalError("El nombre no puede estar vacío."); return; }
+    setRoleSaving(true);
+    setRoleModalError(null);
+    try {
+      const result = roleModalEditId
+        ? await requestJson(`/warehouse/roles/${roleModalEditId}`, { method: "PATCH", body: JSON.stringify({ name: roleModalName.trim() }) })
+        : await requestJson("/warehouse/roles", { method: "POST", body: JSON.stringify({ name: roleModalName.trim() }) });
+      if (!result.ok) throw new Error(result.message || "Error al guardar rol.");
+      const savedRole = result.data;
+      setState((prev) => {
+        const prevRoles = prev.customRoles || [];
+        const updated = roleModalEditId
+          ? prevRoles.map((r) => r.id === roleModalEditId ? savedRole : r)
+          : [...prevRoles, savedRole];
+        return { ...prev, customRoles: updated };
+      });
+      setRoleModalOpen(false);
+    } catch (err) {
+      setRoleModalError(err.message);
+    } finally {
+      setRoleSaving(false);
+    }
+  }
+
+  async function handleDeleteCustomRole(roleId) {
+    try {
+      await requestJson(`/warehouse/roles/${roleId}`, { method: "DELETE" });
+      setState((prev) => ({ ...prev, customRoles: (prev.customRoles || []).filter((r) => r.id !== roleId) }));
+    } catch {
+      // silencioso
     }
   }
 
@@ -7782,6 +8134,7 @@ function App() { // NOSONAR
         body: JSON.stringify({ permissions: nextPermissions }),
       });
       applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setPermissionsFeedback({ tone: "success", message: "Permiso actualizado correctamente." });
     } catch (error) {
       setPermissionsFeedback({ tone: "danger", message: error?.message || "No se pudo actualizar la regla de permisos." });
     }
@@ -7985,43 +8338,31 @@ function App() { // NOSONAR
   }
 
   async function importDraftRowsIntoBoard(createdBoardId, payload, initialState) {
-    let latestRemoteState = initialState;
-    const rowsToImport = boardImportedRowsDraft.slice(0, 200);
+    const rowsToImport = boardImportedRowsDraft.slice(0, 500);
     const yesValues = new Set(["si", "sí", "true", "1", "yes", "y"]);
 
-    for (const importedRow of rowsToImport) {
-      const createdRowState = await requestJson(`/warehouse/boards/${createdBoardId}/rows`, {
-        method: "POST",
-      });
+    const bulkRows = rowsToImport.map((importedRow) => {
+      const values = buildImportedBoardRowValuesPatch(importedRow, payload.columns, visibleUsers, state.inventoryItems || [], yesValues);
+      return { values };
+    }).filter((item) => Object.keys(item.values).length > 0);
 
-      const boardAfterCreate = (createdRowState.controlBoards || []).find((item) => item.id === createdBoardId);
-      const rowId = boardAfterCreate?.rows?.[boardAfterCreate.rows.length - 1]?.id;
-      if (!rowId) {
-        latestRemoteState = createdRowState;
-        continue;
-      }
+    if (!bulkRows.length) return initialState;
 
-      const valuesPatch = buildImportedBoardRowValuesPatch(importedRow, payload.columns, visibleUsers, state.inventoryItems || [], yesValues);
-      if (!Object.keys(valuesPatch).length) {
-        latestRemoteState = createdRowState;
-        continue;
-      }
-
-      latestRemoteState = await requestJson(`/warehouse/boards/${createdBoardId}/rows/${rowId}`, {
-        method: "PATCH",
-        body: JSON.stringify({ values: valuesPatch }),
-      });
-    }
+    const latestRemoteState = await requestJson(`/warehouse/boards/${createdBoardId}/rows/bulk`, {
+      method: "POST",
+      body: JSON.stringify({ rows: bulkRows }),
+    });
 
     return latestRemoteState;
   }
 
   async function saveControlBoard() {
-    if (!currentUser || !actionPermissions.saveBoard || !controlBoardDraft.name.trim() || !controlBoardDraft.columns.length) {
+    const isEditing = boardBuilderModal.mode === "edit" && boardBuilderModal.boardId;
+    const hasPermission = isEditing ? actionPermissions.editBoard : actionPermissions.createBoard;
+    if (!currentUser || !hasPermission || !controlBoardDraft.name.trim() || !controlBoardDraft.columns.length) {
       setControlBoardFeedback("Agrega nombre, dueño y al menos un campo para guardar el tablero.");
       return;
     }
-    const isEditing = boardBuilderModal.mode === "edit" && boardBuilderModal.boardId;
 
     const ownerId = controlBoardDraft.ownerId || currentUser.id;
     const { payload } = buildBoardSavePayload(controlBoardDraft, ownerId);
@@ -8042,7 +8383,7 @@ function App() { // NOSONAR
         applyRemoteWarehouseState(latestRemoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
         setBoardRuntimeFeedback({
           tone: "success",
-          message: `Se creó ${payload.name} y se importaron ${Math.min(boardImportedRowsDraft.length, 200)} fila(s) desde Excel.${boardImportedRowsDraft.length > 200 ? " Solo se importaron las primeras 200 por rendimiento." : ""}`,
+          message: `Se creó ${payload.name} y se importaron ${Math.min(boardImportedRowsDraft.length, 500)} fila(s) desde Excel.${boardImportedRowsDraft.length > 500 ? " Solo se importaron las primeras 500 por rendimiento." : ""}`,
         });
       }
 
@@ -8090,7 +8431,7 @@ function App() { // NOSONAR
   }
 
   function openEditBoardBuilder(board) {
-    if (!actionPermissions.saveBoard || !canEditBoard(currentUser, board)) return;
+    if (!actionPermissions.editBoard || !canEditBoard(currentUser, board)) return;
     setControlBoardDraft(createBoardDraftFromBoard(board));
     setBoardImportedRowsDraft([]);
     setExcelFormulaWizard({ open: false, items: [] });
@@ -8551,7 +8892,7 @@ function App() { // NOSONAR
 
   async function deleteInventoryItem(itemId) {
     const item = (state.inventoryItems || []).find((entry) => entry.id === itemId);
-    if (!itemId || !actionPermissions[getInventoryManageActionId(item?.domain)]) return;
+    if (!itemId || !actionPermissions[getInventoryDeleteActionId(item?.domain)]) return;
     try {
       const result = await requestJson(`/warehouse/inventory/${itemId}`, {
         method: "DELETE",
@@ -8733,7 +9074,17 @@ function App() { // NOSONAR
       exportRow.Estado = row.status || STATUS_PENDING;
 
       if (board.settings?.showDates !== false) {
-        exportRow["Tiempo acumulado"] = formatDurationClock(getElapsedSeconds(row, Date.now()));
+        const snapshotNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : Date.now();
+        const prodSecs = getElapsedSeconds(row, snapshotNow);
+        const totalSecs = row.startTime
+          ? Math.max(prodSecs, Math.floor((snapshotNow - new Date(row.startTime).getTime()) / 1000))
+          : prodSecs;
+        const pauseSecs = Math.max(0, totalSecs - prodSecs);
+        const efficiencyPct = totalSecs > 0 ? Math.round((prodSecs / totalSecs) * 100) : (row.startTime ? 100 : 0);
+        exportRow["Tiempo de producción"] = formatDurationClock(prodSecs);
+        exportRow["Tiempo acumulado"] = formatDurationClock(totalSecs);
+        exportRow["Tiempo en pausa"] = formatDurationClock(pauseSecs);
+        exportRow["Eficiencia"] = row.startTime ? `${efficiencyPct}%` : "";
         exportRow["Creado el"] = formatDateTime(row.createdAt);
       }
 
@@ -8744,8 +9095,7 @@ function App() { // NOSONAR
   async function duplicateBoardRecord(board, includeRows = false) {
     if (!board || !currentUser) return;
     if (!canDoBoardAction(currentUser, board)) return;
-    if (includeRows && !actionPermissions.duplicateBoardWithRows) return;
-    if (!includeRows && !actionPermissions.duplicateBoard) return;
+    if (!actionPermissions.duplicateBoardWithRows && !actionPermissions.duplicateBoard) return;
 
     try {
       const result = await requestJson(`/warehouse/boards/${board.id}/duplicate`, {
@@ -9288,6 +9638,7 @@ function App() { // NOSONAR
     Copy,
     creatableRoles,
     createBoardRow,
+    currentInventoryDeletePermission,
     currentInventoryImportPermission,
     currentInventoryItems,
     currentInventoryManagePermission,
@@ -9313,6 +9664,7 @@ function App() { // NOSONAR
     DashboardBarRow,
     DashboardCauseCard,
     DashboardColumnChart,
+    DashboardLineChart,
     DashboardIshikawaDiagram,
     DashboardKpiCard,
     DashboardParetoChart,
@@ -9496,6 +9848,19 @@ function App() { // NOSONAR
     userSearch,
     userStats,
     USER_ROLES,
+    allRoles,
+    customRoles: state.customRoles || [],
+    roleModalOpen,
+    roleModalName,
+    setRoleModalName,
+    roleModalEditId,
+    roleModalError,
+    roleSaving,
+    openCreateRoleModal,
+    openEditRoleModal,
+    submitRoleModal,
+    handleDeleteCustomRole,
+    setRoleModalOpen,
     Users,
     visibleControlBoards,
     visibleUsers,
@@ -9508,6 +9873,7 @@ function App() { // NOSONAR
   }
 
   if (!currentUser) {
+    if (isAuthChecking) return <div className="app-auth-splash" />;
     return <LoginScreen loginForm={loginForm} onChange={updateLoginField} onSubmit={handleLogin} error={loginError} demoUsers={loginDirectory.system?.showBootstrapMasterHint ? [{ id: BOOTSTRAP_MASTER_ID, role: "Acceso maestro", login: loginDirectory.system?.masterUsername || MASTER_USERNAME }] : loginDirectory.demoUsers} />;
   }
 
@@ -9549,6 +9915,7 @@ function App() { // NOSONAR
                 onToggle={handleToggleNotificationPanel}
                 onTabChange={setNotificationPanelTab}
                 onDeleteAllRead={handleDeleteAllReadNotifications}
+                onMarkAllRead={() => markNotificationIdsAsRead(unreadNotifications.map((n) => n.id))}
                 onDeleteNotification={handleDeleteNotification}
                 onOpenNotification={handleOpenNotification}
               />
@@ -9567,7 +9934,7 @@ function App() { // NOSONAR
         {page === PAGE_HISTORY ? <HistorialSemanas contexto={paginasContexto} /> : null}
         {page === PAGE_INVENTORY ? <GestionInventario contexto={paginasContexto} /> : null}
         {page === PAGE_USERS ? <GestionUsuarios contexto={paginasContexto} /> : null}
-        {page === PAGE_BIBLIOTECA ? <BibliotecaPage currentUser={currentUser} canManage={actionPermissions.manageBiblioteca} /> : null}
+        {page === PAGE_BIBLIOTECA ? <BibliotecaPage currentUser={currentUser} canUpload={actionPermissions.uploadBiblioteca} canDelete={actionPermissions.deleteBiblioteca} /> : null}
         {page === PAGE_NOT_FOUND ? <PaginaNoEncontrada contexto={paginasContexto} /> : null}
       </section>
 
@@ -9595,8 +9962,52 @@ function App() { // NOSONAR
 
       <Modal open={boardFinishConfirm.open} title="Finalizar fila" confirmLabel="Confirmar fin" cancelLabel="Cancelar" onClose={() => setBoardFinishConfirm({ open: false, boardId: null, rowId: null, message: "" })} onConfirm={confirmFinishBoardRow}>
         <div className="modal-form-grid">
-          <p>Vas a cerrar esta actividad.</p>
-          <p>{boardFinishConfirm.message}</p>
+          {(() => {
+            const finBoard = boardFinishConfirm.boardId ? (state.controlBoards || []).find((b) => b.id === boardFinishConfirm.boardId) : null;
+            const finRow = finBoard?.rows?.find((r) => r.id === boardFinishConfirm.rowId) || null;
+            if (!finRow) return null;
+            const productionSecs = getElapsedSeconds(finRow, now);
+            const totalSecs = finRow.startTime
+              ? Math.max(productionSecs, Math.floor((now - new Date(finRow.startTime).getTime()) / 1000))
+              : productionSecs;
+            const pauseSecs = Math.max(0, totalSecs - productionSecs);
+            const efficiency = totalSecs > 0 ? Math.round((productionSecs / totalSecs) * 100) : 100;
+            return (
+              <div className="board-finish-time-breakdown">
+                <div className="board-finish-time-row production">
+                  <div className="board-finish-time-icon production-icon" />
+                  <div className="board-finish-time-info">
+                    <span className="board-finish-time-label">Tiempo de producción</span>
+                    <small className="board-finish-time-hint">Solo cuando estuvo activa</small>
+                  </div>
+                  <strong className="board-finish-time-value">{formatDurationClock(productionSecs)}</strong>
+                </div>
+                <div className="board-finish-time-row pause">
+                  <div className="board-finish-time-icon pause-icon" />
+                  <div className="board-finish-time-info">
+                    <span className="board-finish-time-label">Tiempo en pausa</span>
+                    <small className="board-finish-time-hint">Tiempo detenida (no productivo)</small>
+                  </div>
+                  <strong className="board-finish-time-value">{formatDurationClock(pauseSecs)}</strong>
+                </div>
+                <div className="board-finish-time-row total">
+                  <div className="board-finish-time-icon total-icon" />
+                  <div className="board-finish-time-info">
+                    <span className="board-finish-time-label">Tiempo total</span>
+                    <small className="board-finish-time-hint">Desde inicio hasta ahora</small>
+                  </div>
+                  <strong className="board-finish-time-value">{formatDurationClock(totalSecs)}</strong>
+                </div>
+                <div className="board-finish-efficiency-bar">
+                  <div className="board-finish-efficiency-track">
+                    <div className="board-finish-efficiency-fill" style={{ width: `${efficiency}%` }} />
+                  </div>
+                  <span className="board-finish-efficiency-label">{efficiency}% eficiencia productiva</span>
+                </div>
+              </div>
+            );
+          })()}
+          <p className="board-finish-confirm-note">{boardFinishConfirm.message}</p>
         </div>
       </Modal>
 
@@ -9901,7 +10312,7 @@ function App() { // NOSONAR
         contextoConstructor={contextoConstructor}
         boardOperationalContextOptions={BOARD_OPERATIONAL_CONTEXT_OPTIONS}
         canSaveTemplate={actionPermissions.saveTemplate}
-        canSaveBoard={actionPermissions.saveBoard}
+        canSaveBoard={actionPermissions.createBoard || actionPermissions.editBoard}
       />
 
       <input

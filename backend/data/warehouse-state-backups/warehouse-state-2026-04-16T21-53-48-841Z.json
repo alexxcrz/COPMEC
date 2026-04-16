@@ -1,5 +1,5 @@
 {
-  "revision": 2157,
+  "revision": 2150,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro"
@@ -35,10 +35,10 @@
       "managerId": "usr-lead-nu7wt83h",
       "createdById": "usr-lead-nu7wt83h",
       "selfIdentityEditCount": 0,
-      "mustChangePassword": false,
+      "mustChangePassword": true,
       "temporaryPasswordIssuedAt": "2026-04-16T21:53:21.077Z",
-      "passwordHash": "scrypt$a19ecf285a1fd00b679b45aca96fcab0$888b12b330a61bdcc7819de0d393120db2e3fff60d94c24a383531e755ed93e2fa3edb84b87fcc4fdcdf85948381330eade29218480c0498d13c987b75f0934d",
-      "sessionVersion": 10
+      "passwordHash": "scrypt$bd3ee14adbba0cf8d456581269f8031d$743e1690a93157bd96dc94e565b0d1b9de4dbf6a1cd8c43f219eeb1c36c0a4b36dd3715d721b5490dbedb6a4684827db691cc35efea80b5e76fb42e5815dded4",
+      "sessionVersion": 9
     },
     {
       "id": "usr-sqtdyayn",
@@ -8933,8 +8933,7 @@
       "ownerId": "usr-lead-nu7wt83h",
       "accessUserIds": [
         "usr-sqtdyayn",
-        "usr-06t9ibth",
-        "usr-a2hd8qtb"
+        "usr-06t9ibth"
       ],
       "settings": {
         "showWorkflow": true,
@@ -9116,18 +9115,34 @@
           "lastPauseReason": "baño"
         },
         {
+          "id": "row-6h86i16e",
+          "values": {
+            "fld-pjabusyf": "Oficinas",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.55Z"
+        },
+        {
           "id": "row-q8qik4ng",
           "values": {
             "fld-pjabusyf": "Portones",
-            "fld-x1jzjoxm": "15:55",
-            "fld-gtp4zz3s": "15:55",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
             "fld-eaq0jvax": ""
           },
-          "responsibleId": "usr-a2hd8qtb",
-          "status": "Terminado",
-          "startTime": "2026-04-16T21:55:22.626Z",
-          "endTime": "2026-04-16T21:55:44.795Z",
-          "accumulatedSeconds": 22,
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
           "lastResumedAt": null,
           "createdAt": "2026-04-14T14:27:45.55Z"
         },
@@ -9421,7 +9436,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-16T21:55:44.807Z",
+  "updatedAt": "2026-04-16T21:53:21.101Z",
   "permissions": {
     "pages": {
       "index": {

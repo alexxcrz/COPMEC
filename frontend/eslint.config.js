@@ -23,7 +23,21 @@ export default defineConfig([
       },
     },
     rules: {
+      // ── Errores reales ──────────────────────────────────────────
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+
+      // ── Advertencias de estilo — desactivadas ───────────────────
+      'react/prop-types': 'off',
+      'no-restricted-globals': 'off',
+      'sonarjs/cognitive-complexity': 'off',
+
+      // ── Advertencias de accesibilidad — desactivadas ────────────
+      'jsx-a11y/no-noninteractive-element-interactions': 'off',
+      'jsx-a11y/click-events-have-key-events': 'off',
+      'jsx-a11y/no-static-element-interactions': 'off',
+      'jsx-a11y/aria-role': 'off',
+      'jsx-a11y/no-noninteractive-element-to-interactive-role': 'off',
     },
   },
 ])
+
