@@ -47,12 +47,34 @@ export async function uploadCellFile(file, folder = "copmec/cells") {
   const isImage = String(file.mimetype).startsWith("image/");
   const resourceType = isImage ? "image" : "raw";
 
-  const result = await cloudinary.uploader.upload(toDataUri(file), {
-    folder,
-    resource_type: resourceType,
-    use_filename: true,
-    unique_filename: true,
-  });
+  let result;
+  if (isImage) {
+    // Imágenes: data URI funciona bien
+    result = await cloudinary.uploader.upload(toDataUri(file), {
+      folder,
+      resource_type: "image",
+      use_filename: true,
+      unique_filename: true,
+    });
+  } else {
+    // Archivos raw (PDF, Excel, Word, txt): usar upload_stream con buffer
+    result = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder,
+          resource_type: "raw",
+          use_filename: true,
+          unique_filename: true,
+          public_id: file.originalname.replace(/\s+/g, "_"),
+        },
+        (error, uploadResult) => {
+          if (error) reject(error);
+          else resolve(uploadResult);
+        },
+      );
+      stream.end(file.buffer);
+    });
+  }
 
   return {
     fileUrl: result.secure_url,
