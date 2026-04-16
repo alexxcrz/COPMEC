@@ -44,6 +44,11 @@
   width: min(100%, 1220px);
 }
 
+/* Modal de área anidado: z-index superior para que cubra el modal padre */
+.sicfla-modal-backdrop.area-modal-backdrop {
+  z-index: 110;
+}
+
 .sicfla-modal.user-management-modal .sicfla-modal-body {
   padding-right: 0.3rem;
 }

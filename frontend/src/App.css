@@ -7162,6 +7162,32 @@ tbody tr:hover {
 }
 
 /* ═══════════════════════════════════════════════
+   TABLET — 481px–720px
+   Modales anchos contenidos, sin bottom-sheet aún
+═══════════════════════════════════════════════ */
+@media (min-width: 481px) and (max-width: 720px) {
+  .sicfla-modal.inventory-item-modal,
+  .sicfla-modal.user-management-modal,
+  .sicfla-modal.board-builder-modal {
+    width: calc(100vw - 2rem) !important;
+    max-width: calc(100vw - 2rem) !important;
+    max-height: 88dvh;
+  }
+
+  .inventory-item-modal .modal-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .user-modal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .inventory-activity-consumption-editor {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ═══════════════════════════════════════════════
    MOBILE — ≤ 480px
    Full mobile-friendly refinements for phones
 ═══════════════════════════════════════════════ */
@@ -7200,15 +7226,59 @@ tbody tr:hover {
     padding: 0 0 0.1rem;
   }
 
-  /* ── Header de página ── */
+  /* ── Header de página: menú + campana en la misma fila ── */
   .content-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.65rem;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0;
+  }
+
+  /* El div con el título va debajo en toda la fila */
+  .content-header > div:not(.header-tools) {
+    order: 2;
+    width: 100%;
+    margin-top: 0.5rem;
   }
 
   .content-header h2 {
     font-size: 1.28rem;
+  }
+
+  /* Campana siempre a la derecha del menú, misma fila */
+  .header-tools {
+    order: 1;
+    margin-left: auto;
+    gap: 0.5rem;
+  }
+
+  /* Ocultar meta (fecha/sync/rol) en mobile pequeño */
+  .header-meta {
+    display: none;
+  }
+
+  /* Panel de notificaciones: queda fijo en la pantalla en mobile */
+  .app-notification-panel {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: 75dvh;
+    border-radius: 1.25rem 1.25rem 0 0;
+    z-index: 120;
+  }
+
+  /* Backdrop semitransparente para el panel de notificaciones en mobile */
+  .app-notification-center.open::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(3, 33, 33, 0.35);
+    z-index: 119;
   }
 
   .component-type-grid {
@@ -7311,6 +7381,21 @@ tbody tr:hover {
   .sicfla-modal-backdrop {
     align-items: flex-end;
     padding: 0;
+  }
+
+  /* El primer backdrop modal se centra normalmente */
+  /* El backdrop del modal de área (z-110) aparece sobre el modal padre */
+  .sicfla-modal-backdrop.area-modal-backdrop {
+    z-index: 110;
+    align-items: center;
+    padding: 1rem;
+  }
+
+  .sicfla-modal-backdrop.area-modal-backdrop .sicfla-modal {
+    width: min(100%, 420px) !important;
+    max-height: 80dvh;
+    border-radius: 1.2rem !important;
+    margin: 0 auto !important;
   }
 
   .sicfla-modal {

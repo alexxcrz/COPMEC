@@ -10,6 +10,7 @@ export function Modal({
   cancelLabel = "Cancelar (Esc)",
   hideCancel = false,
   className = "",
+  backdropClassName = "",
   footerActions = null,
 }) {
   useEffect(() => {
@@ -45,7 +46,7 @@ export function Modal({
   if (!open) return null;
 
   return (
-    <div className="sicfla-modal-backdrop" role="presentation" onClick={onClose}>
+    <div className={`sicfla-modal-backdrop ${backdropClassName}`.trim()} role="presentation" onClick={onClose}>
       <section
         className={`sicfla-modal ${className}`.trim()}
         role="dialog"

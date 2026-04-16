@@ -1378,7 +1378,7 @@ function AppNotificationCenter({ unreadNotifications, readNotifications, unreadC
   const visibleNotifications = activeTab === "read" ? readNotifications : unreadNotifications;
 
   return (
-    <div className="app-notification-center">
+    <div className={`app-notification-center${isOpen ? " open" : ""}`}>
       <button type="button" className={`app-notification-trigger ${unreadCount ? "has-unread" : ""}`.trim()} onClick={onToggle} aria-label="Abrir alertas" aria-expanded={isOpen}>
         <Bell size={18} />
         {unreadCount ? <span className="app-notification-badge">{Math.min(unreadCount, 99)}</span> : null}
@@ -9626,7 +9626,7 @@ function App() { // NOSONAR
         </div>
       </Modal>
 
-      <Modal open={areaModal.open} title="Agregar área" confirmLabel="Guardar área" cancelLabel="Cancelar" onClose={() => setAreaModal({ open: false, target: "user", name: "", error: "" })} onConfirm={confirmAddArea}>
+      <Modal open={areaModal.open} backdropClassName="area-modal-backdrop" title="Agregar área" confirmLabel="Guardar área" cancelLabel="Cancelar" onClose={() => setAreaModal({ open: false, target: "user", name: "", error: "" })} onConfirm={confirmAddArea}>
         <div className="modal-form-grid">
           <label className="app-modal-field">
             <span>Nombre del área</span>
