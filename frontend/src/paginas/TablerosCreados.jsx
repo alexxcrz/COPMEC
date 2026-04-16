@@ -110,12 +110,8 @@ export default function TablerosCreados({ contexto }) {
         <div>
           <h3>Creador de tableros</h3>
           <p>Desde aquí creas, editas y administras tableros y también el catálogo de actividades.</p>
-          <div className="saved-board-list">
-            <span className="chip primary">Editables por ti: {visibleControlBoards.filter((board) => canEditBoard(currentUser, board)).length}</span>
-            <span className="chip">Total visibles: {visibleControlBoards.length}</span>
-          </div>
+          <p className="hero-card-meta">Editables por ti: <strong>{visibleControlBoards.filter((board) => canEditBoard(currentUser, board)).length}</strong> · Total visibles: <strong>{visibleControlBoards.length}</strong></p>
         </div>
-        <span className="chip success">{visibleControlBoards.length} visibles</span>
       </article>
 
       <article className="surface-card admin-tabs full-width admin-tabs-shell">

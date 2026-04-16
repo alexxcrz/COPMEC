@@ -2649,6 +2649,16 @@ html {
   color: #8a94a0;
 }
 
+.hero-card-meta {
+  margin: 0.35rem 0 0 !important;
+  font-size: 0.8rem;
+  color: #8a94a0;
+}
+.hero-card-meta strong {
+  color: #173130;
+  font-weight: 600;
+}
+
 .custom-board-stat-grid {
   gap: 0.75rem;
 }
