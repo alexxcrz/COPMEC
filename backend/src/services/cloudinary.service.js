@@ -20,14 +20,20 @@ function buildThumbnail(uploadResult) {
   }
 
   if (uploadResult.resource_type === "raw") {
-    return cloudinary.url(uploadResult.public_id, {
-      resource_type: "raw",
-      format: "jpg",
-      page: 1,
-      width: 240,
-      height: 240,
-      crop: "fill",
-    });
+    // Solo PDFs soportan extracción de página en Cloudinary
+    const mightBePdf = uploadResult.format === "pdf" ||
+      String(uploadResult.public_id).toLowerCase().endsWith(".pdf");
+    if (mightBePdf) {
+      return cloudinary.url(uploadResult.public_id, {
+        resource_type: "raw",
+        format: "jpg",
+        page: 1,
+        width: 240,
+        height: 240,
+        crop: "fill",
+      });
+    }
+    return uploadResult.secure_url;
   }
 
   return uploadResult.secure_url;
