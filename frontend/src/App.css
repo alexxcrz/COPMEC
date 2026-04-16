@@ -7272,14 +7272,7 @@ tbody tr:hover {
     z-index: 120;
   }
 
-  /* Backdrop semitransparente para el panel de notificaciones en mobile */
-  .app-notification-center.open::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    background: rgba(3, 33, 33, 0.35);
-    z-index: 119;
-  }
+
 
   .component-type-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
