@@ -3146,6 +3146,14 @@ tbody tr:hover {
   border-color: transparent;
 }
 
+.sm-button {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.78rem;
+  gap: 0.3rem;
+  min-height: unset;
+  border-radius: 999px;
+}
+
 .icon-button:hover,
 .primary-button:hover,
 .toggle-button:hover,

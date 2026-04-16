@@ -202,16 +202,15 @@ export default function TablerosCreados({ contexto }) {
           <div className="card-header-row">
             <div>
               <h3>Catálogo de actividades</h3>
-              <p>Vista General muestra todas las listas. Crea listas nuevas o agrega actividades dentro de cada lista.</p>
             </div>
             <div className="toolbar-actions">
               {selectedCatalogCategory === "General" ? (
-                <button type="button" className="primary-button" onClick={handleOpenCreateCategoryModal} disabled={!actionPermissions.manageCatalog}>
-                  <Plus size={16} /> Crear nueva lista
+                <button type="button" className="primary-button sm-button" onClick={handleOpenCreateCategoryModal} disabled={!actionPermissions.manageCatalog}>
+                  <Plus size={14} /> Crear lista
                 </button>
               ) : (
-                <button type="button" className="primary-button" onClick={() => openCatalogCreate(selectedCatalogCategory)} disabled={!actionPermissions.manageCatalog}>
-                  <Plus size={16} /> Agregar actividad a {selectedCatalogCategory}
+                <button type="button" className="primary-button sm-button" onClick={() => openCatalogCreate(selectedCatalogCategory)} disabled={!actionPermissions.manageCatalog}>
+                  <Plus size={14} /> Agregar actividad
                 </button>
               )}
             </div>
