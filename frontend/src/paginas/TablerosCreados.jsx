@@ -106,14 +106,6 @@ export default function TablerosCreados({ contexto }) {
 
   return (
     <section className="page-grid created-boards-page">
-      <article className="admin-hero-card full-width">
-        <div>
-          <h3>Creador de tableros</h3>
-          <p>Desde aquí creas, editas y administras tableros y también el catálogo de actividades.</p>
-          <p className="hero-card-meta">Editables por ti: <strong>{visibleControlBoards.filter((board) => canEditBoard(currentUser, board)).length}</strong> · Total visibles: <strong>{visibleControlBoards.length}</strong></p>
-        </div>
-      </article>
-
       <article className="surface-card admin-tabs full-width admin-tabs-shell">
         <div className="creator-tabs-header">
           <div className="tab-strip">
