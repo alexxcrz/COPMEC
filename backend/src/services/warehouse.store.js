@@ -35,6 +35,7 @@ const PAGE_PERMISSIONS = {
   history: [ROLE_LEAD, ROLE_SR],
   inventory: [ROLE_LEAD, ROLE_SR],
   users: [ROLE_LEAD, ROLE_SR, ROLE_SSR],
+  biblioteca: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
 };
 
 const ACTION_PERMISSIONS = {
@@ -887,6 +888,7 @@ function normalizeState(state, previousState = null) {
           };
         })
       : [],
+    bibliotecaFiles: Array.isArray(state.bibliotecaFiles) ? state.bibliotecaFiles : [],
   };
 }
 
@@ -3196,4 +3198,46 @@ function getInventoryImportActionId(domain) {
   if (normalizeInventoryDomain(domain) === "cleaning") return "importCleaningInventory";
   if (normalizeInventoryDomain(domain) === "orders") return "importOrderInventory";
   return "importInventory";
+}
+
+// ─── Biblioteca ────────────────────────────────────────────────────────────────
+
+export function getBibliotecaFiles() {
+  return getRawWarehouseState().bibliotecaFiles || [];
+}
+
+export function addBibliotecaFile(payload) {
+  const currentState = getRawWarehouseState();
+  const file = {
+    id: makeId("bib"),
+    area: payload.area || "General",
+    description: payload.description || "",
+    originalName: payload.originalName || "archivo",
+    fileUrl: payload.fileUrl,
+    fileThumbUrl: payload.fileThumbUrl || null,
+    filePublicId: payload.filePublicId,
+    fileMimeType: payload.fileMimeType || "application/octet-stream",
+    bytes: payload.bytes || 0,
+    uploadedById: payload.uploadedById,
+    uploadedByName: payload.uploadedByName || "Sistema",
+    uploadedAt: new Date().toISOString(),
+  };
+  const nextState = {
+    ...currentState,
+    bibliotecaFiles: [...(currentState.bibliotecaFiles || []), file],
+  };
+  replaceWarehouseState(nextState);
+  return file;
+}
+
+export function deleteBibliotecaFile(fileId) {
+  const currentState = getRawWarehouseState();
+  const existing = (currentState.bibliotecaFiles || []).find((f) => f.id === fileId);
+  if (!existing) return { ok: false, message: "Archivo no encontrado." };
+  const nextState = {
+    ...currentState,
+    bibliotecaFiles: (currentState.bibliotecaFiles || []).filter((f) => f.id !== fileId),
+  };
+  replaceWarehouseState(nextState);
+  return { ok: true };
 }

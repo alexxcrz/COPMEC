@@ -24,6 +24,7 @@ import { errorHandler } from "./middleware/error.middleware.js";
 import { healthRouter } from "./routes/health.routes.js";
 import { importRouter } from "./routes/import.routes.js";
 import { uploadRouter } from "./routes/upload.routes.js";
+import { bibliotecaRouter } from "./routes/biblioteca.routes.js";
 import { warehouseRouter } from "./routes/warehouse.routes.js";
 import { auditSecurityEvent } from "./services/security-events.service.js";
 
@@ -110,6 +111,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/boards", requireAuth, boardRouter);
 app.use("/api/imports", requireAuth, uploadLimiter, importRouter);
 app.use("/api/uploads", requireAuth, uploadLimiter, uploadRouter);
+app.use("/api/biblioteca", requireAuth, uploadLimiter, bibliotecaRouter);
 app.use("/api/warehouse", requireAuth, warehouseRouter);
 
 if (hasFrontendBuild) {

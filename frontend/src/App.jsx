@@ -7,6 +7,7 @@ import {
   ArrowUp,
   BarChart3,
   Bell,
+  BookOpen,
   CalendarDays,
   CircleCheckBig,
   ClipboardList,
@@ -47,6 +48,7 @@ import MisTableros from "./paginas/MisTableros";
 import PaginaNoEncontrada from "./paginas/PaginaNoEncontrada";
 import PanelIndicadores from "./paginas/PanelIndicadores";
 import TablerosCreados from "./paginas/TablerosCreados";
+import BibliotecaPage from "./paginas/BibliotecaPage";
 import copmecLogo from "./assets/copmec-logo.jpeg";
 import "./App.css";
 
@@ -71,6 +73,7 @@ const PAGE_DASHBOARD = "dashboard";
 const PAGE_HISTORY = "history";
 const PAGE_INVENTORY = "inventory";
 const PAGE_USERS = "users";
+const PAGE_BIBLIOTECA = "biblioteca";
 const PAGE_NOT_FOUND = "404";
 
 const PAGE_ROUTE_SLUGS = {
@@ -81,6 +84,7 @@ const PAGE_ROUTE_SLUGS = {
   [PAGE_HISTORY]: "historial",
   [PAGE_INVENTORY]: "inventario",
   [PAGE_USERS]: "administrador",
+  [PAGE_BIBLIOTECA]: "biblioteca",
   [PAGE_NOT_FOUND]: "404",
 };
 
@@ -100,6 +104,8 @@ const PAGE_ROUTE_ALIASES = {
   [PAGE_INVENTORY]: PAGE_INVENTORY,
   administrador: PAGE_USERS,
   [PAGE_USERS]: PAGE_USERS,
+  biblioteca: PAGE_BIBLIOTECA,
+  [PAGE_BIBLIOTECA]: PAGE_BIBLIOTECA,
   [PAGE_NOT_FOUND]: PAGE_NOT_FOUND,
 };
 
@@ -1429,6 +1435,7 @@ const NAV_ITEMS = [
   { id: PAGE_HISTORY, label: "Historial", icon: CalendarDays, roles: [ROLE_LEAD, ROLE_SR] },
   { id: PAGE_INVENTORY, label: "Inventario", icon: Package, roles: [ROLE_LEAD, ROLE_SR] },
   { id: PAGE_USERS, label: "Players", icon: Users, roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
+  { id: PAGE_BIBLIOTECA, label: "Biblioteca", icon: BookOpen, roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
 ];
 
 const ACTION_DEFINITIONS = [
@@ -1458,6 +1465,7 @@ const ACTION_DEFINITIONS = [
   { id: "exportBoardExcel", label: "Exportar tablero a Excel", category: "Mis tableros", defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
   { id: "previewBoardPdf", label: "Vista previa PDF", category: "Mis tableros", defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
   { id: "exportBoardPdf", label: "Exportar tablero a PDF", category: "Mis tableros", defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
+  { id: "manageBiblioteca", label: "Subir y eliminar en Biblioteca", category: "Biblioteca", defaultRoles: [ROLE_LEAD, ROLE_SR] },
 ];
 
 const BOARD_PERMISSION_ACTION_IDS = new Set([
@@ -1479,6 +1487,7 @@ const PAGE_ACTION_GROUPS = {
   [PAGE_HISTORY]: [],
   [PAGE_INVENTORY]: ["manageInventory", "importInventory", "manageCleaningInventory", "importCleaningInventory", "manageOrderInventory", "importOrderInventory"],
   [PAGE_USERS]: ["manageUsers", "deleteUsers", "resetPasswords", "managePermissions"],
+  [PAGE_BIBLIOTECA]: ["manageBiblioteca"],
 };
 
 const PERMISSION_PRESETS = [
@@ -2863,6 +2872,7 @@ function getProfileEditAvailabilityMessage(canBypassEditLimit, hasSelfEditAvaila
 function getHeaderEyebrowText(page) {
   if (page === PAGE_DASHBOARD) return "Panel principal";
   if (page === PAGE_USERS) return "Players y permisos";
+  if (page === PAGE_BIBLIOTECA) return "Documentos y recursos";
   return "Operación diaria";
 }
 
@@ -9557,6 +9567,7 @@ function App() { // NOSONAR
         {page === PAGE_HISTORY ? <HistorialSemanas contexto={paginasContexto} /> : null}
         {page === PAGE_INVENTORY ? <GestionInventario contexto={paginasContexto} /> : null}
         {page === PAGE_USERS ? <GestionUsuarios contexto={paginasContexto} /> : null}
+        {page === PAGE_BIBLIOTECA ? <BibliotecaPage currentUser={currentUser} canManage={actionPermissions.manageBiblioteca} /> : null}
         {page === PAGE_NOT_FOUND ? <PaginaNoEncontrada contexto={paginasContexto} /> : null}
       </section>
 
