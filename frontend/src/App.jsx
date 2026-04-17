@@ -5712,6 +5712,7 @@ function App() { // NOSONAR
   const [historyPauseActivityId, setHistoryPauseActivityId] = useState(null);
   const [userModal, setUserModal] = useState(() => createUserModalState());
   const [deleteUserId, setDeleteUserId] = useState(null);
+  const [transferLeadTargetId, setTransferLeadTargetId] = useState(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [resetUserPasswordModal, setResetUserPasswordModal] = useState({ open: false, userId: null, userName: "", password: "", message: "" });
   const [userSearch, setUserSearch] = useState("");
@@ -7825,7 +7826,7 @@ function App() { // NOSONAR
 
   function updateUserModalRole(nextRole) {
     setUserModal((current) => {
-      const shouldRefreshJobTitle = current.mode === "create" || current.jobTitle === (DEFAULT_JOB_TITLE_BY_ROLE[current.role] || "");
+      const shouldRefreshJobTitle = current.mode !== "create" && current.jobTitle === (DEFAULT_JOB_TITLE_BY_ROLE[current.role] || "");
       const nextDraft = {
         ...current,
         role: nextRole,
@@ -7833,11 +7834,27 @@ function App() { // NOSONAR
         permissionPageId: "",
       };
 
+      if (current.mode === "create") {
+        const isLead = normalizeRole(nextRole) === ROLE_LEAD;
+        return {
+          ...nextDraft,
+          permissionOverrides: isLead
+            ? { pages: Object.fromEntries(permissionPages.map((item) => [item.id, true])), actions: Object.fromEntries(ACTION_DEFINITIONS.map((item) => [item.id, true])) }
+            : { pages: {}, actions: {} },
+        };
+      }
       return {
         ...nextDraft,
         permissionOverrides: buildPermissionSelectionFromModalDraft(nextDraft),
       };
     });
+  }
+
+  function buildAllPermissionsOn() {
+    return {
+      pages: Object.fromEntries(permissionPages.map((item) => [item.id, true])),
+      actions: Object.fromEntries(ACTION_DEFINITIONS.map((item) => [item.id, true])),
+    };
   }
 
   function openCreateUser() {
@@ -7851,19 +7868,28 @@ function App() { // NOSONAR
       username: "",
       role: defaultRole,
       area: getUserArea(currentUser),
-      jobTitle: DEFAULT_JOB_TITLE_BY_ROLE[defaultRole] || "",
+      jobTitle: "",
       isActive: "true",
       password: "",
       managerId: currentUser?.id || "",
     });
     setUserModal({
       ...nextModal,
-      permissionOverrides: buildPermissionSelectionFromModalDraft(nextModal),
+      permissionOverrides: normalizeRole(defaultRole) === ROLE_LEAD ? buildAllPermissionsOn() : { pages: {}, actions: {} },
     });
   }
 
   function openEditUser(user) {
     if (!actionPermissions.editUsers) return;
+    const storedOverride = normalizedPermissions.userOverrides?.[user.id] || { pages: {}, actions: {} };
+    const explicitPermissionOverrides = {
+      pages: Object.fromEntries(
+        Object.entries(storedOverride.pages || {}).filter(([, v]) => typeof v === "boolean"),
+      ),
+      actions: Object.fromEntries(
+        Object.entries(storedOverride.actions || {}).filter(([, v]) => typeof v === "boolean"),
+      ),
+    };
     const nextModal = createUserModalState({
       open: true,
       mode: "edit",
@@ -7879,7 +7905,7 @@ function App() { // NOSONAR
     });
     setUserModal({
       ...nextModal,
-      permissionOverrides: buildPermissionSelectionFromModalDraft(nextModal),
+      permissionOverrides: explicitPermissionOverrides,
     });
   }
 
@@ -7907,6 +7933,15 @@ function App() { // NOSONAR
     };
 
     if (!payload.name || !payload.area || !payload.jobTitle) return;
+    if (userModal.mode === "create" && supportsManagedPermissionOverrides(userModal.role)) {
+      const pageValues = Object.values(userModal.permissionOverrides.pages || {});
+      const actionValues = Object.values(userModal.permissionOverrides.actions || {});
+      const hasAtLeastOnePermission = pageValues.concat(actionValues).some(Boolean);
+      if (!hasAtLeastOnePermission) {
+        pushAppToast("Asigna al menos un permiso antes de crear el player.", "danger");
+        return;
+      }
+    }
     if (userModal.mode === "create") {
       if (!isTemporaryPassword(trimmedPassword)) return;
       payload.password = trimmedPassword;
@@ -7987,6 +8022,20 @@ function App() { // NOSONAR
       setDeleteUserId(null);
     } catch {
       // Keep confirmation state unchanged on failure.
+    }
+  }
+
+  async function transferLead(targetUserId) {
+    if (!targetUserId || normalizeRole(currentUser?.role) !== ROLE_LEAD) return;
+    try {
+      const result = await requestJson(`/warehouse/users/${targetUserId}/transfer-lead`, {
+        method: "POST",
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setTransferLeadTargetId(null);
+      pushAppToast("Rol de Lead transferido correctamente.", "success");
+    } catch (error) {
+      pushAppToast(error?.message || "No se pudo transferir el rol de Lead.", "danger");
     }
   }
 
@@ -9816,6 +9865,7 @@ function App() { // NOSONAR
 
   const paginasContexto = {
     ACTION_DEFINITIONS,
+    BOOTSTRAP_MASTER_ID,
     AlertTriangle,
     activeAssignableUsers,
     activeWeek,
@@ -10010,6 +10060,9 @@ function App() { // NOSONAR
     setDeleteBoardRowState,
     setDeleteInventoryId,
     setDeleteUserId,
+    transferLead,
+    transferLeadTargetId,
+    setTransferLeadTargetId,
     setEditWeekId,
     setHistoryPauseActivityId,
     setInventoryActionsMenuOpen,
@@ -10890,6 +10943,11 @@ function App() { // NOSONAR
       <Modal open={Boolean(deleteUserId)} title="Eliminar player" confirmLabel="Eliminar player" cancelLabel="Cancelar" onClose={() => setDeleteUserId(null)} onConfirm={() => deleteUser(deleteUserId)}>
         <p>Esta acción no se puede deshacer.</p>
         <p>Se perderá el acceso y los registros del player quedarán sin responsabilidad asignada.</p>
+      </Modal>
+
+      <Modal open={Boolean(transferLeadTargetId)} title="Transferir rol de Lead" confirmLabel="Transferir Lead" cancelLabel="Cancelar" onClose={() => setTransferLeadTargetId(null)} onConfirm={() => transferLead(transferLeadTargetId)}>
+        <p>El player <strong>{state.users?.find((u) => u.id === transferLeadTargetId)?.name || ""}</strong> pasará a ser Lead.</p>
+        <p>Tu cuenta quedará como Senior. Esta acción no se puede deshacer desde aquí.</p>
       </Modal>
 
       <Modal open={Boolean(deleteInventoryId)} title="Eliminar artículo" confirmLabel="Eliminar artículo" cancelLabel="Cancelar" onClose={() => setDeleteInventoryId(null)} onConfirm={() => deleteInventoryItem(deleteInventoryId)}>

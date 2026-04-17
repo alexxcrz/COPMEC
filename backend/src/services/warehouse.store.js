@@ -1490,6 +1490,28 @@ export function deleteWarehouseUser(auth, userId) {
   return { ok: true, state: replaceWarehouseState(nextState), userId: targetUser.id, userName: targetUser.name };
 }
 
+export function transferWarehouseLead(auth, targetUserId) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+  if (normalizeRole(currentUser.role) !== ROLE_LEAD) return { ok: false, reason: "forbidden" };
+
+  const currentState = getRawWarehouseState();
+  const targetUser = (currentState.users || []).find((user) => user.id === targetUserId);
+  if (!targetUser) return { ok: false, reason: "user_not_found" };
+  if (targetUser.id === currentUser.id) return { ok: false, reason: "forbidden" };
+
+  const nextState = {
+    ...currentState,
+    users: (currentState.users || []).map((user) => {
+      if (user.id === targetUserId) return { ...user, role: ROLE_LEAD };
+      if (user.id === currentUser.id) return { ...user, role: ROLE_SR };
+      return user;
+    }),
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState), targetUserId, targetUserName: targetUser.name };
+}
+
 export function toggleWarehouseUserActive(auth, userId) {
   const currentUser = findWarehouseUserById(auth?.userId);
   if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };

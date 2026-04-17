@@ -35,6 +35,7 @@ import {
   updateWarehouseTemplate,
   updateWarehouseUser,
   toggleWarehouseUserActive,
+  transferWarehouseLead,
   getCustomRoles,
   createCustomRole,
   updateCustomRole,
@@ -400,6 +401,21 @@ warehouseRouter.delete("/users/:userId", requireWarehouseAction("deleteUsers"), 
     revision: result.state?.revision,
   });
   res.json({ ok: true, data: { state: result.state, userId: result.userId, userName: result.userName } });
+});
+
+warehouseRouter.post("/users/:userId/transfer-lead", (req, res) => {
+  const result = transferWarehouseLead(req.auth, req.params.userId);
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "user_not_found" ? 404 : 403;
+    res.status(status).json({ ok: false, message: "No fue posible transferir el rol de Lead." });
+    return;
+  }
+  auditSecurityEvent("warehouse_lead_transferred", req, {
+    targetUserId: result.targetUserId,
+    targetUserName: result.targetUserName,
+    revision: result.state?.revision,
+  });
+  res.json({ ok: true, data: { state: result.state } });
 });
 
 warehouseRouter.patch("/users/:userId/active", requireWarehouseAction("manageUsers"), (req, res) => {

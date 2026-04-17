@@ -26,6 +26,10 @@ export default function GestionUsuarios({ contexto }) {
     toggleUserActive,
     openEditUser,
     setDeleteUserId,
+    transferLeadTargetId,
+    setTransferLeadTargetId,
+    transferLead,
+    BOOTSTRAP_MASTER_ID,
     usersByAreaGroups,
     boardAssignmentsByUser,
     usersCreatedByMap,
@@ -137,7 +141,10 @@ export default function GestionUsuarios({ contexto }) {
                       <td>
                         <div className="row-actions compact">
                           <button type="button" className="user-row-button" onClick={() => openEditUser(user)} disabled={!actionPermissions.editUsers}><Pencil size={15} /> Editar</button>
-                          <button type="button" className="user-row-button danger" onClick={() => setDeleteUserId(user.id)} disabled={!actionPermissions.deleteUsers}><Trash2 size={15} /> Eliminar</button>
+                          {currentUser?.role === "Lead" && user.role !== "Lead" ? (
+                            <button type="button" className="user-row-button" onClick={() => setTransferLeadTargetId(user.id)}>Hacer Lead</button>
+                          ) : null}
+                          {user.createdById !== BOOTSTRAP_MASTER_ID ? <button type="button" className="user-row-button danger" onClick={() => setDeleteUserId(user.id)} disabled={!actionPermissions.deleteUsers}><Trash2 size={15} /> Eliminar</button> : null}
                         </div>
                       </td>
                     </tr>
