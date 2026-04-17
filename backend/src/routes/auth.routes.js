@@ -1,13 +1,71 @@
 import { Router } from "express";
 import { clearSessionCookie, isMasterCredentials, setSessionCookie } from "../config/auth.js";
 import { requireRoles } from "../middleware/auth.middleware.js";
-import { auditSecurityEvent } from "../services/security-events.service.js";
-import { readSecurityEvents } from "../services/security-events.service.js";
+import { auditSecurityEvent, readSecurityEvents } from "../services/security-events.service.js";
 import { BOOTSTRAP_MASTER_ID, authenticateWarehouseUser, bootstrapFirstLeadUser, changeWarehouseSelfPassword, getLoginDirectory, hasLeadUser, resetWarehouseUserPassword, sanitizeUserRecord } from "../services/warehouse.store.js";
 import { STRONG_PASSWORD_MIN_LENGTH, TEMPORARY_PASSWORD_MIN_LENGTH } from "../utils/passwords.js";
 
 const ROLE_LEAD = "Lead";
 const ROLE_SR = "Senior (Sr)";
+
+// ── Account lockout ────────────────────────────────────────────────────────────
+// Tracks failed attempts per key (login + IP). After MAX_ATTEMPTS failures within
+// WINDOW_MS the account is locked for LOCKOUT_MS. Cleared on successful login.
+const LOCKOUT_MAX_ATTEMPTS = 5;
+const LOCKOUT_WINDOW_MS = 10 * 60 * 1000;   // 10 min
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 min lock
+
+const failedAttempts = new Map(); // key → { count, firstAt, lockedUntil }
+
+function getLockoutKey(login, req) {
+  return `${String(login).toLowerCase()}::${req.ip || ""}`;
+}
+
+function checkLockout(login, req) {
+  const key = getLockoutKey(login, req);
+  const entry = failedAttempts.get(key);
+  if (!entry) return null;
+
+  const now = Date.now();
+  // Clear stale window entries
+  if (entry.lockedUntil && now > entry.lockedUntil) {
+    failedAttempts.delete(key);
+    return null;
+  }
+  if (!entry.lockedUntil && now - entry.firstAt > LOCKOUT_WINDOW_MS) {
+    failedAttempts.delete(key);
+    return null;
+  }
+
+  if (entry.lockedUntil && now <= entry.lockedUntil) {
+    const remainingSeconds = Math.ceil((entry.lockedUntil - now) / 1000);
+    return { locked: true, remainingSeconds };
+  }
+  return null;
+}
+
+function recordFailedAttempt(login, req) {
+  const key = getLockoutKey(login, req);
+  const now = Date.now();
+  const entry = failedAttempts.get(key) || { count: 0, firstAt: now, lockedUntil: null };
+
+  if (now - entry.firstAt > LOCKOUT_WINDOW_MS) {
+    entry.count = 0;
+    entry.firstAt = now;
+    entry.lockedUntil = null;
+  }
+
+  entry.count += 1;
+  if (entry.count >= LOCKOUT_MAX_ATTEMPTS) {
+    entry.lockedUntil = now + LOCKOUT_DURATION_MS;
+  }
+  failedAttempts.set(key, entry);
+}
+
+function clearFailedAttempts(login, req) {
+  failedAttempts.delete(getLockoutKey(login, req));
+}
+// ──────────────────────────────────────────────────────────────────────────────
 
 export const authRouter = Router();
 
@@ -15,18 +73,38 @@ authRouter.get("/login-options", (_req, res) => {
   res.json(getLoginDirectory());
 });
 
+// Hard limits to prevent hash-length DoS (scrypt is expensive on large inputs).
+const MAX_LOGIN_LENGTH = 254;   // RFC 5321 max email length
+const MAX_PASSWORD_LENGTH = 256;
+
 authRouter.post("/login", (req, res) => {
   const login = String(req.body?.email || req.body?.login || "").trim();
   const password = String(req.body?.password || "");
 
   if (!login || !password) {
-    auditSecurityEvent("login_failed", req, { reason: "missing_credentials", login });
+    auditSecurityEvent("login_failed", req, { reason: "missing_credentials", login: login.slice(0, 60) });
     res.status(400).json({ ok: false, message: "Credenciales incompletas." });
+    return;
+  }
+
+  if (login.length > MAX_LOGIN_LENGTH || password.length > MAX_PASSWORD_LENGTH) {
+    auditSecurityEvent("login_failed", req, { reason: "input_too_long", login: login.slice(0, 60) });
+    res.status(400).json({ ok: false, message: "Credenciales inválidas." });
+    return;
+  }
+
+  // Check lockout before doing any credential work
+  const lockout = checkLockout(login, req);
+  if (lockout) {
+    const minutes = Math.ceil(lockout.remainingSeconds / 60);
+    auditSecurityEvent("login_blocked_lockout", req, { login, remainingSeconds: lockout.remainingSeconds });
+    res.status(429).json({ ok: false, message: `Cuenta bloqueada por demasiados intentos fallidos. Intenta en ${minutes} min.` });
     return;
   }
 
   const directory = getLoginDirectory();
   if (directory.system.masterBootstrapEnabled && isMasterCredentials(login, password)) {
+    clearFailedAttempts(login, req);
     setSessionCookie(res, { type: "master", userId: BOOTSTRAP_MASTER_ID });
     auditSecurityEvent("login_success", req, { login, authType: "master" });
     res.json({ ok: true, userId: BOOTSTRAP_MASTER_ID, isBootstrapMaster: true });
@@ -35,11 +113,16 @@ authRouter.post("/login", (req, res) => {
 
   const user = authenticateWarehouseUser(login, password);
   if (!user) {
-    auditSecurityEvent("login_failed", req, { reason: "invalid_credentials", login });
-    res.status(401).json({ ok: false, message: "Credenciales inválidas." });
+    recordFailedAttempt(login, req);
+    const remaining = LOCKOUT_MAX_ATTEMPTS - (failedAttempts.get(getLockoutKey(login, req))?.count || 0);
+    const attemptsLeft = Math.max(0, remaining);
+    auditSecurityEvent("login_failed", req, { reason: "invalid_credentials", login, attemptsLeft });
+    const hint = attemptsLeft > 0 ? ` (${attemptsLeft} intentos restantes)` : "";
+    res.status(401).json({ ok: false, message: `Credenciales inválidas.${hint}` });
     return;
   }
 
+  clearFailedAttempts(login, req);
   setSessionCookie(res, { type: "user", userId: user.id, sessionVersion: user.sessionVersion || 1 });
   auditSecurityEvent("login_success", req, { login, authType: "user", userId: user.id, role: user.role });
   res.json({ ok: true, userId: user.id, user: sanitizeUserRecord(user), mustChangePassword: Boolean(user.mustChangePassword), isBootstrapMaster: false });

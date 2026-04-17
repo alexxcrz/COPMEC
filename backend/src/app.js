@@ -40,8 +40,38 @@ app.disable("x-powered-by");
 app.set("trust proxy", trustProxyValue);
 
 app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginResourcePolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],        // Vite inline styles
+      imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'", "data:"],
+      objectSrc: ["'none'"],
+      frameSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      upgradeInsecureRequests: isProduction ? [] : null,
+    },
+  },
+  crossOriginOpenerPolicy: { policy: "same-origin" },
+  crossOriginResourcePolicy: { policy: "same-origin" },
+  crossOriginEmbedderPolicy: false, // keep false: Cloudinary images would break with require-corp
+  hsts: isProduction ? { maxAge: 31536000, includeSubDomains: true, preload: true } : false,
+  permissionsPolicy: {
+    features: {
+      camera: [],
+      microphone: [],
+      geolocation: [],
+      payment: [],
+      usb: [],
+      bluetooth: [],
+      accelerometer: [],
+      gyroscope: [],
+      magnetometer: [],
+    },
+  },
 }));
 
 app.use(cors({
@@ -107,6 +137,7 @@ app.get("/api", (_req, res) => {
 
 app.use("/api/health", healthRouter);
 app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/password", authLimiter);
 app.use("/api/auth", authRouter);
 app.use("/api/boards", requireAuth, boardRouter);
 app.use("/api/imports", requireAuth, uploadLimiter, importRouter);

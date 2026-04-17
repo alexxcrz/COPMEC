@@ -245,6 +245,11 @@ export default function PanelIndicadores({ contexto }) {
   const dashboardExportRef = useRef(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [trendChartType, setTrendChartType] = useState("bar");
+  const [peopleChartType, setPeopleChartType] = useState("bar");
+  const [areaChartType, setAreaChartType] = useState("bar");
+  const [catalogTypeChartType, setCatalogTypeChartType] = useState("bar");
+  const [catalogFreqChartType, setCatalogFreqChartType] = useState("bar");
+  const [distributionChartType, setDistributionChartType] = useState("pie");
 
   const dashboardAreaTabOptions = useMemo(() => {
     const uniqueAreas = Array.from(new Set(
@@ -756,13 +761,55 @@ export default function PanelIndicadores({ contexto }) {
           <article className="dashboard-panel dashboard-panel-wide">
             <div className="dashboard-panel-header">
               <h3>Tiempo Promedio por Player</h3>
-              <BarChart3 size={18} />
+              <div className="dashboard-chart-toggle">
+                <button
+                  type="button"
+                  className={`dashboard-chart-toggle-btn${peopleChartType === "bar" ? " active" : ""}`}
+                  onClick={() => setPeopleChartType("bar")}
+                  title="Barras horizontales"
+                  aria-pressed={peopleChartType === "bar"}
+                >
+                  <BarChart3 size={13} />
+                  <span>Barras</span>
+                </button>
+                <button
+                  type="button"
+                  className={`dashboard-chart-toggle-btn${peopleChartType === "line" ? " active" : ""}`}
+                  onClick={() => setPeopleChartType("line")}
+                  title="Línea con puntos por player"
+                  aria-pressed={peopleChartType === "line"}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
+                  <span>Líneas</span>
+                </button>
+              </div>
             </div>
-            <div className="dashboard-bars-list">
-              {dashboardResponsibleRows.map((item) => (
-                <DashboardBarRow key={item.responsibleId} label={item.label} value={item.averageMinutes} max={item.max} color={item.color} trailing={`${Math.round(item.averageMinutes)} min · ${item.totalRecords} cierres`} initial={item.initial} />
-              ))}
-            </div>
+            {peopleChartType === "bar" ? (
+              <div className="dashboard-bars-list">
+                {dashboardResponsibleRows.map((item) => (
+                  <DashboardBarRow key={item.responsibleId} label={item.label} value={item.averageMinutes} max={item.max} color={item.color} trailing={`${Math.round(item.averageMinutes)} min · ${item.totalRecords} cierres`} initial={item.initial} />
+                ))}
+              </div>
+            ) : (
+              <DashboardLineChart
+                series={[
+                  {
+                    key: "avgTime",
+                    label: "Tiempo promedio (min)",
+                    color: "#0ea5e9",
+                    valueSuffix: " min",
+                    data: dashboardResponsibleRows.map((item) => ({ label: item.label.split(" ")[0], y: Math.round(item.averageMinutes) })),
+                  },
+                  {
+                    key: "totalRecords",
+                    label: "Total registros",
+                    color: "#14b8a6",
+                    data: dashboardResponsibleRows.map((item) => ({ label: item.label.split(" ")[0], y: item.totalRecords })),
+                  },
+                ]}
+                emptyLabel="No hay datos de players para mostrar."
+              />
+            )}
           </article>
 
           <aside className="dashboard-panel dashboard-panel-rank">
@@ -794,14 +841,37 @@ export default function PanelIndicadores({ contexto }) {
           <article className="dashboard-panel dashboard-panel-half">
             <div className="dashboard-panel-header">
               <h3>Distribución de Carga</h3>
-              <PieChart size={18} />
+              <div className="dashboard-chart-toggle">
+                <button
+                  className={`dashboard-chart-toggle-btn${distributionChartType === "pie" ? " active" : ""}`}
+                  onClick={() => setDistributionChartType("pie")}
+                >Pastel</button>
+                <button
+                  className={`dashboard-chart-toggle-btn${distributionChartType === "line" ? " active" : ""}`}
+                  onClick={() => setDistributionChartType("line")}
+                >Líneas</button>
+              </div>
             </div>
-            <DashboardPieChart rows={dashboardDistributionRows} />
-            <div className="dashboard-progress-list dashboard-distribution-list">
-              {dashboardDistributionRows.map((item) => (
-                <DashboardProgressMetric key={item.responsibleId} label={item.label} valueText={`${item.count} registros · ${Math.round(item.percent)}%`} percent={item.percent} color={item.color} />
-              ))}
-            </div>
+            {distributionChartType === "pie" ? (
+              <>
+                <DashboardPieChart rows={dashboardDistributionRows} />
+                <div className="dashboard-progress-list dashboard-distribution-list">
+                  {dashboardDistributionRows.map((item) => (
+                    <DashboardProgressMetric key={item.responsibleId} label={item.label} valueText={`${item.count} registros · ${Math.round(item.percent)}%`} percent={item.percent} color={item.color} />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <DashboardLineChart
+                series={[{
+                  label: "Registros por player",
+                  color: "#0ea5e9",
+                  data: dashboardDistributionRows.map((item) => ({ label: item.label.split(" ")[0], y: item.count })),
+                  valueSuffix: " reg.",
+                }]}
+                emptyLabel="No hay datos de distribución para este periodo."
+              />
+            )}
           </article>
         </div>
 
@@ -809,63 +879,107 @@ export default function PanelIndicadores({ contexto }) {
           <article className="dashboard-panel dashboard-panel-half">
             <div className="dashboard-panel-header">
               <h3>Tipo de Actividades (Catálogo)</h3>
-              <PieChart size={18} />
+              <div className="dashboard-chart-toggle">
+                <button
+                  className={`dashboard-chart-toggle-btn${catalogTypeChartType === "bar" ? " active" : ""}`}
+                  onClick={() => setCatalogTypeChartType("bar")}
+                >Barras</button>
+                <button
+                  className={`dashboard-chart-toggle-btn${catalogTypeChartType === "line" ? " active" : ""}`}
+                  onClick={() => setCatalogTypeChartType("line")}
+                >Líneas</button>
+              </div>
             </div>
-            <DashboardColumnChart
-              rows={dashboardCatalogTypeRows.map((item) => ({
-                key: item.id,
-                label: item.label,
-                value: item.value,
-                valueLabel: `${item.value}`,
-                tooltip: `${item.value} actividades ${item.label.toLowerCase()}`,
-                color: item.id === "mandatory"
-                  ? "linear-gradient(180deg, #16a34a 0%, #86efac 100%)"
-                  : "linear-gradient(180deg, #f59e0b 0%, #fde68a 100%)",
-              }))}
-              emptyLabel="No hay actividades en catálogo para este análisis."
-            />
-            <div className="dashboard-progress-list">
-              {dashboardCatalogTypeRows.map((item) => (
-                <DashboardProgressMetric
-                  key={item.id}
-                  label={item.label}
-                  valueText={`${item.value} actividades`}
-                  percent={dashboardMetrics.catalogActiveCount ? (item.value / dashboardMetrics.catalogActiveCount) * 100 : 0}
-                  color={item.id === "mandatory" ? "linear-gradient(90deg, #16a34a 0%, #86efac 100%)" : "linear-gradient(90deg, #f59e0b 0%, #fde68a 100%)"}
+            {catalogTypeChartType === "bar" ? (
+              <>
+                <DashboardColumnChart
+                  rows={dashboardCatalogTypeRows.map((item) => ({
+                    key: item.id,
+                    label: item.label,
+                    value: item.value,
+                    valueLabel: `${item.value}`,
+                    tooltip: `${item.value} actividades ${item.label.toLowerCase()}`,
+                    color: item.id === "mandatory"
+                      ? "linear-gradient(180deg, #16a34a 0%, #86efac 100%)"
+                      : "linear-gradient(180deg, #f59e0b 0%, #fde68a 100%)",
+                  }))}
+                  emptyLabel="No hay actividades en catálogo para este análisis."
                 />
-              ))}
-            </div>
+                <div className="dashboard-progress-list">
+                  {dashboardCatalogTypeRows.map((item) => (
+                    <DashboardProgressMetric
+                      key={item.id}
+                      label={item.label}
+                      valueText={`${item.value} actividades`}
+                      percent={dashboardMetrics.catalogActiveCount ? (item.value / dashboardMetrics.catalogActiveCount) * 100 : 0}
+                      color={item.id === "mandatory" ? "linear-gradient(90deg, #16a34a 0%, #86efac 100%)" : "linear-gradient(90deg, #f59e0b 0%, #fde68a 100%)"}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <DashboardLineChart
+                series={[{
+                  label: "Actividades por tipo",
+                  color: "#16a34a",
+                  data: dashboardCatalogTypeRows.map((item) => ({ label: item.label, y: item.value })),
+                }]}
+                emptyLabel="No hay actividades en catálogo para este análisis."
+              />
+            )}
           </article>
 
           <article className="dashboard-panel dashboard-panel-half">
             <div className="dashboard-panel-header">
               <h3>Frecuencia de Actividades (Catálogo)</h3>
-              <Clock3 size={18} />
+              <div className="dashboard-chart-toggle">
+                <button
+                  className={`dashboard-chart-toggle-btn${catalogFreqChartType === "bar" ? " active" : ""}`}
+                  onClick={() => setCatalogFreqChartType("bar")}
+                >Barras</button>
+                <button
+                  className={`dashboard-chart-toggle-btn${catalogFreqChartType === "line" ? " active" : ""}`}
+                  onClick={() => setCatalogFreqChartType("line")}
+                >Líneas</button>
+              </div>
             </div>
-            <DashboardColumnChart
-              rows={dashboardCatalogFrequencyRows.map((item) => ({
-                key: item.id,
-                label: item.label,
-                value: item.value,
-                valueLabel: `${item.value}`,
-                tooltip: `${item.value} actividades con frecuencia ${item.label.toLowerCase()}`,
-                color: "linear-gradient(180deg, #0ea5e9 0%, #22d3ee 100%)",
-              }))}
-              emptyLabel="No hay frecuencias registradas en el catálogo."
-            />
-            <div className="dashboard-bars-list">
-              {dashboardCatalogFrequencyRows.map((item) => (
-                <DashboardBarRow
-                  key={item.id}
-                  label={getActivityFrequencyLabel(item.id)}
-                  value={item.value}
-                  max={Math.max(...dashboardCatalogFrequencyRows.map((row) => row.value), 1)}
-                  color="linear-gradient(90deg, #0ea5e9 0%, #22d3ee 100%)"
-                  trailing={`${item.value} actividades`}
-                  initial={item.label.charAt(0).toUpperCase()}
+            {catalogFreqChartType === "bar" ? (
+              <>
+                <DashboardColumnChart
+                  rows={dashboardCatalogFrequencyRows.map((item) => ({
+                    key: item.id,
+                    label: item.label,
+                    value: item.value,
+                    valueLabel: `${item.value}`,
+                    tooltip: `${item.value} actividades con frecuencia ${item.label.toLowerCase()}`,
+                    color: "linear-gradient(180deg, #0ea5e9 0%, #22d3ee 100%)",
+                  }))}
+                  emptyLabel="No hay frecuencias registradas en el catálogo."
                 />
-              ))}
-            </div>
+                <div className="dashboard-bars-list">
+                  {dashboardCatalogFrequencyRows.map((item) => (
+                    <DashboardBarRow
+                      key={item.id}
+                      label={getActivityFrequencyLabel(item.id)}
+                      value={item.value}
+                      max={Math.max(...dashboardCatalogFrequencyRows.map((row) => row.value), 1)}
+                      color="linear-gradient(90deg, #0ea5e9 0%, #22d3ee 100%)"
+                      trailing={`${item.value} actividades`}
+                      initial={item.label.charAt(0).toUpperCase()}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <DashboardLineChart
+                series={[{
+                  label: "Actividades por frecuencia",
+                  color: "#0ea5e9",
+                  data: dashboardCatalogFrequencyRows.map((item) => ({ label: item.label, y: item.value })),
+                }]}
+                emptyLabel="No hay frecuencias registradas en el catálogo."
+              />
+            )}
           </article>
         </div>
       </DashboardSection>
@@ -875,26 +989,26 @@ export default function PanelIndicadores({ contexto }) {
           <article className="dashboard-panel dashboard-panel-half">
             <div className="dashboard-panel-header">
               <h3>Tendencia general</h3>
-              <div style={{ display: "flex", gap: "0.35rem" }}>
+              <div className="dashboard-chart-toggle">
                 <button
                   type="button"
-                  className={`icon-button${trendChartType === "bar" ? " active" : ""}`}
-                  style={{ minHeight: "1.7rem", padding: "0.2rem 0.6rem", fontSize: "0.74rem" }}
+                  className={`dashboard-chart-toggle-btn${trendChartType === "bar" ? " active" : ""}`}
                   onClick={() => setTrendChartType("bar")}
                   title="Gráfico de barras"
                   aria-pressed={trendChartType === "bar"}
                 >
-                  <BarChart3 size={14} />
+                  <BarChart3 size={13} />
+                  <span>Barras</span>
                 </button>
                 <button
                   type="button"
-                  className={`icon-button${trendChartType === "line" ? " active" : ""}`}
-                  style={{ minHeight: "1.7rem", padding: "0.2rem 0.6rem", fontSize: "0.74rem" }}
+                  className={`dashboard-chart-toggle-btn${trendChartType === "line" ? " active" : ""}`}
                   onClick={() => setTrendChartType("line")}
-                  title="Gráfico de líneas"
+                  title="Gráfico de líneas con puntos"
                   aria-pressed={trendChartType === "line"}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
+                  <span>Líneas</span>
                 </button>
               </div>
             </div>
@@ -945,24 +1059,106 @@ export default function PanelIndicadores({ contexto }) {
           <article className="dashboard-panel dashboard-panel-half">
             <div className="dashboard-panel-header">
               <h3>Resumen Consolidado por Área</h3>
-              <Users size={18} />
+              <div className="dashboard-chart-toggle">
+                <button
+                  type="button"
+                  className={`dashboard-chart-toggle-btn${areaChartType === "bar" ? " active" : ""}`}
+                  onClick={() => setAreaChartType("bar")}
+                  title="Gráfico de barras"
+                  aria-pressed={areaChartType === "bar"}
+                >
+                  <BarChart3 size={13} />
+                  <span>Barras</span>
+                </button>
+                <button
+                  type="button"
+                  className={`dashboard-chart-toggle-btn${areaChartType === "line" ? " active" : ""}`}
+                  onClick={() => setAreaChartType("line")}
+                  title="Línea comparativa por área"
+                  aria-pressed={areaChartType === "line"}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
+                  <span>Líneas</span>
+                </button>
+              </div>
             </div>
-            <DashboardColumnChart
-              rows={dashboardAreaRows.slice(0, 6).map((item) => ({
-                key: item.area,
-                label: item.area,
-                value: item.total,
-                valueLabel: `${item.total}`,
-                tooltip: `${item.total} registros · ${item.boardCount} tableros`,
-                color: "linear-gradient(180deg, #14b8a6 0%, #84cc16 100%)",
-              }))}
-              emptyLabel="No hay áreas con datos para mostrar."
-            />
+            {areaChartType === "bar" ? (
+              <DashboardColumnChart
+                rows={dashboardAreaRows.slice(0, 6).map((item) => ({
+                  key: item.area,
+                  label: item.area,
+                  value: item.total,
+                  valueLabel: `${item.total}`,
+                  tooltip: `${item.total} registros · ${item.boardCount} tableros`,
+                  color: "linear-gradient(180deg, #14b8a6 0%, #84cc16 100%)",
+                }))}
+                emptyLabel="No hay áreas con datos para mostrar."
+              />
+            ) : (
+              <DashboardLineChart
+                series={[
+                  {
+                    key: "registros",
+                    label: "Registros por área",
+                    color: "#14b8a6",
+                    data: dashboardAreaRows.slice(0, 8).map((item) => ({ label: item.area.substring(0, 8), y: item.total })),
+                  },
+                  {
+                    key: "tableros",
+                    label: "Tableros activos",
+                    color: "#84cc16",
+                    data: dashboardAreaRows.slice(0, 8).map((item) => ({ label: item.area.substring(0, 8), y: item.boardCount })),
+                  },
+                ]}
+                emptyLabel="No hay áreas con datos para mostrar."
+              />
+            )}
             <div className="dashboard-bars-list">
               {dashboardAreaRows.map((item) => (
                 <DashboardBarRow key={item.area} label={item.area} value={item.total} max={Math.max(...dashboardAreaRows.map((row) => row.total), 1)} color="linear-gradient(90deg, #14b8a6 0%, #84cc16 100%)" trailing={`${item.total} reg · ${item.boardCount} tableros`} initial={item.area.charAt(0).toUpperCase()} />
               ))}
             </div>
+          </article>
+        </div>
+
+        {/* Panel completo: gráfica de líneas multi-serie — Horas productivas por periodo */}
+        <div className="dashboard-main-grid">
+          <article className="dashboard-panel dashboard-panel-full">
+            <div className="dashboard-panel-header">
+              <h3>Evolución de productividad por periodo</h3>
+              <Zap size={18} />
+            </div>
+            <p className="dashboard-panel-subtitle">Comparativa de registros totales, cierres y horas productivas acumuladas periodo a periodo.</p>
+            <DashboardLineChart
+              series={[
+                {
+                  key: "total",
+                  label: "Registros totales",
+                  color: "#0ea5e9",
+                  data: dashboardTrendRows.map((item) => ({ label: item.label, y: item.total })),
+                },
+                {
+                  key: "completed",
+                  label: "Cierres",
+                  color: "#22c55e",
+                  data: dashboardTrendRows.map((item) => ({ label: item.label, y: item.completed })),
+                },
+                {
+                  key: "paused",
+                  label: "Pausados",
+                  color: "#f59e0b",
+                  data: dashboardTrendRows.map((item) => ({ label: item.label, y: item.paused || 0 })),
+                },
+                {
+                  key: "hours",
+                  label: "Horas productivas",
+                  color: "#a855f7",
+                  valueSuffix: " h",
+                  data: dashboardTrendRows.map((item) => ({ label: item.label, y: Math.round((item.totalSeconds || 0) / 3600 * 10) / 10 })),
+                },
+              ]}
+              emptyLabel="No hay datos de tendencia disponibles para el periodo seleccionado."
+            />
           </article>
         </div>
       </DashboardSection>

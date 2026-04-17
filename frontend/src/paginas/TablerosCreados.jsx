@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Modal } from "../components/Modal";
 
 export default function TablerosCreados({ contexto }) {
@@ -22,6 +22,8 @@ export default function TablerosCreados({ contexto }) {
     openCatalogCreate,
     openCatalogEdit,
     softDeleteCatalog,
+    exportCatalogToCsv,
+    importCatalogFromCsv,
     getActivityFrequencyLabel,
     Plus,
     Pencil,
@@ -35,6 +37,9 @@ export default function TablerosCreados({ contexto }) {
   const [selectedCatalogCategory, setSelectedCatalogCategory] = useState("General");
   const [selectedBoardCreatorId, setSelectedBoardCreatorId] = useState("all");
   const [createListModal, setCreateListModal] = useState({ open: false, name: "", error: "" });
+  const [isImporting, setIsImporting] = useState(false);
+  const [importMessage, setImportMessage] = useState(null); // { type: "ok"|"error", text: string }
+  const catalogImportRef = useRef(null);
   const isLeadCreatorView = currentUser?.role === ROLE_LEAD;
 
   const catalogCategories = useMemo(() => {
@@ -84,6 +89,22 @@ export default function TablerosCreados({ contexto }) {
 
   function handleOpenCreateCategoryModal() {
     setCreateListModal({ open: true, name: "", error: "" });
+  }
+
+  async function handleCatalogImportChange(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    event.target.value = "";
+    setIsImporting(true);
+    setImportMessage(null);
+    try {
+      const count = await importCatalogFromCsv(file);
+      setImportMessage({ type: "ok", text: `${count} actividad${count !== 1 ? "es" : ""} importada${count !== 1 ? "s" : ""} correctamente.` });
+    } catch (err) {
+      setImportMessage({ type: "error", text: err?.message || "Error al importar el archivo." });
+    } finally {
+      setIsImporting(false);
+    }
   }
 
   function handleCloseCreateCategoryModal() {
@@ -200,12 +221,24 @@ export default function TablerosCreados({ contexto }) {
               <h3>Catálogo de actividades</h3>
             </div>
             <div className="toolbar-actions">
+              <button type="button" className="icon-button sm-button" title="Exportar catálogo a CSV" onClick={exportCatalogToCsv} disabled={!activeCatalogItems.length}>
+                ↓ Exportar CSV
+              </button>
+              <button type="button" className="icon-button sm-button" title="Importar actividades desde CSV" onClick={() => catalogImportRef.current?.click()} disabled={isImporting || !actionPermissions.createCatalog}>
+                {isImporting ? "Importando…" : "↑ Importar CSV"}
+              </button>
+              <input ref={catalogImportRef} type="file" accept=".csv,text/csv" style={{ display: "none" }} onChange={handleCatalogImportChange} />
+              {importMessage ? (
+                <span style={{ fontSize: "0.78rem", color: importMessage.type === "ok" ? "var(--color-success, #16a34a)" : "var(--color-error, #dc2626)", marginLeft: 4 }}>
+                  {importMessage.text}
+                </span>
+              ) : null}
               {selectedCatalogCategory === "General" ? (
-                <button type="button" className="primary-button sm-button" onClick={handleOpenCreateCategoryModal} disabled={!actionPermissions.manageCatalog}>
+                <button type="button" className="primary-button sm-button" onClick={handleOpenCreateCategoryModal} disabled={!actionPermissions.createCatalog}>
                   <Plus size={14} /> Crear lista
                 </button>
               ) : (
-                <button type="button" className="primary-button sm-button" onClick={() => openCatalogCreate(selectedCatalogCategory)} disabled={!actionPermissions.manageCatalog}>
+                <button type="button" className="primary-button sm-button" onClick={() => openCatalogCreate(selectedCatalogCategory)} disabled={!actionPermissions.createCatalog}>
                   <Plus size={14} /> Agregar actividad
                 </button>
               )}

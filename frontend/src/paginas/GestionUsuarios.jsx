@@ -1,3 +1,5 @@
+import { Modal } from "../components/Modal.jsx";
+
 export default function GestionUsuarios({ contexto }) {
   const {
     creatableRoles,
@@ -52,7 +54,7 @@ export default function GestionUsuarios({ contexto }) {
           <p>Consulta perfiles, accesos y permisos desde un solo lugar.</p>
         </div>
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-          {creatableRoles.length ? <button type="button" className="primary-button" onClick={openCreateUser} disabled={!actionPermissions.manageUsers}><Plus size={16} /> Nuevo perfil</button> : null}
+          {creatableRoles.length ? <button type="button" className="primary-button" onClick={openCreateUser} disabled={!actionPermissions.createUsers}><Plus size={16} /> Nuevo perfil</button> : null}
           {actionPermissions.managePermissions ? <button type="button" className="primary-button" onClick={openCreateRoleModal}><Plus size={16} /> Nuevo rol</button> : null}
         </div>
       </article>
@@ -257,33 +259,29 @@ export default function GestionUsuarios({ contexto }) {
         ) : null}
       </section>
 
-      {/* Modal de rol */}
-      {roleModalOpen ? (
-        <div className="biblioteca-preview-backdrop" onClick={() => setRoleModalOpen(false)} style={{ zIndex: 9000 }}>
-          <div className="biblioteca-preview-panel" style={{ maxWidth: "420px", padding: "1.5rem" }} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginBottom: "1rem" }}>{roleModalEditId ? "Editar rol" : "Nuevo rol personalizado"}</h3>
-            <div className="field-group" style={{ marginBottom: "1rem" }}>
-              <label style={{ display: "block", marginBottom: "0.35rem", fontSize: "0.8rem", fontWeight: 600 }}>Nombre del rol</label>
-              <input
-                className="field-input"
-                type="text"
-                placeholder="Ej. Auditor, Coordinador regional…"
-                value={roleModalName}
-                onChange={(e) => setRoleModalName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") submitRoleModal(); if (e.key === "Escape") setRoleModalOpen(false); }}
-                autoFocus
-              />
-              {roleModalError ? <p style={{ color: "#ef4444", fontSize: "0.8rem", marginTop: "0.35rem" }}>{roleModalError}</p> : null}
-            </div>
-            <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
-              <button type="button" className="secondary-button sm-button" onClick={() => setRoleModalOpen(false)}>Cancelar</button>
-              <button type="button" className="primary-button sm-button" onClick={submitRoleModal} disabled={roleSaving}>
-                {roleSaving ? "Guardando…" : roleModalEditId ? "Guardar cambios" : "Crear rol"}
-              </button>
-            </div>
-          </div>
+      <Modal
+        open={roleModalOpen}
+        title={roleModalEditId ? "Editar rol personalizado" : "Nuevo rol personalizado"}
+        confirmLabel={roleSaving ? "Guardando…" : roleModalEditId ? "Guardar cambios" : "Crear rol"}
+        cancelLabel="Cancelar"
+        onClose={() => setRoleModalOpen(false)}
+        onConfirm={submitRoleModal}
+        confirmDisabled={roleSaving || !roleModalName.trim()}
+      >
+        <div className="modal-form-grid">
+          <label className="app-modal-field app-modal-field-full">
+            <span>Nombre del rol</span>
+            <input
+              type="text"
+              placeholder="Ej. Auditor, Coordinador regional…"
+              value={roleModalName}
+              onChange={(e) => setRoleModalName(e.target.value)}
+              autoFocus
+            />
+          </label>
+          {roleModalError ? <p className="validation-text app-modal-field-full">{roleModalError}</p> : null}
         </div>
-      ) : null}
+      </Modal>
     </section>
   );
 }

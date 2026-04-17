@@ -55,7 +55,7 @@ import "./App.css";
 const STORAGE_KEY = "sicfla.almacen.state.v1";
 const SIDEBAR_COLLAPSED_KEY = "sicfla.almacen.sidebarCollapsed.v1";
 const ACTIVE_PAGE_KEY = "sicfla.almacen.activePage.v1";
-const DASHBOARD_SECTIONS_KEY = "sicfla.almacen.dashboardSections.v1";
+const DASHBOARD_SECTIONS_KEY = "sicfla.almacen.dashboardSections.v2";
 const NOTIFICATION_READ_KEY = "sicfla.almacen.notifications.read.v1";
 const NOTIFICATION_DELETED_KEY = "sicfla.almacen.notifications.deleted.v1";
 const NOTIFICATION_INBOX_KEY = "sicfla.almacen.notifications.inbox.v1";
@@ -175,8 +175,8 @@ const DEFAULT_JOB_TITLE_BY_ROLE = {
 };
 const DASHBOARD_CHART_PALETTE = ["#0ea5e9", "#14b8a6", "#84cc16", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#64748b"];
 const DEFAULT_DASHBOARD_SECTION_STATE = {
-  executive: true,
-  people: true,
+  executive: false,
+  people: false,
   trends: false,
   causes: false,
   alerts: false,
@@ -1777,6 +1777,18 @@ function makeId(prefix) {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+const SESSION_STORAGE_KEY = "copmec_sess";
+
+let _onSessionExpiredGlobal = null;
+
+function setSessionExpiredHandler(handler) {
+  _onSessionExpiredGlobal = handler;
+}
+
+function clearSessionExpiredHandler() {
+  _onSessionExpiredGlobal = null;
+}
+
 async function requestJson(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     credentials: "include",
@@ -1791,6 +1803,12 @@ async function requestJson(path, options = {}) {
     const errorPayload = await response.json().catch(() => ({}));
     const error = new Error(errorPayload.message || `HTTP ${response.status}`);
     error.status = response.status;
+    // Auto-logout on 401 when a handler is registered (user is logged in)
+    if (response.status === 401 && _onSessionExpiredGlobal) {
+      const handler = _onSessionExpiredGlobal;
+      _onSessionExpiredGlobal = null; // prevent repeat triggers
+      handler();
+    }
     throw error;
   }
 
@@ -4721,7 +4739,7 @@ function DashboardLineChart({ series = [], emptyLabel = "No hay datos para la gr
   const pointCount = xLabels.length;
   const xStep = pointCount > 1 ? chartW / (pointCount - 1) : 0;
 
-  function toX(index) { return padLeft + index * xStep; }
+  function toX(index) { return pointCount === 1 ? padLeft + chartW / 2 : padLeft + index * xStep; }
   function toY(value) { return padTop + chartH - ((value - minVal) / range) * chartH; }
 
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => Math.round(minVal + t * range));
@@ -4742,8 +4760,8 @@ function DashboardLineChart({ series = [], emptyLabel = "No hay datos para la gr
         </defs>
 
         {/* Grid lines */}
-        {yTicks.map((tick) => (
-          <g key={tick}>
+        {yTicks.map((tick, tidx) => (
+          <g key={tidx}>
             <line x1={padLeft} y1={toY(tick)} x2={width - padRight} y2={toY(tick)} className="dashboard-grid-line" />
             <text x={padLeft - 4} y={toY(tick) + 4} className="dashboard-axis-label" textAnchor="end">{tick > 999 ? `${(tick / 1000).toFixed(1)}k` : tick}</text>
           </g>
@@ -4755,7 +4773,7 @@ function DashboardLineChart({ series = [], emptyLabel = "No hay datos para la gr
 
         {/* X labels */}
         {xLabels.map((label, idx) => (
-          <text key={label} x={toX(idx)} y={height - 8} className="dashboard-axis-label" textAnchor="middle">{label}</text>
+          <text key={idx} x={toX(idx)} y={height - 8} className="dashboard-axis-label" textAnchor="middle">{label}</text>
         ))}
 
         {/* Series: fill area then line then dots */}
@@ -5677,6 +5695,7 @@ function App() { // NOSONAR
   const [dashboardFilters, setDashboardFilters] = useState({ periodType: "week", periodKey: "all", responsibleId: "all", area: "all", source: "all", startDate: "", endDate: "" });
   const [pauseState, setPauseState] = useState({ open: false, activityId: null, reason: "", error: "" });
   const [boardPauseState, setBoardPauseState] = useState({ open: false, boardId: null, rowId: null, reason: "", error: "" });
+  const [pieceDeductionModal, setPieceDeductionModal] = useState({ open: false, boardId: null, rowId: null, items: [] });
   const [catalogModal, setCatalogModal] = useState({ open: false, mode: "create", id: null, name: "", limit: "", mandatory: "true", frequency: "weekly", category: "General" });
   const [editWeekId, setEditWeekId] = useState(null);
   const [editWeekActivityId, setEditWeekActivityId] = useState("");
@@ -5971,12 +5990,27 @@ function App() { // NOSONAR
         }
       }
 
+      // Only check session if we previously stored a session marker.
+      // This prevents a spurious 401 in the console when the user is not logged in.
+      const hadSession = localStorage.getItem(SESSION_STORAGE_KEY) === "1";
+      if (!hadSession) {
+        if (active) {
+          setSessionUserId("");
+          isHydratedRef.current = true;
+          setSyncStatus("Modo local");
+          setIsAuthChecking(false);
+        }
+        return;
+      }
+
       try {
         const session = await requestJson("/auth/session");
         if (!active) return;
+        setSessionExpiredHandler(() => invalidateClientSession("Tu sesión expiró. Por favor inicia sesión nuevamente."));
         setSessionUserId(session.userId || "");
       } catch {
         if (active) {
+          localStorage.removeItem(SESSION_STORAGE_KEY);
           setSessionUserId("");
           isHydratedRef.current = true;
           setSyncStatus("Modo local");
@@ -7491,6 +7525,8 @@ function App() { // NOSONAR
   }, [isForcedPasswordChange]);
 
   function invalidateClientSession(message) {
+    clearSessionExpiredHandler();
+    localStorage.removeItem(SESSION_STORAGE_KEY);
     setSessionUserId("");
     setProfileModalOpen(false);
     setPasswordForm({ password: "", confirmPassword: "", message: "" });
@@ -7560,6 +7596,92 @@ function App() { // NOSONAR
     const normalizedCategory = String(preferredCategory || "General").trim() || "General";
     setCatalogModal({ open: true, mode: "create", id: null, name: "", limit: "", mandatory: "true", frequency: "weekly", category: normalizedCategory });
   }
+
+  function exportCatalogToCsv() {
+    const items = state.catalog.filter((item) => !item.isDeleted);
+    if (!items.length) return;
+    const header = ["nombre", "lista", "frecuencia", "tiempo_limite_min", "tipo"].join(",");
+    const rows = items.map((item) =>
+      [
+        `"${String(item.name || "").replace(/"/g, '""')}"`,
+        `"${String(item.category || "General").replace(/"/g, '""')}"`,
+        item.frequency || "weekly",
+        String(item.timeLimitMinutes || 0),
+        item.isMandatory ? "Obligatoria" : "Ocasional",
+      ].join(","),
+    );
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "catalogo-actividades.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function importCatalogFromCsv(file) {
+    if (!file) return;
+    const text = await file.text();
+    const lines = text.split(/\r?\n/).filter((line) => line.trim());
+    if (lines.length < 2) return;
+    const headerLine = lines[0].toLowerCase().replace(/^\uFEFF/, "");
+    const headers = headerLine.split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
+    const nameIdx = headers.findIndex((h) => h.includes("nombre") || h === "name");
+    const catIdx = headers.findIndex((h) => h.includes("lista") || h.includes("categoria") || h.includes("category"));
+    const freqIdx = headers.findIndex((h) => h.includes("frecuencia") || h === "frequency");
+    const limitIdx = headers.findIndex((h) => h.includes("tiempo") || h.includes("limit") || h.includes("min"));
+    const typeIdx = headers.findIndex((h) => h.includes("tipo") || h === "type" || h.includes("mandatory"));
+    if (nameIdx === -1) return;
+
+    function parseCsvRow(line) {
+      const result = [];
+      let inQuote = false;
+      let current = "";
+      for (const char of line) {
+        if (char === '"') { inQuote = !inQuote; continue; }
+        if (char === "," && !inQuote) { result.push(current); current = ""; continue; }
+        current += char;
+      }
+      result.push(current);
+      return result;
+    }
+
+    const validFrequencies = new Set(ACTIVITY_FREQUENCY_OPTIONS.map((o) => o.value));
+    const freqByLabel = Object.fromEntries(ACTIVITY_FREQUENCY_OPTIONS.map((o) => [o.label.toLowerCase(), o.value]));
+
+    const items = lines.slice(1).map((line) => {
+      const cols = parseCsvRow(line);
+      const name = String(cols[nameIdx] || "").trim();
+      if (!name) return null;
+      const category = catIdx >= 0 ? String(cols[catIdx] || "General").trim() || "General" : "General";
+      const rawFreq = freqIdx >= 0 ? String(cols[freqIdx] || "weekly").trim().toLowerCase() : "weekly";
+      const frequency = validFrequencies.has(rawFreq) ? rawFreq : (freqByLabel[rawFreq] || "weekly");
+      const timeLimitMinutes = Math.max(0, Number(limitIdx >= 0 ? cols[limitIdx] : 0) || 0);
+      const rawType = typeIdx >= 0 ? String(cols[typeIdx] || "").trim().toLowerCase() : "";
+      const isMandatory = rawType === "obligatoria" || rawType === "true" || rawType === "1";
+      return { name, category, frequency, timeLimitMinutes: timeLimitMinutes || 30, isMandatory, isDeleted: false };
+    }).filter(Boolean);
+
+    if (!items.length) return;
+
+    let lastState = null;
+    let importedCount = 0;
+    for (const item of items) {
+      const result = await requestJson("/warehouse/catalog", { method: "POST", body: JSON.stringify(item) });
+      if (result?.data?.state) lastState = result.data.state;
+      importedCount++;
+    }
+    if (lastState) {
+      applyRemoteWarehouseState(lastState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+    } else {
+      const stateResult = await requestJson("/warehouse/state").catch(() => null);
+      if (stateResult) applyRemoteWarehouseState(stateResult, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+    }
+    return importedCount;
+  }
+
+
 
   function openCatalogEdit(item) {
     setCatalogModal({
@@ -8931,6 +9053,8 @@ function App() { // NOSONAR
     }
 
     setSessionUserId(authResult.userId || "");
+    localStorage.setItem(SESSION_STORAGE_KEY, "1");
+    setSessionExpiredHandler(() => invalidateClientSession("Tu sesión expiró. Por favor inicia sesión nuevamente."));
     if (authResult.isBootstrapMaster) {
       setPage(PAGE_DASHBOARD);
       return;
@@ -8961,6 +9085,8 @@ function App() { // NOSONAR
     } catch {
       // Ignore logout transport errors and clear client session anyway.
     }
+    clearSessionExpiredHandler();
+    localStorage.removeItem(SESSION_STORAGE_KEY);
     setSessionUserId("");
     setLoginForm({ login: "", password: "" });
     setLoginError("");
@@ -8999,6 +9125,8 @@ function App() { // NOSONAR
       });
       setBootstrapLeadForm({ name: "", username: "", area: "", jobTitle: "", password: "" });
       setSessionUserId(result.userId);
+      localStorage.setItem(SESSION_STORAGE_KEY, "1");
+      setSessionExpiredHandler(() => invalidateClientSession("Tu sesión expiró. Por favor inicia sesión nuevamente."));
       applyRemoteWarehouseState(result.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
       setPage(PAGE_DASHBOARD);
     } catch (error) {
@@ -9115,6 +9243,40 @@ function App() { // NOSONAR
     const row = board?.rows?.find((item) => item.id === rowId);
     if (!board || !row || !canOperateBoardRowRecord(currentUser, board, row, normalizedPermissions)) return;
 
+    // When starting a row, check if there are linked cleaning inventory items measured in piezas
+    if (status === STATUS_RUNNING && row.status !== STATUS_RUNNING) {
+      const activityCatalogId = row.catalogActivityId || null;
+      if (activityCatalogId) {
+        const pieceItems = (state.inventory || []).filter((invItem) => {
+          if (invItem.isDeleted) return false;
+          const unit = String(invItem.unitLabel || "").trim().toLowerCase();
+          const isPieces = unit === "pzas" || unit === "piezas" || unit === "pz";
+          if (!isPieces) return false;
+          return (invItem.activityConsumptions || []).some((entry) => entry.catalogActivityId === activityCatalogId && Number(entry.quantity) > 0);
+        });
+        if (pieceItems.length) {
+          setPieceDeductionModal({
+            open: true,
+            boardId,
+            rowId,
+            items: pieceItems.map((invItem) => {
+              const consumption = invItem.activityConsumptions.find((entry) => entry.catalogActivityId === activityCatalogId);
+              return { id: invItem.id, name: invItem.name, quantity: consumption?.quantity || 1, unit: invItem.unitLabel || "pzas", stock: invItem.stockUnits };
+            }),
+          });
+          return;
+        }
+      }
+    }
+
+    executeBoardRowStatusChange(boardId, rowId, status);
+  }
+
+  function executeBoardRowStatusChange(boardId, rowId, status) {
+    const board = (state.controlBoards || []).find((item) => item.id === boardId);
+    const row = board?.rows?.find((item) => item.id === rowId);
+    if (!board || !row || !canOperateBoardRowRecord(currentUser, board, row, normalizedPermissions)) return;
+
     const nowTime = new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false });
     const autoTimeValues = (board.fields || []).reduce((accumulator, field) => {
       if (field.type !== "time") return accumulator;
@@ -9159,6 +9321,30 @@ function App() { // NOSONAR
     }).catch((error) => {
       setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo cambiar el estado de la fila." });
     });
+  }
+
+  async function confirmPieceDeductionAndStart(deduct) {
+    const { boardId, rowId, items } = pieceDeductionModal;
+    setPieceDeductionModal({ open: false, boardId: null, rowId: null, items: [] });
+    if (deduct && items.length) {
+      try {
+        for (const item of items) {
+          await requestJson(`/warehouse/inventory/movements`, {
+            method: "POST",
+            body: JSON.stringify({
+              itemId: item.id,
+              movementType: "Salida",
+              quantity: item.quantity,
+              notes: "Descuento automático al iniciar actividad en tablero",
+              storageLocation: "",
+            }),
+          });
+        }
+      } catch {
+        // Non-blocking: proceed to start row even if deduction fails
+      }
+    }
+    executeBoardRowStatusChange(boardId, rowId, STATUS_RUNNING);
   }
 
   function openFinishBoardRowConfirm(boardId, rowId) {
@@ -9561,6 +9747,16 @@ function App() { // NOSONAR
   const inventoryPresentationPlaceholder = getInventoryPresentationPlaceholder(inventoryModal.domain);
   const inventoryUnitPlaceholder = getInventoryUnitPlaceholder(inventoryModal.domain);
   const inventoryStoragePlaceholder = getInventoryStoragePlaceholder(inventoryModal.domain);
+
+  const inventoryUnitOptions = useMemo(() => {
+    const PRESET_UNITS = ["pzas", "piezas", "rollos", "bidones", "bolsas", "litros", "kg", "cajas", "paquetes", "galones", "latas", "metros", "sacos", "cubetas"];
+    const existing = new Set(PRESET_UNITS);
+    (state.inventory || []).forEach((item) => {
+      const u = String(item.unitLabel || "").trim().toLowerCase();
+      if (u) existing.add(u);
+    });
+    return Array.from(existing).sort((a, b) => a.localeCompare(b, "es-MX"));
+  }, [state.inventory]);
   const shouldShowTransferTargetEmptyState = !hasOrderTransferTargets;
   const shouldShowTransferRemainingUnits = (movement) => movement.remainingUnits !== null;
   const shouldShowTransferMovementEmptyState = orderInventoryTransferMovements.length === 0;
@@ -9753,6 +9949,8 @@ function App() { // NOSONAR
     openBoardPauseModal,
     openCatalogCreate,
     openCatalogEdit,
+    exportCatalogToCsv,
+    importCatalogFromCsv,
     openCreateBoardBuilder,
     openCreateInventoryItem,
     openCreateUser,
@@ -10284,7 +10482,7 @@ function App() { // NOSONAR
         onConfirm={saveControlBoard}
         onOpenComponentStudio={openComponentStudio}
         onImportFromExcel={openBoardExcelImportPicker}
-        onSaveTemplate={saveDraftAsBoardTemplate}
+        onSaveTemplate={actionPermissions.saveTemplate ? saveDraftAsBoardTemplate : null}
         onClear={clearControlBoardDraft}
         feedback={controlBoardFeedback}
         templateSearch={templateSearch}
@@ -10436,7 +10634,10 @@ function App() { // NOSONAR
               </label>
               <label className="app-modal-field">
                 <span>Unidad</span>
-                <input value={inventoryModal.unitLabel} onChange={(event) => setInventoryModal((current) => ({ ...current, unitLabel: event.target.value }))} placeholder={inventoryUnitPlaceholder} />
+                <input list="inventory-unit-datalist" value={inventoryModal.unitLabel} onChange={(event) => setInventoryModal((current) => ({ ...current, unitLabel: event.target.value }))} placeholder={inventoryUnitPlaceholder} />
+                <datalist id="inventory-unit-datalist">
+                  {inventoryUnitOptions.map((unit) => <option key={unit} value={unit} />)}
+                </datalist>
               </label>
               <label className="app-modal-field">
                 <span>Ubicación / resguardo</span>
@@ -10463,6 +10664,28 @@ function App() { // NOSONAR
               </div>
             </>
           ) : null}
+        </div>
+      </Modal>
+
+      <Modal
+        open={pieceDeductionModal.open}
+        title="¿Descontar insumos al iniciar?"
+        confirmLabel="Sí, descontar y comenzar"
+        cancelLabel="Comenzar sin descontar"
+        onClose={() => confirmPieceDeductionAndStart(false)}
+        onConfirm={() => confirmPieceDeductionAndStart(true)}
+      >
+        <div className="modal-form-grid">
+          <p className="modal-footnote">Esta actividad tiene insumos en piezas vinculados. ¿Quieres descontar automáticamente del inventario al iniciar?</p>
+          <div className="piece-deduction-list">
+            {pieceDeductionModal.items.map((item) => (
+              <div key={item.id} className="piece-deduction-row">
+                <strong>{item.name}</strong>
+                <span className="chip">{item.quantity} {item.unit} · Stock actual: {item.stock}</span>
+              </div>
+            ))}
+          </div>
+          <p className="modal-footnote">Si eliges "Comenzar sin descontar", la actividad inicia normalmente y el inventario no cambia.</p>
         </div>
       </Modal>
 

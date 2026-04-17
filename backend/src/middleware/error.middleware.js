@@ -1,3 +1,5 @@
+import { isProduction } from "../config/env.js";
+
 export function errorHandler(err, _req, res, _next) {
   const message = String(err?.message || "");
   const lowerMessage = message.toLowerCase();
@@ -22,6 +24,7 @@ export function errorHandler(err, _req, res, _next) {
           ? "El archivo excede el tamano maximo permitido."
           : isBadUpload || isClientError
             ? err.message || "Solicitud invalida."
-            : "Unexpected server error.",
+            // Never expose internal error details in production
+            : isProduction ? "Error interno del servidor." : (err.message || "Unexpected server error."),
   });
 }

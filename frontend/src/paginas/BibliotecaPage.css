@@ -115,6 +115,24 @@
   bottom: -2px;
 }
 
+/* ── Welcome cover ── */
+.biblioteca-welcome-cover {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  border-radius: 1rem;
+  overflow: hidden;
+  min-height: 320px;
+}
+
+.biblioteca-welcome-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 1rem;
+}
+
 /* ── States ── */
 .biblioteca-loading,
 .biblioteca-error,

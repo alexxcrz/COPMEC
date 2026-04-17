@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import bibliotecaWelcome from "../assets/biblioteca-welcome.jpeg";
 import {
   BookOpen,
   Download,
@@ -65,7 +66,7 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
-  const [areaFilter, setAreaFilter] = useState("General");
+  const [areaFilter, setAreaFilter] = useState("NOM");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadArea, setUploadArea] = useState("General");
@@ -78,6 +79,7 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
   const [previewBlobUrl, setPreviewBlobUrl] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [contentFullscreen, setContentFullscreen] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(true);
   // Prioridad y notificación — subida individual
   const [uploadPriority, setUploadPriority] = useState("baja");
   const [uploadNotify, setUploadNotify] = useState(false);
@@ -297,16 +299,20 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
           <button
             key={a}
             type="button"
-            className={`biblioteca-area-tab${areaFilter === a ? " active" : ""}`}
-            onClick={() => setAreaFilter(a)}
+            className={`biblioteca-area-tab${areaFilter === a && !showWelcome ? " active" : ""}`}
+            onClick={() => { setAreaFilter(a); setShowWelcome(false); }}
           >
             {a}
           </button>
         ))}
       </div>
 
-      {/* Body */}
-      {loading ? (
+      {/* Welcome image — shown until user picks a tab */}
+      {showWelcome ? (
+        <div className="biblioteca-welcome-cover">
+          <img src={bibliotecaWelcome} alt="Biblioteca" className="biblioteca-welcome-img" />
+        </div>
+      ) : loading ? (
         <div className="biblioteca-loading">
           <Loader2 size={24} className="spin" />
           <span>Cargando biblioteca…</span>
@@ -364,25 +370,23 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
                       >
                         <ExternalLink size={14} />
                       </a>
+                      <a
+                        href={getFileUrl(f)}
+                        download={f.originalName}
+                        className="icon-button"
+                        title="Descargar"
+                      >
+                        <Download size={14} />
+                      </a>
                       {canDelete ? (
-                        <>
-                          <a
-                            href={getFileUrl(f)}
-                            download={f.originalName}
-                            className="icon-button"
-                            title="Descargar"
-                          >
-                            <Download size={14} />
-                          </a>
-                          <button
-                            type="button"
-                            className="icon-button danger"
-                            onClick={() => setDeleteId(f.id)}
-                            title="Eliminar"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </>
+                        <button
+                          type="button"
+                          className="icon-button danger"
+                          onClick={() => setDeleteId(f.id)}
+                          title="Eliminar"
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       ) : null}
                     </div>
                   </div>
@@ -417,11 +421,9 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
                 >
                   <ExternalLink size={15} />
                 </a>
-                {canDelete ? (
-                  <a href={getFileUrl(previewFile)} download={previewFile.originalName} className="icon-button" title="Descargar">
-                    <Download size={15} />
-                  </a>
-                ) : null}
+                <a href={getFileUrl(previewFile)} download={previewFile.originalName} className="icon-button" title="Descargar">
+                  <Download size={15} />
+                </a>
                 <button type="button" className="icon-button" onClick={() => setPreviewFile(null)} title="Cerrar">
                   <X size={15} />
                 </button>
@@ -470,6 +472,7 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
         title="Subir archivo a la biblioteca"
         confirmLabel={uploading ? "Subiendo…" : "Subir archivo"}
         onConfirm={handleUpload}
+        confirmDisabled={!uploadFile || uploading}
         onClose={() => { setUploadOpen(false); setUploadFile(null); setUploadError(null); setUploadPriority("baja"); setUploadNotify(false); }}
         className="biblioteca-upload-modal"
       >
@@ -568,6 +571,7 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
         title="Carga masiva de archivos"
         confirmLabel={bulkUploading ? `Subiendo ${bulkProgress.done}/${bulkProgress.total}…` : "Subir todos"}
         onConfirm={handleBulkUpload}
+        confirmDisabled={!bulkFiles.length || bulkUploading}
         onClose={() => { if (!bulkUploading) { setBulkOpen(false); setBulkFiles([]); setBulkErrors([]); setBulkArea("General"); setBulkCustomArea(""); setBulkPriority("baja"); setBulkNotify(false); } }}
         className="biblioteca-upload-modal"
       >

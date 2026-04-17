@@ -39,8 +39,30 @@ export function auditSecurityEvent(eventType, req, details = {}) {
       details: Object.fromEntries(Object.entries(details).map(([key, value]) => [key, limitValue(value)])),
     };
     fs.appendFileSync(logFilePath, `${JSON.stringify(entry)}\n`, "utf8");
+
+    // Rotate: keep last 10 000 entries to prevent unbounded disk growth.
+    rotateLogIfNeeded();
   } catch {
     // Security logging must not break the request flow.
+  }
+}
+
+const LOG_MAX_LINES = 10_000;
+const LOG_ROTATE_EVERY = 100; // only check every N writes
+let _rotateCounter = 0;
+
+function rotateLogIfNeeded() {
+  _rotateCounter += 1;
+  if (_rotateCounter % LOG_ROTATE_EVERY !== 0) return;
+  try {
+    const raw = fs.readFileSync(logFilePath, "utf8");
+    const lines = raw.split(/\r?\n/).filter(Boolean);
+    if (lines.length > LOG_MAX_LINES) {
+      const trimmed = lines.slice(-LOG_MAX_LINES).join("\n") + "\n";
+      fs.writeFileSync(logFilePath, trimmed, "utf8");
+    }
+  } catch {
+    // Non-critical — skip silently.
   }
 }
 

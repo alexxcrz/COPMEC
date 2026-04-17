@@ -2,6 +2,7 @@ import { EventEmitter } from "node:events";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { randomBytes, randomUUID } from "node:crypto";
 import { publicLoginDirectoryEnabled } from "../config/env.js";
 import { hashPassword, isStrongPassword, isTemporaryPassword, verifyPassword } from "../utils/passwords.js";
 
@@ -90,15 +91,20 @@ function supportsManagedPermissionOverrides(role) {
   return normalizedRole === ROLE_LEAD || normalizedRole === ROLE_SR;
 }
 
-function defaultPassword(role) {
-  if (role === ROLE_LEAD) return "lead123";
-  if (role === ROLE_SR) return "senior123";
-  if (role === ROLE_SSR) return "ssr123";
-  return "junior123";
+function defaultPassword() {
+  // Generate a cryptographically random 12-char temporary password.
+  // Format: Aa1!XXXXXXXX — guarantees strong-password policy compliance.
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  const specials = "!@#$%&*";
+  const randomPart = Array.from(randomBytes(8)).map((b) => chars[b % chars.length]).join("");
+  const specialChar = specials[randomBytes(1)[0] % specials.length];
+  // Always starts with Aa1! prefix to satisfy all character-class requirements
+  return `T${specialChar}1${randomPart}`;
 }
 
 function makeId(prefix) {
-  return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+  // Use crypto.randomUUID() for unpredictable, cryptographically secure IDs.
+  return `${prefix}-${randomUUID().replaceAll("-", "").slice(0, 12)}`;
 }
 
 function addDays(date, days) {
@@ -287,7 +293,7 @@ function resolveUserPasswordHash(incomingPassword, storedPasswordHash, previousU
     return previousUser.passwordHash;
   }
 
-  return hashPassword(defaultPassword(role));
+  return hashPassword(defaultPassword());
 }
 
 function resolveUserSessionVersion(previousUser, user, role, passwordHash, mustChangePassword) {
@@ -3170,6 +3176,10 @@ export function validateWarehouseStateMutation(auth, nextState) {
   return { ok: true };
 }
 
+// A permanent dummy hash used to run verifyPassword even when no user is found,
+// preventing timing-based username enumeration attacks.
+const TIMING_DUMMY_HASH = hashPassword("COPMEC_TIMING_GUARD_DO_NOT_USE");
+
 export function authenticateWarehouseUser(login, password) {
   const normalizedLogin = String(login || "").trim().toLowerCase();
   const user = getRawWarehouseState().users.find((item) => {
@@ -3177,8 +3187,11 @@ export function authenticateWarehouseUser(login, password) {
     return username === normalizedLogin;
   });
 
-  if (!user?.isActive) return null;
-  if (!verifyPassword(password, user.passwordHash)) return null;
+  // Always run verifyPassword to prevent timing oracle (username enumeration).
+  const hashToCheck = user?.passwordHash || TIMING_DUMMY_HASH;
+  const passwordOk = verifyPassword(password, hashToCheck);
+
+  if (!user?.isActive || !passwordOk) return null;
   return user;
 }
 

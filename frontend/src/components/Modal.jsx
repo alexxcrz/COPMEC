@@ -12,13 +12,14 @@ export function Modal({
   className = "",
   backdropClassName = "",
   footerActions = null,
+  confirmDisabled = false,
 }) {
   useEffect(() => {
     if (!open) return;
 
     function handleKeyDown(event) {
       if (event.key === "Enter") {
-        if (onConfirm) {
+        if (onConfirm && !confirmDisabled) {
           onConfirm();
           return;
         }
@@ -32,7 +33,7 @@ export function Modal({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose, onConfirm]);
+  }, [open, onClose, onConfirm, confirmDisabled]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -63,7 +64,7 @@ export function Modal({
               {cancelLabel}
             </button>
           )}
-          <button type="button" className="sicfla-button" onClick={onConfirm || onClose}>
+          <button type="button" className="sicfla-button" onClick={onConfirm || onClose} disabled={confirmDisabled}>
             {confirmLabel}
           </button>
         </footer>

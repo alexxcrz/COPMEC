@@ -445,7 +445,7 @@ warehouseRouter.post("/areas", requireWarehouseAction("manageUsers"), (req, res)
   res.status(201).json({ ok: true, data: { state: result.state, area: result.area } });
 });
 
-warehouseRouter.post("/catalog", requireWarehouseAction("manageCatalog"), (req, res) => {
+warehouseRouter.post("/catalog", requireWarehouseAction("createCatalog"), (req, res) => {
   const result = createWarehouseCatalogItem(req.auth, req.body || {});
   if (!result.ok) {
     const status = result.reason === "auth_required" ? 401 : result.reason === "forbidden" ? 403 : 400;
@@ -461,7 +461,7 @@ warehouseRouter.post("/catalog", requireWarehouseAction("manageCatalog"), (req, 
   res.status(201).json({ ok: true, data: { state: result.state, itemId: result.itemId, itemName: result.itemName } });
 });
 
-warehouseRouter.patch("/catalog/:itemId", requireWarehouseAction("manageCatalog"), (req, res) => {
+warehouseRouter.patch("/catalog/:itemId", requireWarehouseAction("editCatalog"), (req, res) => {
   const result = updateWarehouseCatalogItem(req.auth, req.params.itemId, req.body || {});
   if (!result.ok) {
     const status = result.reason === "auth_required" ? 401 : result.reason === "item_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
@@ -477,7 +477,7 @@ warehouseRouter.patch("/catalog/:itemId", requireWarehouseAction("manageCatalog"
   res.json({ ok: true, data: { state: result.state, itemId: result.itemId, itemName: result.itemName } });
 });
 
-warehouseRouter.delete("/catalog/:itemId", requireWarehouseAction("manageCatalog"), (req, res) => {
+warehouseRouter.delete("/catalog/:itemId", requireWarehouseAction("deleteCatalog"), (req, res) => {
   const result = deleteWarehouseCatalogItem(req.auth, req.params.itemId);
   if (!result.ok) {
     const status = result.reason === "auth_required" ? 401 : result.reason === "item_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
