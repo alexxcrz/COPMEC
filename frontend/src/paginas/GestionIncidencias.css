@@ -1,0 +1,307 @@
+/* ── GestionIncidencias.css ─────────────────────────────────────────────── */
+
+.incidencias-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Header toolbar ─────────────────────────────────────────────────────── */
+.incidencias-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.incidencias-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+  max-width: 340px;
+}
+
+.incidencias-search-wrap svg {
+  position: absolute;
+  left: 0.65rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #aab3bc;
+  pointer-events: none;
+}
+
+.incidencias-search {
+  width: 100%;
+  padding: 0.46rem 0.75rem 0.46rem 2rem;
+  border: 1px solid var(--sicfla-border);
+  border-radius: 999px;
+  font-size: 0.82rem;
+  background: #fff;
+  outline: none;
+  color: var(--sicfla-text);
+}
+
+.incidencias-search:focus {
+  border-color: var(--sicfla-brand);
+}
+
+.incidencias-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.incidencias-filters select {
+  padding: 0.42rem 0.7rem;
+  border: 1px solid var(--sicfla-border);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: var(--sicfla-text);
+  background: #fff;
+  outline: none;
+  cursor: pointer;
+}
+
+.incidencias-filters select:focus {
+  border-color: var(--sicfla-brand);
+}
+
+/* ── KPI Cards ──────────────────────────────────────────────────────────── */
+.incidencias-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+
+.incidencias-kpi {
+  background: #fff;
+  border: 1px solid var(--sicfla-border);
+  border-radius: 1.1rem;
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.incidencias-kpi-label {
+  font-size: 0.72rem;
+  color: #8a94a0;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.incidencias-kpi-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--sicfla-text);
+  line-height: 1;
+}
+
+.incidencias-kpi-value.red    { color: #dc2626; }
+.incidencias-kpi-value.amber  { color: #d97706; }
+.incidencias-kpi-value.green  { color: #16a34a; }
+.incidencias-kpi-value.blue   { color: #2563eb; }
+
+/* ── Table ──────────────────────────────────────────────────────────────── */
+.incidencias-table-wrap {
+  overflow-x: auto;
+}
+
+.incidencias-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.incidencias-table th {
+  text-align: left;
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: #8a94a0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--sicfla-border);
+  white-space: nowrap;
+}
+
+.incidencias-table td {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid rgba(162, 170, 181, 0.12);
+  vertical-align: middle;
+  color: var(--sicfla-text);
+}
+
+.incidencias-table tr:last-child td {
+  border-bottom: none;
+}
+
+.incidencias-table tr:hover td {
+  background: rgba(3, 33, 33, 0.025);
+}
+
+/* ── Badges ─────────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* Status badges */
+.badge-abierta     { background: #fef3c7; color: #92400e; }
+.badge-en_proceso  { background: #dbeafe; color: #1e40af; }
+.badge-resuelta    { background: #dcfce7; color: #166534; }
+.badge-cerrada     { background: #f1f5f9; color: #64748b; }
+
+/* Priority badges */
+.badge-baja    { background: #f0fdf4; color: #15803d; }
+.badge-media   { background: #fffbeb; color: #b45309; }
+.badge-alta    { background: #fff7ed; color: #c2410c; }
+.badge-critica { background: #fef2f2; color: #991b1b; }
+
+/* Payment */
+.badge-pendiente { background: #fef3c7; color: #92400e; }
+.badge-pagado    { background: #dcfce7; color: #166534; }
+.badge-cancelado { background: #f1f5f9; color: #64748b; }
+
+/* ── Row actions ────────────────────────────────────────────────────────── */
+.incidencias-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* ── Empty state ────────────────────────────────────────────────────────── */
+.incidencias-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #8a94a0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.incidencias-empty p {
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* ── Modal form ─────────────────────────────────────────────────────────── */
+.incidencia-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem 1rem;
+}
+
+.incidencia-form .full-col {
+  grid-column: 1 / -1;
+}
+
+.incidencia-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  color: var(--sicfla-text);
+  font-weight: 500;
+}
+
+.incidencia-form input,
+.incidencia-form select,
+.incidencia-form textarea {
+  padding: 0.48rem 0.7rem;
+  border: 1px solid var(--sicfla-border);
+  border-radius: 0.65rem;
+  font-size: 0.82rem;
+  color: var(--sicfla-text);
+  background: #fff;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.incidencia-form input:focus,
+.incidencia-form select:focus,
+.incidencia-form textarea:focus {
+  border-color: var(--sicfla-brand);
+}
+
+.incidencia-form textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.incidencia-form .section-divider {
+  grid-column: 1 / -1;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8a94a0;
+  border-top: 1px solid var(--sicfla-border);
+  padding-top: 0.6rem;
+  margin-top: 0.1rem;
+}
+
+.incidencia-cost-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.incidencia-cost-row span {
+  font-size: 0.82rem;
+  color: #8a94a0;
+}
+
+/* ── Detail panel (readonly view) ───────────────────────────────────────── */
+.incidencia-detail {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem 1rem;
+}
+
+.incidencia-detail .full-col {
+  grid-column: 1 / -1;
+}
+
+.incidencia-detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.incidencia-detail-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #8a94a0;
+}
+
+.incidencia-detail-value {
+  font-size: 0.85rem;
+  color: var(--sicfla-text);
+}
+
+.incidencia-detail-value.cost {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.incidencia-detail-value.resolution {
+  background: #f8fafb;
+  border: 1px solid var(--sicfla-border);
+  border-radius: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.82rem;
+  white-space: pre-wrap;
+}

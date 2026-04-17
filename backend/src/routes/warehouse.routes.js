@@ -39,6 +39,9 @@ import {
   createCustomRole,
   updateCustomRole,
   deleteCustomRole,
+  createIncidencia,
+  updateIncidencia,
+  deleteIncidencia,
 } from "../services/warehouse.store.js";
 
 export const warehouseRouter = Router();
@@ -584,6 +587,37 @@ warehouseRouter.patch("/roles/:roleId", requireWarehouseAction("managePermission
 warehouseRouter.delete("/roles/:roleId", requireWarehouseAction("managePermissions"), (req, res) => {
   deleteCustomRole(req.params.roleId);
   res.json({ ok: true });
+});
+
+// ─── Incidencias ───────────────────────────────────────────────────────────
+warehouseRouter.post("/incidencias", requireWarehouseAction("createIncidencia"), (req, res) => {
+  const result = createIncidencia(req.auth, req.body || {});
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "forbidden" ? 403 : 400;
+    return res.status(status).json({ ok: false, message: "No fue posible registrar la incidencia." });
+  }
+  auditSecurityEvent("incidencia_created", req, { itemId: result.itemId, revision: result.state?.revision });
+  return res.status(201).json({ ok: true, data: { state: result.state, itemId: result.itemId } });
+});
+
+warehouseRouter.patch("/incidencias/:itemId", requireWarehouseAction("editIncidencia"), (req, res) => {
+  const result = updateIncidencia(req.auth, req.params.itemId, req.body || {});
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "item_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
+    return res.status(status).json({ ok: false, message: "No fue posible actualizar la incidencia." });
+  }
+  auditSecurityEvent("incidencia_updated", req, { itemId: result.itemId, revision: result.state?.revision });
+  return res.json({ ok: true, data: { state: result.state, itemId: result.itemId } });
+});
+
+warehouseRouter.delete("/incidencias/:itemId", requireWarehouseAction("deleteIncidencia"), (req, res) => {
+  const result = deleteIncidencia(req.auth, req.params.itemId);
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "item_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
+    return res.status(status).json({ ok: false, message: "No fue posible eliminar la incidencia." });
+  }
+  auditSecurityEvent("incidencia_deleted", req, { itemId: result.itemId, revision: result.state?.revision });
+  return res.json({ ok: true, data: { state: result.state, itemId: result.itemId } });
 });
 
 warehouseRouter.get("/events", (req, res) => {

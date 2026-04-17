@@ -42,6 +42,7 @@ import {
 import { Modal } from "./components/Modal";
 import { BoardBuilderModal, BoardComponentStudioModal } from "./components/ModalesConstructorTableros";
 import GestionInventario from "./paginas/GestionInventario";
+import GestionIncidencias from "./paginas/GestionIncidencias";
 import GestionUsuarios from "./paginas/GestionUsuarios";
 import HistorialSemanas from "./paginas/HistorialSemanas";
 import MisTableros from "./paginas/MisTableros";
@@ -75,6 +76,7 @@ const PAGE_HISTORY = "history";
 const PAGE_INVENTORY = "inventory";
 const PAGE_USERS = "users";
 const PAGE_BIBLIOTECA = "biblioteca";
+const PAGE_INCIDENCIAS = "incidencias";
 const PAGE_NOT_FOUND = "404";
 
 const PAGE_ROUTE_SLUGS = {
@@ -86,6 +88,7 @@ const PAGE_ROUTE_SLUGS = {
   [PAGE_INVENTORY]: "inventario",
   [PAGE_USERS]: "administrador",
   [PAGE_BIBLIOTECA]: "biblioteca",
+  [PAGE_INCIDENCIAS]: "incidencias",
   [PAGE_NOT_FOUND]: "404",
 };
 
@@ -107,6 +110,8 @@ const PAGE_ROUTE_ALIASES = {
   [PAGE_USERS]: PAGE_USERS,
   biblioteca: PAGE_BIBLIOTECA,
   [PAGE_BIBLIOTECA]: PAGE_BIBLIOTECA,
+  incidencias: PAGE_INCIDENCIAS,
+  [PAGE_INCIDENCIAS]: PAGE_INCIDENCIAS,
   [PAGE_NOT_FOUND]: PAGE_NOT_FOUND,
 };
 
@@ -1468,8 +1473,9 @@ const NAV_ITEMS = [
   { id: PAGE_BOARD,          label: "Creador de tableros",  icon: ClipboardList,   group: "Producción", roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
   { id: PAGE_HISTORY,        label: "Historial",            icon: CalendarDays,    group: "Producción", roles: [ROLE_LEAD, ROLE_SR] },
   { id: PAGE_INVENTORY,      label: "Inventario",           icon: Package,         group: "Producción", roles: [ROLE_LEAD, ROLE_SR] },
-  { id: PAGE_BIBLIOTECA,     label: "Biblioteca",           icon: BookOpen,        group: "Recursos",   roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
-  { id: PAGE_USERS,          label: "Players",              icon: Users,           group: "Equipo",     roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
+  { id: PAGE_BIBLIOTECA,    label: "Biblioteca",           icon: BookOpen,        group: "Recursos",   roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
+  { id: PAGE_INCIDENCIAS,   label: "Incidencias",          icon: OctagonAlert,    group: "Recursos",   roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
+  { id: PAGE_USERS,         label: "Players",              icon: Users,           group: "Equipo",     roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
 ];
 
 const ACTION_DEFINITIONS = [
@@ -1508,6 +1514,9 @@ const ACTION_DEFINITIONS = [
   { id: "exportBoardPdf",         label: "Exportar tablero a PDF",                  category: "Mis tableros",          defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
   { id: "uploadBiblioteca",       label: "Subir archivos a Biblioteca",             category: "Biblioteca",            defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "deleteBiblioteca",       label: "Eliminar archivos de Biblioteca",         category: "Biblioteca",            defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "createIncidencia",       label: "Registrar incidencias",                  category: "Incidencias",           defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
+  { id: "editIncidencia",         label: "Editar incidencias",                     category: "Incidencias",           defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "deleteIncidencia",       label: "Eliminar incidencias",                   category: "Incidencias",           defaultRoles: [ROLE_LEAD, ROLE_SR] },
 ];
 
 const BOARD_PERMISSION_ACTION_IDS = new Set([
@@ -1530,6 +1539,7 @@ const PAGE_ACTION_GROUPS = {
   [PAGE_INVENTORY]: ["manageInventory", "deleteInventory", "importInventory", "manageCleaningInventory", "deleteCleaningInventory", "importCleaningInventory", "manageOrderInventory", "deleteOrderInventory", "importOrderInventory"],
   [PAGE_USERS]: ["createUsers", "editUsers", "deleteUsers", "resetPasswords", "managePermissions"],
   [PAGE_BIBLIOTECA]: ["uploadBiblioteca", "deleteBiblioteca"],
+  [PAGE_INCIDENCIAS]: ["createIncidencia", "editIncidencia", "deleteIncidencia"],
 };
 
 const PERMISSION_PRESETS = [
@@ -1561,7 +1571,7 @@ const RESPONSIBLE_VISUALS = {
 
 // ROLE_PERMISSION_MATRIX: por defecto todos los roles tienen acceso a todas las pestañas.
 // Los permisos reales se configuran manualmente en el panel de Permisos.
-const ALL_PAGES = [PAGE_DASHBOARD, PAGE_CUSTOM_BOARDS, PAGE_BOARD, PAGE_HISTORY, PAGE_INVENTORY, PAGE_USERS, PAGE_BIBLIOTECA];
+const ALL_PAGES = [PAGE_DASHBOARD, PAGE_CUSTOM_BOARDS, PAGE_BOARD, PAGE_HISTORY, PAGE_INVENTORY, PAGE_USERS, PAGE_BIBLIOTECA, PAGE_INCIDENCIAS];
 const ALL_ACTION_IDS = ACTION_DEFINITIONS.map((item) => item.id);
 
 const ROLE_PERMISSION_MATRIX = {
@@ -10133,6 +10143,7 @@ function App() { // NOSONAR
         {page === PAGE_INVENTORY ? <GestionInventario contexto={paginasContexto} /> : null}
         {page === PAGE_USERS ? <GestionUsuarios contexto={paginasContexto} /> : null}
         {page === PAGE_BIBLIOTECA ? <BibliotecaPage currentUser={currentUser} canUpload={actionPermissions.uploadBiblioteca} canDelete={actionPermissions.deleteBiblioteca} /> : null}
+        {page === PAGE_INCIDENCIAS ? <GestionIncidencias contexto={paginasContexto} /> : null}
         {page === PAGE_NOT_FOUND ? <PaginaNoEncontrada contexto={paginasContexto} /> : null}
       </section>
 

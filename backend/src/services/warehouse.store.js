@@ -906,7 +906,98 @@ function normalizeState(state, previousState = null) {
     bibliotecaFiles: Array.isArray(state.bibliotecaFiles) ? state.bibliotecaFiles : [],
     bibliotecaNotifications: Array.isArray(state.bibliotecaNotifications) ? state.bibliotecaNotifications : [],
     customRoles: Array.isArray(state.customRoles) ? state.customRoles : [],
+    incidencias: Array.isArray(state.incidencias) ? state.incidencias : [],
   };
+}
+
+// ─── Incidencias ─────────────────────────────────────────────────────────────
+export function getIncidencias() {
+  return getRawWarehouseState().incidencias || [];
+}
+
+export function createIncidencia(auth, payload = {}) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+  const currentState = getRawWarehouseState();
+  if (!canUserDoWarehouseAction(currentUser, "createIncidencia", currentState.permissions)) return { ok: false, reason: "forbidden" };
+
+  if (!String(payload.title || "").trim()) return { ok: false, reason: "invalid_payload" };
+
+  const item = {
+    id: crypto.randomUUID(),
+    title: String(payload.title || "").trim(),
+    description: String(payload.description || "").trim(),
+    category: String(payload.category || "Otro").trim(),
+    area: String(payload.area || "").trim(),
+    priority: ["baja", "media", "alta", "critica"].includes(payload.priority) ? payload.priority : "media",
+    status: "abierta",
+    reportedById: currentUser.id,
+    reportedByName: currentUser.name,
+    assignedToId: String(payload.assignedToId || "").trim(),
+    assignedToName: String(payload.assignedToName || "").trim(),
+    estimatedCost: typeof payload.estimatedCost === "number" && payload.estimatedCost >= 0 ? payload.estimatedCost : null,
+    actualCost: null,
+    provider: String(payload.provider || "").trim(),
+    invoiceNumber: String(payload.invoiceNumber || "").trim(),
+    paymentStatus: "pendiente",
+    resolution: "",
+    reportedAt: new Date().toISOString(),
+    resolvedAt: null,
+    updatedAt: new Date().toISOString(),
+  };
+
+  const nextState = { ...currentState, incidencias: [...(currentState.incidencias || []), item] };
+  return { ok: true, state: replaceWarehouseState(nextState), itemId: item.id };
+}
+
+export function updateIncidencia(auth, itemId, payload = {}) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+  const currentState = getRawWarehouseState();
+  if (!canUserDoWarehouseAction(currentUser, "editIncidencia", currentState.permissions)) return { ok: false, reason: "forbidden" };
+
+  const existing = (currentState.incidencias || []).find((i) => i.id === itemId);
+  if (!existing) return { ok: false, reason: "item_not_found" };
+
+  const resolvedAt = payload.status === "resuelta" || payload.status === "cerrada"
+    ? (existing.resolvedAt || new Date().toISOString())
+    : payload.status === "abierta" || payload.status === "en_proceso" ? null : existing.resolvedAt;
+
+  const updated = {
+    ...existing,
+    title: String(payload.title ?? existing.title).trim(),
+    description: String(payload.description ?? existing.description).trim(),
+    category: String(payload.category ?? existing.category).trim(),
+    area: String(payload.area ?? existing.area).trim(),
+    priority: ["baja", "media", "alta", "critica"].includes(payload.priority) ? payload.priority : existing.priority,
+    status: ["abierta", "en_proceso", "resuelta", "cerrada"].includes(payload.status) ? payload.status : existing.status,
+    assignedToId: payload.assignedToId !== undefined ? String(payload.assignedToId || "").trim() : existing.assignedToId,
+    assignedToName: payload.assignedToName !== undefined ? String(payload.assignedToName || "").trim() : existing.assignedToName,
+    estimatedCost: typeof payload.estimatedCost === "number" ? payload.estimatedCost : existing.estimatedCost,
+    actualCost: typeof payload.actualCost === "number" ? payload.actualCost : existing.actualCost,
+    provider: payload.provider !== undefined ? String(payload.provider || "").trim() : existing.provider,
+    invoiceNumber: payload.invoiceNumber !== undefined ? String(payload.invoiceNumber || "").trim() : existing.invoiceNumber,
+    paymentStatus: ["pendiente", "pagado", "cancelado"].includes(payload.paymentStatus) ? payload.paymentStatus : existing.paymentStatus,
+    resolution: payload.resolution !== undefined ? String(payload.resolution || "").trim() : existing.resolution,
+    resolvedAt,
+    updatedAt: new Date().toISOString(),
+  };
+
+  const nextState = { ...currentState, incidencias: (currentState.incidencias || []).map((i) => i.id === itemId ? updated : i) };
+  return { ok: true, state: replaceWarehouseState(nextState), itemId };
+}
+
+export function deleteIncidencia(auth, itemId) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+  const currentState = getRawWarehouseState();
+  if (!canUserDoWarehouseAction(currentUser, "deleteIncidencia", currentState.permissions)) return { ok: false, reason: "forbidden" };
+
+  const existing = (currentState.incidencias || []).find((i) => i.id === itemId);
+  if (!existing) return { ok: false, reason: "item_not_found" };
+
+  const nextState = { ...currentState, incidencias: (currentState.incidencias || []).filter((i) => i.id !== itemId) };
+  return { ok: true, state: replaceWarehouseState(nextState), itemId };
 }
 
 function buildSampleState() {

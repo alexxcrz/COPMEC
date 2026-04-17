@@ -13,7 +13,9 @@ export function TextCell({ value, placeholder, onCommit }) {
   if (!editing) {
     return (
       <button type="button" className="cell-inline-button" onClick={() => setEditing(true)}>
-        {value || <span className="cell-placeholder">{placeholder || "Sin valor"}</span>}
+        {value
+          ? <span>{value}</span>
+          : <span className="cell-placeholder">{placeholder || "Sin valor"}</span>}
       </button>
     );
   }
