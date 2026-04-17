@@ -1634,7 +1634,7 @@ function remapPermissionsModel(permissions, users = []) {
     pages: Object.fromEntries(NAV_ITEMS.map((item) => [
       item.id,
       {
-        roles: defaults.pages[item.id].roles,
+        roles: Array.isArray(permissions?.pages?.[item.id]?.roles) ? permissions.pages[item.id].roles : defaults.pages[item.id].roles,
         userIds: Array.isArray(permissions?.pages?.[item.id]?.userIds) ? permissions.pages[item.id].userIds.filter((userId) => knownUserIds.has(userId)) : [],
         departments: Array.isArray(permissions?.pages?.[item.id]?.departments) ? permissions.pages[item.id].departments.filter(Boolean) : [],
       },
@@ -1642,7 +1642,7 @@ function remapPermissionsModel(permissions, users = []) {
     actions: Object.fromEntries(ACTION_DEFINITIONS.map((item) => [
       item.id,
       {
-        roles: defaults.actions[item.id].roles,
+        roles: Array.isArray(permissions?.actions?.[item.id]?.roles) ? permissions.actions[item.id].roles : defaults.actions[item.id].roles,
         userIds: Array.isArray(permissions?.actions?.[item.id]?.userIds) ? permissions.actions[item.id].userIds.filter((userId) => knownUserIds.has(userId)) : [],
         departments: Array.isArray(permissions?.actions?.[item.id]?.departments) ? permissions.actions[item.id].departments.filter(Boolean) : [],
       },
