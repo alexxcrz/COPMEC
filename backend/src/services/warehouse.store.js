@@ -907,6 +907,7 @@ function normalizeState(state, previousState = null) {
     bibliotecaNotifications: Array.isArray(state.bibliotecaNotifications) ? state.bibliotecaNotifications : [],
     customRoles: Array.isArray(state.customRoles) ? state.customRoles : [],
     incidencias: Array.isArray(state.incidencias) ? state.incidencias : [],
+    incidenciaNotifications: Array.isArray(state.incidenciaNotifications) ? state.incidenciaNotifications : [],
   };
 }
 
@@ -941,12 +942,32 @@ export function createIncidencia(auth, payload = {}) {
     invoiceNumber: String(payload.invoiceNumber || "").trim(),
     paymentStatus: "pendiente",
     resolution: "",
+    evidencias: [],
+    cotizaciones: [],
     reportedAt: new Date().toISOString(),
     resolvedAt: null,
     updatedAt: new Date().toISOString(),
   };
 
-  const nextState = { ...currentState, incidencias: [...(currentState.incidencias || []), item] };
+  let nextState = { ...currentState, incidencias: [...(currentState.incidencias || []), item] };
+
+  // Notificación al usuario asignado
+  if (item.assignedToId) {
+    const notif = {
+      id: makeId("innotif"),
+      incidenciaId: item.id,
+      incidenciaTitle: item.title,
+      priority: item.priority,
+      assignedToId: item.assignedToId,
+      assignedToName: item.assignedToName,
+      assignedById: currentUser.id,
+      assignedByName: currentUser.name,
+      createdAt: new Date().toISOString(),
+    };
+    const prevNotifs = nextState.incidenciaNotifications || [];
+    nextState = { ...nextState, incidenciaNotifications: [...prevNotifs, notif].slice(-200) };
+  }
+
   return { ok: true, state: replaceWarehouseState(nextState), itemId: item.id };
 }
 
@@ -983,6 +1004,150 @@ export function updateIncidencia(auth, itemId, payload = {}) {
     updatedAt: new Date().toISOString(),
   };
 
+  const newAssignedId = updated.assignedToId;
+  const oldAssignedId = existing.assignedToId;
+  let finalState = { ...currentState, incidencias: (currentState.incidencias || []).map((i) => i.id === itemId ? updated : i) };
+
+  // Notificación si se asignó por primera vez o cambió el asignado
+  if (newAssignedId && newAssignedId !== oldAssignedId) {
+    const notif = {
+      id: makeId("innotif"),
+      incidenciaId: updated.id,
+      incidenciaTitle: updated.title,
+      priority: updated.priority,
+      assignedToId: updated.assignedToId,
+      assignedToName: updated.assignedToName,
+      assignedById: currentUser.id,
+      assignedByName: currentUser.name,
+      createdAt: new Date().toISOString(),
+    };
+    const prevNotifs = finalState.incidenciaNotifications || [];
+    finalState = { ...finalState, incidenciaNotifications: [...prevNotifs, notif].slice(-200) };
+  }
+
+  return { ok: true, state: replaceWarehouseState(finalState), itemId };
+}
+
+export function addEvidenciaToIncidencia(auth, itemId, evidencia) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+  const currentState = getRawWarehouseState();
+  if (!canUserDoWarehouseAction(currentUser, "editIncidencia", currentState.permissions)) return { ok: false, reason: "forbidden" };
+
+  const existing = (currentState.incidencias || []).find((i) => i.id === itemId);
+  if (!existing) return { ok: false, reason: "item_not_found" };
+
+  const newEvidencia = {
+    id: crypto.randomUUID(),
+    url: String(evidencia.url || "").trim(),
+    thumbnailUrl: String(evidencia.thumbnailUrl || evidencia.url || "").trim(),
+    name: String(evidencia.name || "archivo").trim(),
+    type: String(evidencia.type || "image").trim(),
+    uploadedById: currentUser.id,
+    uploadedByName: currentUser.name,
+    uploadedAt: new Date().toISOString(),
+  };
+
+  if (!newEvidencia.url) return { ok: false, reason: "invalid_payload" };
+
+  const updated = { ...existing, evidencias: [...(existing.evidencias || []), newEvidencia], updatedAt: new Date().toISOString() };
+  const nextState = { ...currentState, incidencias: (currentState.incidencias || []).map((i) => i.id === itemId ? updated : i) };
+  return { ok: true, state: replaceWarehouseState(nextState), itemId };
+}
+
+export function removeEvidenciaFromIncidencia(auth, itemId, evidenciaId) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+  const currentState = getRawWarehouseState();
+  if (!canUserDoWarehouseAction(currentUser, "editIncidencia", currentState.permissions)) return { ok: false, reason: "forbidden" };
+
+  const existing = (currentState.incidencias || []).find((i) => i.id === itemId);
+  if (!existing) return { ok: false, reason: "item_not_found" };
+
+  const updated = { ...existing, evidencias: (existing.evidencias || []).filter((e) => e.id !== evidenciaId), updatedAt: new Date().toISOString() };
+  const nextState = { ...currentState, incidencias: (currentState.incidencias || []).map((i) => i.id === itemId ? updated : i) };
+  return { ok: true, state: replaceWarehouseState(nextState), itemId };
+}
+
+export function addCotizacionToIncidencia(auth, itemId, payload = {}) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+  const currentState = getRawWarehouseState();
+  if (!canUserDoWarehouseAction(currentUser, "editIncidencia", currentState.permissions)) return { ok: false, reason: "forbidden" };
+
+  const existing = (currentState.incidencias || []).find((i) => i.id === itemId);
+  if (!existing) return { ok: false, reason: "item_not_found" };
+  if (!String(payload.proveedor || "").trim()) return { ok: false, reason: "invalid_payload" };
+
+  const cotizacion = {
+    id: crypto.randomUUID(),
+    proveedor: String(payload.proveedor || "").trim(),
+    descripcion: String(payload.descripcion || "").trim(),
+    monto: typeof payload.monto === "number" && payload.monto >= 0 ? payload.monto : 0,
+    tiempoEntrega: String(payload.tiempoEntrega || "").trim(),
+    distanciaKm: typeof payload.distanciaKm === "number" && payload.distanciaKm >= 0 ? payload.distanciaKm : 0,
+    consumoLitros100km: typeof payload.consumoLitros100km === "number" && payload.consumoLitros100km > 0 ? payload.consumoLitros100km : 10,
+    precioCombustible: typeof payload.precioCombustible === "number" && payload.precioCombustible > 0 ? payload.precioCombustible : 0,
+    archivoUrl: String(payload.archivoUrl || "").trim(),
+    archivoNombre: String(payload.archivoNombre || "").trim(),
+    notas: String(payload.notas || "").trim(),
+    seleccionada: false,
+    creadaAt: new Date().toISOString(),
+  };
+
+  const updated = { ...existing, cotizaciones: [...(existing.cotizaciones || []), cotizacion], updatedAt: new Date().toISOString() };
+  const nextState = { ...currentState, incidencias: (currentState.incidencias || []).map((i) => i.id === itemId ? updated : i) };
+  return { ok: true, state: replaceWarehouseState(nextState), itemId };
+}
+
+export function updateCotizacion(auth, itemId, cotizacionId, payload = {}) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+  const currentState = getRawWarehouseState();
+  if (!canUserDoWarehouseAction(currentUser, "editIncidencia", currentState.permissions)) return { ok: false, reason: "forbidden" };
+
+  const existing = (currentState.incidencias || []).find((i) => i.id === itemId);
+  if (!existing) return { ok: false, reason: "item_not_found" };
+  const existingCot = (existing.cotizaciones || []).find((c) => c.id === cotizacionId);
+  if (!existingCot) return { ok: false, reason: "cotizacion_not_found" };
+
+  const updatedCot = {
+    ...existingCot,
+    proveedor: payload.proveedor !== undefined ? String(payload.proveedor || "").trim() : existingCot.proveedor,
+    descripcion: payload.descripcion !== undefined ? String(payload.descripcion || "").trim() : existingCot.descripcion,
+    monto: typeof payload.monto === "number" ? payload.monto : existingCot.monto,
+    tiempoEntrega: payload.tiempoEntrega !== undefined ? String(payload.tiempoEntrega || "").trim() : existingCot.tiempoEntrega,
+    distanciaKm: typeof payload.distanciaKm === "number" ? payload.distanciaKm : existingCot.distanciaKm,
+    consumoLitros100km: typeof payload.consumoLitros100km === "number" ? payload.consumoLitros100km : existingCot.consumoLitros100km,
+    precioCombustible: typeof payload.precioCombustible === "number" ? payload.precioCombustible : existingCot.precioCombustible,
+    archivoUrl: payload.archivoUrl !== undefined ? String(payload.archivoUrl || "").trim() : existingCot.archivoUrl,
+    archivoNombre: payload.archivoNombre !== undefined ? String(payload.archivoNombre || "").trim() : existingCot.archivoNombre,
+    notas: payload.notas !== undefined ? String(payload.notas || "").trim() : existingCot.notas,
+    seleccionada: typeof payload.seleccionada === "boolean" ? payload.seleccionada : existingCot.seleccionada,
+  };
+
+  // Si se marca como seleccionada, desmarcar las demás
+  const nextCotizaciones = (existing.cotizaciones || []).map((c) => {
+    if (c.id === cotizacionId) return updatedCot;
+    if (payload.seleccionada === true) return { ...c, seleccionada: false };
+    return c;
+  });
+
+  const updated = { ...existing, cotizaciones: nextCotizaciones, updatedAt: new Date().toISOString() };
+  const nextState = { ...currentState, incidencias: (currentState.incidencias || []).map((i) => i.id === itemId ? updated : i) };
+  return { ok: true, state: replaceWarehouseState(nextState), itemId };
+}
+
+export function deleteCotizacion(auth, itemId, cotizacionId) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+  const currentState = getRawWarehouseState();
+  if (!canUserDoWarehouseAction(currentUser, "editIncidencia", currentState.permissions)) return { ok: false, reason: "forbidden" };
+
+  const existing = (currentState.incidencias || []).find((i) => i.id === itemId);
+  if (!existing) return { ok: false, reason: "item_not_found" };
+
+  const updated = { ...existing, cotizaciones: (existing.cotizaciones || []).filter((c) => c.id !== cotizacionId), updatedAt: new Date().toISOString() };
   const nextState = { ...currentState, incidencias: (currentState.incidencias || []).map((i) => i.id === itemId ? updated : i) };
   return { ok: true, state: replaceWarehouseState(nextState), itemId };
 }
@@ -3478,6 +3643,11 @@ export function addBibliotecaNotification(payload) {
 
 export function getBibliotecaNotifications() {
   return getRawWarehouseState().bibliotecaNotifications || [];
+}
+
+// ─── Notificaciones de incidencias ──────────────────────────────────────────
+export function getIncidenciaNotifications() {
+  return getRawWarehouseState().incidenciaNotifications || [];
 }
 
 // ─── Roles personalizados ───────────────────────────────────────────────────

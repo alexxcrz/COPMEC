@@ -7203,6 +7203,25 @@ function App() { // NOSONAR
         });
       });
 
+    // Notificaciones de incidencias asignadas al usuario actual
+    (state.incidenciaNotifications || [])
+      .slice(-50)
+      .filter((notif) => notif.assignedToId === currentUser?.id)
+      .forEach((notif) => {
+        const prioTone = { critica: "danger", alta: "danger", media: "warning", baja: "success" };
+        const prioEmoji = { critica: "🔴", alta: "🟠", media: "🟡", baja: "🟢" };
+        notifications.push({
+          id: `incidencia-notif-${notif.id}`,
+          title: `${prioEmoji[notif.priority] || "⚠️"} Incidencia asignada a ti`,
+          message: `"${notif.incidenciaTitle}" fue asignada por ${notif.assignedByName}.`,
+          meta: `Prioridad: ${notif.priority ? notif.priority.charAt(0).toUpperCase() + notif.priority.slice(1) : "Media"}`,
+          tone: prioTone[notif.priority] || "warning",
+          timestamp: notif.createdAt,
+          targetPage: PAGE_INCIDENCIAS,
+          isLocked: notif.priority === "critica",
+        });
+      });
+
     return notifications.toSorted((left, right) => getComparableDateMs(right.timestamp) - getComparableDateMs(left.timestamp));
   }, [
     actionableLowStockInventoryItems,
@@ -7214,6 +7233,7 @@ function App() { // NOSONAR
     now,
     securityEvents,
     state.bibliotecaNotifications,
+    state.incidenciaNotifications,
   ]);
 
   useEffect(() => {

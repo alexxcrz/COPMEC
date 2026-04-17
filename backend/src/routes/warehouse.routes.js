@@ -43,6 +43,11 @@ import {
   createIncidencia,
   updateIncidencia,
   deleteIncidencia,
+  addEvidenciaToIncidencia,
+  removeEvidenciaFromIncidencia,
+  addCotizacionToIncidencia,
+  updateCotizacion,
+  deleteCotizacion,
 } from "../services/warehouse.store.js";
 
 export const warehouseRouter = Router();
@@ -633,6 +638,51 @@ warehouseRouter.delete("/incidencias/:itemId", requireWarehouseAction("deleteInc
     return res.status(status).json({ ok: false, message: "No fue posible eliminar la incidencia." });
   }
   auditSecurityEvent("incidencia_deleted", req, { itemId: result.itemId, revision: result.state?.revision });
+  return res.json({ ok: true, data: { state: result.state, itemId: result.itemId } });
+});
+
+warehouseRouter.post("/incidencias/:itemId/evidencias", requireWarehouseAction("editIncidencia"), (req, res) => {
+  const result = addEvidenciaToIncidencia(req.auth, req.params.itemId, req.body || {});
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "item_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
+    return res.status(status).json({ ok: false, message: "No fue posible agregar la evidencia." });
+  }
+  return res.status(201).json({ ok: true, data: { state: result.state, itemId: result.itemId } });
+});
+
+warehouseRouter.delete("/incidencias/:itemId/evidencias/:evidenciaId", requireWarehouseAction("editIncidencia"), (req, res) => {
+  const result = removeEvidenciaFromIncidencia(req.auth, req.params.itemId, req.params.evidenciaId);
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "item_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
+    return res.status(status).json({ ok: false, message: "No fue posible eliminar la evidencia." });
+  }
+  return res.json({ ok: true, data: { state: result.state, itemId: result.itemId } });
+});
+
+warehouseRouter.post("/incidencias/:itemId/cotizaciones", requireWarehouseAction("editIncidencia"), (req, res) => {
+  const result = addCotizacionToIncidencia(req.auth, req.params.itemId, req.body || {});
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "item_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
+    return res.status(status).json({ ok: false, message: "No fue posible agregar la cotización." });
+  }
+  return res.status(201).json({ ok: true, data: { state: result.state, itemId: result.itemId } });
+});
+
+warehouseRouter.patch("/incidencias/:itemId/cotizaciones/:cotizacionId", requireWarehouseAction("editIncidencia"), (req, res) => {
+  const result = updateCotizacion(req.auth, req.params.itemId, req.params.cotizacionId, req.body || {});
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "item_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
+    return res.status(status).json({ ok: false, message: "No fue posible actualizar la cotización." });
+  }
+  return res.json({ ok: true, data: { state: result.state, itemId: result.itemId } });
+});
+
+warehouseRouter.delete("/incidencias/:itemId/cotizaciones/:cotizacionId", requireWarehouseAction("editIncidencia"), (req, res) => {
+  const result = deleteCotizacion(req.auth, req.params.itemId, req.params.cotizacionId);
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "item_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
+    return res.status(status).json({ ok: false, message: "No fue posible eliminar la cotización." });
+  }
   return res.json({ ok: true, data: { state: result.state, itemId: result.itemId } });
 });
 

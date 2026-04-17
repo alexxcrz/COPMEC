@@ -1,5 +1,5 @@
 {
-  "revision": 2172,
+  "revision": 2173,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro"
@@ -9421,7 +9421,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-17T15:34:19.438Z",
+  "updatedAt": "2026-04-17T19:28:38.001Z",
   "permissions": {
     "pages": {
       "index": {
@@ -12024,5 +12024,31 @@
     }
   ],
   "bibliotecaNotifications": [],
-  "customRoles": []
+  "customRoles": [],
+  "incidencias": [
+    {
+      "id": "fef81ea1-fd2b-4832-892c-e264af356e89",
+      "title": "Alumbrado N1",
+      "description": "Alumbrado de toda  la nave 1 en la parte de racks y estaciones de trabajo",
+      "category": "Eléctrico",
+      "area": "racks y estaciones",
+      "priority": "media",
+      "status": "abierta",
+      "reportedById": "usr-lead-nu7wt83h",
+      "reportedByName": "Alejandro Cruz Martinez",
+      "assignedToId": "usr-lead-nu7wt83h",
+      "assignedToName": "Alejandro Cruz Martinez",
+      "estimatedCost": 15000,
+      "actualCost": null,
+      "provider": "",
+      "invoiceNumber": "",
+      "paymentStatus": "pendiente",
+      "resolution": "",
+      "evidencias": [],
+      "cotizaciones": [],
+      "reportedAt": "2026-04-17T19:28:37.980Z",
+      "resolvedAt": null,
+      "updatedAt": "2026-04-17T19:28:37.980Z"
+    }
+  ]
 }

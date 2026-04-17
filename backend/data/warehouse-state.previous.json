@@ -1,5 +1,5 @@
 {
-  "revision": 2171,
+  "revision": 2172,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro"
@@ -9421,7 +9421,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-17T15:34:18.455Z",
+  "updatedAt": "2026-04-17T15:34:19.438Z",
   "permissions": {
     "pages": {
       "index": {
@@ -12019,7 +12019,8 @@
       "priority": "baja",
       "uploadedById": "usr-lead-nu7wt83h",
       "uploadedByName": "Alejandro Cruz Martinez",
-      "uploadedAt": "2026-04-17T15:34:18.429Z"
+      "uploadedAt": "2026-04-17T15:34:18.429Z",
+      "coverFileName": "cover_bib-e6d21349f153_1776440059384.png"
     }
   ],
   "bibliotecaNotifications": [],
