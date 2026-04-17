@@ -278,10 +278,10 @@ export default function TablerosCreados({ contexto }) {
                     <td>{item.isMandatory ? "Obligatoria" : "Ocasional"}</td>
                     <td>
                       <div className="row-actions compact">
-                        <button type="button" className="icon-button" onClick={() => openCatalogEdit(item)} disabled={!actionPermissions.manageCatalog}>
+                        <button type="button" className="icon-button" onClick={() => openCatalogEdit(item)} disabled={!actionPermissions.editCatalog}>
                           <Pencil size={15} /> Editar
                         </button>
-                        <button type="button" className="icon-button danger" onClick={() => softDeleteCatalog(item.id)} disabled={!actionPermissions.manageCatalog}>
+                        <button type="button" className="icon-button danger" onClick={() => softDeleteCatalog(item.id)} disabled={!actionPermissions.deleteCatalog}>
                           <Trash2 size={15} /> Eliminar
                         </button>
                       </div>

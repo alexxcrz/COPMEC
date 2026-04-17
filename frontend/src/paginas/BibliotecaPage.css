@@ -232,6 +232,11 @@
   object-fit: cover;
 }
 
+.biblioteca-thumb-cover {
+  object-fit: cover;
+  object-position: top center;
+}
+
 .biblioteca-file-icon {
   display: flex;
   flex-direction: column;
@@ -286,9 +291,20 @@
 .biblioteca-file-actions {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.4rem 0.6rem;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  padding: 0.35rem 0.5rem;
   border-top: 1px solid rgba(162, 170, 181, 0.13);
+}
+
+.biblioteca-file-actions .icon-button {
+  padding: 0.3rem;
+  min-width: 28px;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 /* ── Preview ── */
@@ -374,6 +390,36 @@
   object-fit: contain;
 }
 
+.biblioteca-fullscreen-toolbar {
+  position: fixed;
+  bottom: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 400;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.biblioteca-fullscreen-close {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.9rem;
+  background: rgba(3, 33, 33, 0.82);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background 120ms;
+}
+
+.biblioteca-fullscreen-close:hover {
+  background: rgba(3, 33, 33, 0.97);
+}
+
 .biblioteca-preview-unsupported {
   display: flex;
   flex-direction: column;
@@ -447,6 +493,77 @@
   gap: 0.35rem;
   font-size: 0.78rem;
   color: var(--sicfla-text);
+}
+
+.biblioteca-bulk-item-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--sicfla-text);
+  padding: 0.25rem 0.1rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.biblioteca-bulk-item-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.biblioteca-bulk-cover-btn {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.7rem;
+  color: #6b7280;
+  background: #f3f4f6;
+  border: 1px dashed #d1d5db;
+  border-radius: 6px;
+  padding: 2px 7px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.biblioteca-bulk-cover-btn:hover { background: #e5e7eb; }
+
+.biblioteca-bulk-cover-preview {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.biblioteca-bulk-cover-clear {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #dc2626;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.biblioteca-bulk-add-more {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: #6b7280;
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-top: 0.35rem;
+  padding: 0;
+}
+
+.biblioteca-bulk-add-more:hover { color: var(--sicfla-brand); }
+
+.biblioteca-cover-dropzone {
+  min-height: 44px;
 }
 
 .biblioteca-bulk-progress {

@@ -69,7 +69,7 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
   const [areaFilter, setAreaFilter] = useState("NOM");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
-  const [uploadArea, setUploadArea] = useState("General");
+  const [uploadArea, setUploadArea] = useState("NOM");
   const [uploadDescription, setUploadDescription] = useState("");
   const [uploadCustomArea, setUploadCustomArea] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -80,13 +80,18 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [contentFullscreen, setContentFullscreen] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
+  const [coverUploadId, setCoverUploadId] = useState(null); // fileId al que se está subiendo portada
+  const [coverUploading, setCoverUploading] = useState(false);
+  const coverInputRef = useRef(null);
   // Prioridad y notificación — subida individual
   const [uploadPriority, setUploadPriority] = useState("baja");
   const [uploadNotify, setUploadNotify] = useState(false);
+  const [uploadCoverFile, setUploadCoverFile] = useState(null); // portada para subida individual
   // Carga masiva
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkFiles, setBulkFiles] = useState([]);
-  const [bulkArea, setBulkArea] = useState("General");
+  const [bulkCovers, setBulkCovers] = useState({}); // { index: File } portadas por archivo
+  const [bulkArea, setBulkArea] = useState("NOM");
   const [bulkCustomArea, setBulkCustomArea] = useState("");
   const [bulkUploading, setBulkUploading] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
@@ -95,7 +100,9 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
   const [bulkPriority, setBulkPriority] = useState("baja");
   const [bulkNotify, setBulkNotify] = useState(false);
   const fileInputRef = useRef(null);
+  const uploadCoverRef = useRef(null);
   const bulkFileInputRef = useRef(null);
+  const bulkCoverRefs = useRef({}); // refs por índice para inputs de portada bulk
 
   // Cargar archivo como blob para preview autenticado
   useEffect(() => {
@@ -169,6 +176,48 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [filtered]);
 
+  function getCoverUrl(f) {
+    if (f?.coverFileName) return `${API_BASE}/biblioteca/files/${encodeURIComponent(f.coverFileName)}`;
+    return f?.fileThumbUrl || null;
+  }
+
+  async function handleCoverFileChange(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !coverUploadId) return;
+    setCoverUploading(true);
+    try {
+      const form = new FormData();
+      form.append("cover", file);
+      const res = await fetch(`${API_BASE}/biblioteca/${coverUploadId}/cover`, {
+        method: "PATCH",
+        credentials: "include",
+        body: form,
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.message || "Error al subir portada");
+      setFiles((prev) => prev.map((f) => (f.id === coverUploadId ? json.data : f)));
+    } catch (err) {
+      console.error("[cover upload]", err.message);
+    } finally {
+      setCoverUploading(false);
+      setCoverUploadId(null);
+    }
+  }
+
+  async function handleDeleteCover(fileId) {
+    try {
+      const res = await fetch(`${API_BASE}/biblioteca/${fileId}/cover`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const json = await res.json();
+      if (json.ok) setFiles((prev) => prev.map((f) => (f.id === fileId ? json.data : f)));
+    } catch (err) {
+      console.error("[cover delete]", err.message);
+    }
+  }
+
   async function handleUpload() {
     if (!uploadFile) return;
     setUploading(true);
@@ -188,11 +237,25 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
       });
       const json = await res.json();
       if (!json.ok) throw new Error(json.message || "Error al subir");
-      setFiles((prev) => [...prev, json.data]);
+      let entry = json.data;
+      // Subir portada si se seleccionó una
+      if (uploadCoverFile && entry?.id) {
+        const coverForm = new FormData();
+        coverForm.append("cover", uploadCoverFile);
+        const coverRes = await fetch(`${API_BASE}/biblioteca/${entry.id}/cover`, {
+          method: "PATCH",
+          credentials: "include",
+          body: coverForm,
+        });
+        const coverJson = await coverRes.json();
+        if (coverJson.ok) entry = coverJson.data;
+      }
+      setFiles((prev) => [...prev, entry]);
       setUploadOpen(false);
       setUploadFile(null);
+      setUploadCoverFile(null);
       setUploadDescription("");
-      setUploadArea("General");
+      setUploadArea(areaFilter);
       setUploadCustomArea("");
       setUploadPriority("baja");
       setUploadNotify(false);
@@ -242,7 +305,21 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
         const res = await fetch(`${API_BASE}/biblioteca`, { method: "POST", credentials: "include", body: form });
         const json = await res.json();
         if (!json.ok) throw new Error(json.message || "Error");
-        added.push(json.data);
+        let entry = json.data;
+        // Subir portada individual si se asignó
+        const coverFile = bulkCovers[i];
+        if (coverFile && entry?.id) {
+          const coverForm = new FormData();
+          coverForm.append("cover", coverFile);
+          const coverRes = await fetch(`${API_BASE}/biblioteca/${entry.id}/cover`, {
+            method: "PATCH",
+            credentials: "include",
+            body: coverForm,
+          });
+          const coverJson = await coverRes.json();
+          if (coverJson.ok) entry = coverJson.data;
+        }
+        added.push(entry);
       } catch (err) {
         errors.push(`${file.name}: ${err.message}`);
       }
@@ -254,7 +331,8 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
     if (!errors.length) {
       setBulkOpen(false);
       setBulkFiles([]);
-      setBulkArea("General");
+      setBulkCovers({});
+      setBulkArea(areaFilter);
       setBulkCustomArea("");
       setBulkPriority("baja");
       setBulkNotify(false);
@@ -283,10 +361,10 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
 
         {canUpload ? (
           <div style={{ display: "flex", gap: "8px" }}>
-            <button type="button" className="primary-button sm-button" onClick={() => setUploadOpen(true)}>
+            <button type="button" className="primary-button sm-button" onClick={() => { setUploadArea(areaFilter); setUploadOpen(true); }}>
               <Upload size={14} /> Subir archivo
             </button>
-            <button type="button" className="primary-button sm-button" onClick={() => setBulkOpen(true)} title="Carga masiva">
+            <button type="button" className="primary-button sm-button" onClick={() => { setBulkArea(areaFilter); setBulkOpen(true); }} title="Carga masiva">
               <FolderUp size={14} /> Carga masiva
             </button>
           </div>
@@ -327,7 +405,7 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
           <BookOpen size={40} />
           <p>{files.length === 0 ? "La biblioteca está vacía." : "No hay archivos que coincidan con la búsqueda."}</p>
           {canUpload && files.length === 0 ? (
-            <button type="button" className="primary-button sm-button" onClick={() => setUploadOpen(true)}>
+            <button type="button" className="primary-button sm-button" onClick={() => { setUploadArea(areaFilter); setUploadOpen(true); }}>
               <Upload size={14} /> Subir primer archivo
             </button>
           ) : null}
@@ -338,64 +416,89 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
             <section key={area} className="biblioteca-area-section">
               <h3 className="biblioteca-area-title">{area} <span>{areaFiles.length}</span></h3>
               <div className="biblioteca-files-grid">
-                {areaFiles.map((f) => (
-                  <div key={f.id} className="biblioteca-file-card">
-                    <button
-                      type="button"
-                      className="biblioteca-file-preview-btn"
-                      onClick={() => setPreviewFile(f)}
-                      title="Ver archivo"
-                    >
-                      {isImage(f.fileMimeType) ? (
-                        <img src={f.fileThumbUrl || getFileUrl(f)} alt={f.originalName} className="biblioteca-thumb" />
-                      ) : (
-                        <div className="biblioteca-file-icon">
-                          <FileText size={28} />
-                          <span className="biblioteca-mime-badge">{mimeLabel(f.fileMimeType)}</span>
-                        </div>
-                      )}
-                    </button>
-                    <div className="biblioteca-file-info">
-                      <p className="biblioteca-file-name" title={f.originalName}>{f.originalName}</p>
-                      {f.description ? <p className="biblioteca-file-desc">{f.description}</p> : null}
-                      <p className="biblioteca-file-meta">{formatDate(f.uploadedAt)} · {formatBytes(f.bytes)}</p>
-                    </div>
-                    <div className="biblioteca-file-actions">
-                      <a
-                        href={getFileUrl(f)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="icon-button"
-                        title="Abrir en pestaña"
+                {areaFiles.map((f) => {
+                  const coverUrl = getCoverUrl(f);
+                  return (
+                    <div key={f.id} className="biblioteca-file-card">
+                      <button
+                        type="button"
+                        className="biblioteca-file-preview-btn"
+                        onClick={() => setPreviewFile(f)}
+                        title="Ver archivo"
                       >
-                        <ExternalLink size={14} />
-                      </a>
-                      <a
-                        href={getFileUrl(f)}
-                        download={f.originalName}
-                        className="icon-button"
-                        title="Descargar"
-                      >
-                        <Download size={14} />
-                      </a>
-                      {canDelete ? (
-                        <button
-                          type="button"
-                          className="icon-button danger"
-                          onClick={() => setDeleteId(f.id)}
-                          title="Eliminar"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      ) : null}
+                        {isImage(f.fileMimeType) ? (
+                          <img src={f.fileThumbUrl || getFileUrl(f)} alt={f.originalName} className="biblioteca-thumb" />
+                        ) : coverUrl ? (
+                          <img src={coverUrl} alt={`Portada de ${f.originalName}`} className="biblioteca-thumb biblioteca-thumb-cover" />
+                        ) : (
+                          <div className="biblioteca-file-icon">
+                            <FileText size={28} />
+                            <span className="biblioteca-mime-badge">{mimeLabel(f.fileMimeType)}</span>
+                          </div>
+                        )}
+                      </button>
+                      <div className="biblioteca-file-info">
+                        <p className="biblioteca-file-name" title={f.originalName}>{f.originalName}</p>
+                        {f.description ? <p className="biblioteca-file-desc">{f.description}</p> : null}
+                        <p className="biblioteca-file-meta">{formatDate(f.uploadedAt)} · {formatBytes(f.bytes)}</p>
+                      </div>
+                      <div className="biblioteca-file-actions">
+                        <a href={getFileUrl(f)} target="_blank" rel="noopener noreferrer" className="icon-button" title="Abrir en pestaña">
+                          <ExternalLink size={13} />
+                        </a>
+                        <a href={getFileUrl(f)} download={f.originalName} className="icon-button" title="Descargar">
+                          <Download size={13} />
+                        </a>
+                        {canUpload && !isImage(f.fileMimeType) ? (
+                          <button
+                            type="button"
+                            className="icon-button"
+                            title={coverUrl ? "Cambiar portada" : "Subir portada"}
+                            disabled={coverUploading && coverUploadId === f.id}
+                            onClick={() => { setCoverUploadId(f.id); coverInputRef.current?.click(); }}
+                          >
+                            <Upload size={13} />
+                          </button>
+                        ) : null}
+                        {canUpload && !isImage(f.fileMimeType) && coverUrl ? (
+                          <button
+                            type="button"
+                            className="icon-button danger"
+                            title="Quitar portada"
+                            onClick={() => handleDeleteCover(f.id)}
+                          >
+                            <X size={13} />
+                          </button>
+                        ) : null}
+                        {canDelete ? (
+                          <button
+                            type="button"
+                            className="icon-button danger"
+                            style={{ marginLeft: "auto" }}
+                            onClick={() => setDeleteId(f.id)}
+                            title="Eliminar"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           ))}
         </div>
       )}
+
+      {/* Input oculto para subir portada */}
+      <input
+        ref={coverInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        style={{ display: "none" }}
+        onChange={handleCoverFileChange}
+      />
 
       {/* Preview modal */}
       {previewFile ? (
@@ -430,6 +533,16 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
               </div>
             </div>
             <div className="biblioteca-preview-body">
+              {contentFullscreen ? (
+                <div className="biblioteca-fullscreen-toolbar">
+                  <button type="button" className="biblioteca-fullscreen-close" onClick={() => setContentFullscreen(false)} title="Salir de pantalla completa">
+                    <Minimize2 size={16} /> Salir
+                  </button>
+                  <button type="button" className="biblioteca-fullscreen-close" onClick={() => setPreviewFile(null)} title="Cerrar">
+                    <X size={16} /> Cerrar
+                  </button>
+                </div>
+              ) : null}
               {previewLoading ? (
                 <div className="biblioteca-loading"><Loader2 size={24} className="spin" /><span>Cargando…</span></div>
               ) : isImage(previewFile.fileMimeType) ? (
@@ -473,7 +586,7 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
         confirmLabel={uploading ? "Subiendo…" : "Subir archivo"}
         onConfirm={handleUpload}
         confirmDisabled={!uploadFile || uploading}
-        onClose={() => { setUploadOpen(false); setUploadFile(null); setUploadError(null); setUploadPriority("baja"); setUploadNotify(false); }}
+        onClose={() => { setUploadOpen(false); setUploadFile(null); setUploadCoverFile(null); setUploadError(null); setUploadArea(areaFilter); setUploadPriority("baja"); setUploadNotify(false); }}
         className="biblioteca-upload-modal"
       >
         <div className="modal-form-grid" style={{ gridTemplateColumns: "1fr" }}>
@@ -550,6 +663,27 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
               onChange={(e) => { setUploadFile(e.target.files[0] || null); e.target.value = ""; }}
             />
           </div>
+          <div className="field-group">
+            <label>Portada (opcional) <span style={{ fontWeight: 400, color: "#8a94a0" }}>— imagen que se mostrará en la tarjeta</span></label>
+            <div className="biblioteca-upload-dropzone biblioteca-cover-dropzone" onClick={() => uploadCoverRef.current?.click()}>
+              {uploadCoverFile ? (
+                <span className="biblioteca-upload-filename" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <img src={URL.createObjectURL(uploadCoverFile)} alt="preview" style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 4 }} />
+                  {uploadCoverFile.name}
+                  <button type="button" style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "#dc2626" }} onClick={(e) => { e.stopPropagation(); setUploadCoverFile(null); }}><X size={13} /></button>
+                </span>
+              ) : (
+                <span className="biblioteca-upload-placeholder"><Upload size={14} /> Seleccionar imagen de portada…</span>
+              )}
+            </div>
+            <input
+              ref={uploadCoverRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              style={{ display: "none" }}
+              onChange={(e) => { setUploadCoverFile(e.target.files[0] || null); e.target.value = ""; }}
+            />
+          </div>
           {uploadError ? <p className="biblioteca-upload-error">{uploadError}</p> : null}
         </div>
       </Modal>
@@ -572,7 +706,7 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
         confirmLabel={bulkUploading ? `Subiendo ${bulkProgress.done}/${bulkProgress.total}…` : "Subir todos"}
         onConfirm={handleBulkUpload}
         confirmDisabled={!bulkFiles.length || bulkUploading}
-        onClose={() => { if (!bulkUploading) { setBulkOpen(false); setBulkFiles([]); setBulkErrors([]); setBulkArea("General"); setBulkCustomArea(""); setBulkPriority("baja"); setBulkNotify(false); } }}
+        onClose={() => { if (!bulkUploading) { setBulkOpen(false); setBulkFiles([]); setBulkCovers({}); setBulkErrors([]); setBulkArea(areaFilter); setBulkCustomArea(""); setBulkPriority("baja"); setBulkNotify(false); } }}
         className="biblioteca-upload-modal"
       >
         <div className="modal-form-grid" style={{ gridTemplateColumns: "1fr" }}>
@@ -616,13 +750,40 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
             <label>Archivos ({bulkFiles.length} seleccionados)</label>
             <div
               className="biblioteca-upload-dropzone"
-              onClick={() => bulkFileInputRef.current?.click()}
+              onClick={() => !bulkFiles.length && bulkFileInputRef.current?.click()}
+              style={bulkFiles.length ? { cursor: "default", padding: "0.5rem" } : {}}
             >
               {bulkFiles.length ? (
                 <div className="biblioteca-bulk-list">
                   {bulkFiles.map((f, i) => (
-                    <span key={i} className="biblioteca-bulk-item"><FileText size={12} /> {f.name}</span>
+                    <div key={i} className="biblioteca-bulk-item-row">
+                      <FileText size={12} />
+                      <span className="biblioteca-bulk-item-name">{f.name}</span>
+                      {bulkCovers[i] ? (
+                        <span className="biblioteca-bulk-cover-preview">
+                          <img src={URL.createObjectURL(bulkCovers[i])} alt="portada" style={{ width: 22, height: 22, objectFit: "cover", borderRadius: 3 }} />
+                          <button type="button" className="biblioteca-bulk-cover-clear" onClick={() => setBulkCovers((prev) => { const next = { ...prev }; delete next[i]; return next; })}><X size={10} /></button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="biblioteca-bulk-cover-btn"
+                          title="Agregar portada"
+                          onClick={() => { bulkCoverRefs.current[i]?.click(); }}
+                        ><Upload size={11} /> portada</button>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        style={{ display: "none" }}
+                        ref={(el) => { bulkCoverRefs.current[i] = el; }}
+                        onChange={(e) => { const file = e.target.files[0]; if (file) setBulkCovers((prev) => ({ ...prev, [i]: file })); e.target.value = ""; }}
+                      />
+                    </div>
                   ))}
+                  <button type="button" className="biblioteca-bulk-add-more" onClick={() => bulkFileInputRef.current?.click()}>
+                    <FolderUp size={13} /> Cambiar selección
+                  </button>
                 </div>
               ) : (
                 <span className="biblioteca-upload-placeholder"><FolderUp size={16} /> Haz clic para seleccionar archivos (puedes seleccionar varios)</span>
@@ -634,7 +795,7 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
               multiple
               accept=".pdf,.png,.jpg,.jpeg,.webp,.xlsx,.xls,.docx,.doc,.txt"
               style={{ display: "none" }}
-              onChange={(e) => { setBulkFiles(Array.from(e.target.files)); e.target.value = ""; }}
+              onChange={(e) => { setBulkFiles(Array.from(e.target.files)); setBulkCovers({}); e.target.value = ""; }}
             />
           </div>
           {bulkUploading ? (

@@ -3323,6 +3323,17 @@ export function addBibliotecaFile(payload) {
   return file;
 }
 
+export function updateBibliotecaFileCover(fileId, coverData) {
+  const currentState = getRawWarehouseState();
+  const files = currentState.bibliotecaFiles || [];
+  const idx = files.findIndex((f) => f.id === fileId);
+  if (idx === -1) return { ok: false, message: "Archivo no encontrado." };
+  const updated = { ...files[idx], ...coverData };
+  const nextFiles = [...files.slice(0, idx), updated, ...files.slice(idx + 1)];
+  replaceWarehouseState({ ...currentState, bibliotecaFiles: nextFiles });
+  return { ok: true, file: updated };
+}
+
 export function deleteBibliotecaFile(fileId) {
   const currentState = getRawWarehouseState();
   const existing = (currentState.bibliotecaFiles || []).find((f) => f.id === fileId);

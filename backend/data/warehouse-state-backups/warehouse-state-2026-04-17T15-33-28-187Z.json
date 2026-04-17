@@ -1,5 +1,5 @@
 {
-  "revision": 2142,
+  "revision": 2161,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro"
@@ -36,9 +36,9 @@
       "createdById": "usr-lead-nu7wt83h",
       "selfIdentityEditCount": 0,
       "mustChangePassword": false,
-      "temporaryPasswordIssuedAt": "2026-04-12T17:35:08.27Z",
-      "passwordHash": "scrypt$182d5e96b8fca80cefd9b85276f1dc16$7b5fabf9bc6e6095e7675e20ba2b17a0e3c825982f3a1e13bd4236a691ea23510326e91a1e7e0700cda03e6ef831cf0803dca71d20ed69f207743fd93bc3954d",
-      "sessionVersion": 8
+      "temporaryPasswordIssuedAt": "2026-04-16T21:53:21.077Z",
+      "passwordHash": "scrypt$a19ecf285a1fd00b679b45aca96fcab0$888b12b330a61bdcc7819de0d393120db2e3fff60d94c24a383531e755ed93e2fa3edb84b87fcc4fdcdf85948381330eade29218480c0498d13c987b75f0934d",
+      "sessionVersion": 10
     },
     {
       "id": "usr-sqtdyayn",
@@ -70,9 +70,9 @@
       "createdById": "usr-lead-nu7wt83h",
       "selfIdentityEditCount": 0,
       "mustChangePassword": false,
-      "temporaryPasswordIssuedAt": null,
-      "passwordHash": "scrypt$89be8677ac4dd3e745f44dfb6e6a0550$0ef5fa8c5f5a379fb808dad582405c37a85869089635a4c0ba1b91b6d240a9b1cf0d58a0d18addd01854cf51aee75b3524ff1a239c4bbf96077dd6c9ace582e0",
-      "sessionVersion": 1
+      "temporaryPasswordIssuedAt": "2026-04-16T21:47:14.490Z",
+      "passwordHash": "scrypt$ec041b6580f32597baa149b1a86c7392$64753419c7f2ca50052253c3ed262adb9f635f27f89de8af1b438d3f0bb30440c4c8bae11eb16486762051babbac5c487bb7ab519888b5c7be8949165ce07524",
+      "sessionVersion": 3
     }
   ],
   "weeks": [
@@ -8933,7 +8933,8 @@
       "ownerId": "usr-lead-nu7wt83h",
       "accessUserIds": [
         "usr-sqtdyayn",
-        "usr-06t9ibth"
+        "usr-06t9ibth",
+        "usr-a2hd8qtb"
       ],
       "settings": {
         "showWorkflow": true,
@@ -9115,34 +9116,18 @@
           "lastPauseReason": "baño"
         },
         {
-          "id": "row-6h86i16e",
-          "values": {
-            "fld-pjabusyf": "Oficinas",
-            "fld-x1jzjoxm": "",
-            "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Pendiente",
-          "startTime": null,
-          "endTime": null,
-          "accumulatedSeconds": 0,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.55Z"
-        },
-        {
           "id": "row-q8qik4ng",
           "values": {
             "fld-pjabusyf": "Portones",
-            "fld-x1jzjoxm": "",
-            "fld-gtp4zz3s": "",
+            "fld-x1jzjoxm": "15:55",
+            "fld-gtp4zz3s": "15:55",
             "fld-eaq0jvax": ""
           },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Pendiente",
-          "startTime": null,
-          "endTime": null,
-          "accumulatedSeconds": 0,
+          "responsibleId": "usr-a2hd8qtb",
+          "status": "Terminado",
+          "startTime": "2026-04-16T21:55:22.626Z",
+          "endTime": "2026-04-16T21:55:44.795Z",
+          "accumulatedSeconds": 22,
           "lastResumedAt": null,
           "createdAt": "2026-04-14T14:27:45.55Z"
         },
@@ -9436,7 +9421,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-16T21:44:10.676Z",
+  "updatedAt": "2026-04-17T15:24:36.122Z",
   "permissions": {
     "pages": {
       "index": {
@@ -9810,7 +9795,58 @@
         "departments": []
       }
     },
-    "userOverrides": {}
+    "userOverrides": {
+      "usr-a2hd8qtb": {
+        "pages": {
+          "index": false,
+          "customBoards": null,
+          "admin": null,
+          "dashboard": false,
+          "history": false,
+          "inventory": false,
+          "users": false,
+          "biblioteca": null
+        },
+        "actions": {
+          "createWeek": null,
+          "createCatalog": null,
+          "editCatalog": null,
+          "deleteCatalog": null,
+          "manageWeeks": null,
+          "managePermissions": true,
+          "createUsers": null,
+          "editUsers": null,
+          "deleteUsers": null,
+          "resetPasswords": null,
+          "manageInventory": null,
+          "deleteInventory": null,
+          "importInventory": null,
+          "manageCleaningInventory": null,
+          "deleteCleaningInventory": null,
+          "importCleaningInventory": null,
+          "manageOrderInventory": null,
+          "deleteOrderInventory": null,
+          "importOrderInventory": null,
+          "createBoard": null,
+          "editBoard": null,
+          "deleteBoard": null,
+          "saveTemplate": null,
+          "editTemplate": null,
+          "deleteTemplate": null,
+          "createBoardFromTemplate": null,
+          "createBoardRow": null,
+          "editFinishedBoardRow": null,
+          "boardWorkflow": null,
+          "duplicateBoard": null,
+          "duplicateBoardWithRows": null,
+          "exportBoardExcel": false,
+          "previewBoardPdf": false,
+          "exportBoardPdf": false,
+          "uploadBiblioteca": false,
+          "deleteBiblioteca": false
+        }
+      }
+    }
   },
   "auditLog": [
     {
@@ -11901,7 +11937,72 @@
     "updatedAt": "2026-04-13T22:04:58.652Z"
   },
   "boardWeekHistory": [],
-  "bibliotecaFiles": [],
+  "bibliotecaFiles": [
+    {
+      "id": "bib-fbc7e83853e0",
+      "area": "NOM",
+      "description": "",
+      "originalName": "dashboard-copmec-general (1).pdf",
+      "fileName": "1776439473180_dashboard-copmec-general__1_.pdf",
+      "fileUrl": null,
+      "fileThumbUrl": null,
+      "filePublicId": null,
+      "fileMimeType": "application/pdf",
+      "bytes": 79132,
+      "priority": "baja",
+      "uploadedById": "usr-lead-nu7wt83h",
+      "uploadedByName": "Alejandro Cruz Martinez",
+      "uploadedAt": "2026-04-17T15:24:33.266Z"
+    },
+    {
+      "id": "bib-bbd773ce8a96",
+      "area": "NOM",
+      "description": "",
+      "originalName": "control-de-actividades-de-limpieza (1).pdf",
+      "fileName": "1776439474349_control-de-actividades-de-limpieza__1_.pdf",
+      "fileUrl": null,
+      "fileThumbUrl": null,
+      "filePublicId": null,
+      "fileMimeType": "application/pdf",
+      "bytes": 41559,
+      "priority": "baja",
+      "uploadedById": "usr-lead-nu7wt83h",
+      "uploadedByName": "Alejandro Cruz Martinez",
+      "uploadedAt": "2026-04-17T15:24:34.729Z"
+    },
+    {
+      "id": "bib-b06dacc9ee46",
+      "area": "NOM",
+      "description": "",
+      "originalName": "control-de-actividades-de-limpieza.pdf",
+      "fileName": "1776439475250_control-de-actividades-de-limpieza.pdf",
+      "fileUrl": null,
+      "fileThumbUrl": null,
+      "filePublicId": null,
+      "fileMimeType": "application/pdf",
+      "bytes": 39690,
+      "priority": "baja",
+      "uploadedById": "usr-lead-nu7wt83h",
+      "uploadedByName": "Alejandro Cruz Martinez",
+      "uploadedAt": "2026-04-17T15:24:35.298Z"
+    },
+    {
+      "id": "bib-97f99c6de4c7",
+      "area": "NOM",
+      "description": "",
+      "originalName": "dashboard-copmec-general.pdf",
+      "fileName": "1776439476012_dashboard-copmec-general.pdf",
+      "fileUrl": null,
+      "fileThumbUrl": null,
+      "filePublicId": null,
+      "fileMimeType": "application/pdf",
+      "bytes": 40488,
+      "priority": "baja",
+      "uploadedById": "usr-lead-nu7wt83h",
+      "uploadedByName": "Alejandro Cruz Martinez",
+      "uploadedAt": "2026-04-17T15:24:36.076Z"
+    }
+  ],
   "bibliotecaNotifications": [],
   "customRoles": []
 }
