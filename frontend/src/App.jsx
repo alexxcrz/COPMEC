@@ -7881,15 +7881,6 @@ function App() { // NOSONAR
 
   function openEditUser(user) {
     if (!actionPermissions.editUsers) return;
-    const storedOverride = normalizedPermissions.userOverrides?.[user.id] || { pages: {}, actions: {} };
-    const explicitPermissionOverrides = {
-      pages: Object.fromEntries(
-        Object.entries(storedOverride.pages || {}).filter(([, v]) => typeof v === "boolean"),
-      ),
-      actions: Object.fromEntries(
-        Object.entries(storedOverride.actions || {}).filter(([, v]) => typeof v === "boolean"),
-      ),
-    };
     const nextModal = createUserModalState({
       open: true,
       mode: "edit",
@@ -7905,7 +7896,7 @@ function App() { // NOSONAR
     });
     setUserModal({
       ...nextModal,
-      permissionOverrides: explicitPermissionOverrides,
+      permissionOverrides: buildPermissionSelectionFromModalDraft(nextModal),
     });
   }
 
