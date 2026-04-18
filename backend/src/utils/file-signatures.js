@@ -46,6 +46,19 @@ export function isAllowedUploadBuffer(file) {
   if (extension === ".pdf") {
     return buffer.subarray(0, 5).toString("ascii") === "%PDF-";
   }
+  // xlsx, docx, txt already passed multer fileFilter — accept them
+  if (extension === ".xlsx" || extension === ".docx") {
+    return startsWithBytes(buffer, [0x50, 0x4b, 0x03, 0x04]);
+  }
+  if (extension === ".xls") {
+    return startsWithBytes(buffer, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+  }
+  if (extension === ".doc") {
+    return startsWithBytes(buffer, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+  }
+  if (extension === ".txt") {
+    return isLikelyTextBuffer(buffer);
+  }
 
   return false;
 }

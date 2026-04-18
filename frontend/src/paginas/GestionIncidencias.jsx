@@ -76,7 +76,7 @@ const EMPTY_COT = {
 };
 
 // ── EvidenciaGrid ──────────────────────────────────────────────────────────
-function EvidenciaGrid({ evidencias, canEdit, onDelete, onUpload, uploading }) {
+function EvidenciaGrid({ evidencias, canEdit, onDelete, onUpload, uploading, uploadProgress }) {
   const fileRef = useRef(null);
 
   function isImage(ev) {
@@ -91,8 +91,13 @@ function EvidenciaGrid({ evidencias, canEdit, onDelete, onUpload, uploading }) {
             ref={fileRef}
             type="file"
             accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx"
+            multiple
             style={{ display: "none" }}
-            onChange={(e) => { if (e.target.files[0]) onUpload(e.target.files[0]); e.target.value = ""; }}
+            onChange={(e) => {
+              const files = Array.from(e.target.files || []);
+              if (files.length > 0) onUpload(files);
+              e.target.value = "";
+            }}
           />
           <button
             type="button"
@@ -100,9 +105,14 @@ function EvidenciaGrid({ evidencias, canEdit, onDelete, onUpload, uploading }) {
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
           >
-            <Upload size={13} /> {uploading ? "Subiendo…" : "Agregar evidencia"}
+            <Upload size={13} />
+            {uploading
+              ? uploadProgress
+                ? `Subiendo ${uploadProgress.done}/${uploadProgress.total}…`
+                : "Subiendo…"
+              : "Agregar evidencias"}
           </button>
-          <span className="ev-hint">Imágenes, PDF, Excel, Word</span>
+          <span className="ev-hint">Imágenes, PDF, Excel, Word · Selección múltiple</span>
         </div>
       )}
       {evidencias.length === 0 ? (
@@ -624,27 +634,38 @@ export default function GestionIncidencias({ contexto }) {
   }
 
   // ── Evidencias handlers ───────────────────────────────────────────────────
-  async function handleUploadEvidencia(file) {
+  const [uploadEvProgress, setUploadEvProgress] = useState(null);
+
+  async function handleUploadEvidencia(files) {
     if (!detailId) return;
+    const fileList = Array.isArray(files) ? files : [files];
+    if (fileList.length === 0) return;
     setUploadingEv(true);
-    try {
-      const result = await uploadFileToCloudinary(file);
-      const evidencia = {
-        url: result.url,
-        thumbnailUrl: result.thumbnailUrl || result.url,
-        name: file.name,
-        type: file.type,
-      };
-      const res = await requestJson(`/warehouse/incidencias/${detailId}/evidencias`, {
-        method: "POST",
-        body: JSON.stringify(evidencia),
-      });
-      if (res?.data?.state) setState(res.data.state);
-    } catch (err) {
-      console.error("Error al subir evidencia:", err);
-    } finally {
-      setUploadingEv(false);
+    setUploadEvProgress({ done: 0, total: fileList.length });
+    let lastState = null;
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i];
+      try {
+        const result = await uploadFileToCloudinary(file);
+        const evidencia = {
+          url: result.url,
+          thumbnailUrl: result.thumbnailUrl || result.url,
+          name: file.name,
+          type: file.type,
+        };
+        const res = await requestJson(`/warehouse/incidencias/${detailId}/evidencias`, {
+          method: "POST",
+          body: JSON.stringify(evidencia),
+        });
+        if (res?.data?.state) lastState = res.data.state;
+      } catch (err) {
+        console.error(`Error al subir evidencia "${file.name}":`, err);
+      }
+      setUploadEvProgress({ done: i + 1, total: fileList.length });
     }
+    if (lastState) setState(lastState);
+    setUploadingEv(false);
+    setUploadEvProgress(null);
   }
 
   async function handleDeleteEvidencia(evidenciaId) {
@@ -1139,6 +1160,7 @@ export default function GestionIncidencias({ contexto }) {
                 onUpload={handleUploadEvidencia}
                 onDelete={handleDeleteEvidencia}
                 uploading={uploadingEv}
+                uploadProgress={uploadEvProgress}
               />
             )}
 

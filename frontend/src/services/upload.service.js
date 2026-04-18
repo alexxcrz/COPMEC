@@ -16,5 +16,11 @@ export async function uploadFileToCloudinary(file) {
   }
 
   const payload = await response.json();
-  return payload.data;
+  const data = payload.data;
+  // Normalise field names so callers can use either convention
+  return {
+    ...data,
+    url: data.url ?? data.fileUrl,
+    thumbnailUrl: data.thumbnailUrl ?? data.fileThumbUrl ?? data.fileUrl,
+  };
 }

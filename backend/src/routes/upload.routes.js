@@ -1,10 +1,14 @@
 import { Router } from "express";
-import { uploadFileController } from "../controllers/upload.controller.js";
+import { uploadFileController, serveUploadedFileController } from "../controllers/upload.controller.js";
 import { requireValidUploadSignature, upload } from "../middleware/upload.middleware.js";
 import { canUserDoWarehouseAction } from "../services/warehouse.store.js";
 import { auditSecurityEvent } from "../services/security-events.service.js";
+import { requireAuth } from "../middleware/auth.middleware.js";
 
 export const uploadRouter = Router();
+
+// Serve uploaded files from disk
+uploadRouter.get("/files/:fileName", requireAuth, serveUploadedFileController);
 
 // Allow upload for users with boardWorkflow OR editIncidencia permission
 uploadRouter.post("/", (req, res, next) => {
