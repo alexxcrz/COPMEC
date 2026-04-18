@@ -1,10 +1,11 @@
 /* eslint-disable react/prop-types */
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   OctagonAlert, Plus, Search, Pencil, Trash2, Eye,
   Wrench, Zap, Building2, ShieldAlert, HelpCircle, Package,
   Upload, X, Image, FileText, ExternalLink, TrendingDown,
-  Calculator, CheckCircle2, ChevronDown, ChevronUp, Fuel,
+  Calculator, CheckCircle2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Fuel,
   Star, ArrowRight, Clock, DollarSign, CreditCard, TriangleAlert,
 } from "lucide-react";
 import { Modal } from "../components/Modal";
@@ -75,12 +76,69 @@ const EMPTY_COT = {
   archivoNombre: "",
 };
 
+// ── EvidenciaLightbox ─────────────────────────────────────────────────────
+function EvidenciaLightbox({ images, startIndex, onClose }) {
+  const [idx, setIdx] = useState(startIndex);
+  const total = images.length;
+  const current = images[idx];
+
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight") setIdx((i) => (i + 1) % total);
+      if (e.key === "ArrowLeft") setIdx((i) => (i - 1 + total) % total);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose, total]);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  return createPortal(
+    <div className="ev-lightbox-backdrop" onClick={onClose}>
+      <div className="ev-lightbox" onClick={(e) => e.stopPropagation()}>
+        <button className="ev-lightbox-close" onClick={onClose} aria-label="Cerrar">
+          <X size={20} />
+        </button>
+        {total > 1 && (
+          <button className="ev-lightbox-nav ev-lightbox-prev" onClick={() => setIdx((i) => (i - 1 + total) % total)} aria-label="Anterior">
+            <ChevronLeft size={24} />
+          </button>
+        )}
+        <img src={current.url} alt={current.name} className="ev-lightbox-img" />
+        {total > 1 && (
+          <button className="ev-lightbox-nav ev-lightbox-next" onClick={() => setIdx((i) => (i + 1) % total)} aria-label="Siguiente">
+            <ChevronRight size={24} />
+          </button>
+        )}
+        <div className="ev-lightbox-caption">
+          <span>{current.name}</span>
+          {total > 1 && <span className="ev-lightbox-counter">{idx + 1} / {total}</span>}
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 // ── EvidenciaGrid ──────────────────────────────────────────────────────────
 function EvidenciaGrid({ evidencias, canEdit, onDelete, onUpload, uploading, uploadProgress }) {
   const fileRef = useRef(null);
+  const [lightbox, setLightbox] = useState(null); // { images, startIndex }
 
   function isImage(ev) {
     return ev.type?.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(ev.name || "");
+  }
+
+  const imageEvidencias = evidencias.filter(isImage);
+
+  function openLightbox(ev) {
+    const idx = imageEvidencias.findIndex((e) => e.id === ev.id);
+    setLightbox({ images: imageEvidencias, startIndex: idx >= 0 ? idx : 0 });
   }
 
   return (
@@ -125,9 +183,17 @@ function EvidenciaGrid({ evidencias, canEdit, onDelete, onUpload, uploading, upl
           {evidencias.map((ev) => (
             <div key={ev.id} className="ev-card">
               {isImage(ev) ? (
-                <a href={ev.url} target="_blank" rel="noopener noreferrer" className="ev-thumb-link">
-                  <img src={ev.thumbnailUrl || ev.url} alt={ev.name} className="ev-thumb" />
-                </a>
+                <button type="button" className="ev-thumb-link" onClick={() => openLightbox(ev)}>
+                  <img
+                    src={ev.thumbnailUrl || ev.url}
+                    alt={ev.name}
+                    className="ev-thumb"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                      e.currentTarget.closest(".ev-thumb-link").classList.add("ev-thumb-broken");
+                    }}
+                  />
+                </button>
               ) : (
                 <a href={ev.url} target="_blank" rel="noopener noreferrer" className="ev-file-icon-wrap">
                   <FileText size={28} />
@@ -151,11 +217,16 @@ function EvidenciaGrid({ evidencias, canEdit, onDelete, onUpload, uploading, upl
           ))}
         </div>
       )}
+      {lightbox && (
+        <EvidenciaLightbox
+          images={lightbox.images}
+          startIndex={lightbox.startIndex}
+          onClose={() => setLightbox(null)}
+        />
+      )}
     </div>
   );
 }
-
-// ── CotizacionesPanel ──────────────────────────────────────────────────────
 function CotizacionesPanel({ cotizaciones, canEdit, onAdd, onDelete, onSelect, requestJson, incidenciaId }) {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState(EMPTY_COT);

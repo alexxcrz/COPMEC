@@ -1,5 +1,5 @@
 {
-  "revision": 2178,
+  "revision": 2188,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro"
@@ -9421,7 +9421,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-18T00:16:05.637Z",
+  "updatedAt": "2026-04-18T00:28:15.056Z",
   "permissions": {
     "pages": {
       "index": {
@@ -12046,60 +12046,20 @@
       "resolution": "",
       "evidencias": [
         {
-          "id": "a637fd7c-acdf-4999-b03c-dda4449a14e9",
-          "url": "/api/uploads/files/1776470998991_dashboard-copmec-general__1_.pdf",
-          "thumbnailUrl": "/api/uploads/files/1776470998991_dashboard-copmec-general__1_.pdf",
-          "name": "dashboard-copmec-general (1).pdf",
-          "type": "application/pdf",
+          "id": "83f25675-9069-4450-bf7d-d9444fbeb85c",
+          "url": "/api/uploads/files/1776472094707_Gemini_Generated_Image_oxumlooxumlooxum.png",
+          "thumbnailUrl": "/api/uploads/files/1776472094707_Gemini_Generated_Image_oxumlooxumlooxum.png",
+          "name": "Gemini_Generated_Image_oxumlooxumlooxum.png",
+          "type": "image/png",
           "uploadedById": "usr-lead-nu7wt83h",
           "uploadedByName": "Alejandro Cruz Martinez",
-          "uploadedAt": "2026-04-18T00:09:59.337Z"
-        },
-        {
-          "id": "87ff6b8c-d89a-44ef-9986-7d7d4841dff0",
-          "url": "/api/uploads/files/1776471362351_dashboard-copmec-general__1_.pdf",
-          "thumbnailUrl": "/api/uploads/files/1776471362351_dashboard-copmec-general__1_.pdf",
-          "name": "dashboard-copmec-general (1).pdf",
-          "type": "application/pdf",
-          "uploadedById": "usr-lead-nu7wt83h",
-          "uploadedByName": "Alejandro Cruz Martinez",
-          "uploadedAt": "2026-04-18T00:16:02.701Z"
-        },
-        {
-          "id": "5c78a3a7-a633-4460-be11-2991eccfb1f5",
-          "url": "/api/uploads/files/1776471363312_control-de-actividades-de-limpieza__1_.pdf",
-          "thumbnailUrl": "/api/uploads/files/1776471363312_control-de-actividades-de-limpieza__1_.pdf",
-          "name": "control-de-actividades-de-limpieza (1).pdf",
-          "type": "application/pdf",
-          "uploadedById": "usr-lead-nu7wt83h",
-          "uploadedByName": "Alejandro Cruz Martinez",
-          "uploadedAt": "2026-04-18T00:16:03.670Z"
-        },
-        {
-          "id": "f8e71433-06b1-4c0b-bb0f-96562f3533f8",
-          "url": "/api/uploads/files/1776471364319_control-de-actividades-de-limpieza.pdf",
-          "thumbnailUrl": "/api/uploads/files/1776471364319_control-de-actividades-de-limpieza.pdf",
-          "name": "control-de-actividades-de-limpieza.pdf",
-          "type": "application/pdf",
-          "uploadedById": "usr-lead-nu7wt83h",
-          "uploadedByName": "Alejandro Cruz Martinez",
-          "uploadedAt": "2026-04-18T00:16:04.655Z"
-        },
-        {
-          "id": "56d34de4-b6ce-4756-9263-a639f6d1b40f",
-          "url": "/api/uploads/files/1776471365286_dashboard-copmec-general.pdf",
-          "thumbnailUrl": "/api/uploads/files/1776471365286_dashboard-copmec-general.pdf",
-          "name": "dashboard-copmec-general.pdf",
-          "type": "application/pdf",
-          "uploadedById": "usr-lead-nu7wt83h",
-          "uploadedByName": "Alejandro Cruz Martinez",
-          "uploadedAt": "2026-04-18T00:16:05.631Z"
+          "uploadedAt": "2026-04-18T00:28:15.046Z"
         }
       ],
       "cotizaciones": [],
       "reportedAt": "2026-04-17T19:28:37.980Z",
       "resolvedAt": null,
-      "updatedAt": "2026-04-18T00:16:05.631Z"
+      "updatedAt": "2026-04-18T00:28:15.046Z"
     }
   ],
   "incidenciaNotifications": []

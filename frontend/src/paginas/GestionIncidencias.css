@@ -619,6 +619,15 @@
   transform: scale(1.05);
 }
 
+.ev-thumb-broken {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  background: #edf0f5;
+  color: #6a7380;
+}
+
 .ev-file-icon-wrap {
   display: flex;
   align-items: center;
@@ -655,6 +664,100 @@
   font-size: 0.64rem;
   color: #aab3bc;
   padding: 0 0.5rem 0.35rem;
+}
+
+/* ── Evidencia lightbox ──────────────────────────────────────────────────── */
+.ev-lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ev-lightbox {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 92vw;
+  max-height: 92vh;
+}
+
+.ev-lightbox-img {
+  max-width: 88vw;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 1rem;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+  user-select: none;
+}
+
+.ev-lightbox-close {
+  position: absolute;
+  top: -2.5rem;
+  right: 0;
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: #fff;
+  border-radius: 50%;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.ev-lightbox-close:hover { background: rgba(255, 255, 255, 0.3); }
+
+.ev-lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: #fff;
+  border-radius: 50%;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+  z-index: 1;
+}
+.ev-lightbox-nav:hover { background: rgba(255, 255, 255, 0.3); }
+.ev-lightbox-prev { left: -3.5rem; }
+.ev-lightbox-next { right: -3.5rem; }
+
+.ev-lightbox-caption {
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.82rem;
+}
+
+.ev-lightbox-counter {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.75rem;
+}
+
+/* ── ev-thumb-link as button ─────────────────────────────────────────────── */
+button.ev-thumb-link {
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: zoom-in;
 }
 
 /* ── Cotizaciones section ────────────────────────────────────────────────── */

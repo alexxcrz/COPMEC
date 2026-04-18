@@ -1,5 +1,5 @@
 {
-  "revision": 2157,
+  "revision": 2182,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro"
@@ -9421,7 +9421,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-16T21:55:44.807Z",
+  "updatedAt": "2026-04-18T00:21:55.940Z",
   "permissions": {
     "pages": {
       "index": {
@@ -11937,7 +11937,150 @@
     "updatedAt": "2026-04-13T22:04:58.652Z"
   },
   "boardWeekHistory": [],
-  "bibliotecaFiles": [],
+  "bibliotecaFiles": [
+    {
+      "id": "bib-97f99c6de4c7",
+      "area": "NOM",
+      "description": "",
+      "originalName": "dashboard-copmec-general.pdf",
+      "fileName": "1776439476012_dashboard-copmec-general.pdf",
+      "fileUrl": null,
+      "fileThumbUrl": null,
+      "filePublicId": null,
+      "fileMimeType": "application/pdf",
+      "bytes": 40488,
+      "priority": "baja",
+      "uploadedById": "usr-lead-nu7wt83h",
+      "uploadedByName": "Alejandro Cruz Martinez",
+      "uploadedAt": "2026-04-17T15:24:36.076Z"
+    },
+    {
+      "id": "bib-f9dc06ef96a7",
+      "area": "NOM",
+      "description": "",
+      "originalName": "control-de-actividades-de-limpieza (1).pdf",
+      "fileName": "1776440052460_control-de-actividades-de-limpieza__1_.pdf",
+      "fileUrl": null,
+      "fileThumbUrl": null,
+      "filePublicId": null,
+      "fileMimeType": "application/pdf",
+      "bytes": 41559,
+      "priority": "baja",
+      "uploadedById": "usr-lead-nu7wt83h",
+      "uploadedByName": "Alejandro Cruz Martinez",
+      "uploadedAt": "2026-04-17T15:34:12.491Z",
+      "coverFileName": "cover_bib-f9dc06ef96a7_1776440053369.png"
+    },
+    {
+      "id": "bib-d1e98bd023e0",
+      "area": "NOM",
+      "description": "",
+      "originalName": "control-de-actividades-de-limpieza.pdf",
+      "fileName": "1776440054564_control-de-actividades-de-limpieza.pdf",
+      "fileUrl": null,
+      "fileThumbUrl": null,
+      "filePublicId": null,
+      "fileMimeType": "application/pdf",
+      "bytes": 39690,
+      "priority": "baja",
+      "uploadedById": "usr-lead-nu7wt83h",
+      "uploadedByName": "Alejandro Cruz Martinez",
+      "uploadedAt": "2026-04-17T15:34:14.590Z",
+      "coverFileName": "cover_bib-d1e98bd023e0_1776440055657.png"
+    },
+    {
+      "id": "bib-a74634f9196a",
+      "area": "NOM",
+      "description": "",
+      "originalName": "dashboard-copmec-general.pdf",
+      "fileName": "1776440056549_dashboard-copmec-general.pdf",
+      "fileUrl": null,
+      "fileThumbUrl": null,
+      "filePublicId": null,
+      "fileMimeType": "application/pdf",
+      "bytes": 40488,
+      "priority": "baja",
+      "uploadedById": "usr-lead-nu7wt83h",
+      "uploadedByName": "Alejandro Cruz Martinez",
+      "uploadedAt": "2026-04-17T15:34:16.567Z",
+      "coverFileName": "cover_bib-a74634f9196a_1776440057432.png"
+    },
+    {
+      "id": "bib-e6d21349f153",
+      "area": "NOM",
+      "description": "",
+      "originalName": "dashboard-copmec-visible.pdf",
+      "fileName": "1776440058402_dashboard-copmec-visible.pdf",
+      "fileUrl": null,
+      "fileThumbUrl": null,
+      "filePublicId": null,
+      "fileMimeType": "application/pdf",
+      "bytes": 311817,
+      "priority": "baja",
+      "uploadedById": "usr-lead-nu7wt83h",
+      "uploadedByName": "Alejandro Cruz Martinez",
+      "uploadedAt": "2026-04-17T15:34:18.429Z",
+      "coverFileName": "cover_bib-e6d21349f153_1776440059384.png"
+    }
+  ],
   "bibliotecaNotifications": [],
-  "customRoles": []
+  "customRoles": [],
+  "incidencias": [
+    {
+      "id": "fef81ea1-fd2b-4832-892c-e264af356e89",
+      "title": "Alumbrado N1",
+      "description": "Alumbrado de toda  la nave 1 en la parte de racks y estaciones de trabajo",
+      "category": "Eléctrico",
+      "area": "racks y estaciones",
+      "priority": "media",
+      "status": "abierta",
+      "reportedById": "usr-lead-nu7wt83h",
+      "reportedByName": "Alejandro Cruz Martinez",
+      "assignedToId": "usr-lead-nu7wt83h",
+      "assignedToName": "Alejandro Cruz Martinez",
+      "estimatedCost": 15000,
+      "actualCost": null,
+      "provider": "",
+      "invoiceNumber": "",
+      "paymentStatus": "pendiente",
+      "resolution": "",
+      "evidencias": [
+        {
+          "id": "f8e71433-06b1-4c0b-bb0f-96562f3533f8",
+          "url": "/api/uploads/files/1776471364319_control-de-actividades-de-limpieza.pdf",
+          "thumbnailUrl": "/api/uploads/files/1776471364319_control-de-actividades-de-limpieza.pdf",
+          "name": "control-de-actividades-de-limpieza.pdf",
+          "type": "application/pdf",
+          "uploadedById": "usr-lead-nu7wt83h",
+          "uploadedByName": "Alejandro Cruz Martinez",
+          "uploadedAt": "2026-04-18T00:16:04.655Z"
+        },
+        {
+          "id": "56d34de4-b6ce-4756-9263-a639f6d1b40f",
+          "url": "/api/uploads/files/1776471365286_dashboard-copmec-general.pdf",
+          "thumbnailUrl": "/api/uploads/files/1776471365286_dashboard-copmec-general.pdf",
+          "name": "dashboard-copmec-general.pdf",
+          "type": "application/pdf",
+          "uploadedById": "usr-lead-nu7wt83h",
+          "uploadedByName": "Alejandro Cruz Martinez",
+          "uploadedAt": "2026-04-18T00:16:05.631Z"
+        },
+        {
+          "id": "d52e52fe-0c45-4978-948b-8a412503e5c0",
+          "url": "/api/uploads/files/1776471366221_dashboard-copmec-visible.pdf",
+          "thumbnailUrl": "/api/uploads/files/1776471366221_dashboard-copmec-visible.pdf",
+          "name": "dashboard-copmec-visible.pdf",
+          "type": "application/pdf",
+          "uploadedById": "usr-lead-nu7wt83h",
+          "uploadedByName": "Alejandro Cruz Martinez",
+          "uploadedAt": "2026-04-18T00:16:06.575Z"
+        }
+      ],
+      "cotizaciones": [],
+      "reportedAt": "2026-04-17T19:28:37.980Z",
+      "resolvedAt": null,
+      "updatedAt": "2026-04-18T00:21:55.934Z"
+    }
+  ],
+  "incidenciaNotifications": []
 }
