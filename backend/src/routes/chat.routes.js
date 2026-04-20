@@ -495,7 +495,8 @@ chatRouter.get("/grupos", requireAuth, async (req, res) => {
       es_miembro: g.miembros.some((m) => m.usuarioNickname === nombre),
     })));
   } catch (e) {
-    res.status(500).json({ error: "Error obteniendo grupos" });
+    console.error("Error obteniendo grupos:", e);
+    res.json([]);
   }
 });
 

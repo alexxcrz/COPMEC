@@ -227,7 +227,58 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const remoteStreamsRef = useRef({});
   const pendingCandidatesRef = useRef({});
   const callRoomRef = useRef(null);
-  const ringtoneRef = useRef(null); // con icón de persona y fondo de color según nombre
+  const ringtoneRef = useRef(null);
+  const audioCtxRef = useRef(null);
+
+  // ── Crear/reutilizar AudioContext (debe llamarse dentro de un gesto de usuario) ─
+  const getAudioCtx = () => {
+    if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
+      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return audioCtxRef.current;
+  };
+
+  const playCallSound = async (tipo) => {
+    try {
+      const ctx = getAudioCtx();
+      if (ctx.state === "suspended") await ctx.resume();
+      const t = ctx.currentTime;
+      if (tipo === "ring") {
+        // Doble tono de llamada tipo teléfono
+        [[480, 0], [440, 0], [480, 0.6], [440, 0.6]].forEach(([freq, start]) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.type = "sine"; osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.18, t + start);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + start + 0.4);
+          osc.start(t + start); osc.stop(t + start + 0.42);
+        });
+      } else if (tipo === "accept") {
+        // Acorde ascendente suave (conectado)
+        [523, 659, 784].forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.type = "sine"; osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.15, t + i * 0.1);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.1 + 0.5);
+          osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.52);
+        });
+      } else if (tipo === "hangup") {
+        // Tono descendente corto (colgado)
+        [400, 300].forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.type = "sine"; osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.2, t + i * 0.18);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.18 + 0.35);
+          osc.start(t + i * 0.18); osc.stop(t + i * 0.18 + 0.37);
+        });
+      }
+    } catch {}
+  }; // con icón de persona y fondo de color según nombre
   const makeInitialsAvatar = (name) => {
     const safeName = (name && typeof name === 'string' ? name : '').trim();
     const colors = ['#0f766e','#1d4ed8','#7c3aed','#b45309','#032121','#be185d','#0369a1','#166534'];
@@ -1376,12 +1427,26 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     };
   }, [socket, user, callActivo]);
 
-  // ── Sincronizar localVideoRef con localStream ───────────────────────────
+  // ── Sincronizar localVideoRef con localStreamRef ─────────────────────────
   useEffect(() => {
     if (localVideoRef.current && localStreamRef.current) {
-      localVideoRef.current.srcObject = localStreamRef.current;
+      if (localVideoRef.current.srcObject !== localStreamRef.current) {
+        localVideoRef.current.srcObject = localStreamRef.current;
+      }
     }
   });
+
+  // ── Pre-calentar AudioContext en primer gesto de usuario ──────────────────
+  useEffect(() => {
+    const warmUp = async () => {
+      try {
+        const ctx = getAudioCtx();
+        if (ctx.state === "suspended") await ctx.resume();
+      } catch {}
+    };
+    document.addEventListener("click", warmUp, { once: true });
+    return () => document.removeEventListener("click", warmUp);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Ringtone al recibir llamada entrante ──────────────────────────────────
   useEffect(() => {
@@ -1392,40 +1457,15 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       }
       return;
     }
-    const playRing = async () => {
-      try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        await ctx.resume();
-        const playTone = (startTime, duration) => {
-          [480, 440].forEach((freq) => {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.type = "sine";
-            osc.frequency.setValueAtTime(freq, startTime);
-            gain.gain.setValueAtTime(0.18, startTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-            osc.start(startTime);
-            osc.stop(startTime + duration);
-          });
-        };
-        // Pattern: ring 0.4s, gap 0.2s, ring 0.4s, pause 2s
-        const t = ctx.currentTime;
-        playTone(t, 0.4);
-        playTone(t + 0.6, 0.4);
-        setTimeout(() => ctx.close(), 3000);
-      } catch {}
-    };
-    playRing();
-    ringtoneRef.current = setInterval(playRing, 3200);
+    playCallSound("ring");
+    ringtoneRef.current = setInterval(() => playCallSound("ring"), 3200);
     return () => {
       if (ringtoneRef.current) {
         clearInterval(ringtoneRef.current);
         ringtoneRef.current = null;
       }
     };
-  }, [callIncoming]);
+  }, [callIncoming]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ============================
   // ⬇ Scroll automático y marcar mensajes como leídos cuando se ven mensajes
@@ -4014,6 +4054,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const aceptarLlamada = async () => {
     if (!socket || !callIncoming) return;
     try {
+      playCallSound("accept");
       await asegurarLocalStream();
       const userDisplayName = user?.nickname || user?.name || "usuario";
       const room = callIncoming.room;
@@ -4032,6 +4073,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   };
 
   const colgarLlamada = () => {
+    playCallSound("hangup");
     if (socket && callRoomRef.current) {
       socket.emit("call_leave", { room: callRoomRef.current });
     }
@@ -4078,7 +4120,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       } else {
         localStreamRef.current = camStream;
       }
-      setLocalStream({ ...localStreamRef.current });
+      if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
     } catch {}
     setSharingScreen(false);
   };
@@ -4107,7 +4149,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       } else {
         localStreamRef.current = screenStream;
       }
-      setLocalStream({ ...localStreamRef.current });
+      if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
       setSharingScreen(true);
       screenTrack.addEventListener("ended", () => stopScreenShare(), { once: true });
     } catch {

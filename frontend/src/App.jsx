@@ -4937,8 +4937,12 @@ function App() { // NOSONAR
       withCredentials: true,
       transports: ["polling"],
       reconnectionAttempts: Infinity,
-      reconnectionDelay: 2000,
-      reconnectionDelayMax: 10000,
+      reconnectionDelay: 3000,
+      reconnectionDelayMax: 15000,
+      timeout: 20000,
+    });
+    socket.on("connect", () => {
+      socket.emit("login_chat", { nickname: currentUser.name, photo: null });
     });
     socket.emit("login_chat", { nickname: currentUser.name, photo: null });
     socketRef.current = socket;
