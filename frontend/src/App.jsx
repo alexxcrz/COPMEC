@@ -4933,7 +4933,10 @@ function App() { // NOSONAR
   // Socket.IO connection — mounted once when user logs in
   useEffect(() => {
     if (!currentUser || socketRef.current) return;
-    const socket = io(API_BASE_URL || window.location.origin, { withCredentials: true });
+    const socket = io(API_BASE_URL || window.location.origin, {
+      withCredentials: true,
+      transports: ["polling", "websocket"],
+    });
     socket.emit("login_chat", { nickname: currentUser.name, photo: null });
     socketRef.current = socket;
     return () => {}; // keep socket alive across renders

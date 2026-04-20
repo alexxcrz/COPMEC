@@ -13,7 +13,12 @@ export function initSocket(httpServer) {
       methods: ["GET", "POST"],
       credentials: true,
     },
-    transports: ["websocket", "polling"],
+    // polling primero es obligatorio detrás del proxy de Render;
+    // socket.io intentará upgrade a WebSocket automáticamente después
+    transports: ["polling", "websocket"],
+    allowEIO3: true,
+    pingTimeout: 60000,
+    pingInterval: 25000,
   });
 
   io.engine.on("connection_error", (err) => {
