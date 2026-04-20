@@ -405,11 +405,14 @@ chatRouter.get("/activos", requireAuth, async (req, res) => {
 
     // Obtener conversaciones privadas únicas
     const privados = await prisma.$queryRaw`
-      SELECT 
-        CASE WHEN cp."deNickname" = ${nombre} THEN cp."paraNickname" ELSE cp."deNickname" END AS otro_usuario,
-        MAX(cp.fecha) AS ultima_fecha
-      FROM chat_privado cp
-      WHERE cp."deNickname" = ${nombre} OR cp."paraNickname" = ${nombre}
+      SELECT otro_usuario, MAX(ultima_fecha) AS ultima_fecha
+      FROM (
+        SELECT
+          CASE WHEN cp."deNickname" = ${nombre} THEN cp."paraNickname" ELSE cp."deNickname" END AS otro_usuario,
+          cp.fecha AS ultima_fecha
+        FROM chat_privado cp
+        WHERE cp."deNickname" = ${nombre} OR cp."paraNickname" = ${nombre}
+      ) sub
       GROUP BY otro_usuario
       ORDER BY ultima_fecha DESC
     `;
