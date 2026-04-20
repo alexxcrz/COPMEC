@@ -228,57 +228,53 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const pendingCandidatesRef = useRef({});
   const callRoomRef = useRef(null);
   const ringtoneRef = useRef(null);
-  const audioCtxRef = useRef(null);
 
-  // ── Crear/reutilizar AudioContext (debe llamarse dentro de un gesto de usuario) ─
-  const getAudioCtx = () => {
-    if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
-      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    return audioCtxRef.current;
-  };
-
-  const playCallSound = async (tipo) => {
+  // Toca un sonido de videollamada — patrón idéntico a notificationSounds.js:
+  // ctx fresco cada vez, sin async/await, sin estado compartido.
+  const playCallSound = (tipo) => {
     try {
-      const ctx = getAudioCtx();
-      if (ctx.state === "suspended") await ctx.resume();
-      const t = ctx.currentTime;
-      if (tipo === "ring") {
-        // Doble tono de llamada tipo teléfono
-        [[480, 0], [440, 0], [480, 0.6], [440, 0.6]].forEach(([freq, start]) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain); gain.connect(ctx.destination);
-          osc.type = "sine"; osc.frequency.value = freq;
-          gain.gain.setValueAtTime(0.18, t + start);
-          gain.gain.exponentialRampToValueAtTime(0.001, t + start + 0.4);
-          osc.start(t + start); osc.stop(t + start + 0.42);
-        });
-      } else if (tipo === "accept") {
-        // Acorde ascendente suave (conectado)
-        [523, 659, 784].forEach((freq, i) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain); gain.connect(ctx.destination);
-          osc.type = "sine"; osc.frequency.value = freq;
-          gain.gain.setValueAtTime(0.15, t + i * 0.1);
-          gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.1 + 0.5);
-          osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.52);
-        });
-      } else if (tipo === "hangup") {
-        // Tono descendente corto (colgado)
-        [400, 300].forEach((freq, i) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain); gain.connect(ctx.destination);
-          osc.type = "sine"; osc.frequency.value = freq;
-          gain.gain.setValueAtTime(0.2, t + i * 0.18);
-          gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.18 + 0.35);
-          osc.start(t + i * 0.18); osc.stop(t + i * 0.18 + 0.37);
-        });
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const doPlay = () => {
+        const t = ctx.currentTime;
+        if (tipo === "ring") {
+          [[480, 0], [440, 0], [480, 0.6], [440, 0.6]].forEach(([freq, start]) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.type = "sine"; osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.20, t + start);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + start + 0.4);
+            osc.start(t + start); osc.stop(t + start + 0.42);
+          });
+        } else if (tipo === "accept") {
+          [523, 659, 784].forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.type = "sine"; osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.18, t + i * 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.1 + 0.5);
+            osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.52);
+          });
+        } else if (tipo === "hangup") {
+          [400, 300].forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.type = "sine"; osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.22, t + i * 0.18);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.18 + 0.35);
+            osc.start(t + i * 0.18); osc.stop(t + i * 0.18 + 0.37);
+          });
+        }
+      };
+      if (ctx.state === "suspended") {
+        ctx.resume().then(doPlay).catch(() => {});
+      } else {
+        doPlay();
       }
     } catch {}
-  }; // con icón de persona y fondo de color según nombre
+  };
   const makeInitialsAvatar = (name) => {
     const safeName = (name && typeof name === 'string' ? name : '').trim();
     const colors = ['#0f766e','#1d4ed8','#7c3aed','#b45309','#032121','#be185d','#0369a1','#166534'];
@@ -1434,19 +1430,23 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         localVideoRef.current.srcObject = localStreamRef.current;
       }
     }
-  });
+  }, [callActivo]);
 
   // ── Pre-calentar AudioContext en primer gesto de usuario ──────────────────
   useEffect(() => {
-    const warmUp = async () => {
+    const warmUp = () => {
       try {
-        const ctx = getAudioCtx();
-        if (ctx.state === "suspended") await ctx.resume();
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        ctx.resume().then(() => ctx.close()).catch(() => {});
       } catch {}
     };
     document.addEventListener("click", warmUp, { once: true });
-    return () => document.removeEventListener("click", warmUp);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    document.addEventListener("touchstart", warmUp, { once: true });
+    return () => {
+      document.removeEventListener("click", warmUp);
+      document.removeEventListener("touchstart", warmUp);
+    };
+  }, []);
 
   // ── Ringtone al recibir llamada entrante ──────────────────────────────────
   useEffect(() => {
