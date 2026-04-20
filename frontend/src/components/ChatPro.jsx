@@ -194,6 +194,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const [remoteStreams, setRemoteStreams] = useState([]);
   const [callMuted, setCallMuted] = useState(false);
   const [callVideoOff, setCallVideoOff] = useState(false);
+  const [sharingScreen, setSharingScreen] = useState(false);
   const [rtcConfig, setRtcConfig] = useState({ iceServers: [] });
   const [reuniones, setReuniones] = useState([]);
   const [modalReunionAbierto, setModalReunionAbierto] = useState(false);
@@ -220,6 +221,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const longPressTimeoutRef = useRef(null);
   const touchMovedRef = useRef(false);
   const localStreamRef = useRef(null);
+  const localVideoRef = useRef(null);
+  const screenStreamRef = useRef(null);
   const peerConnectionsRef = useRef({});
   const remoteStreamsRef = useRef({});
   const pendingCandidatesRef = useRef({});
@@ -1373,6 +1376,13 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     };
   }, [socket, user, callActivo]);
 
+  // ── Sincronizar localVideoRef con localStream ───────────────────────────
+  useEffect(() => {
+    if (localVideoRef.current && localStreamRef.current) {
+      localVideoRef.current.srcObject = localStreamRef.current;
+    }
+  });
+
   // ── Ringtone al recibir llamada entrante ──────────────────────────────────
   useEffect(() => {
     if (!callIncoming) {
@@ -1382,9 +1392,10 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       }
       return;
     }
-    const playRing = () => {
+    const playRing = async () => {
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        await ctx.resume();
         const playTone = (startTime, duration) => {
           [480, 440].forEach((freq) => {
             const osc = ctx.createOscillator();
@@ -3889,6 +3900,10 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
   const limpiarLlamada = () => {
     Object.keys(peerConnectionsRef.current).forEach(limpiarPeer);
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((t) => t.stop());
+      screenStreamRef.current = null;
+    }
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((t) => t.stop());
     }
@@ -3898,6 +3913,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     setCallIncoming(null);
     setCallMuted(false);
     setCallVideoOff(false);
+    setSharingScreen(false);
     callRoomRef.current = null;
   };
 
@@ -4038,6 +4054,65 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       t.enabled = !t.enabled;
     });
     setCallVideoOff(stream.getVideoTracks().some((t) => !t.enabled));
+  };
+
+  const stopScreenShare = async () => {
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((t) => t.stop());
+      screenStreamRef.current = null;
+    }
+    try {
+      const camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const camTrack = camStream.getVideoTracks()[0];
+      Object.values(peerConnectionsRef.current).forEach(({ pc }) => {
+        const sender = pc?.getSenders().find((s) => s.track?.kind === "video");
+        if (sender) sender.replaceTrack(camTrack);
+      });
+      if (localStreamRef.current) {
+        const oldVideo = localStreamRef.current.getVideoTracks()[0];
+        if (oldVideo) {
+          localStreamRef.current.removeTrack(oldVideo);
+          oldVideo.stop();
+        }
+        localStreamRef.current.addTrack(camTrack);
+      } else {
+        localStreamRef.current = camStream;
+      }
+      setLocalStream({ ...localStreamRef.current });
+    } catch {}
+    setSharingScreen(false);
+  };
+
+  const toggleScreenShare = async () => {
+    if (!callActivo) return;
+    if (sharingScreen) {
+      await stopScreenShare();
+      return;
+    }
+    try {
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      screenStreamRef.current = screenStream;
+      const screenTrack = screenStream.getVideoTracks()[0];
+      Object.values(peerConnectionsRef.current).forEach(({ pc }) => {
+        const sender = pc?.getSenders().find((s) => s.track?.kind === "video");
+        if (sender) sender.replaceTrack(screenTrack);
+      });
+      if (localStreamRef.current) {
+        const oldVideo = localStreamRef.current.getVideoTracks()[0];
+        if (oldVideo) {
+          localStreamRef.current.removeTrack(oldVideo);
+          oldVideo.stop();
+        }
+        localStreamRef.current.addTrack(screenTrack);
+      } else {
+        localStreamRef.current = screenStream;
+      }
+      setLocalStream({ ...localStreamRef.current });
+      setSharingScreen(true);
+      screenTrack.addEventListener("ended", () => stopScreenShare(), { once: true });
+    } catch {
+      // user cancelled
+    }
   };
 
   const abrirVideollamada = async () => {
@@ -8043,13 +8118,9 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                   muted
                   autoPlay
                   playsInline
-                  ref={(el) => {
-                    if (el && localStream) {
-                      el.srcObject = localStream;
-                    }
-                  }}
+                  ref={localVideoRef}
                 />
-                <span className="call-label">Tú</span>
+                <span className="call-label">{sharingScreen ? "💻 Pantalla" : "Tú"}</span>
               </div>
               {remoteStreams.length === 0 && (
                 <div className="call-empty">Esperando participantes...</div>
@@ -8074,14 +8145,23 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
               <button
                 className={`call-control ${callMuted ? "active" : ""}`}
                 onClick={toggleMute}
+                title={callMuted ? "Activar micro" : "Silenciar"}
               >
                 {callMuted ? "🔇" : "🎤"}
               </button>
               <button
                 className={`call-control ${callVideoOff ? "active" : ""}`}
                 onClick={toggleVideo}
+                title={callVideoOff ? "Activar cámara" : "Desactivar cámara"}
               >
                 {callVideoOff ? "📷✖" : "📷"}
+              </button>
+              <button
+                className={`call-control ${sharingScreen ? "active" : ""}`}
+                onClick={toggleScreenShare}
+                title={sharingScreen ? "Dejar de compartir pantalla" : "Compartir pantalla"}
+              >
+                {sharingScreen ? "💻✖" : "💻"}
               </button>
               <button className="call-control hangup" onClick={colgarLlamada}>
                 Colgar

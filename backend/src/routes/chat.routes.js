@@ -325,7 +325,7 @@ chatRouter.post("/privado", requireAuth, async (req, res) => {
     res.json({ ok: true, mensaje: out });
   } catch (e) {
     console.error("Error enviando mensaje privado:", e);
-    res.status(400).json({ error: "No se pudo enviar el mensaje" });
+    res.status(500).json({ error: "No se pudo enviar el mensaje" });
   }
 });
 
