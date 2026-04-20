@@ -2,30 +2,51 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 import { Pool } from "pg";
 
-// Render internal connectionString a veces incluye ?host=/var/data (socket Unix).
-// Eliminamos ese parámetro y forzamos TCP con host/port explícitos.
-function buildPoolConfig(rawUrl) {
-  if (!rawUrl) return {};
-  try {
+const rawUrl = process.env.DATABASE_URL;
+
+// Log diagnóstico (enmascara la contraseña)
+try {
+  if (rawUrl) {
     const u = new URL(rawUrl);
-    // Si el host del query apunta a un socket, lo eliminamos
-    if (u.searchParams.get("host")?.startsWith("/")) {
+    console.log(`[prisma] DATABASE_URL → protocol=${u.protocol} host=${u.hostname} port=${u.port} path=${u.pathname} host_param=${u.searchParams.get("host") ?? "n/a"}`);
+  } else {
+    console.warn("[prisma] DATABASE_URL no está definida — pg usará variables PGHOST/PGPORT del entorno");
+    console.log(`[prisma] PGHOST=${process.env.PGHOST ?? "n/a"} PGPORT=${process.env.PGPORT ?? "n/a"} PGDATABASE=${process.env.PGDATABASE ?? "n/a"}`);
+  }
+} catch (e) {
+  console.warn("[prisma] DATABASE_URL no es una URL válida:", e.message);
+}
+
+// Convierte la URL a conexión TCP eliminando cualquier socket Unix del parámetro ?host=
+function buildPoolConfig(url) {
+  if (!url) {
+    // Sin DATABASE_URL no podemos hacer nada útil — fallará con error claro
+    return {};
+  }
+  try {
+    const u = new URL(url);
+    // Eliminar ?host=... si apunta a socket Unix
+    const hostParam = u.searchParams.get("host");
+    if (hostParam?.startsWith("/")) {
       u.searchParams.delete("host");
+      console.log(`[prisma] Eliminado parámetro socket host=${hostParam}, usando hostname=${u.hostname}`);
     }
-    // Forzar puerto 5432 si no viene explícito
+    // Si no hay hostname, no podemos conectar por TCP
+    if (!u.hostname) {
+      console.error("[prisma] La URL no tiene hostname TCP — verifica DATABASE_URL en el entorno de Render");
+      return { connectionString: url };
+    }
     if (!u.port) u.port = "5432";
-    const clean = u.toString();
     return {
-      connectionString: clean,
+      connectionString: u.toString(),
       ssl: { rejectUnauthorized: false },
     };
   } catch {
-    // Si la URL no es parseable, usarla tal cual
-    return { connectionString: rawUrl };
+    return { connectionString: url };
   }
 }
 
-const pool = new Pool(buildPoolConfig(process.env.DATABASE_URL));
+const pool = new Pool(buildPoolConfig(rawUrl));
 
 const adapter = new PrismaPg(pool);
 
