@@ -418,59 +418,59 @@ chatRouter.get("/activos", requireAuth, async (req, res) => {
         GROUP BY otro_usuario
         ORDER BY ultima_fecha DESC
       `;
-    } catch (dbErr) {
-      // Las tablas de chat aún no existen en esta BD (primer deploy)
-      const msg = String(dbErr?.message || "");
-      if (msg.includes("does not exist") || msg.includes("no existe") || dbErr?.code === "42P01") {
-        return res.json([]);
-      }
-      throw dbErr;
+    } catch {
+      // Tabla aún no creada o error de BD — devolver lista vacía
+      return res.json([]);
     }
 
     const conversaciones = await Promise.all(
       privados.map(async (conv) => {
-        const borrado = await prisma.chatPrivadoBorrado.findUnique({
-          where: {
-            usuarioNickname_otroNickname: { usuarioNickname: nombre, otroNickname: conv.otro_usuario },
-          },
-        });
+        try {
+          const borrado = await prisma.chatPrivadoBorrado.findUnique({
+            where: {
+              usuarioNickname_otroNickname: { usuarioNickname: nombre, otroNickname: conv.otro_usuario },
+            },
+          });
 
-        const ultimo = await prisma.chatPrivado.findFirst({
-          where: {
-            OR: [
-              { deNickname: nombre, paraNickname: conv.otro_usuario },
-              { deNickname: conv.otro_usuario, paraNickname: nombre },
-            ],
-            ...(borrado ? { fecha: { gt: borrado.borradoEn } } : {}),
-          },
-          orderBy: { fecha: "desc" },
-        });
+          const ultimo = await prisma.chatPrivado.findFirst({
+            where: {
+              OR: [
+                { deNickname: nombre, paraNickname: conv.otro_usuario },
+                { deNickname: conv.otro_usuario, paraNickname: nombre },
+              ],
+              ...(borrado ? { fecha: { gt: borrado.borradoEn } } : {}),
+            },
+            orderBy: { fecha: "desc" },
+          });
 
-        if (!ultimo) return null;
+          if (!ultimo) return null;
 
-        const noLeidos = await prisma.chatPrivado.count({
-          where: {
-            deNickname: conv.otro_usuario,
-            paraNickname: nombre,
-            ...(borrado ? { fecha: { gt: borrado.borradoEn } } : {}),
-            leidos: { none: { usuarioNickname: nombre } },
-          },
-        });
+          const noLeidos = await prisma.chatPrivado.count({
+            where: {
+              deNickname: conv.otro_usuario,
+              paraNickname: nombre,
+              ...(borrado ? { fecha: { gt: borrado.borradoEn } } : {}),
+              leidos: { none: { usuarioNickname: nombre } },
+            },
+          });
 
-        return {
-          otro_usuario: conv.otro_usuario,
-          ultima_fecha: ultimo.fecha.toISOString(),
-          ultimo_mensaje: ultimo.mensaje,
-          ultimo_remitente: ultimo.deNickname,
-          mensajes_no_leidos: noLeidos,
-        };
+          return {
+            otro_usuario: conv.otro_usuario,
+            ultima_fecha: ultimo.fecha.toISOString(),
+            ultimo_mensaje: ultimo.mensaje,
+            ultimo_remitente: ultimo.deNickname,
+            mensajes_no_leidos: noLeidos,
+          };
+        } catch {
+          return null;
+        }
       })
     );
 
     res.json(conversaciones.filter(Boolean));
   } catch (e) {
-    console.error("Error obteniendo chats activos:", e);
-    res.status(500).json({ error: "Error obteniendo chats activos" });
+    console.error("Error obteniendo chats activos:", e?.message);
+    res.json([]); // nunca devolver 500 en este endpoint
   }
 });
 
