@@ -4937,8 +4937,8 @@ function App() { // NOSONAR
       withCredentials: true,
       transports: ["polling"],
       reconnectionAttempts: Infinity,
-      reconnectionDelay: 3000,
-      reconnectionDelayMax: 15000,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
       timeout: 20000,
     });
     socket.on("connect", () => {
