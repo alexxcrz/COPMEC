@@ -404,18 +404,28 @@ chatRouter.get("/activos", requireAuth, async (req, res) => {
     if (!nombre) return res.status(400).json({ error: "Usuario sin nombre" });
 
     // Obtener conversaciones privadas únicas
-    const privados = await prisma.$queryRaw`
-      SELECT otro_usuario, MAX(ultima_fecha) AS ultima_fecha
-      FROM (
-        SELECT
-          CASE WHEN cp."deNickname" = ${nombre} THEN cp."paraNickname" ELSE cp."deNickname" END AS otro_usuario,
-          cp.fecha AS ultima_fecha
-        FROM chat_privado cp
-        WHERE cp."deNickname" = ${nombre} OR cp."paraNickname" = ${nombre}
-      ) sub
-      GROUP BY otro_usuario
-      ORDER BY ultima_fecha DESC
-    `;
+    let privados;
+    try {
+      privados = await prisma.$queryRaw`
+        SELECT otro_usuario, MAX(ultima_fecha) AS ultima_fecha
+        FROM (
+          SELECT
+            CASE WHEN cp."deNickname" = ${nombre} THEN cp."paraNickname" ELSE cp."deNickname" END AS otro_usuario,
+            cp.fecha AS ultima_fecha
+          FROM chat_privado cp
+          WHERE cp."deNickname" = ${nombre} OR cp."paraNickname" = ${nombre}
+        ) sub
+        GROUP BY otro_usuario
+        ORDER BY ultima_fecha DESC
+      `;
+    } catch (dbErr) {
+      // Las tablas de chat aún no existen en esta BD (primer deploy)
+      const msg = String(dbErr?.message || "");
+      if (msg.includes("does not exist") || msg.includes("no existe") || dbErr?.code === "42P01") {
+        return res.json([]);
+      }
+      throw dbErr;
+    }
 
     const conversaciones = await Promise.all(
       privados.map(async (conv) => {
