@@ -4,8 +4,8 @@ services:
     runtime: node
     rootDir: backend
     plan: free
-    buildCommand: cd backend && npm install --include=dev && npx prisma generate && cd ../frontend && npm install --include=dev && npm run build
-    preDeployCommand: npx prisma db push --skip-generate
+    buildCommand: cd backend && npm install --include=dev && npx prisma generate && npx prisma generate --config=chat.config.ts && cd ../frontend && npm install --include=dev && npm run build
+    preDeployCommand: npx prisma db push --config=chat.config.ts --skip-generate
     startCommand: npm start
     healthCheckPath: /api/health
     autoDeployTrigger: commit
@@ -14,6 +14,8 @@ services:
         value: production
       - key: NODE_VERSION
         value: 22
+      - key: CHAT_DB_URL
+        value: file:/var/data/chat.db
       - key: DATABASE_URL
         fromDatabase:
           name: copmec-db

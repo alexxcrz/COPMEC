@@ -1,0 +1,287 @@
+// Schema SQLite para el chat — almacenado en disco persistente /var/data/chat.db
+// Sin servidor PostgreSQL, sin dependencias externas.
+// La URL se configura en prisma.config.ts (requerido por Prisma v7)
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/chat-client"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model ChatGeneral {
+  id                  Int       @id @default(autoincrement())
+  usuarioNickname     String
+  usuarioPhoto        String?
+  mensaje             String
+  tipoMensaje         String    @default("texto")
+  archivoUrl          String?
+  archivoNombre       String?
+  archivoTipo         String?
+  archivoTamaño       Int?
+  menciona            String?
+  enlaceCompartido    String?
+  replyToId           Int?
+  replyToUser         String?
+  replyToText         String?
+  reenviadoDeUsuario  String?
+  reenviadoDeChat     String?
+  reenviadoDeTipo     String?
+  mensajeEditado      Boolean   @default(false)
+  fechaEdicion        DateTime?
+  prioridad           Int       @default(0)
+  fecha               DateTime  @default(now())
+
+  leidos ChatGeneralLeido[]
+
+  @@index([usuarioNickname])
+  @@index([fecha])
+  @@map("chat_general")
+}
+
+model ChatGeneralLeido {
+  id               Int      @id @default(autoincrement())
+  mensajeId        Int
+  usuarioNickname  String
+  fechaLeido       DateTime @default(now())
+
+  mensaje ChatGeneral @relation(fields: [mensajeId], references: [id], onDelete: Cascade)
+
+  @@unique([mensajeId, usuarioNickname])
+  @@map("chat_general_leidos")
+}
+
+model ChatPrivado {
+  id                  Int       @id @default(autoincrement())
+  deNickname          String
+  paraNickname        String
+  dePhoto             String?
+  mensaje             String
+  tipoMensaje         String    @default("texto")
+  archivoUrl          String?
+  archivoNombre       String?
+  archivoTipo         String?
+  archivoTamaño       Int?
+  menciona            String?
+  enlaceCompartido    String?
+  replyToId           Int?
+  replyToUser         String?
+  replyToText         String?
+  reenviadoDeUsuario  String?
+  reenviadoDeChat     String?
+  reenviadoDeTipo     String?
+  mensajeEditado      Boolean   @default(false)
+  fechaEdicion        DateTime?
+  prioridad           Int       @default(0)
+  fecha               DateTime  @default(now())
+
+  leidos ChatPrivadoLeido[]
+
+  @@index([deNickname])
+  @@index([paraNickname])
+  @@index([fecha])
+  @@map("chat_privado")
+}
+
+model ChatPrivadoLeido {
+  id               Int      @id @default(autoincrement())
+  mensajeId        Int
+  usuarioNickname  String
+  fechaLeido       DateTime @default(now())
+
+  mensaje ChatPrivado @relation(fields: [mensajeId], references: [id], onDelete: Cascade)
+
+  @@unique([mensajeId, usuarioNickname])
+  @@map("chat_privado_leidos")
+}
+
+model ChatPrivadoBorrado {
+  id               Int      @id @default(autoincrement())
+  usuarioNickname  String
+  otroNickname     String
+  borradoEn        DateTime @default(now())
+
+  @@unique([usuarioNickname, otroNickname])
+  @@map("chat_privado_borrados")
+}
+
+model ChatGrupo {
+  id             Int      @id @default(autoincrement())
+  nombre         String
+  descripcion    String?
+  creadoPor      String
+  esPublico      Boolean  @default(true)
+  foto           String?
+  fechaCreacion  DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  miembros      ChatGrupoMiembro[]
+  mensajes      ChatGrupal[]
+  admins        ChatGrupoAdmin[]
+  solicitudes   ChatGrupoSolicitud[]
+  restricciones ChatGrupoRestriccion[]
+  pins          ChatPin[]
+  destacados    ChatDestacado[]
+
+  @@index([creadoPor])
+  @@map("chat_grupos")
+}
+
+model ChatGrupoMiembro {
+  id               Int      @id @default(autoincrement())
+  grupoId          Int
+  usuarioNickname  String
+  unidoEn          DateTime @default(now())
+
+  grupo ChatGrupo @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+
+  @@unique([grupoId, usuarioNickname])
+  @@map("chat_grupos_miembros")
+}
+
+model ChatGrupoAdmin {
+  id               Int      @id @default(autoincrement())
+  grupoId          Int
+  usuarioNickname  String
+  asignadoEn       DateTime @default(now())
+
+  grupo ChatGrupo @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+
+  @@unique([grupoId, usuarioNickname])
+  @@map("chat_grupos_administradores")
+}
+
+model ChatGrupoSolicitud {
+  id               Int      @id @default(autoincrement())
+  grupoId          Int
+  usuarioNickname  String
+  estado           String   @default("pendiente")
+  fecha            DateTime @default(now())
+
+  grupo ChatGrupo @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+
+  @@index([grupoId, estado])
+  @@map("chat_grupos_solicitudes")
+}
+
+model ChatGrupoRestriccion {
+  id               Int       @id @default(autoincrement())
+  grupoId          Int
+  usuarioNickname  String
+  restriccionTipo  String    @default("sin_mensajes")
+  duracionMinutos  Int?
+  fechaFin         DateTime?
+  activa           Boolean   @default(true)
+  fecha            DateTime  @default(now())
+
+  grupo ChatGrupo @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+
+  @@index([grupoId, usuarioNickname, activa])
+  @@map("chat_grupos_restricciones")
+}
+
+model ChatGrupal {
+  id                  Int       @id @default(autoincrement())
+  grupoId             Int
+  usuarioNickname     String
+  usuarioPhoto        String?
+  mensaje             String
+  tipoMensaje         String    @default("texto")
+  archivoUrl          String?
+  archivoNombre       String?
+  archivoTipo         String?
+  archivoTamaño       Int?
+  menciona            String?
+  enlaceCompartido    String?
+  replyToId           Int?
+  replyToUser         String?
+  replyToText         String?
+  reenviadoDeUsuario  String?
+  reenviadoDeChat     String?
+  reenviadoDeTipo     String?
+  mensajeEditado      Boolean   @default(false)
+  fechaEdicion        DateTime?
+  prioridad           Int       @default(0)
+  fecha               DateTime  @default(now())
+
+  grupo  ChatGrupo        @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  leidos ChatGrupalLeido[]
+
+  @@index([grupoId, fecha])
+  @@map("chat_grupal")
+}
+
+model ChatGrupalLeido {
+  id               Int      @id @default(autoincrement())
+  mensajeId        Int
+  grupoId          Int
+  usuarioNickname  String
+  fechaLeido       DateTime @default(now())
+
+  mensaje ChatGrupal @relation(fields: [mensajeId], references: [id], onDelete: Cascade)
+
+  @@unique([mensajeId, usuarioNickname])
+  @@map("chat_grupal_leidos")
+}
+
+model ChatArchivo {
+  id              Int      @id @default(autoincrement())
+  nombreOriginal  String
+  tipoMime        String
+  tamaño          Int
+  publicId        String?
+  url             String
+  mensajeId       Int?
+  tipoChatMensaje String?
+  subidoPor       String
+  subidoEn        DateTime @default(now())
+
+  @@index([subidoPor])
+  @@map("chat_archivos")
+}
+
+model ChatPin {
+  id               Int      @id @default(autoincrement())
+  usuarioNickname  String
+  tipoChat         String
+  chatId           String
+  mensajeId        Int
+  grupoId          Int?
+  creadoEn         DateTime @default(now())
+
+  grupo ChatGrupo? @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioNickname, tipoChat, chatId])
+  @@map("chat_pins")
+}
+
+model ChatDestacado {
+  id               Int      @id @default(autoincrement())
+  usuarioNickname  String
+  tipoChat         String
+  chatId           String
+  mensajeId        Int
+  grupoId          Int?
+  creadoEn         DateTime @default(now())
+
+  grupo ChatGrupo? @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioNickname, tipoChat, chatId, mensajeId])
+  @@map("chat_destacados")
+}
+
+model ChatNotificacionConfig {
+  id                    Int      @id @default(autoincrement())
+  usuarioNickname       String   @unique
+  notificacionesActivas Int      @default(1)
+  sonidoActivo          Int      @default(1)
+  gruposActivos         Int      @default(1)
+  privadosActivos       Int      @default(1)
+  generalActivo         Int      @default(1)
+  creadoEn              DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("chat_notificaciones_config")
+}

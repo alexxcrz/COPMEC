@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { getIO, getSocketsByNickname, getUsuariosActivos } from "../config/socket.js";
-import { prisma } from "../config/prisma.js";
+import { prismaChat as prisma } from "../config/prisma-chat.js";
 import { getWarehouseState } from "../services/warehouse.store.js";
 
 const __filename = fileURLToPath(import.meta.url);
