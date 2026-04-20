@@ -545,6 +545,7 @@ export function BoardBuilderModal({
     BOARD_AUX_COLUMN_DEFINITIONS,
     BOARD_FIELD_TYPES,
     BOARD_FIELD_WIDTH_STYLES,
+    FORMULA_OPERATIONS,
     STATUS_PENDING,
     STATUS_RUNNING,
     formatBoardPreviewValue,
@@ -1288,13 +1289,36 @@ export function BoardBuilderModal({
                 <span className="chip primary">{draft.columns.length} componente(s)</span>
               </div>
               <div className="saved-board-list board-inline-components-list">
-                {(previewBoard.fields || []).map((field) => (
-                  <div key={field.id} className="board-inline-component-chip">
-                    <span className="chip primary">{field.label}</span>
-                    <button type="button" className="icon-button" onClick={() => onEditDraftColumn(field.id)}><Pencil size={14} /> Editar</button>
-                    <button type="button" className="icon-button danger" onClick={() => onRemoveDraftColumn(field.id)}><Trash2 size={14} /> Quitar</button>
-                  </div>
-                ))}
+                {(previewBoard.fields || []).map((field) => {
+                  const typeOption = BOARD_FIELD_TYPES.find((t) => t.value === field.type);
+                  const typeLabel = typeOption?.label || field.type || "Campo";
+                  const typeDesc = getBoardFieldTypeDescription(field.type);
+                  const formulaLeftLabel = field.type === "formula" ? (previewBoard.fields || []).find((f) => f.id === field.formulaLeftFieldId)?.label : null;
+                  const formulaRightLabel = field.type === "formula" ? (previewBoard.fields || []).find((f) => f.id === field.formulaRightFieldId)?.label : null;
+                  const formulaOpSymbol = { add: "+", subtract: "−", multiply: "×", divide: "÷", average: "prom", min: "mín", max: "máx", percent: "%" }[field.formulaOperation] || field.formulaOperation;
+                  const formulaDetail = formulaLeftLabel && formulaRightLabel ? `${formulaLeftLabel} ${formulaOpSymbol} ${formulaRightLabel}` : null;
+                  return (
+                    <div key={field.id} className="board-inline-component-chip" style={{ flexDirection: "column", alignItems: "flex-start", gap: "0.3rem", padding: "0.55rem 0.7rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap", width: "100%" }}>
+                        <span className="chip primary" style={{ flexShrink: 0 }}>{field.label}</span>
+                        <span style={{ fontSize: "0.7rem", background: "#e0f2fe", color: "#0369a1", borderRadius: "999px", padding: "0.1rem 0.5rem", fontWeight: 600, flexShrink: 0 }}>{typeLabel}</span>
+                        {formulaDetail ? (
+                          <span style={{ fontSize: "0.72rem", color: "#374151", background: "#f1f5f9", borderRadius: "6px", padding: "0.1rem 0.45rem", fontFamily: "monospace", flexShrink: 0 }}>{formulaDetail}</span>
+                        ) : null}
+                        <span style={{ marginLeft: "auto", display: "flex", gap: "0.3rem", flexShrink: 0 }}>
+                          <button type="button" className="icon-button" onClick={() => onEditDraftColumn(field.id)}><Pencil size={14} /> Editar</button>
+                          <button type="button" className="icon-button danger" onClick={() => onRemoveDraftColumn(field.id)}><Trash2 size={14} /> Quitar</button>
+                        </span>
+                      </div>
+                      {typeDesc ? (
+                        <p style={{ margin: 0, fontSize: "0.72rem", color: "#6b7280", lineHeight: 1.35, paddingLeft: "0.1rem" }}>{typeDesc}</p>
+                      ) : null}
+                      {field.helpText ? (
+                        <p style={{ margin: 0, fontSize: "0.7rem", color: "#9ca3af", lineHeight: 1.3, paddingLeft: "0.1rem", fontStyle: "italic" }}>{field.helpText}</p>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
             </section>
           </div>

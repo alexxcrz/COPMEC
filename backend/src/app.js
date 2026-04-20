@@ -26,6 +26,7 @@ import { importRouter } from "./routes/import.routes.js";
 import { uploadRouter } from "./routes/upload.routes.js";
 import { bibliotecaRouter } from "./routes/biblioteca.routes.js";
 import { warehouseRouter } from "./routes/warehouse.routes.js";
+import { chatRouter } from "./routes/chat.routes.js";
 import { auditSecurityEvent } from "./services/security-events.service.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -46,7 +47,7 @@ app.use(helmet({
       scriptSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],        // Vite inline styles
       imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com"],
-      connectSrc: ["'self'"],
+      connectSrc: ["'self'", "ws:", "wss:"],
       fontSrc: ["'self'", "data:"],
       objectSrc: ["'self'", "blob:"],
       frameSrc: ["'self'", "blob:"],
@@ -61,8 +62,8 @@ app.use(helmet({
   hsts: isProduction ? { maxAge: 31536000, includeSubDomains: true, preload: true } : false,
   permissionsPolicy: {
     features: {
-      camera: [],
-      microphone: [],
+      camera: ["'self'"],
+      microphone: ["'self'"],
       geolocation: [],
       payment: [],
       usb: [],
@@ -144,6 +145,7 @@ app.use("/api/imports", requireAuth, uploadLimiter, importRouter);
 app.use("/api/uploads", requireAuth, uploadLimiter, uploadRouter);
 app.use("/api/biblioteca", requireAuth, bibliotecaRouter);
 app.use("/api/warehouse", requireAuth, warehouseRouter);
+app.use("/api/chat", requireAuth, chatRouter);
 
 if (hasFrontendBuild) {
   app.use(express.static(frontendDistPath));

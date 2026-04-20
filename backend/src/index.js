@@ -1,3 +1,4 @@
+import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateEnv } from "./config/env.js";
@@ -15,9 +16,13 @@ try {
 validateEnv();
 
 const { app } = await import("./app.js");
+const { initSocket } = await import("./config/socket.js");
 
 const PORT = Number(process.env.PORT || 4000);
 
-app.listen(PORT, () => {
+const server = http.createServer(app);
+initSocket(server);
+
+server.listen(PORT, () => {
   console.log(`COPMEC API listening on port ${PORT}`);
 });

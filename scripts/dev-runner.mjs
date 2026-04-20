@@ -207,14 +207,13 @@ async function main() {
     return;
   }
 
-  const readinessChecks = [];
+  // Start services sequentially: backend must be ready before frontend launches
+  // so the browser never hits a proxy ECONNREFUSED on the SSE endpoint.
   for (const service of launchQueue) {
     log(`Launching ${service.name} on port ${service.port}...`);
     const childProcess = spawnService(service);
-    readinessChecks.push(waitUntilReady(service, childProcess));
+    await waitUntilReady(service, childProcess);
   }
-
-  await Promise.all(readinessChecks);
 
   log("COPMEC ready.");
   log("Frontend: http://localhost:5173/");

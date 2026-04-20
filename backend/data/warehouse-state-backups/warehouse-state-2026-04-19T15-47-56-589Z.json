@@ -1,5 +1,5 @@
 {
-  "revision": 2207,
+  "revision": 2205,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro"
@@ -21,10 +21,7 @@
       "mustChangePassword": false,
       "temporaryPasswordIssuedAt": null,
       "passwordHash": "scrypt$83760299b6d0bf4d368f00503249a640$5b55f94a03de1a1b7cc77927bb62a9e2f6892445aa1e379e6f5ba196de29a28ac90dd6942ef514c7d283d960ce650c7dc7155923f26aa76129d8e2124a2c3d78",
-      "sessionVersion": 2,
-      "telefono": "2224562420",
-      "telefono_visible": false,
-      "birthday": "1993-12-27"
+      "sessionVersion": 2
     },
     {
       "id": "usr-a2hd8qtb",
@@ -9050,7 +9047,298 @@
           "colorRules": []
         }
       ],
-      "rows": [],
+      "rows": [
+        {
+          "id": "row-pgf4pbu1",
+          "values": {
+            "fld-pjabusyf": "Piso de Produccíon",
+            "fld-x1jzjoxm": "11:15",
+            "fld-gtp4zz3s": "11:15",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Terminado",
+          "startTime": "2026-04-16T17:15:11.110Z",
+          "endTime": "2026-04-16T17:15:28.705Z",
+          "accumulatedSeconds": 17,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.55Z"
+        },
+        {
+          "id": "row-ckz6uh2u",
+          "values": {
+            "fld-pjabusyf": "Inspeccíon General de Naves",
+            "fld-x1jzjoxm": "11:15",
+            "fld-gtp4zz3s": "11:16",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Terminado",
+          "startTime": "2026-04-16T17:15:36.285Z",
+          "endTime": "2026-04-16T17:16:03.815Z",
+          "accumulatedSeconds": 17,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.55Z",
+          "lastPauseReason": "baño"
+        },
+        {
+          "id": "row-lkvcv67c",
+          "values": {
+            "fld-pjabusyf": "Baños",
+            "fld-x1jzjoxm": "15:04",
+            "fld-gtp4zz3s": "15:05",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Terminado",
+          "startTime": "2026-04-16T21:04:45.908Z",
+          "endTime": "2026-04-16T21:05:21.490Z",
+          "accumulatedSeconds": 18,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.55Z",
+          "lastPauseReason": "baño"
+        },
+        {
+          "id": "row-q8qik4ng",
+          "values": {
+            "fld-pjabusyf": "Portones",
+            "fld-x1jzjoxm": "15:55",
+            "fld-gtp4zz3s": "15:55",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-a2hd8qtb",
+          "status": "Terminado",
+          "startTime": "2026-04-16T21:55:22.626Z",
+          "endTime": "2026-04-16T21:55:44.795Z",
+          "accumulatedSeconds": 22,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.55Z"
+        },
+        {
+          "id": "row-gozinm3q",
+          "values": {
+            "fld-pjabusyf": "Rampas",
+            "fld-x1jzjoxm": "11:45",
+            "fld-gtp4zz3s": "11:45",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Terminado",
+          "startTime": "2026-04-18T17:45:06.707Z",
+          "endTime": "2026-04-18T17:45:12.440Z",
+          "accumulatedSeconds": 5,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.55Z"
+        },
+        {
+          "id": "row-py812kmv",
+          "values": {
+            "fld-pjabusyf": "Racks",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.55Z"
+        },
+        {
+          "id": "row-tedc9w0f",
+          "values": {
+            "fld-pjabusyf": "Comedor 1ra",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.55Z"
+        },
+        {
+          "id": "row-q3eox6z9",
+          "values": {
+            "fld-pjabusyf": "Comedor 2da",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.55Z"
+        },
+        {
+          "id": "row-464q54x6",
+          "values": {
+            "fld-pjabusyf": "Protección Civil",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-aoo9ocpd",
+          "values": {
+            "fld-pjabusyf": "Recolección Basura",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-db6s1t17",
+          "values": {
+            "fld-pjabusyf": "Sala de Juntas",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-n8vwfrdt",
+          "values": {
+            "fld-pjabusyf": "Vidrios",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-1h1sbzfi",
+          "values": {
+            "fld-pjabusyf": "Tarimas",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-c7a5b0n5",
+          "values": {
+            "fld-pjabusyf": "Muebles Picking",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-01nrp6hi",
+          "values": {
+            "fld-pjabusyf": "Barrido de Colindancia",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-14T14:27:45.551Z"
+        },
+        {
+          "id": "row-f7c62ffda718",
+          "values": {
+            "fld-pjabusyf": "Oficinas",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-18T17:45:43.033Z"
+        },
+        {
+          "id": "row-c5bcb892c0cd",
+          "values": {
+            "fld-pjabusyf": "Limpieza de Patio",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-18T17:45:47.770Z"
+        },
+        {
+          "id": "row-fabeb808cb7a",
+          "values": {
+            "fld-pjabusyf": "Deshierbe en Grietas y Jardineras",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-18T17:45:56.733Z"
+        }
+      ],
       "permissions": {
         "isEnabled": false,
         "visibility": {
@@ -9132,7 +9420,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-19T18:19:36.124Z",
+  "updatedAt": "2026-04-18T19:46:53.090Z",
   "permissions": {
     "pages": {
       "index": {
@@ -9313,16 +9601,6 @@
         "userIds": [],
         "departments": []
       },
-      "viewBaseInventory": {
-        "roles": [
-          "Lead",
-          "Senior (Sr)",
-          "Semi-Senior (Ssr)",
-          "Junior (Jr)"
-        ],
-        "userIds": [],
-        "departments": []
-      },
       "manageCleaningInventory": {
         "roles": [
           "Lead",
@@ -9347,16 +9625,6 @@
         "userIds": [],
         "departments": []
       },
-      "viewCleaningInventory": {
-        "roles": [
-          "Lead",
-          "Senior (Sr)",
-          "Semi-Senior (Ssr)",
-          "Junior (Jr)"
-        ],
-        "userIds": [],
-        "departments": []
-      },
       "manageOrderInventory": {
         "roles": [
           "Lead",
@@ -9377,16 +9645,6 @@
         "roles": [
           "Lead",
           "Senior (Sr)"
-        ],
-        "userIds": [],
-        "departments": []
-      },
-      "viewOrderInventory": {
-        "roles": [
-          "Lead",
-          "Senior (Sr)",
-          "Semi-Senior (Ssr)",
-          "Junior (Jr)"
         ],
         "userIds": [],
         "departments": []
@@ -9562,15 +9820,12 @@
           "manageInventory": null,
           "deleteInventory": null,
           "importInventory": null,
-          "viewBaseInventory": null,
           "manageCleaningInventory": null,
           "deleteCleaningInventory": null,
           "importCleaningInventory": null,
-          "viewCleaningInventory": null,
           "manageOrderInventory": null,
           "deleteOrderInventory": null,
           "importOrderInventory": null,
-          "viewOrderInventory": null,
           "createBoard": null,
           "editBoard": null,
           "deleteBoard": null,
@@ -12511,530 +12766,12 @@
   ],
   "inventoryMovements": [],
   "boardWeeklyCycle": {
-    "activeWeekKey": "2026-04-20",
-    "activeWeekStartDate": "2026-04-20T06:00:00.000Z",
-    "activeWeekEndDate": "2026-04-25T06:00:00.000Z",
-    "updatedAt": "2026-04-19T15:47:56.574Z"
+    "activeWeekKey": "2026-04-13",
+    "activeWeekStartDate": "2026-04-13T06:00:00Z",
+    "activeWeekEndDate": "2026-04-18T06:00:00Z",
+    "updatedAt": "2026-04-13T22:04:58.652Z"
   },
-  "boardWeekHistory": [
-    {
-      "id": "boardhist-6da921d7809f",
-      "boardId": "board-96gpge8e",
-      "boardName": "Control de Actividades de Limpieza",
-      "description": "",
-      "createdById": "usr-lead-nu7wt83h",
-      "ownerId": "usr-lead-nu7wt83h",
-      "visibilityType": "users",
-      "sharedDepartments": [],
-      "accessUserIds": [
-        "usr-sqtdyayn",
-        "usr-06t9ibth",
-        "usr-a2hd8qtb"
-      ],
-      "weekKey": "2026-04-13",
-      "weekName": "Semana 13 abr 2026 - 18 abr 2026",
-      "startDate": "2026-04-13T06:00:00.000Z",
-      "endDate": "2026-04-18T06:00:00.000Z",
-      "archivedAt": "2026-04-19T15:47:56.571Z",
-      "settings": {
-        "showWorkflow": true,
-        "showMetrics": true,
-        "showAssignee": true,
-        "showDates": true,
-        "showTotalTime": false,
-        "showEfficiency": false,
-        "auxColumnsOrder": [
-          "status",
-          "time",
-          "totalTime",
-          "efficiency",
-          "workflow",
-          "assignee"
-        ],
-        "auxColumnWidths": {
-          "status": 90,
-          "time": 90,
-          "workflow": 109,
-          "assignee": 190
-        },
-        "columnOrder": [
-          "fld-pjabusyf",
-          "aux:workflow",
-          "fld-x1jzjoxm",
-          "fld-gtp4zz3s",
-          "aux:assignee",
-          "aux:time",
-          "aux:status",
-          "fld-eaq0jvax",
-          "aux:totalTime",
-          "aux:efficiency"
-        ],
-        "operationalContextType": "none",
-        "operationalContextLabel": "",
-        "operationalContextOptions": [],
-        "operationalContextValue": ""
-      },
-      "fields": [
-        {
-          "id": "fld-pjabusyf",
-          "label": "Actividad",
-          "type": "select",
-          "optionSource": "catalogByCategory",
-          "optionCatalogCategory": "Limpieza",
-          "options": [],
-          "inventoryProperty": "code",
-          "sourceFieldId": null,
-          "formulaOperation": "add",
-          "formulaLeftFieldId": null,
-          "formulaRightFieldId": null,
-          "helpText": "",
-          "placeholder": "",
-          "defaultValue": "",
-          "width": "sm",
-          "widthPx": 190,
-          "required": false,
-          "groupName": "Operación",
-          "groupColor": "#e2f4ec",
-          "colorRules": []
-        },
-        {
-          "id": "fld-x1jzjoxm",
-          "label": "Inicio",
-          "type": "time",
-          "optionSource": "manual",
-          "optionCatalogCategory": "",
-          "options": [],
-          "inventoryProperty": "code",
-          "sourceFieldId": null,
-          "formulaOperation": "add",
-          "formulaLeftFieldId": null,
-          "formulaRightFieldId": null,
-          "helpText": "",
-          "placeholder": "",
-          "defaultValue": "",
-          "width": "sm",
-          "required": false,
-          "groupName": "Seguimiento",
-          "groupColor": "#e2f4ec",
-          "colorRules": [],
-          "widthPx": 90
-        },
-        {
-          "id": "fld-gtp4zz3s",
-          "label": "Fin",
-          "type": "time",
-          "optionSource": "manual",
-          "optionCatalogCategory": "",
-          "options": [],
-          "inventoryProperty": "code",
-          "sourceFieldId": null,
-          "formulaOperation": "add",
-          "formulaLeftFieldId": null,
-          "formulaRightFieldId": null,
-          "helpText": "",
-          "placeholder": "",
-          "defaultValue": "",
-          "width": "sm",
-          "widthPx": 130,
-          "required": false,
-          "groupName": "Seguimiento",
-          "groupColor": "#e2f4ec",
-          "colorRules": []
-        },
-        {
-          "id": "fld-eaq0jvax",
-          "label": "Observaciones",
-          "type": "text",
-          "optionSource": "manual",
-          "optionCatalogCategory": "",
-          "options": [],
-          "inventoryProperty": "code",
-          "sourceFieldId": null,
-          "formulaOperation": "add",
-          "formulaLeftFieldId": null,
-          "formulaRightFieldId": null,
-          "helpText": "",
-          "placeholder": "",
-          "defaultValue": "",
-          "width": "md",
-          "widthPx": 260,
-          "required": false,
-          "groupName": "Cierre",
-          "groupColor": "#e2f4ec",
-          "colorRules": []
-        }
-      ],
-      "permissions": {
-        "isEnabled": false,
-        "visibility": {
-          "roles": [],
-          "userIds": [
-            "usr-lead-nu7wt83h",
-            "usr-sqtdyayn",
-            "usr-06t9ibth"
-          ],
-          "departments": []
-        },
-        "actions": {
-          "createBoardRow": {
-            "roles": [
-              "Lead",
-              "Senior (Sr)",
-              "Semi-Senior (Ssr)",
-              "Junior (Jr)"
-            ],
-            "userIds": [],
-            "departments": []
-          },
-          "boardWorkflow": {
-            "roles": [
-              "Lead",
-              "Senior (Sr)",
-              "Semi-Senior (Ssr)",
-              "Junior (Jr)"
-            ],
-            "userIds": [],
-            "departments": []
-          },
-          "exportBoardExcel": {
-            "roles": [
-              "Lead",
-              "Senior (Sr)",
-              "Semi-Senior (Ssr)"
-            ],
-            "userIds": [],
-            "departments": []
-          },
-          "previewBoardPdf": {
-            "roles": [
-              "Lead",
-              "Senior (Sr)",
-              "Semi-Senior (Ssr)"
-            ],
-            "userIds": [],
-            "departments": []
-          },
-          "exportBoardPdf": {
-            "roles": [
-              "Lead",
-              "Senior (Sr)",
-              "Semi-Senior (Ssr)"
-            ],
-            "userIds": [],
-            "departments": []
-          },
-          "duplicateBoard": {
-            "roles": [
-              "Lead",
-              "Senior (Sr)"
-            ],
-            "userIds": [],
-            "departments": []
-          },
-          "duplicateBoardWithRows": {
-            "roles": [
-              "Lead",
-              "Senior (Sr)"
-            ],
-            "userIds": [],
-            "departments": []
-          }
-        }
-      },
-      "rows": [
-        {
-          "id": "row-pgf4pbu1",
-          "values": {
-            "fld-pjabusyf": "Piso de Produccíon",
-            "fld-x1jzjoxm": "11:15",
-            "fld-gtp4zz3s": "11:15",
-            "fld-eaq0jvax": ""
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Terminado",
-          "startTime": "2026-04-16T17:15:11.110Z",
-          "endTime": "2026-04-16T17:15:28.705Z",
-          "accumulatedSeconds": 17,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.55Z"
-        },
-        {
-          "id": "row-ckz6uh2u",
-          "values": {
-            "fld-pjabusyf": "Inspeccíon General de Naves",
-            "fld-x1jzjoxm": "11:15",
-            "fld-gtp4zz3s": "11:16",
-            "fld-eaq0jvax": ""
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Terminado",
-          "startTime": "2026-04-16T17:15:36.285Z",
-          "endTime": "2026-04-16T17:16:03.815Z",
-          "accumulatedSeconds": 17,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.55Z",
-          "lastPauseReason": "baño"
-        },
-        {
-          "id": "row-lkvcv67c",
-          "values": {
-            "fld-pjabusyf": "Baños",
-            "fld-x1jzjoxm": "15:04",
-            "fld-gtp4zz3s": "15:05",
-            "fld-eaq0jvax": ""
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Terminado",
-          "startTime": "2026-04-16T21:04:45.908Z",
-          "endTime": "2026-04-16T21:05:21.490Z",
-          "accumulatedSeconds": 18,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.55Z",
-          "lastPauseReason": "baño"
-        },
-        {
-          "id": "row-q8qik4ng",
-          "values": {
-            "fld-pjabusyf": "Portones",
-            "fld-x1jzjoxm": "15:55",
-            "fld-gtp4zz3s": "15:55",
-            "fld-eaq0jvax": ""
-          },
-          "responsibleId": "usr-a2hd8qtb",
-          "status": "Terminado",
-          "startTime": "2026-04-16T21:55:22.626Z",
-          "endTime": "2026-04-16T21:55:44.795Z",
-          "accumulatedSeconds": 22,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.55Z"
-        },
-        {
-          "id": "row-gozinm3q",
-          "values": {
-            "fld-pjabusyf": "Rampas",
-            "fld-x1jzjoxm": "11:45",
-            "fld-gtp4zz3s": "11:45",
-            "fld-eaq0jvax": ""
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Terminado",
-          "startTime": "2026-04-18T17:45:06.707Z",
-          "endTime": "2026-04-18T17:45:12.440Z",
-          "accumulatedSeconds": 5,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.55Z"
-        },
-        {
-          "id": "row-py812kmv",
-          "values": {
-            "fld-pjabusyf": "Racks",
-            "fld-x1jzjoxm": "",
-            "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Pendiente",
-          "startTime": null,
-          "endTime": null,
-          "accumulatedSeconds": 0,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.55Z"
-        },
-        {
-          "id": "row-tedc9w0f",
-          "values": {
-            "fld-pjabusyf": "Comedor 1ra",
-            "fld-x1jzjoxm": "",
-            "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Pendiente",
-          "startTime": null,
-          "endTime": null,
-          "accumulatedSeconds": 0,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.55Z"
-        },
-        {
-          "id": "row-q3eox6z9",
-          "values": {
-            "fld-pjabusyf": "Comedor 2da",
-            "fld-x1jzjoxm": "",
-            "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Pendiente",
-          "startTime": null,
-          "endTime": null,
-          "accumulatedSeconds": 0,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.55Z"
-        },
-        {
-          "id": "row-464q54x6",
-          "values": {
-            "fld-pjabusyf": "Protección Civil",
-            "fld-x1jzjoxm": "",
-            "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Pendiente",
-          "startTime": null,
-          "endTime": null,
-          "accumulatedSeconds": 0,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.551Z"
-        },
-        {
-          "id": "row-aoo9ocpd",
-          "values": {
-            "fld-pjabusyf": "Recolección Basura",
-            "fld-x1jzjoxm": "",
-            "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Pendiente",
-          "startTime": null,
-          "endTime": null,
-          "accumulatedSeconds": 0,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.551Z"
-        },
-        {
-          "id": "row-db6s1t17",
-          "values": {
-            "fld-pjabusyf": "Sala de Juntas",
-            "fld-x1jzjoxm": "",
-            "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Pendiente",
-          "startTime": null,
-          "endTime": null,
-          "accumulatedSeconds": 0,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.551Z"
-        },
-        {
-          "id": "row-n8vwfrdt",
-          "values": {
-            "fld-pjabusyf": "Vidrios",
-            "fld-x1jzjoxm": "",
-            "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Pendiente",
-          "startTime": null,
-          "endTime": null,
-          "accumulatedSeconds": 0,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.551Z"
-        },
-        {
-          "id": "row-1h1sbzfi",
-          "values": {
-            "fld-pjabusyf": "Tarimas",
-            "fld-x1jzjoxm": "",
-            "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Pendiente",
-          "startTime": null,
-          "endTime": null,
-          "accumulatedSeconds": 0,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.551Z"
-        },
-        {
-          "id": "row-c7a5b0n5",
-          "values": {
-            "fld-pjabusyf": "Muebles Picking",
-            "fld-x1jzjoxm": "",
-            "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Pendiente",
-          "startTime": null,
-          "endTime": null,
-          "accumulatedSeconds": 0,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.551Z"
-        },
-        {
-          "id": "row-01nrp6hi",
-          "values": {
-            "fld-pjabusyf": "Barrido de Colindancia",
-            "fld-x1jzjoxm": "",
-            "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Pendiente",
-          "startTime": null,
-          "endTime": null,
-          "accumulatedSeconds": 0,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.551Z"
-        },
-        {
-          "id": "row-f7c62ffda718",
-          "values": {
-            "fld-pjabusyf": "Oficinas",
-            "fld-x1jzjoxm": "",
-            "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Pendiente",
-          "startTime": null,
-          "endTime": null,
-          "accumulatedSeconds": 0,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-18T17:45:43.033Z"
-        },
-        {
-          "id": "row-c5bcb892c0cd",
-          "values": {
-            "fld-pjabusyf": "Limpieza de Patio",
-            "fld-x1jzjoxm": "",
-            "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Pendiente",
-          "startTime": null,
-          "endTime": null,
-          "accumulatedSeconds": 0,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-18T17:45:47.770Z"
-        },
-        {
-          "id": "row-fabeb808cb7a",
-          "values": {
-            "fld-pjabusyf": "Deshierbe en Grietas y Jardineras",
-            "fld-x1jzjoxm": "",
-            "fld-gtp4zz3s": "",
-            "fld-eaq0jvax": ""
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Pendiente",
-          "startTime": null,
-          "endTime": null,
-          "accumulatedSeconds": 0,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-18T17:45:56.733Z"
-        }
-      ]
-    }
-  ],
+  "boardWeekHistory": [],
   "bibliotecaFiles": [
     {
       "id": "bib-97f99c6de4c7",

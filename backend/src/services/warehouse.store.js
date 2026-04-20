@@ -53,12 +53,15 @@ const ACTION_PERMISSIONS = {
   manageInventory:         [ROLE_LEAD, ROLE_SR],
   deleteInventory:         [ROLE_LEAD, ROLE_SR],
   importInventory:         [ROLE_LEAD, ROLE_SR],
+  viewBaseInventory:       [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
   manageCleaningInventory: [ROLE_LEAD, ROLE_SR],
   deleteCleaningInventory: [ROLE_LEAD, ROLE_SR],
   importCleaningInventory: [ROLE_LEAD, ROLE_SR],
+  viewCleaningInventory:   [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
   manageOrderInventory:    [ROLE_LEAD, ROLE_SR],
   deleteOrderInventory:    [ROLE_LEAD, ROLE_SR],
   importOrderInventory:    [ROLE_LEAD, ROLE_SR],
+  viewOrderInventory:      [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
   createBoard:             [ROLE_LEAD, ROLE_SR],
   editBoard:               [ROLE_LEAD, ROLE_SR],
   deleteBoard:             [ROLE_LEAD, ROLE_SR],
@@ -1706,6 +1709,9 @@ export function updateWarehouseSelfProfile(auth, payload = {}) {
     area: String(payload.area || "").trim(),
     department: String(payload.area || "").trim(),
     jobTitle: String(payload.jobTitle || "").trim(),
+    telefono: String(payload.telefono || "").trim(),
+    telefono_visible: Boolean(payload.telefono_visible),
+    birthday: String(payload.birthday || "").trim(),
   };
   if (!trimmedPatch.name || !trimmedPatch.email || !trimmedPatch.area || !trimmedPatch.jobTitle) {
     return { ok: false, reason: "invalid_payload" };

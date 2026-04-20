@@ -427,9 +427,9 @@ export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
                         title="Ver archivo"
                       >
                         {isImage(f.fileMimeType) ? (
-                          <img src={f.fileThumbUrl || getFileUrl(f)} alt={f.originalName} className="biblioteca-thumb" />
+                          <img src={f.fileThumbUrl || getFileUrl(f)} alt={f.originalName} className="biblioteca-thumb" loading="lazy" decoding="async" />
                         ) : coverUrl ? (
-                          <img src={coverUrl} alt={`Portada de ${f.originalName}`} className="biblioteca-thumb biblioteca-thumb-cover" />
+                          <img src={coverUrl} alt={`Portada de ${f.originalName}`} className="biblioteca-thumb biblioteca-thumb-cover" loading="lazy" decoding="async" />
                         ) : (
                           <div className="biblioteca-file-icon">
                             <FileText size={28} />

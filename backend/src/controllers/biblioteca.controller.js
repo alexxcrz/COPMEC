@@ -89,6 +89,10 @@ export async function serveBibliotecaFileController(req, res, next) {
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ ok: false, message: "Archivo no encontrado." });
     }
+    // Cache covers and images for 7 days; documents for 1 day
+    const isImage = /\.(jpe?g|png|webp|gif)$/i.test(fileName);
+    const maxAge = isImage ? 60 * 60 * 24 * 7 : 60 * 60 * 24;
+    res.setHeader("Cache-Control", `private, max-age=${maxAge}, stale-while-revalidate=3600`);
     res.sendFile(filePath);
   } catch (error) {
     return next(error);

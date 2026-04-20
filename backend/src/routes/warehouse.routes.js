@@ -691,6 +691,8 @@ warehouseRouter.get("/events", (req, res) => {
   res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
+  // Prevent QUIC/HTTP3 from being used for this long-lived SSE connection
+  res.setHeader("Alt-Svc", "clear");
   res.flushHeaders?.();
 
   let closed = false;
