@@ -4,36 +4,37 @@ import { Pool } from "pg";
 
 const rawUrl = process.env.DATABASE_URL;
 
-// Log del valor RAW para diagnóstico (oculta contraseña si la hay)
-const redacted = rawUrl
-  ? rawUrl.replace(/:([^:@\s]+)@/, ":***@").substring(0, 120)
-  : "(vacío/undefined)";
-console.log(`[prisma] DATABASE_URL raw = ${redacted}`);
-
-// Parsea la URL y devuelve campos explícitos para que pg NO use PGHOST/PGPORT del entorno.
-// Render inyecta PGHOST=/var/data (socket Unix) que sobreescribe cualquier connectionString.
+// Intenta parsear como URL postgres://. Si falla (formato libpq key=value),
+// devuelve {} para que pg use las variables PGHOST/PGDATABASE/PGUSER/PGPASSWORD
+// que Render ya inyecta automáticamente cuando hay disco persistente con PostgreSQL.
 function buildPoolConfig(url) {
   if (!url) {
-    console.error("[prisma] DATABASE_URL no está definida");
+    console.log("[prisma] Sin DATABASE_URL — usando variables PG* del entorno (disco persistente)");
+    console.log(`[prisma] PGHOST=${process.env.PGHOST} PGDATABASE=${process.env.PGDATABASE} PGUSER=${process.env.PGUSER}`);
     return {};
   }
   try {
     const u = new URL(url);
-    // Eliminar ?host si apunta a socket Unix
     const hostParam = u.searchParams.get("host");
     if (hostParam?.startsWith("/")) {
-      console.log(`[prisma] Ignorando socket host=${hostParam}`);
+      // Socket Unix en query param — usar socket directamente vía env vars
+      console.log(`[prisma] URL contiene socket host=${hostParam} — delegando a variables PG* del entorno`);
+      return {};
     }
-    const host = u.hostname;
-    const port = parseInt(u.port || "5432", 10);
-    const database = u.pathname.replace(/^\//, "");
-    const user = decodeURIComponent(u.username);
-    const password = decodeURIComponent(u.password);
-    console.log(`[prisma] Conectando TCP → host=${host} port=${port} db=${database} user=${user}`);
-    return { host, port, database, user, password, ssl: { rejectUnauthorized: false } };
-  } catch (e) {
-    console.error("[prisma] URL inválida:", e.message);
-    return { connectionString: url };
+    console.log(`[prisma] Conectando TCP → host=${u.hostname}:${u.port || 5432}`);
+    return {
+      host: u.hostname,
+      port: parseInt(u.port || "5432", 10),
+      database: u.pathname.replace(/^\//, ""),
+      user: decodeURIComponent(u.username),
+      password: decodeURIComponent(u.password),
+      ssl: { rejectUnauthorized: false },
+    };
+  } catch {
+    // Formato libpq (key=value) u otro — dejar que pg lo resuelva con env vars
+    console.log("[prisma] DATABASE_URL no es URL estándar — usando variables PG* del entorno");
+    console.log(`[prisma] PGHOST=${process.env.PGHOST} PGDATABASE=${process.env.PGDATABASE} PGUSER=${process.env.PGUSER}`);
+    return {};
   }
 }
 
