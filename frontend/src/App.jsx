@@ -4935,7 +4935,10 @@ function App() { // NOSONAR
     if (!currentUser || socketRef.current) return;
     const socket = io(API_BASE_URL || window.location.origin, {
       withCredentials: true,
-      transports: ["polling", "websocket"],
+      transports: ["polling"],
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 2000,
+      reconnectionDelayMax: 10000,
     });
     socket.emit("login_chat", { nickname: currentUser.name, photo: null });
     socketRef.current = socket;

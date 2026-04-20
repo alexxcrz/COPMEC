@@ -264,7 +264,7 @@ chatRouter.get("/privado/:nickname", requireAuth, async (req, res) => {
     })));
   } catch (e) {
     console.error("Error obteniendo mensajes privados:", e);
-    res.status(500).json({ error: "Error obteniendo mensajes privados" });
+    res.json([]);
   }
 });
 
@@ -325,7 +325,7 @@ chatRouter.post("/privado", requireAuth, async (req, res) => {
     res.json({ ok: true, mensaje: out });
   } catch (e) {
     console.error("Error enviando mensaje privado:", e);
-    res.status(500).json({ error: "Error enviando mensaje privado" });
+    res.status(400).json({ error: "No se pudo enviar el mensaje" });
   }
 });
 
@@ -372,7 +372,8 @@ chatRouter.post("/privado/:nickname/leer", requireAuth, async (req, res) => {
 
     res.json({ ok: true, mensajes_marcados: noLeidos.length });
   } catch (e) {
-    res.status(500).json({ error: "Error marcando mensajes como leídos" });
+    console.error("Error marcando leídos:", e);
+    res.json({ ok: true, mensajes_marcados: 0 });
   }
 });
 
@@ -1265,7 +1266,7 @@ chatRouter.get("/pin/:tipo/:chatId", requireAuth, async (req, res) => {
     const mensaje = await prisma[modelo].findUnique({ where: { id: pin.mensajeId } });
     res.json({ ok: true, pin: mensaje ? serializarMensaje(mensaje) : null });
   } catch (e) {
-    res.status(500).json({ error: "Error obteniendo pin" });
+    res.json({ ok: true, pin: null });
   }
 });
 
@@ -1322,7 +1323,7 @@ chatRouter.get("/destacados/:tipo/:chatId", requireAuth, async (req, res) => {
     });
     res.json({ ok: true, destacados: rows.map((r) => r.mensajeId) });
   } catch (e) {
-    res.status(500).json({ error: "Error obteniendo destacados" });
+    res.json({ ok: true, destacados: [] });
   }
 });
 

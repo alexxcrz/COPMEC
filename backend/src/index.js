@@ -17,7 +17,7 @@ validateEnv();
 
 const { app } = await import("./app.js");
 const { initSocket } = await import("./config/socket.js");
-const { prisma } = await import("./config/prisma.js");
+const { pool } = await import("./config/prisma.js");
 
 // ── Crear tablas de chat si no existen ────────────────────────────────────────
 const CHAT_DDL = [
@@ -182,7 +182,7 @@ const CHAT_DDL = [
 
 try {
   for (const ddl of CHAT_DDL) {
-    await prisma.$executeRawUnsafe(ddl);
+    await pool.query(ddl);
   }
   console.log("[startup] tablas de chat verificadas OK");
 } catch (err) {

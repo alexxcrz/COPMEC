@@ -224,8 +224,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const remoteStreamsRef = useRef({});
   const pendingCandidatesRef = useRef({});
   const callRoomRef = useRef(null);
-
-  // Genera avatar con icón de persona y fondo de color según nombre
+  const ringtoneRef = useRef(null); // con icón de persona y fondo de color según nombre
   const makeInitialsAvatar = (name) => {
     const safeName = (name && typeof name === 'string' ? name : '').trim();
     const colors = ['#0f766e','#1d4ed8','#7c3aed','#b45309','#032121','#be185d','#0369a1','#166534'];
@@ -1373,6 +1372,49 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       socket.off("call_user_left", handleUserLeft);
     };
   }, [socket, user, callActivo]);
+
+  // ── Ringtone al recibir llamada entrante ──────────────────────────────────
+  useEffect(() => {
+    if (!callIncoming) {
+      if (ringtoneRef.current) {
+        clearInterval(ringtoneRef.current);
+        ringtoneRef.current = null;
+      }
+      return;
+    }
+    const playRing = () => {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const playTone = (startTime, duration) => {
+          [480, 440].forEach((freq) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(freq, startTime);
+            gain.gain.setValueAtTime(0.18, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+          });
+        };
+        // Pattern: ring 0.4s, gap 0.2s, ring 0.4s, pause 2s
+        const t = ctx.currentTime;
+        playTone(t, 0.4);
+        playTone(t + 0.6, 0.4);
+        setTimeout(() => ctx.close(), 3000);
+      } catch {}
+    };
+    playRing();
+    ringtoneRef.current = setInterval(playRing, 3200);
+    return () => {
+      if (ringtoneRef.current) {
+        clearInterval(ringtoneRef.current);
+        ringtoneRef.current = null;
+      }
+    };
+  }, [callIncoming]);
 
   // ============================
   // ⬇ Scroll automático y marcar mensajes como leídos cuando se ven mensajes
