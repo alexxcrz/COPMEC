@@ -4,6 +4,12 @@ import { Pool } from "pg";
 
 const rawUrl = process.env.DATABASE_URL;
 
+// Log del valor RAW para diagnóstico (oculta contraseña si la hay)
+const redacted = rawUrl
+  ? rawUrl.replace(/:([^:@\s]+)@/, ":***@").substring(0, 120)
+  : "(vacío/undefined)";
+console.log(`[prisma] DATABASE_URL raw = ${redacted}`);
+
 // Parsea la URL y devuelve campos explícitos para que pg NO use PGHOST/PGPORT del entorno.
 // Render inyecta PGHOST=/var/data (socket Unix) que sobreescribe cualquier connectionString.
 function buildPoolConfig(url) {
