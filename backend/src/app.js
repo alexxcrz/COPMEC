@@ -46,7 +46,7 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],        // Vite inline styles
-      imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com", "https://*.onrender.com"],
+      imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com", "https://*.onrender.com", "https://cdn.jsdelivr.net"],
       mediaSrc: ["'self'", "blob:", "data:", "https://*.onrender.com"],
       connectSrc: ["'self'", "ws:", "wss:", "blob:"],
       fontSrc: ["'self'", "data:"],

@@ -849,7 +849,8 @@ span.chat-item-menu-btn:active {
 .avatar-container.status-activo::after  { background: #22c55e; display: block; }
 .avatar-container.status-ausente::after { background: #f59e0b; display: block; }
 .avatar-container.status-offline::after { background: #94a3b8; display: block; }
-.avatar-container:not(.status-activo):not(.status-ausente):not(.status-offline)::after { display: none; }
+.avatar-container.status-en-llamada::after { background: #ef4444; display: block; }
+.avatar-container:not(.status-activo):not(.status-ausente):not(.status-offline):not(.status-en-llamada)::after { display: none; }
 
 .status-online-dot {
   position: absolute;

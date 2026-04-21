@@ -4946,10 +4946,14 @@ function App() { // NOSONAR
     socket.on("connect", () => {
       socket.emit("login_chat", { nickname: currentUser.name, photo: null });
     });
-    socket.on("connect_error", () => {
-      // Forzar nueva sesión al reconectar para evitar "Session ID unknown"
-      socket.io.opts.forceNew = true;
-      setTimeout(() => { socket.io.opts.forceNew = false; }, 500);
+    socket.on("connect_error", (err) => {
+      // "Session ID unknown" ocurre cuando el servidor reinicia y pierde las sesiones en memoria.
+      // Desconectamos el socket antiguo y lo reconectamos para obtener una sesión nueva.
+      const msg = err?.message || "";
+      if (msg.includes("Session ID unknown") || msg.includes("Invalid namespace") || msg.includes("not authorized")) {
+        socket.disconnect();
+        setTimeout(() => { socket.connect(); }, 300);
+      }
     });
     socketRef.current = socket;
     return () => {}; // keep socket alive across renders

@@ -79,11 +79,22 @@ chatRouter.get("/usuarios", requireAuth, (_req, res) => {
 
 chatRouter.get("/usuarios/estados", requireAuth, (req, res) => {
   try {
-    const activos = new Set(getUsuariosActivos().map((u) => u.nickname));
+    const activosArr = getUsuariosActivos();
+    const activosMap = {};
+    activosArr.forEach((u) => { activosMap[u.nickname] = u; });
     const estados = {};
     getAllUsers().forEach((u) => {
       if (u.isActive) {
-        estados[u.name] = activos.has(u.name) ? "activo" : "offline";
+        const info = activosMap[u.name];
+        if (!info) {
+          estados[u.name] = "offline";
+        } else if (info.inCall) {
+          estados[u.name] = "en-llamada";
+        } else if (Date.now() - (info.lastActivity || 0) > 3600000) {
+          estados[u.name] = "ausente";
+        } else {
+          estados[u.name] = "activo";
+        }
       }
     });
     res.json(estados);
@@ -183,6 +194,22 @@ chatRouter.post("/general", requireAuth, async (req, res) => {
     });
 
     const out = serializarMensaje(nuevo);
+
+    // Si el mensaje es a uno mismo, marcarlo como leído automáticamente
+    if (nombre === para_nickname) {
+      try {
+        const leidoRecord = await prisma.chatPrivadoLeido.create({
+          data: { mensajeId: nuevo.id, usuarioNickname: nombre },
+        });
+        out.fecha_leido_otro = leidoRecord.fechaLeido.toISOString();
+        getIO().emit("chat_privado_leidos", {
+          de_nickname: nombre,
+          para_nickname: nombre,
+          mensajes: [{ mensaje_id: nuevo.id, fecha_leido: leidoRecord.fechaLeido.toISOString() }],
+        });
+      } catch (_) {}
+    }
+
     getIO().emit("chat_general_nuevo", out);
     res.json({ ok: true, mensaje: out });
   } catch (e) {
@@ -328,6 +355,22 @@ chatRouter.post("/privado", requireAuth, async (req, res) => {
     });
 
     const out = serializarMensaje(nuevo);
+
+    // Si el mensaje es a uno mismo, marcarlo como leído automáticamente
+    if (nombre === para_nickname) {
+      try {
+        const leidoRecord = await prisma.chatPrivadoLeido.create({
+          data: { mensajeId: nuevo.id, usuarioNickname: nombre },
+        });
+        out.fecha_leido_otro = leidoRecord.fechaLeido.toISOString();
+        getIO().emit("chat_privado_leidos", {
+          de_nickname: nombre,
+          para_nickname: nombre,
+          mensajes: [{ mensaje_id: nuevo.id, fecha_leido: leidoRecord.fechaLeido.toISOString() }],
+        });
+      } catch (_) {}
+    }
+
     getIO().emit("chat_privado_nuevo", out);
     res.json({ ok: true, mensaje: out });
   } catch (e) {

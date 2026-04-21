@@ -229,6 +229,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const callRoomRef = useRef(null);
   const ringtoneRef = useRef(null);
   const outgoingRingRef = useRef(null);
+  const lastActivityEmitRef = useRef(0);
 
   // Toca un sonido de videollamada — patrón idéntico a notificationSounds.js:
   // ctx fresco cada vez, sin async/await, sin estado compartido.
@@ -427,6 +428,18 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     socket.on("usuarios_activos", handleUsuarios);
     socket.on("estados_actualizados", handleEstadosActualizados);
 
+    // Emitir actividad del usuario al servidor (throttle: 1 vez por minuto)
+    const emitirActividad = () => {
+      const ahora = Date.now();
+      if (ahora - lastActivityEmitRef.current > 60000) {
+        lastActivityEmitRef.current = ahora;
+        socket.emit("user_activity");
+      }
+    };
+    document.addEventListener("mousemove", emitirActividad, { passive: true });
+    document.addEventListener("keydown", emitirActividad, { passive: true });
+    document.addEventListener("pointerdown", emitirActividad, { passive: true });
+
     // Cargar chats activos y mensajes de IXORA cuando el usuario se loguea
     // Esto asegura que los mensajes de OTP aparezcan aunque no estuviera conectado cuando se enviaron
     const cargarChatsYOTP = async () => {
@@ -507,6 +520,9 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     return () => {
       socket.off("usuarios_activos", handleUsuarios);
       socket.off("estados_actualizados", handleEstadosActualizados);
+      document.removeEventListener("mousemove", emitirActividad);
+      document.removeEventListener("keydown", emitirActividad);
+      document.removeEventListener("pointerdown", emitirActividad);
     };
   }, [socket, user, esAdmin]);
 
@@ -3949,6 +3965,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       clearInterval(outgoingRingRef.current);
       outgoingRingRef.current = null;
     }
+    if (socket) socket.emit("set_in_call", { inCall: false });
     Object.keys(peerConnectionsRef.current).forEach(limpiarPeer);
     if (screenStreamRef.current) {
       screenStreamRef.current.getTracks().forEach((t) => t.stop());
@@ -4048,6 +4065,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       );
       setCallActivo(true);
       callRoomRef.current = room;
+      socket.emit("set_in_call", { inCall: true });
       // Ring saliente — suena mientras espera que contesten
       playCallSound("ring");
       outgoingRingRef.current = setInterval(() => playCallSound("ring"), 3200);
@@ -4073,6 +4091,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       const room = callIncoming.room;
       setCallActivo(true);
       callRoomRef.current = room;
+      socket.emit("set_in_call", { inCall: true });
       socket.emit("call_join", { room, nickname: userDisplayName });
       setCallIncoming(null);
     } catch (err) {
@@ -4732,12 +4751,14 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                   
                   // Determinar título del estado
                   let statusTitle = 'Usuario offline';
-                  if (estado === 'activo') {
+                  if (estado === 'en-llamada') {
+                    statusTitle = 'En videollamada';
+                  } else if (estado === 'activo') {
                     statusTitle = 'Usuario activo (en la app)';
                   } else if (estado === 'ausente') {
-                    statusTitle = 'Usuario ausente (salió de la app o más de 10 min sin actividad)';
+                    statusTitle = 'Usuario ausente (más de 1 hora sin actividad)';
                   } else {
-                    statusTitle = 'Usuario offline (sesión cerrada - más de 8 horas)';
+                    statusTitle = 'Usuario offline';
                   }
                   
                   return (
@@ -4822,12 +4843,14 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                               const estado = estadosUsuarios[chat.otro_usuario] || 'offline';
                               
                               let statusTitle = 'Usuario offline';
-                              if (estado === 'activo') {
+                              if (estado === 'en-llamada') {
+                                statusTitle = 'En videollamada';
+                              } else if (estado === 'activo') {
                                 statusTitle = 'Usuario activo (en la app)';
                               } else if (estado === 'ausente') {
-                                statusTitle = 'Usuario ausente (salió de la app o más de 10 min sin actividad)';
+                                statusTitle = 'Usuario ausente (más de 1 hora sin actividad)';
                               } else {
-                                statusTitle = 'Usuario offline (sesión cerrada - más de 8 horas)';
+                                statusTitle = 'Usuario offline';
                               }
                               
                               return (
@@ -4964,12 +4987,14 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                 const estado = estadosUsuarios[chat.otro_usuario] || 'offline';
                                 
                                 let statusTitle = 'Usuario offline';
-                                if (estado === 'activo') {
+                                if (estado === 'en-llamada') {
+                                  statusTitle = 'En videollamada';
+                                } else if (estado === 'activo') {
                                   statusTitle = 'Usuario activo (en la app)';
                                 } else if (estado === 'ausente') {
-                                  statusTitle = 'Usuario ausente (salió de la app o más de 10 min sin actividad)';
+                                  statusTitle = 'Usuario ausente (más de 1 hora sin actividad)';
                                 } else {
-                                  statusTitle = 'Usuario offline (sesión cerrada - más de 8 horas)';
+                                  statusTitle = 'Usuario offline';
                                 }
                                 
                                 return (

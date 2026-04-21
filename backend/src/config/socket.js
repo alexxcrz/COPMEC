@@ -3,8 +3,22 @@ import { corsOriginValidator } from "./env.js";
 
 let io;
 
-// Usuarios activos en chat: { nombre: { sockets: [socketId, ...] } }
+// Usuarios activos en chat: { nombre: { sockets: [socketId, ...], photo, lastActivity, inCall } }
 const usuariosActivos = {};
+
+// Intervalo que marca usuarios como ausentes tras 1 hora de inactividad
+setInterval(() => {
+  let changed = false;
+  Object.keys(usuariosActivos).forEach((nick) => {
+    const u = usuariosActivos[nick];
+    const away = Date.now() - (u.lastActivity || 0) > 3600000;
+    if (away !== u._wasAway) {
+      u._wasAway = away;
+      changed = true;
+    }
+  });
+  if (changed && io) emitirUsuariosActivos();
+}, 5 * 60 * 1000);
 
 export function initSocket(httpServer) {
   io = new Server(httpServer, {
@@ -38,13 +52,35 @@ export function initSocket(httpServer) {
       socket.data.nickname = nickname;
 
       if (!usuariosActivos[nickname]) {
-        usuariosActivos[nickname] = { sockets: [], photo: photo || null };
+        usuariosActivos[nickname] = { sockets: [], photo: photo || null, lastActivity: Date.now(), inCall: false, _wasAway: false };
+      } else {
+        usuariosActivos[nickname].lastActivity = Date.now();
+        usuariosActivos[nickname]._wasAway = false;
       }
       if (!usuariosActivos[nickname].sockets.includes(socket.id)) {
         usuariosActivos[nickname].sockets.push(socket.id);
       }
       if (photo) usuariosActivos[nickname].photo = photo;
 
+      emitirUsuariosActivos();
+    });
+
+    // ── ACTIVIDAD DE USUARIO ────────────────────────────────
+    socket.on("user_activity", () => {
+      const nick = socket.data.nickname || usuarioNombre;
+      if (!nick || !usuariosActivos[nick]) return;
+      const wasAway = usuariosActivos[nick]._wasAway;
+      usuariosActivos[nick].lastActivity = Date.now();
+      usuariosActivos[nick]._wasAway = false;
+      // Solo re-emitir si el estado cambió (ausente → activo)
+      if (wasAway) emitirUsuariosActivos();
+    });
+
+    // ── ESTADO EN LLAMADA ───────────────────────────────────
+    socket.on("set_in_call", ({ inCall }) => {
+      const nick = socket.data.nickname || usuarioNombre;
+      if (!nick || !usuariosActivos[nick]) return;
+      usuariosActivos[nick].inCall = !!inCall;
       emitirUsuariosActivos();
     });
 
@@ -132,10 +168,16 @@ export function initSocket(httpServer) {
 }
 
 function emitirUsuariosActivos() {
-  const lista = Object.keys(usuariosActivos).map((nickname) => ({
-    nickname,
-    photo: usuariosActivos[nickname].photo || null,
-  }));
+  const lista = Object.keys(usuariosActivos).map((nickname) => {
+    const u = usuariosActivos[nickname];
+    let status = "activo";
+    if (u.inCall) {
+      status = "en-llamada";
+    } else if (Date.now() - (u.lastActivity || 0) > 3600000) {
+      status = "ausente";
+    }
+    return { nickname, photo: u.photo || null, status, inCall: u.inCall || false };
+  });
   io.emit("usuarios_activos", lista);
   io.emit("estados_actualizados");
 }
@@ -146,11 +188,23 @@ export function getIO() {
 }
 
 export function getUsuariosActivos() {
-  return Object.keys(usuariosActivos).map((nickname) => ({
-    nickname,
-    photo: usuariosActivos[nickname].photo || null,
-    sockets: usuariosActivos[nickname].sockets.length,
-  }));
+  return Object.keys(usuariosActivos).map((nickname) => {
+    const u = usuariosActivos[nickname];
+    let status = "activo";
+    if (u.inCall) {
+      status = "en-llamada";
+    } else if (Date.now() - (u.lastActivity || 0) > 3600000) {
+      status = "ausente";
+    }
+    return {
+      nickname,
+      photo: u.photo || null,
+      sockets: u.sockets.length,
+      status,
+      inCall: u.inCall || false,
+      lastActivity: u.lastActivity || 0,
+    };
+  });
 }
 
 export function getSocketsByNickname(nickname) {
