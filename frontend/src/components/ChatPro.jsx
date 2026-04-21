@@ -4355,17 +4355,13 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       const unicos = Array.from(new Set(destinatarios)).filter(
         (n) => n && n !== userDisplayName
       );
-      if (!socket.connected) {
-        showAlert("Socket no está conectado. Intenta de nuevo.", "warning");
-        return;
-      }
       setCallActivo(true);
       callRoomRef.current = room;
       socket.emit("set_in_call", { inCall: true });
       // Ring saliente — suena mientras espera que contesten
       playOutgoingCallTone();
       outgoingRingRef.current = setInterval(() => playOutgoingCallTone(), 3200);
-      console.log("📞 Emitiendo call_invite a:", unicos, "Room:", room);
+      console.log("📞 Emitiendo call_invite a:", unicos, "Room:", room, "Socket:", socket.connected ? "✅ conectado" : "⏳ conectando");
       socket.emit("call_invite", {
         room,
         fromNickname: userDisplayName,

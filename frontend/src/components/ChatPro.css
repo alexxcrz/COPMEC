@@ -4337,6 +4337,11 @@ span.chat-item-menu-btn:active {
 
 /* Responsive */
 @media (max-width: 767px) {
+  .call-overlay {
+    padding: 12px !important;
+    inset: 0 !important;
+  }
+
   .chat-pro-ventana {
     top: 0;
     left: 0;
@@ -4419,38 +4424,40 @@ span.chat-item-menu-btn:active {
   }
 
   .call-window {
-    width: calc(100% - 16px);
-    height: calc(100% - 16px);
-    border-radius: 32px;
-    margin: 8px;
-    max-height: calc(100dvh - 16px);
+    width: calc(100vw - 24px) !important;
+    height: calc(100dvh - 24px) !important;
+    border-radius: 40px !important;
+    max-height: calc(100dvh - 24px) !important;
+    margin: 12px !important;
   }
 
+  /* Stacked video layout para móvil */
   .call-videos {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 8px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    align-content: stretch;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    padding: 10px !important;
+    overflow-y: auto !important;
   }
 
   .call-video-box {
-    min-height: 34vh;
-    max-height: 42vh;
+    min-height: 36vh !important;
+    max-height: 44vh !important;
+    border-radius: 28px !important;
   }
 
   .call-controls {
-    flex-wrap: wrap;
-    padding: 8px 10px;
-    gap: 6px;
+    flex-wrap: wrap !important;
+    padding: 10px !important;
+    gap: 8px !important;
+    border-radius: 0 0 40px 40px !important;
   }
 
   .call-control {
-    flex: 1 1 calc(25% - 6px);
-    min-width: 68px;
-    text-align: center;
+    flex: 1 1 calc(50% - 8px);
+    min-width: 70px;
+    padding: 8px;
+    border-radius: 22px !important;
   }
 }
 
