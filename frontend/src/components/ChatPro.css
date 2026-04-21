@@ -2576,7 +2576,7 @@ span.chat-item-menu-btn:active {
 .emoji-picker-tab { background: transparent; border: 1px solid var(--chat-border); border-radius: var(--radio-md); padding: 6px 10px; cursor: pointer; font-size: 1rem; min-width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; transition: all var(--transicion-rapida); flex-shrink: 0; font-weight: 600; }
 .emoji-picker-tab:hover { background: var(--fondo-input); }
 .emoji-picker-tab.active { background: #032121; color: #fff; border-color: #032121; }
-.emoji-picker-logo-ixora { width: 20px; height: 20px; object-fit: contain; display: block; border-radius: var(--radio-sm); }
+.emoji-picker-logo-COPMEC { width: 20px; height: 20px; object-fit: contain; display: block; border-radius: var(--radio-sm); }
 .emoji-picker-search { padding: 8px; border-bottom: 1px solid var(--chat-border); }
 .emoji-picker-search-input { width: 100%; padding: 6px 10px; border: 1px solid var(--chat-border); border-radius: 8px; background: var(--fondo-input); color: var(--chat-text); font-size: 0.85rem; outline: none; }
 .emoji-picker-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; padding: 8px; overflow-y: auto; flex: 1; max-height: 260px; min-height: 200px; align-items: start; justify-items: center; }

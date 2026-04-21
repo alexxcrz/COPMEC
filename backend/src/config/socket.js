@@ -160,8 +160,6 @@ export function initSocket(httpServer) {
       });
     });
 
-      // ── VIDEOLLAMADAS (WebRTC) ──────────────────────────────
-
     socket.on("call_reject", ({ to, room, nickname }) => {
       if (!to || !room) return;
       io.to(to).emit("call_rejected", {

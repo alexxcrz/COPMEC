@@ -1,12 +1,12 @@
 import urllib.request
 import re
 
-url = 'https://raw.githubusercontent.com/alexxcrz/IXORA/main/client/src/components/ChatPro.jsx'
+url = 'https://raw.githubusercontent.com/alexxcrz/COPMEC/main/client/src/components/ChatPro.jsx'
 req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
 content = urllib.request.urlopen(req).read().decode('utf-8')
 print(f'Downloaded: {len(content)} chars')
 
-# 1. Remove IXORA-specific imports
+# 1. Remove COPMEC-specific imports
 content = content.replace('import { authFetch, useAuth } from "../AuthContext";', '// COPMEC: removed authFetch/useAuth')
 content = content.replace('import { getServerUrl, getServerUrlSync } from "../config/server";', '// COPMEC: removed getServerUrl')
 content = content.replace('import ReunionesPerfilUsuario from "./ReunionesPerfilUsuario";', '// COPMEC: removed ReunionesPerfilUsuario')
@@ -91,7 +91,7 @@ print(f'Saved to {out_path}')
 
 # Also download CSS
 print('\nDownloading ChatPro.css...')
-css_url = 'https://raw.githubusercontent.com/alexxcrz/IXORA/main/client/src/components/ChatPro.css'
+css_url = 'https://raw.githubusercontent.com/alexxcrz/COPMEC/main/client/src/components/ChatPro.css'
 css_req = urllib.request.Request(css_url, headers={'User-Agent': 'Mozilla/5.0'})
 css_content = urllib.request.urlopen(css_req).read().decode('utf-8')
 print(f'Downloaded CSS: {len(css_content)} chars')

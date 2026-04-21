@@ -101,7 +101,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const [chatActual, setChatActual] = useState(null);
   const [mensajeResaltadoId, setMensajeResaltadoId] = useState(null);
 
-  const [usuariosIxora, setUsuariosIxora] = useState([]);
+  const [usuariosCOPMEC, setUsuariosCOPMEC] = useState([]);
   const [estadosUsuarios, setEstadosUsuarios] = useState({}); // { nickname: 'activo'|'ausente'|'offline' }
   const [chatsActivos, setChatsActivos] = useState([]);
   const [grupos, setGrupos] = useState([]);
@@ -478,7 +478,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   }, []);
 
   // ============================
-  // 👤 Cargar usuarios de IXORA
+  // 👤 Cargar usuarios de COPMEC
   // ============================
   useEffect(() => {
     if (!open) return;
@@ -486,7 +486,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     const cargarUsuarios = async () => {
       try {
         const data = await authFetch(`${SERVER_URL}/api/chat/usuarios`);
-        setUsuariosIxora(data || []);
+        setUsuariosCOPMEC(data || []);
       } catch (e) {
       }
     };
@@ -666,7 +666,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     document.addEventListener("keydown", emitirActividad, { passive: true });
     document.addEventListener("pointerdown", emitirActividad, { passive: true });
 
-    // Cargar chats activos y mensajes de IXORA cuando el usuario se loguea
+    // Cargar chats activos y mensajes de COPMEC cuando el usuario se loguea
     // Esto asegura que los mensajes de OTP aparezcan aunque no estuviera conectado cuando se enviaron
     const cargarChatsYOTP = async () => {
       // Evitar solicitudes duplicadas simultáneas
@@ -680,22 +680,22 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         const data = await authFetch(`${SERVER_URL}/api/chat/activos`);
         setChatsActivos(data || []);
         
-        // Si hay un chat con IXORA, cargar los mensajes automáticamente
-        const chatIxora = data?.find(c => c.otro_usuario === "IXORA");
-        if (chatIxora) {
+        // Si hay un chat con COPMEC, cargar los mensajes automáticamente
+        const chatCOPMEC = data?.find(c => c.otro_usuario === "COPMEC");
+        if (chatCOPMEC) {
           try {
-            const mensajesIxora = await authFetch(`${SERVER_URL}/api/chat/privado/IXORA`);
-            const mensajesOrdenados = (mensajesIxora || []).sort((a, b) => {
+            const mensajesCOPMEC = await authFetch(`${SERVER_URL}/api/chat/privado/COPMEC`);
+            const mensajesOrdenados = (mensajesCOPMEC || []).sort((a, b) => {
               const fechaA = new Date(a.fecha || 0);
               const fechaB = new Date(b.fecha || 0);
               return fechaA - fechaB;
             });
             setMensajesPrivado((prev) => ({
               ...prev,
-              "IXORA": mensajesOrdenados,
+              "COPMEC": mensajesOrdenados,
             }));
             
-            // Si hay mensajes de IXORA y el usuario es admin, mostrar notificación
+            // Si hay mensajes de COPMEC y el usuario es admin, mostrar notificación
             if (mensajesOrdenados.length > 0 && esAdmin) {
               const ultimoMensaje = mensajesOrdenados[mensajesOrdenados.length - 1];
               // Verificar si el mensaje es reciente (últimos 10 minutos) para evitar notificaciones de mensajes antiguos
@@ -706,19 +706,19 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
               if (ultimoMensaje && ultimoMensaje.mensaje.includes("código de acceso") && minutosDiferencia < 10) {
                 // Mostrar notificación del navegador
                 if ("Notification" in window && Notification.permission === "granted") {
-                  new Notification("📱 Mensaje de IXORA", {
-                    body: ultimoMensaje.mensaje || "Tienes un nuevo mensaje de IXORA",
+                  new Notification("📱 Mensaje de COPMEC", {
+                    body: ultimoMensaje.mensaje || "Tienes un nuevo mensaje de COPMEC",
                     icon: "/copmec-favicon.svg",
-                    tag: "ixora-otp",
+                    tag: "COPMEC-otp",
                     requireInteraction: false
                   });
                 } else if ("Notification" in window && Notification.permission === "default") {
                   Notification.requestPermission().then((permission) => {
                     if (permission === "granted") {
-                      new Notification("📱 Mensaje de IXORA", {
-                        body: ultimoMensaje.mensaje || "Tienes un nuevo mensaje de IXORA",
+                      new Notification("📱 Mensaje de COPMEC", {
+                        body: ultimoMensaje.mensaje || "Tienes un nuevo mensaje de COPMEC",
                         icon: "/copmec-favicon.svg",
-                        tag: "ixora-otp"
+                        tag: "COPMEC-otp"
                       });
                     }
                   });
@@ -878,19 +878,19 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         const data = await authFetch(`${SERVER_URL}/api/chat/activos`);
         setChatsActivos(data || []);
         
-        // Si hay un chat con IXORA, SIEMPRE cargar los mensajes automáticamente
-        const chatIxora = data?.find(c => c.otro_usuario === "IXORA");
-        if (chatIxora) {
+        // Si hay un chat con COPMEC, SIEMPRE cargar los mensajes automáticamente
+        const chatCOPMEC = data?.find(c => c.otro_usuario === "COPMEC");
+        if (chatCOPMEC) {
           try {
-            const mensajesIxora = await authFetch(`${SERVER_URL}/api/chat/privado/IXORA`);
-            const mensajesOrdenados = (mensajesIxora || []).sort((a, b) => {
+            const mensajesCOPMEC = await authFetch(`${SERVER_URL}/api/chat/privado/COPMEC`);
+            const mensajesOrdenados = (mensajesCOPMEC || []).sort((a, b) => {
               const fechaA = new Date(a.fecha || 0);
               const fechaB = new Date(b.fecha || 0);
               return fechaA - fechaB;
             });
             setMensajesPrivado((prev) => ({
               ...prev,
-              "IXORA": mensajesOrdenados,
+              "COPMEC": mensajesOrdenados,
             }));
           } catch (e) {
             // Si es 404, simplemente no hay mensajes aún (normal)
@@ -1096,20 +1096,20 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         const data = await authFetch(`${SERVER_URL}/api/chat/activos`);
         setChatsActivos(data || []);
         
-        // Si hay un mensaje de IXORA y el chat está abierto y estamos viendo IXORA, 
+        // Si hay un mensaje de COPMEC y el chat está abierto y estamos viendo COPMEC, 
         // recargar los mensajes para asegurar que se muestren todos
-        const chatIxora = data?.find(c => c.otro_usuario === "IXORA");
-        if (chatIxora && open && tipoChat === "privado" && chatActual === "IXORA") {
+        const chatCOPMEC = data?.find(c => c.otro_usuario === "COPMEC");
+        if (chatCOPMEC && open && tipoChat === "privado" && chatActual === "COPMEC") {
           try {
-            const mensajesIxora = await authFetch(`${SERVER_URL}/api/chat/privado/IXORA`);
-            const mensajesOrdenados = (mensajesIxora || []).sort((a, b) => {
+            const mensajesCOPMEC = await authFetch(`${SERVER_URL}/api/chat/privado/COPMEC`);
+            const mensajesOrdenados = (mensajesCOPMEC || []).sort((a, b) => {
               const fechaA = new Date(a.fecha || 0);
               const fechaB = new Date(b.fecha || 0);
               return fechaA - fechaB;
             });
             setMensajesPrivado((prev) => ({
               ...prev,
-              "IXORA": mensajesOrdenados,
+              "COPMEC": mensajesOrdenados,
             }));
           } catch (e) {
           }
@@ -1191,9 +1191,9 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         };
       });
 
-      // Si es un mensaje de IXORA, SIEMPRE recargar chats activos y cambiar a pestaña "chats"
-      if (mensaje.de_nickname === "IXORA") {
-        // Recargar chats activos para asegurar que IXORA aparezca en la lista
+      // Si es un mensaje de COPMEC, SIEMPRE recargar chats activos y cambiar a pestaña "chats"
+      if (mensaje.de_nickname === "COPMEC") {
+        // Recargar chats activos para asegurar que COPMEC aparezca en la lista
         if (!cargandoChatsActivosRef.current) {
           cargandoChatsActivosRef.current = true;
           authFetch(`${SERVER_URL}/api/chat/activos`)
@@ -1207,40 +1207,40 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
             });
         }
         
-        // Si el chat está abierto pero no estamos en el chat con IXORA, cambiar a ese chat
-        if (open && chatActual !== "IXORA") {
+        // Si el chat está abierto pero no estamos en el chat con COPMEC, cambiar a ese chat
+        if (open && chatActual !== "COPMEC") {
           setTabPrincipal("chats");
           setTipoChat("privado");
-          setChatActual("IXORA");
+          setChatActual("COPMEC");
         } else if (!open) {
           // Si el chat no está abierto, cambiar a pestaña chats cuando se abra
           setTabPrincipal("chats");
         }
         
-        // SIEMPRE mostrar notificación para mensajes de IXORA (todos los usuarios)
+        // SIEMPRE mostrar notificación para mensajes de COPMEC (todos los usuarios)
         // Mostrar notificación del navegador si está disponible
         if ("Notification" in window && Notification.permission === "granted") {
-          new Notification("📱 Mensaje de IXORA", {
-            body: mensaje.mensaje || "Tienes un nuevo mensaje de IXORA",
+          new Notification("📱 Mensaje de COPMEC", {
+            body: mensaje.mensaje || "Tienes un nuevo mensaje de COPMEC",
             icon: "/copmec-favicon.svg",
-            tag: "ixora-otp",
+            tag: "COPMEC-otp",
             requireInteraction: false
           });
         } else if ("Notification" in window && Notification.permission === "default") {
           // Solicitar permiso para notificaciones
           Notification.requestPermission().then((permission) => {
             if (permission === "granted") {
-              new Notification("📱 Mensaje de IXORA", {
-                body: mensaje.mensaje || "Tienes un nuevo mensaje de IXORA",
+              new Notification("📱 Mensaje de COPMEC", {
+                body: mensaje.mensaje || "Tienes un nuevo mensaje de COPMEC",
                 icon: "/copmec-favicon.svg",
-                tag: "ixora-otp"
+                tag: "COPMEC-otp"
               });
             }
           });
         }
         
-        // Incrementar contador de no leídos si el chat no está abierto o no estamos viendo IXORA
-        if (!open || chatActual !== "IXORA") {
+        // Incrementar contador de no leídos si el chat no está abierto o no estamos viendo COPMEC
+        if (!open || chatActual !== "COPMEC") {
           setNoLeidos((n) => n + 1);
         }
       }
@@ -1252,15 +1252,15 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         // Mensaje a uno mismo: siempre ya leído, independientemente de userDisplayName
         const esSelfMessage = isSameNickname(mensaje.de_nickname, mensaje.para_nickname);
         const viendoEste = open && tipoChat === "privado" && isSameNickname(chatActual, otroUsuario);
-        // Si es mensaje de IXORA para admin, siempre contar como no leído hasta que se abra
-        const esMensajeIXORAAdmin = mensaje.de_nickname === "IXORA" && esAdmin && mensaje.es_admin;
+        // Si es mensaje de COPMEC para admin, siempre contar como no leído hasta que se abra
+        const esMensajeCOPMECAdmin = mensaje.de_nickname === "COPMEC" && esAdmin && mensaje.es_admin;
         
         if (existe) {
           return prev.map((c) => {
             if (c.otro_usuario === otroUsuario) {
-              // Si estás viendo este chat, limpiar contador a 0 (excepto si es IXORA para admin)
+              // Si estás viendo este chat, limpiar contador a 0 (excepto si es COPMEC para admin)
               // Si es tu mensaje o mensaje a ti mismo, también poner a 0
-              const nuevosNoLeidos = (viendoEste && !esMensajeIXORAAdmin) || (esMioMensaje && !esMensajeIXORAAdmin) || esSelfMessage
+              const nuevosNoLeidos = (viendoEste && !esMensajeCOPMECAdmin) || (esMioMensaje && !esMensajeCOPMECAdmin) || esSelfMessage
                 ? 0
                 : (c.mensajes_no_leidos || 0) + 1;
               return {
@@ -1281,7 +1281,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
             ultimo_mensaje: mensaje.mensaje,
             ultima_fecha: mensaje.fecha,
             ultimo_remitente: mensaje.de_nickname,
-            mensajes_no_leidos: (viendoEste && !esMensajeIXORAAdmin) || (esMioMensaje && !esMensajeIXORAAdmin) || esSelfMessage ? 0 : 1,
+            mensajes_no_leidos: (viendoEste && !esMensajeCOPMECAdmin) || (esMioMensaje && !esMensajeCOPMECAdmin) || esSelfMessage ? 0 : 1,
           },
           ...prev,
         ];
@@ -1289,13 +1289,13 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
       const viendoEste = open && tipoChat === "privado" && isSameNickname(chatActual, otroUsuario);
       // Solo reproducir sonido e incrementar contador si NO estás viendo el chat
-      // Y si es mensaje de IXORA para admin, siempre notificar
-      const esMensajeIXORAAdmin = mensaje.de_nickname === "IXORA" && esAdmin && mensaje.es_admin;
+      // Y si es mensaje de COPMEC para admin, siempre notificar
+      const esMensajeCOPMECAdmin = mensaje.de_nickname === "COPMEC" && esAdmin && mensaje.es_admin;
       // Mensaje a uno mismo: nunca notificar
       const esSelfMessageOuter = isSameNickname(mensaje.de_nickname, mensaje.para_nickname);
       
       // Si estás viendo este chat, marcar el mensaje como leído inmediatamente en el servidor
-      if (viendoEste && !esMensajeIXORAAdmin) {
+      if (viendoEste && !esMensajeCOPMECAdmin) {
         setChatsActivos((prev) =>
           prev.map((c) =>
             isSameNickname(c.otro_usuario, otroUsuario)
@@ -1309,8 +1309,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         });
       }
       
-      if (!esSelfMessageOuter && (!viendoEste || esMensajeIXORAAdmin)) {
-        if (esMensajeIXORAAdmin || !viendoEste) {
+      if (!esSelfMessageOuter && (!viendoEste || esMensajeCOPMECAdmin)) {
+        if (esMensajeCOPMECAdmin || !viendoEste) {
           setNoLeidos((n) => n + 1);
           playIncomingMessageSound();
         }
@@ -2372,7 +2372,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         (data || []).forEach(reunion => programarNotificacionesReunion(reunion));
       } catch (e) {
         // Fallback a localStorage si falla el servidor
-        const guardadas = localStorage.getItem('ixora_reuniones');
+        const guardadas = localStorage.getItem('COPMEC_reuniones');
         if (guardadas) {
           try {
             const reunionesData = JSON.parse(guardadas);
@@ -2444,9 +2444,9 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     showAlert(mensaje, 'info');
     
     // Reproducir sonido de notificación si está disponible
-    if (window.sonidoIxora) {
+    if (window.sonidoCOPMEC) {
       try {
-        window.sonidoIxora.reproducir('notification');
+        window.sonidoCOPMEC.reproducir('notification');
       } catch (e) {
       }
     }
@@ -2482,7 +2482,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     }
 
     setReuniones(nuevasReuniones);
-    localStorage.setItem('ixora_reuniones', JSON.stringify(nuevasReuniones));
+    localStorage.setItem('COPMEC_reuniones', JSON.stringify(nuevasReuniones));
     
     // Programar notificaciones
     programarNotificacionesReunion(nuevaReunion);
@@ -2541,7 +2541,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     
     const nuevasReuniones = reuniones.filter(r => r.id !== reunionId);
     setReuniones(nuevasReuniones);
-    localStorage.setItem('ixora_reuniones', JSON.stringify(nuevasReuniones));
+    localStorage.setItem('COPMEC_reuniones', JSON.stringify(nuevasReuniones));
     showAlert('Reunión eliminada', 'success');
   };
 
@@ -2903,7 +2903,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
   // Cargar emojis personalizados desde localStorage
   useEffect(() => {
-    const guardados = localStorage.getItem('ixora_emojis_personalizados');
+    const guardados = localStorage.getItem('COPMEC_emojis_personalizados');
     if (guardados) {
       try {
         setEmojisPersonalizados(JSON.parse(guardados));
@@ -4331,6 +4331,41 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     return stream;
   };
 
+  const esperarConexionSocket = async (timeoutMs = 9000) => {
+    if (!socket) throw new Error("Socket no disponible");
+    if (socket.connected) return;
+
+    await new Promise((resolve, reject) => {
+      let settled = false;
+      const cleanup = () => {
+        socket.off("connect", onConnect);
+        socket.off("connect_error", onConnectError);
+        clearTimeout(timer);
+      };
+      const onConnect = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve();
+      };
+      const onConnectError = () => {
+        // Se deja que el timeout controle el error final mientras Socket.IO reintenta.
+      };
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(new Error("timeout socket"));
+      }, timeoutMs);
+
+      socket.on("connect", onConnect);
+      socket.on("connect_error", onConnectError);
+      try {
+        socket.connect();
+      } catch (_) {}
+    });
+  };
+
   const iniciarLlamada = async () => {
     if (!socket) return;
     if (tipoChat !== "privado" && tipoChat !== "grupal") {
@@ -4338,6 +4373,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       return;
     }
     try {
+      await esperarConexionSocket();
       await asegurarLocalStream();
       const room = obtenerRoomLlamada();
       const userDisplayName = user?.nickname || user?.name || "usuario";
@@ -4378,6 +4414,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const aceptarLlamada = async () => {
     if (!socket || !callIncoming) return;
     try {
+      await esperarConexionSocket();
       playCallSound("accept");
       await asegurarLocalStream();
       const userDisplayName = user?.nickname || user?.name || "usuario";
@@ -5051,7 +5088,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                   <span style={{fontSize:'0.72rem',color:'var(--cp-text-3)'}}>Canal de toda la organización</span>
                 </div>
               </div>
-              {usuariosIxora
+              {usuariosCOPMEC
                 .filter((u) => {
                   // Excluir el usuario actual de la lista
                   const userNickname = user?.nickname || user?.name;
@@ -5284,7 +5321,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                   >
                                     <img
                                       src={getAvatarUrl(
-                                        usuariosIxora.find((u) => u.nickname === chat.otro_usuario)
+                                        usuariosCOPMEC.find((u) => u.nickname === chat.otro_usuario)
                                       )}
                                       alt={chat.otro_usuario}
                                       className="chat-avatar"
@@ -5428,7 +5465,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                     >
                                       <img
                                         src={getAvatarUrl(
-                                          usuariosIxora.find((u) => u.nickname === chat.otro_usuario)
+                                          usuariosCOPMEC.find((u) => u.nickname === chat.otro_usuario)
                                         )}
                                         alt={chat.otro_usuario}
                                         className="chat-avatar"
@@ -6555,7 +6592,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                 <div className="chat-empty-pro">No se encontraron miembros</div>
                               ) : (
                                 miembrosFiltrados.map((nickname) => {
-                                const usuario = usuariosIxora.find(u => (u.nickname || u.name) === nickname);
+                                const usuario = usuariosCOPMEC.find(u => (u.nickname || u.name) === nickname);
                                 const esAdmin = perfilGrupoAdmins.includes(nickname);
                                 const esCreador = perfilData?.creado_por === nickname;
                                 const userDisplayName = user?.nickname || user?.name;
@@ -7160,7 +7197,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                   try {
                                     const correos = perfilGrupoMiembros
                                       .map(nickname => {
-                                        const usuario = usuariosIxora.find(u => (u.nickname || u.name) === nickname);
+                                        const usuario = usuariosCOPMEC.find(u => (u.nickname || u.name) === nickname);
                                         return usuario?.correo || null;
                                       })
                                       .filter(c => c)
@@ -7221,7 +7258,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                             <div className="chat-header-left">
                               <img
                                 src={getAvatarUrl(
-                                  usuariosIxora.find((u) => u.nickname === chatActual)
+                                  usuariosCOPMEC.find((u) => u.nickname === chatActual)
                                 )}
                                 alt={chatActual}
                                 className="chat-avatar header-avatar"
@@ -8154,7 +8191,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                             const nuevosEmojis = [...emojisPersonalizados, nuevoEmoji];
                                             const intentarGuardar = (emojis, intentos = 0) => {
                                               try {
-                                                localStorage.setItem('ixora_emojis_personalizados', JSON.stringify(emojis));
+                                                localStorage.setItem('COPMEC_emojis_personalizados', JSON.stringify(emojis));
                                                 setEmojisPersonalizados(emojis);
                                               } catch (storageError) {
                                                 if (storageError.name === 'QuotaExceededError' && intentos < 3) {
@@ -8205,7 +8242,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                   const busqueda = espacioSiguiente === -1
                                     ? textoDespuesArroba
                                     : textoDespuesArroba.substring(0, espacioSiguiente);
-                                  const sugerencias = usuariosIxora
+                                  const sugerencias = usuariosCOPMEC
                                     .filter((u) => {
                                       const nombre = u.nickname || u.name || "";
                                       return nombre.toLowerCase().includes(busqueda.toLowerCase()) &&
@@ -9091,7 +9128,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
             <div className="chat-forward-section">
               <div className="chat-forward-title">Privados</div>
               <div className="chat-forward-list">
-                {usuariosIxora.map((u) => {
+                {usuariosCOPMEC.map((u) => {
                   const name = u.nickname || u.name;
                   if (!name) return null;
                   return (
@@ -9198,7 +9235,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                 </div>
                 <div className="modal-agregar-miembros-list">
                   {(() => {
-                    const usuariosDisponibles = usuariosIxora.filter((u) => {
+                    const usuariosDisponibles = usuariosCOPMEC.filter((u) => {
                       // Obtener nombre del usuario
                       const nombreUsuario = u.nickname || u.name;
                       
@@ -9358,7 +9395,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                   {reunionForm.participantes.length > 0 && (
                     <div className="reunion-participantes-seleccionados">
                       {reunionForm.participantes.map((nickname) => {
-                        const usuario = usuariosIxora.find(u => (u.nickname || u.name) === nickname);
+                        const usuario = usuariosCOPMEC.find(u => (u.nickname || u.name) === nickname);
                         return (
                           <span key={nickname} className="reunion-participante-tag">
                             <img
@@ -9394,7 +9431,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                   
                   {/* Lista de participantes disponibles */}
                   <div className="reunion-participantes">
-                    {usuariosIxora.filter(u => u.nickname !== (user?.nickname || user?.name)).map(u => (
+                    {usuariosCOPMEC.filter(u => u.nickname !== (user?.nickname || user?.name)).map(u => (
                       <label key={u.nickname} className="reunion-participante-item">
                         <input
                           type="checkbox"
