@@ -39,18 +39,6 @@ echo.
 echo Commit: %COMMIT_MSG%
 echo.
 
-echo Construyendo frontend...
-cd /d "%~dp0frontend"
-call npm run build
-if errorlevel 1 (
-  echo ERROR: Fallo el build del frontend.
-  pause
-  exit /b 1
-)
-cd /d "%~dp0"
-echo Build completado.
-echo.
-
 git add -A
 
 for /f "tokens=*" %%i in ('git branch --show-current 2^>nul') do set CURRENT_BRANCH=%%i
