@@ -649,17 +649,18 @@ export function inferFeedbackToneFromMessage(message) {
 
 
 export function buildDefaultPermissions(extraRoles = []) {
-  // Todos los roles (base + personalizados) tienen acceso a todo por defecto.
-  const allRoles = [...USER_ROLES, ...extraRoles];
+  const knownRoles = new Set([...USER_ROLES, ...extraRoles]);
+  const resolveRoles = (roles = []) => roles.filter((role) => knownRoles.has(role));
+
   return {
     version: PERMISSION_SCHEMA_VERSION,
     pages: Object.fromEntries(NAV_ITEMS.map((item) => [
       item.id,
-      { roles: [...allRoles], userIds: [], departments: [] },
+      { roles: resolveRoles(item.roles || []), userIds: [], departments: [] },
     ])),
     actions: Object.fromEntries(ACTION_DEFINITIONS.map((item) => [
       item.id,
-      { roles: [...allRoles], userIds: [], departments: [] },
+      { roles: resolveRoles(item.defaultRoles || []), userIds: [], departments: [] },
     ])),
   };
 }

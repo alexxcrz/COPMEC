@@ -37,6 +37,7 @@ const PAGE_PERMISSIONS = {
   inventory: [ROLE_LEAD, ROLE_SR],
   users: [ROLE_LEAD, ROLE_SR, ROLE_SSR],
   biblioteca: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  incidencias: [ROLE_LEAD, ROLE_SR, ROLE_SSR],
 };
 
 const ACTION_PERMISSIONS = {
@@ -79,6 +80,9 @@ const ACTION_PERMISSIONS = {
   exportBoardPdf:          [ROLE_LEAD, ROLE_SR, ROLE_SSR],
   uploadBiblioteca:        [ROLE_LEAD, ROLE_SR],
   deleteBiblioteca:        [ROLE_LEAD, ROLE_SR],
+  createIncidencia:        [ROLE_LEAD, ROLE_SR, ROLE_SSR],
+  editIncidencia:          [ROLE_LEAD, ROLE_SR],
+  deleteIncidencia:        [ROLE_LEAD, ROLE_SR],
 };
 
 function normalizeRole(role) {
