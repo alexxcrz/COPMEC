@@ -272,7 +272,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   // ctx fresco cada vez, sin async/await, sin estado compartido.
   const playCallSound = (tipo) => {
     try {
-      const volume = Math.min(1, Math.max(0, Number(audioSettings.callVolume ?? 1)));
+      const configuredVolume = Math.min(1, Math.max(0, Number(audioSettings.callVolume ?? 1)));
+      const volume = configuredVolume <= 0 ? 1 : configuredVolume;
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const doPlay = () => {
         const t = ctx.currentTime;
@@ -326,8 +327,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   };
 
   const playIncomingMessageSound = () => {
-    if (configNotificaciones && Number(configNotificaciones.sonido_activo) === 0) return;
-    const played = playNotificationSound(audioSettings.msgSound, { volume: audioSettings.msgVolume });
+    const messageVolume = Number(audioSettings.msgVolume) <= 0 ? 1 : audioSettings.msgVolume;
+    const played = playNotificationSound(audioSettings.msgSound, { volume: messageVolume });
     if (!played) {
       // Fallback si el sonido configurado falla por política de autoplay o contexto.
       playCallSound("accept");
@@ -1561,6 +1562,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         clearInterval(outgoingRingRef.current);
         outgoingRingRef.current = null;
       }
+      playCallSound("accept");
       showAlert(`${payload.nickname || "Usuario"} aceptó la videollamada.`, "success");
       const pc = crearPeerConnection(payload.socketId, payload.nickname || "Usuario");
       const offer = await pc.createOffer();
@@ -1611,11 +1613,24 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
     const handleCallRejected = (payload) => {
       if (!payload?.room || callRoomRef.current !== payload.room) return;
+      playCallSound("hangup");
       showAlert(`${payload.nickname || "Usuario"} rechazó la videollamada.`, "warning");
       if (outgoingRingRef.current) {
         clearInterval(outgoingRingRef.current);
         outgoingRingRef.current = null;
       }
+    };
+
+    const handleCallInviteStatus = (payload) => {
+      if (!payload?.room || callRoomRef.current !== payload.room) return;
+      if (Number(payload.delivered || 0) > 0) return;
+      playCallSound("hangup");
+      if (outgoingRingRef.current) {
+        clearInterval(outgoingRingRef.current);
+        outgoingRingRef.current = null;
+      }
+      const targets = Array.isArray(payload.requestedNicknames) ? payload.requestedNicknames.join(", ") : "usuario";
+      showAlert(`No se pudo entregar la llamada a ${targets}. Verifica que esté conectado al chat.`, "warning");
     };
 
     socket.on("call_invite", handleInvite);
@@ -1626,6 +1641,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     socket.on("call_ice", handleIce);
     socket.on("call_user_left", handleUserLeft);
     socket.on("call_rejected", handleCallRejected);
+    socket.on("call_invite_status", handleCallInviteStatus);
 
     return () => {
       socket.off("call_invite", handleInvite);
@@ -1636,6 +1652,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       socket.off("call_ice", handleIce);
       socket.off("call_user_left", handleUserLeft);
       socket.off("call_rejected", handleCallRejected);
+      socket.off("call_invite_status", handleCallInviteStatus);
     };
   }, [socket, user, callActivo, audioSettings.callSound, audioSettings.callVolume]);
 

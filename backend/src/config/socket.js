@@ -6,6 +6,16 @@ let io;
 // Usuarios activos en chat: { nombre: { sockets: [socketId, ...], photo, lastActivity, inCall } }
 const usuariosActivos = {};
 
+function normalizeNick(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function resolveActiveNickKey(nickname) {
+  const target = normalizeNick(nickname);
+  if (!target) return null;
+  return Object.keys(usuariosActivos).find((key) => normalizeNick(key) === target) || null;
+}
+
 // Intervalo que marca usuarios como ausentes tras 1 hora de inactividad
 setInterval(() => {
   let changed = false;
@@ -53,19 +63,21 @@ export function initSocket(httpServer) {
 
     // ── LOGIN CHAT ──────────────────────────────────────────
     socket.on("login_chat", ({ nickname, photo }) => {
-      usuarioNombre = nickname;
-      socket.data.nickname = nickname;
+      const safeNickname = String(nickname || "").trim();
+      if (!safeNickname) return;
+      usuarioNombre = safeNickname;
+      socket.data.nickname = safeNickname;
 
-      if (!usuariosActivos[nickname]) {
-        usuariosActivos[nickname] = { sockets: [], photo: photo || null, lastActivity: Date.now(), inCall: false, _wasAway: false };
+      if (!usuariosActivos[safeNickname]) {
+        usuariosActivos[safeNickname] = { sockets: [], photo: photo || null, lastActivity: Date.now(), inCall: false, _wasAway: false };
       } else {
-        usuariosActivos[nickname].lastActivity = Date.now();
-        usuariosActivos[nickname]._wasAway = false;
+        usuariosActivos[safeNickname].lastActivity = Date.now();
+        usuariosActivos[safeNickname]._wasAway = false;
       }
-      if (!usuariosActivos[nickname].sockets.includes(socket.id)) {
-        usuariosActivos[nickname].sockets.push(socket.id);
+      if (!usuariosActivos[safeNickname].sockets.includes(socket.id)) {
+        usuariosActivos[safeNickname].sockets.push(socket.id);
       }
-      if (photo) usuariosActivos[nickname].photo = photo;
+      if (photo) usuariosActivos[safeNickname].photo = photo;
 
       emitirUsuariosActivos();
     });
@@ -92,14 +104,30 @@ export function initSocket(httpServer) {
     // ── VIDEOLLAMADAS (WebRTC) ──────────────────────────────
     socket.on("call_invite", ({ room, fromNickname, toNicknames }) => {
       if (!room || !Array.isArray(toNicknames)) return;
-      toNicknames.forEach((nick) => {
-        getSocketsByNickname(nick).forEach((socketId) => {
+      const requested = Array.from(new Set(toNicknames.map((nick) => String(nick || "").trim()).filter(Boolean)));
+      let delivered = 0;
+      const reachedNicknames = [];
+
+      requested.forEach((nick) => {
+        const targets = getSocketsByNickname(nick);
+        if (targets.length > 0) {
+          reachedNicknames.push(nick);
+        }
+        targets.forEach((socketId) => {
+          delivered += 1;
           io.to(socketId).emit("call_invite", {
             room,
             fromNickname: fromNickname || socket.data.nickname || "Usuario",
             fromSocketId: socket.id,
           });
         });
+      });
+
+      socket.emit("call_invite_status", {
+        room,
+        requestedNicknames: requested,
+        reachedNicknames,
+        delivered,
       });
     });
 
@@ -223,5 +251,6 @@ export function getUsuariosActivos() {
 }
 
 export function getSocketsByNickname(nickname) {
-  return usuariosActivos[nickname]?.sockets || [];
+  const key = resolveActiveNickKey(nickname);
+  return key ? usuariosActivos[key]?.sockets || [] : [];
 }
