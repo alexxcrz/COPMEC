@@ -4940,34 +4940,36 @@ function App() { // NOSONAR
       socketRef.current.disconnect();
       socketRef.current = null;
     }
+    const reconnectTimer = { id: null };
     const socket = io(API_BASE_URL || window.location.origin, {
       withCredentials: true,
       transports: ["polling"],
       upgrade: false,
-      reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 2000,
-      reconnectionDelayMax: 10000,
+      reconnection: false, // manual: evita que Socket.IO reintente con el sid antiguo
       timeout: 45000,
-      forceNew: true,
+      forceNew: true,      // sid limpio en cada creación
     });
     socket.on("connect", () => {
+      clearTimeout(reconnectTimer.id);
+      reconnectTimer.id = null;
       socket.emit("login_chat", { nickname: currentUser.name, photo: null });
       setSocketConnectCount((c) => c + 1);
     });
-    socket.on("connect_error", (err) => {
-      // Si el servidor reinició y no reconoce el sid, destruir el socket
-      // y crear uno nuevo desde cero (sid limpio) después de un breve delay.
-      const is400 = err?.description === 400 || Number(err?.context?.status) === 400;
-      const isUnknownSession = String(err?.message || "").toLowerCase().includes("session id unknown");
-      if (is400 || isUnknownSession) {
-        socket.disconnect();
-        socketRef.current = null;
-        setTimeout(() => setSocketResetKey((k) => k + 1), 3000);
+    socket.on("disconnect", () => {
+      // Recrear el socket después de 3s (cubre server restart, timeout, etc.)
+      if (!reconnectTimer.id) {
+        reconnectTimer.id = setTimeout(() => setSocketResetKey((k) => k + 1), 3000);
+      }
+    });
+    socket.on("connect_error", () => {
+      // Con reconnection:false no hay reintentos automáticos, recrear limpio tras 5s
+      if (!reconnectTimer.id) {
+        reconnectTimer.id = setTimeout(() => setSocketResetKey((k) => k + 1), 5000);
       }
     });
     socketRef.current = socket;
     return () => {
+      clearTimeout(reconnectTimer.id);
       socket.disconnect();
       socketRef.current = null;
     };

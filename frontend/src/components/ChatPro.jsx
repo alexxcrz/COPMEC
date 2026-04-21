@@ -391,8 +391,12 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     cargarUsuarios();
     cargarEstados();
     
-    // Recargar estados cada 30 segundos para actualizaciones en tiempo real
-    const interval = setInterval(cargarEstados, 30000);
+    // Recargar estados cada 15 segundos como fallback
+    const interval = setInterval(() => {
+      authFetch(`${SERVER_URL}/api/chat/usuarios/estados`)
+        .then((estados) => setEstadosUsuarios(estados || {}))
+        .catch(() => {});
+    }, 15000);
 
     // Recargar chats activos cada 12s como fallback si se pierden eventos de socket
     const pollChats = setInterval(() => {
@@ -454,15 +458,21 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       photo: user.photo || null,
     });
 
-    const handleUsuarios = () => {
-      // Recargar estados cuando cambian los usuarios activos (socket) - INSTANTÁNEO
-      authFetch(`${SERVER_URL}/api/chat/usuarios/estados`)
-        .then((estados) => setEstadosUsuarios(estados || {}))
-        .catch(() => {});
+    const handleUsuarios = (lista) => {
+      // Usar la lista que viene del socket directamente (sin round-trip REST)
+      if (Array.isArray(lista) && lista.length > 0) {
+        const estados = {};
+        lista.forEach((u) => { if (u.nickname) estados[u.nickname] = u.status || 'offline'; });
+        setEstadosUsuarios(estados);
+      } else {
+        authFetch(`${SERVER_URL}/api/chat/usuarios/estados`)
+          .then((estados) => setEstadosUsuarios(estados || {}))
+          .catch(() => {});
+      }
     };
 
     const handleEstadosActualizados = () => {
-      // Recargar estados cuando el servidor emite actualización - INSTANTÁNEO
+      // Sin payload: refrescar via REST
       authFetch(`${SERVER_URL}/api/chat/usuarios/estados`)
         .then((estados) => setEstadosUsuarios(estados || {}))
         .catch(() => {});
