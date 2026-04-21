@@ -3204,7 +3204,7 @@ span.chat-item-menu-btn:active {
   height: min(680px, 90vh);
   background: var(--chat-surface);
   border: 1px solid var(--chat-border);
-  border-radius: 16px;
+  border-radius: 40px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -3217,6 +3217,7 @@ span.chat-item-menu-btn:active {
   padding: 10px 14px;
   border-bottom: 1px solid var(--chat-border);
   background: var(--chat-surface-2);
+  border-radius: 40px 40px 0 0;
 }
 
 .call-title {
@@ -3248,7 +3249,7 @@ span.chat-item-menu-btn:active {
 .call-video-box {
   position: relative;
   border: 1px solid var(--chat-border);
-  border-radius: 10px;
+  border-radius: 24px;
   background: var(--fondo-input);
   overflow: hidden;
   min-height: 120px;
@@ -3293,13 +3294,14 @@ span.chat-item-menu-btn:active {
   padding: 8px;
   border-top: 1px solid var(--chat-border);
   background: var(--chat-surface);
+  border-radius: 0 0 40px 40px;
 }
 
 .call-control {
   background: transparent;
   border: 1px solid var(--chat-border);
   color: var(--chat-text);
-  border-radius: 10px;
+  border-radius: 20px;
   padding: 5px 10px;
   cursor: pointer;
   min-width: 60px;
@@ -4417,10 +4419,11 @@ span.chat-item-menu-btn:active {
   }
 
   .call-window {
-    width: 100%;
-    height: 100%;
-    border-radius: 0;
-    max-height: 100dvh;
+    width: calc(100% - 16px);
+    height: calc(100% - 16px);
+    border-radius: 32px;
+    margin: 8px;
+    max-height: calc(100dvh - 16px);
   }
 
   .call-videos {
@@ -4503,11 +4506,13 @@ span.chat-item-menu-btn:active {
 
   /* Chat panel full screen en móvil */
   .chat-panel-pro {
-    border-radius: 0 !important;
-    width: 100vw !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
-    inset: 0 !important;
+    border-radius: 32px !important;
+    width: calc(100vw - 12px) !important;
+    max-width: calc(100vw - 12px) !important;
+    height: calc(100dvh - 12px) !important;
+    max-height: calc(100dvh - 12px) !important;
+    margin: 6px !important;
+    inset: 6px !important;
   }
 
   /* Emojis picker visible */
@@ -4527,8 +4532,9 @@ span.chat-item-menu-btn:active {
   }
 
   .call-video-box {
-    min-height: 33vh !important;
-    max-height: 40vh !important;
+    min-height: 35vh !important;
+    max-height: 42vh !important;
+    border-radius: 24px;
   }
 
   .call-window {
@@ -4536,7 +4542,9 @@ span.chat-item-menu-btn:active {
   }
 
   .call-control {
-    flex: 1 1 calc(50% - 6px);
+    flex: 1 1 calc(50% - 8px);
+    padding: 8px 4px;
+    border-radius: 20px;
   }
 }
 

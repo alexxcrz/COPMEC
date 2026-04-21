@@ -353,21 +353,31 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   };
 
   const playIncomingCallTone = () => {
-    if (audioSettings.callIncomingSound === "ringIncoming") {
+    try {
+      if (audioSettings.callIncomingSound === "ringIncoming") {
+        playCallSound("ringIncoming");
+        return;
+      }
+      const played = playNotificationSound(audioSettings.callIncomingSound, { volume: audioSettings.callVolume });
+      if (!played) playCallSound("ringIncoming");
+    } catch (err) {
+      console.warn("Error al reproducir tono entrante:", err);
       playCallSound("ringIncoming");
-      return;
     }
-    const played = playNotificationSound(audioSettings.callIncomingSound, { volume: audioSettings.callVolume });
-    if (!played) playCallSound("ringIncoming");
   };
 
   const playOutgoingCallTone = () => {
-    if (audioSettings.callOutgoingSound === "ringOutgoing") {
+    try {
+      if (audioSettings.callOutgoingSound === "ringOutgoing") {
+        playCallSound("ringOutgoing");
+        return;
+      }
+      const played = playNotificationSound(audioSettings.callOutgoingSound, { volume: audioSettings.callVolume });
+      if (!played) playCallSound("ringOutgoing");
+    } catch (err) {
+      console.warn("Error al reproducir tono saliente:", err);
       playCallSound("ringOutgoing");
-      return;
     }
-    const played = playNotificationSound(audioSettings.callOutgoingSound, { volume: audioSettings.callVolume });
-    if (!played) playCallSound("ringOutgoing");
   };
 
   const playIncomingMessageSound = () => {
@@ -1677,14 +1687,20 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
     const handleCallInviteStatus = (payload) => {
       if (!payload?.room || callRoomRef.current !== payload.room) return;
-      if (Number(payload.delivered || 0) > 0) return;
+      const delivered = Number(payload.delivered || 0);
+      const reached = Array.isArray(payload.reachedNicknames) ? payload.reachedNicknames.length : 0;
+      console.log("📱 Call status:", { delivered, reached, requested: payload.requestedNicknames });
+      if (delivered > 0) {
+        showAlert(`✓ Invitación enviada a ${reached} dispositivo(s)`, "success");
+        return;
+      }
       playCallSound("hangup");
       if (outgoingRingRef.current) {
         clearInterval(outgoingRingRef.current);
         outgoingRingRef.current = null;
       }
       const targets = Array.isArray(payload.requestedNicknames) ? payload.requestedNicknames.join(", ") : "usuario";
-      showAlert(`No se pudo entregar la llamada a ${targets}. Verifica que esté conectado al chat.`, "warning");
+      showAlert(`❌ No se pudo entregar la llamada a ${targets}. Verifica que esté conectado al chat.`, "warning");
     };
 
     socket.on("call_invite", handleInvite);
@@ -4339,12 +4355,17 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       const unicos = Array.from(new Set(destinatarios)).filter(
         (n) => n && n !== userDisplayName
       );
+      if (!socket.connected) {
+        showAlert("Socket no está conectado. Intenta de nuevo.", "warning");
+        return;
+      }
       setCallActivo(true);
       callRoomRef.current = room;
       socket.emit("set_in_call", { inCall: true });
       // Ring saliente — suena mientras espera que contesten
       playOutgoingCallTone();
       outgoingRingRef.current = setInterval(() => playOutgoingCallTone(), 3200);
+      console.log("📞 Emitiendo call_invite a:", unicos, "Room:", room);
       socket.emit("call_invite", {
         room,
         fromNickname: userDisplayName,
