@@ -5,11 +5,28 @@ import "./ChatPro.css";
 function ReunionesPerfilUsuario() { return null; }
 
 import { useAlert } from "./AlertModal";
-import { playNotificationSound } from "../utils/notificationSounds";
+import { NOTIFICATION_SOUNDS, playNotificationSound } from "../utils/notificationSounds";
 // COPMEC: removed getServerUrl
 // COPMEC: removed ReunionesPerfilUsuario
 
 export default function ChatPro({ socket, user, onClose, solicitudPending, onSolicitudConsumida, mensajePrioritarioPending, onMensajePrioritarioConsumido, connectCount }) {
+
+  const AUDIO_PREF_KEYS = {
+    msgSound: "copmec_chat_msg_sound",
+    callSound: "copmec_chat_call_sound",
+    msgVolume: "copmec_chat_msg_volume",
+    callVolume: "copmec_chat_call_volume",
+  };
+  const CALL_SOUND_OPTIONS = [
+    { id: "ring", label: "Ring" },
+    { id: "campana", label: "Campana" },
+    { id: "digital", label: "Digital" },
+  ];
+  const getStoredVolume = (key, fallback) => {
+    const raw = Number(localStorage.getItem(key));
+    if (Number.isNaN(raw)) return fallback;
+    return Math.min(1, Math.max(0, raw));
+  };
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
   const authFetch = async (url, opts = {}) => {
@@ -26,6 +43,12 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const SERVER_URL = API_BASE_URL;
   const { showAlert, showConfirm } = useAlert();
   const esAdmin = user?.role === 'Lead';
+  const [audioSettings, setAudioSettings] = useState(() => ({
+    msgSound: localStorage.getItem(AUDIO_PREF_KEYS.msgSound) || "campana",
+    callSound: localStorage.getItem(AUDIO_PREF_KEYS.callSound) || "ring",
+    msgVolume: getStoredVolume(AUDIO_PREF_KEYS.msgVolume, 0.85),
+    callVolume: getStoredVolume(AUDIO_PREF_KEYS.callVolume, 0.9),
+  }));
   const [open, setOpen] = useState(onClose ? true : false); // Si viene del menú, abrir automáticamente
   
   // Si viene del menú, abrir automáticamente
@@ -231,10 +254,25 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const outgoingRingRef = useRef(null);
   const lastActivityEmitRef = useRef(0);
 
+  const isSameNickname = (a, b) =>
+    String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+
+  const saveAudioSetting = (key, value) => {
+    setAudioSettings((prev) => {
+      const next = { ...prev, [key]: value };
+      if (key === "msgSound") localStorage.setItem(AUDIO_PREF_KEYS.msgSound, next.msgSound);
+      if (key === "callSound") localStorage.setItem(AUDIO_PREF_KEYS.callSound, next.callSound);
+      if (key === "msgVolume") localStorage.setItem(AUDIO_PREF_KEYS.msgVolume, String(next.msgVolume));
+      if (key === "callVolume") localStorage.setItem(AUDIO_PREF_KEYS.callVolume, String(next.callVolume));
+      return next;
+    });
+  };
+
   // Toca un sonido de videollamada — patrón idéntico a notificationSounds.js:
   // ctx fresco cada vez, sin async/await, sin estado compartido.
   const playCallSound = (tipo) => {
     try {
+      const volume = Math.min(1, Math.max(0, Number(audioSettings.callVolume ?? 1)));
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const doPlay = () => {
         const t = ctx.currentTime;
@@ -244,7 +282,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
             const gain = ctx.createGain();
             osc.connect(gain); gain.connect(ctx.destination);
             osc.type = "sine"; osc.frequency.value = freq;
-            gain.gain.setValueAtTime(0.20, t + start);
+            gain.gain.setValueAtTime(0.20 * volume, t + start);
             gain.gain.exponentialRampToValueAtTime(0.001, t + start + 0.4);
             osc.start(t + start); osc.stop(t + start + 0.42);
           });
@@ -254,7 +292,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
             const gain = ctx.createGain();
             osc.connect(gain); gain.connect(ctx.destination);
             osc.type = "sine"; osc.frequency.value = freq;
-            gain.gain.setValueAtTime(0.18, t + i * 0.1);
+            gain.gain.setValueAtTime(0.18 * volume, t + i * 0.1);
             gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.1 + 0.5);
             osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.52);
           });
@@ -264,7 +302,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
             const gain = ctx.createGain();
             osc.connect(gain); gain.connect(ctx.destination);
             osc.type = "sine"; osc.frequency.value = freq;
-            gain.gain.setValueAtTime(0.45, t + i * 0.18);
+            gain.gain.setValueAtTime(0.45 * volume, t + i * 0.18);
             gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.18 + 0.5);
             osc.start(t + i * 0.18); osc.stop(t + i * 0.18 + 0.52);
           });
@@ -278,8 +316,18 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     } catch {}
   };
 
+  const playIncomingCallTone = () => {
+    if (audioSettings.callSound === "ring") {
+      playCallSound("ring");
+      return;
+    }
+    const played = playNotificationSound(audioSettings.callSound, { volume: audioSettings.callVolume });
+    if (!played) playCallSound("ring");
+  };
+
   const playIncomingMessageSound = () => {
-    const played = playNotificationSound();
+    if (configNotificaciones && Number(configNotificaciones.sonido_activo) === 0) return;
+    const played = playNotificationSound(audioSettings.msgSound, { volume: audioSettings.msgVolume });
     if (!played) {
       // Fallback si el sonido configurado falla por política de autoplay o contexto.
       playCallSound("accept");
@@ -1040,10 +1088,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
     // Mensaje privado
     const handlePrivado = (mensaje) => {
-      const otroUsuario =
-        mensaje.de_nickname === userDisplayName
-          ? mensaje.para_nickname
-          : mensaje.de_nickname;
+      const esMioPorNickname = isSameNickname(mensaje.de_nickname, userDisplayName);
+      const otroUsuario = esMioPorNickname ? mensaje.para_nickname : mensaje.de_nickname;
 
       setMensajesPrivado((prev) => {
         const mensajesExistentes = prev[otroUsuario] || [];
@@ -1054,7 +1100,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         }
         
         // Verificar si es un mensaje nuestro (optimistic update) que debemos reemplazar
-        const esNuestroMensaje = mensaje.de_nickname === userDisplayName;
+        const esNuestroMensaje = isSameNickname(mensaje.de_nickname, userDisplayName);
         
         // Si es nuestro mensaje, simplemente agregarlo (ya no hay temporales)
         if (esNuestroMensaje) {
@@ -1137,10 +1183,10 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       // Actualizar chats activos
       setChatsActivos((prev) => {
         const existe = prev.some((c) => c.otro_usuario === otroUsuario);
-        const esMioMensaje = mensaje.de_nickname === userDisplayName;
+        const esMioMensaje = isSameNickname(mensaje.de_nickname, userDisplayName);
         // Mensaje a uno mismo: siempre ya leído, independientemente de userDisplayName
-        const esSelfMessage = mensaje.de_nickname === mensaje.para_nickname;
-        const viendoEste = open && tipoChat === "privado" && chatActual === otroUsuario;
+        const esSelfMessage = isSameNickname(mensaje.de_nickname, mensaje.para_nickname);
+        const viendoEste = open && tipoChat === "privado" && isSameNickname(chatActual, otroUsuario);
         // Si es mensaje de IXORA para admin, siempre contar como no leído hasta que se abra
         const esMensajeIXORAAdmin = mensaje.de_nickname === "IXORA" && esAdmin && mensaje.es_admin;
         
@@ -1176,15 +1222,22 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         ];
       });
 
-      const viendoEste = open && tipoChat === "privado" && chatActual === otroUsuario;
+      const viendoEste = open && tipoChat === "privado" && isSameNickname(chatActual, otroUsuario);
       // Solo reproducir sonido e incrementar contador si NO estás viendo el chat
       // Y si es mensaje de IXORA para admin, siempre notificar
       const esMensajeIXORAAdmin = mensaje.de_nickname === "IXORA" && esAdmin && mensaje.es_admin;
       // Mensaje a uno mismo: nunca notificar
-      const esSelfMessageOuter = mensaje.de_nickname === mensaje.para_nickname;
+      const esSelfMessageOuter = isSameNickname(mensaje.de_nickname, mensaje.para_nickname);
       
       // Si estás viendo este chat, marcar el mensaje como leído inmediatamente en el servidor
       if (viendoEste && !esMensajeIXORAAdmin) {
+        setChatsActivos((prev) =>
+          prev.map((c) =>
+            isSameNickname(c.otro_usuario, otroUsuario)
+              ? { ...c, mensajes_no_leidos: 0 }
+              : c
+          )
+        );
         authFetch(`${SERVER_URL}/api/chat/privado/${otroUsuario}/leer`, {
           method: "POST",
         }).catch((e) => {
@@ -1459,7 +1512,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       socket.off("chat_privado_editado", handlePrivadoActualizado);
       socket.off("chat_grupal_editado", handleGrupalActualizado);
     };
-  }, [socket, open, tipoChat, chatActual, tabPrincipal, user, SERVER_URL, esAdmin, configNotificaciones]);
+  }, [socket, open, tipoChat, chatActual, tabPrincipal, user, SERVER_URL, esAdmin, configNotificaciones, audioSettings.msgSound, audioSettings.msgVolume]);
 
   useEffect(() => {
     if (!socket) return;
@@ -1469,7 +1522,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       if (!payload?.room) return;
       if (callActivo && callRoomRef.current === payload.room) return;
 
-      playCallSound("ring");
+      playIncomingCallTone();
       if ("Notification" in window && Notification.permission === "granted") {
         new Notification("Llamada entrante", {
           body: `${payload.fromNickname || "Usuario"} te está llamando`,
@@ -1571,7 +1624,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       socket.off("call_ice", handleIce);
       socket.off("call_user_left", handleUserLeft);
     };
-  }, [socket, user, callActivo]);
+  }, [socket, user, callActivo, audioSettings.callSound, audioSettings.callVolume]);
 
   // ── Sincronizar localVideoRef con localStreamRef ─────────────────────────
   useEffect(() => {
@@ -1611,15 +1664,15 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       }
       return;
     }
-    playCallSound("ring");
-    ringtoneRef.current = setInterval(() => playCallSound("ring"), 3200);
+    playIncomingCallTone();
+    ringtoneRef.current = setInterval(() => playIncomingCallTone(), 3200);
     return () => {
       if (ringtoneRef.current) {
         clearInterval(ringtoneRef.current);
         ringtoneRef.current = null;
       }
     };
-  }, [callIncoming]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [callIncoming, audioSettings.callSound, audioSettings.callVolume]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ============================
   // ⬇ Scroll automático y marcar mensajes como leídos cuando se ven mensajes
@@ -4807,6 +4860,18 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="15" height="15"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
               Usuarios
             </div>
+            <div
+              className={`tab tab-circular ${tabPrincipal === "ajustes" ? "active" : ""}`}
+              onClick={() => {
+                setTabPrincipal("ajustes");
+                setTipoChat(null);
+                setChatActual(null);
+              }}
+              title="Ajustes"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="15" height="15"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              Ajustes
+            </div>
                 </div>
                 
                 {/* CONTENIDO DEL SIDEBAR */}
@@ -4939,6 +5004,85 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                     </div>
                   );
                 })}
+                    </div>
+                  )}
+
+                  {tabPrincipal === "ajustes" && (
+                    <div className="usuarios-list-pro" style={{ padding: "14px 12px", gap: 12 }}>
+                      <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--cp-text-1)" }}>
+                        Sonidos del chat
+                      </div>
+
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <span style={{ fontSize: "0.78rem", color: "var(--cp-text-2)" }}>Sonido de mensaje</span>
+                        <select
+                          value={audioSettings.msgSound}
+                          onChange={(e) => saveAudioSetting("msgSound", e.target.value)}
+                        >
+                          {NOTIFICATION_SOUNDS.map((s) => (
+                            <option key={s.id} value={s.id}>{s.emoji} {s.label}</option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <span style={{ fontSize: "0.78rem", color: "var(--cp-text-2)" }}>
+                          Volumen mensaje ({Math.round(audioSettings.msgVolume * 100)}%)
+                        </span>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.05"
+                          value={audioSettings.msgVolume}
+                          onChange={(e) => saveAudioSetting("msgVolume", Number(e.target.value))}
+                        />
+                      </label>
+
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <span style={{ fontSize: "0.78rem", color: "var(--cp-text-2)" }}>Tono de llamada</span>
+                        <select
+                          value={audioSettings.callSound}
+                          onChange={(e) => saveAudioSetting("callSound", e.target.value)}
+                        >
+                          {CALL_SOUND_OPTIONS.map((s) => (
+                            <option key={s.id} value={s.id}>{s.label}</option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <span style={{ fontSize: "0.78rem", color: "var(--cp-text-2)" }}>
+                          Volumen llamada ({Math.round(audioSettings.callVolume * 100)}%)
+                        </span>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.05"
+                          value={audioSettings.callVolume}
+                          onChange={(e) => saveAudioSetting("callVolume", Number(e.target.value))}
+                        />
+                      </label>
+
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          type="button"
+                          className="chat-user-header-btn"
+                          onClick={playIncomingMessageSound}
+                          title="Probar sonido de mensaje"
+                        >
+                          Probar mensaje
+                        </button>
+                        <button
+                          type="button"
+                          className="chat-user-header-btn"
+                          onClick={playIncomingCallTone}
+                          title="Probar tono de llamada"
+                        >
+                          Probar llamada
+                        </button>
+                      </div>
                     </div>
                   )}
 
