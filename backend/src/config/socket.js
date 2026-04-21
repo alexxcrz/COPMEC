@@ -40,7 +40,12 @@ export function initSocket(httpServer) {
   });
 
   io.engine.on("connection_error", (err) => {
-    console.error("Socket.IO connection error:", err.message);
+    // Muy común en deploy/restart o pestañas con sid viejo; no indica falla real del chat.
+    if (err?.message === "Session ID unknown" || err?.code === 1) {
+      console.log("Socket.IO stale sid discarded");
+      return;
+    }
+    console.error("Socket.IO connection error:", err?.message || err);
   });
 
   io.on("connection", (socket) => {

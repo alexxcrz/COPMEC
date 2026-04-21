@@ -398,15 +398,33 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         .catch(() => {});
     }, 15000);
 
-    // Recargar chats activos cada 4s como fallback si se pierden eventos de socket
-    const pollChats = setInterval(() => {
-      authFetch(`${SERVER_URL}/api/chat/activos`)
-        .then((data) => { if (data) setChatsActivos(data); })
-        .catch(() => {});
-    }, 4000);
-
-    return () => { clearInterval(interval); clearInterval(pollChats); };
+    return () => { clearInterval(interval); };
   }, [open]);
+
+  // Sincronización de chats activos en segundo plano (chat abierto o cerrado).
+  // Esto mantiene el badge y la lista actualizados incluso si se pierde un evento socket.
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncActivos = async () => {
+      if (cargandoChatsActivosRef.current || cancelled) return;
+      cargandoChatsActivosRef.current = true;
+      try {
+        const data = await authFetch(`${SERVER_URL}/api/chat/activos`);
+        if (!cancelled) setChatsActivos(data || []);
+      } catch (_) {
+      } finally {
+        cargandoChatsActivosRef.current = false;
+      }
+    };
+
+    syncActivos();
+    const interval = setInterval(syncActivos, 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [SERVER_URL]);
 
   // Re-fetch chats y mensajes abiertos cuando el socket se reconecta (connectCount > 1)
   useEffect(() => {
