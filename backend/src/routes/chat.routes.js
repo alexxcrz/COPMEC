@@ -7,6 +7,7 @@ import { requireAuth } from "../middleware/auth.middleware.js";
 import { getIO, getUsuariosActivos } from "../config/socket.js";
 import { prismaChat as prisma } from "../config/prisma-chat.js";
 import { getWarehouseState } from "../services/warehouse.store.js";
+import { normalizeNick, enqueueCallSignal, drainCallSignals, nextSignalId } from "../utils/callSignalQueue.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -48,48 +49,7 @@ function getAllUsers() {
   return getWarehouseState().users || [];
 }
 
-const callSignalQueues = new Map();
-let callSignalSequence = 0;
-const CALL_SIGNAL_TTL_MS = 90 * 1000;
-
-function normalizeNick(value) {
-  return String(value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLowerCase();
-}
-
-function cleanupExpiredCallSignals() {
-  const now = Date.now();
-  for (const [key, queue] of callSignalQueues.entries()) {
-    const nextQueue = queue.filter((item) => now - Number(item.createdAt || 0) < CALL_SIGNAL_TTL_MS);
-    if (nextQueue.length > 0) {
-      callSignalQueues.set(key, nextQueue);
-    } else {
-      callSignalQueues.delete(key);
-    }
-  }
-}
-
-setInterval(cleanupExpiredCallSignals, 30000).unref?.();
-
-function enqueueCallSignal(targetNickname, signal) {
-  const key = normalizeNick(targetNickname);
-  if (!key) return;
-  const queue = callSignalQueues.get(key) || [];
-  queue.push(signal);
-  callSignalQueues.set(key, queue.slice(-400));
-}
-
-function drainCallSignals(targetNickname) {
-  cleanupExpiredCallSignals();
-  const key = normalizeNick(targetNickname);
-  if (!key) return [];
-  const queue = callSignalQueues.get(key) || [];
-  callSignalQueues.delete(key);
-  return queue;
-}
+// callSignalQueue helpers imported from ../utils/callSignalQueue.js
 
 function emitChatsActivosActualizados() {
   try {
@@ -195,7 +155,7 @@ chatRouter.post("/calls/signal", requireAuth, (req, res) => {
     }
 
     const signal = {
-      id: `call-${++callSignalSequence}`,
+      id: nextSignalId(),
       type,
       room,
       fromNickname: senderName,

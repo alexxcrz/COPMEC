@@ -1,18 +1,11 @@
 import { Server } from "socket.io";
 import { corsOriginValidator } from "./env.js";
+import { normalizeNick, enqueueCallSignal, nextSignalId } from "../utils/callSignalQueue.js";
 
 let io;
 
 // Usuarios activos en chat: { nombre: { sockets: [socketId, ...], photo, lastActivity, inCall } }
 const usuariosActivos = {};
-
-function normalizeNick(value) {
-  return String(value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLowerCase();
-}
 
 function resolveActiveNickKey(nickname) {
   const target = normalizeNick(nickname);
@@ -149,6 +142,20 @@ export function initSocket(httpServer) {
             fromSocketId: socket.id,
           });
         });
+
+        // REST fallback: if this target had no active sockets, enqueue for HTTP polling
+        if (targets.length === 0) {
+          enqueueCallSignal(nick, {
+            id: nextSignalId(),
+            type: "invite",
+            room,
+            fromNickname: fromNickname || socket.data.nickname || "Usuario",
+            from: `rest:${normalizeNick(fromNickname || socket.data.nickname || "")}`,
+            nickname: fromNickname || socket.data.nickname || "Usuario",
+            createdAt: Date.now(),
+          });
+          console.log(`   ↪ enqueued REST fallback invite for "${nick}"`);
+        }
       });
 
         console.log(`   Result: delivered=${delivered}`);
