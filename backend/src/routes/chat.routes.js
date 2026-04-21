@@ -48,6 +48,12 @@ function getAllUsers() {
   return getWarehouseState().users || [];
 }
 
+function emitChatsActivosActualizados() {
+  try {
+    getIO().emit("chats_activos_actualizados", { ts: Date.now() });
+  } catch (_) {}
+}
+
 async function esAdminDeGrupo(grupoId, nombre) {
   const grupo = await prisma.chatGrupo.findUnique({ where: { id: grupoId } });
   if (!grupo) return false;
@@ -372,6 +378,7 @@ chatRouter.post("/privado", requireAuth, async (req, res) => {
     }
 
     getIO().emit("chat_privado_nuevo", out);
+    emitChatsActivosActualizados();
     res.json({ ok: true, mensaje: out });
   } catch (e) {
     console.error("Error enviando mensaje privado:", e);
@@ -425,6 +432,7 @@ chatRouter.post("/privado/:nickname/leer", requireAuth, async (req, res) => {
           fecha_leido: m.fechaLeido.toISOString(),
         })),
       });
+      emitChatsActivosActualizados();
     }
 
     res.json({ ok: true, mensajes_marcados: noLeidos.length });
@@ -445,6 +453,8 @@ chatRouter.delete("/privado/:nickname", requireAuth, async (req, res) => {
       update: { borradoEn: new Date() },
       create: { usuarioNickname: nombre, otroNickname: nickname },
     });
+
+    emitChatsActivosActualizados();
 
     res.json({ ok: true });
   } catch (e) {
@@ -1216,7 +1226,12 @@ chatRouter.put("/mensaje/:tipo/:id", requireAuth, async (req, res) => {
 
     const out = serializarMensaje(editado);
     if (tipo === "general") getIO().emit("chat_general_editado", out);
-    else if (tipo === "privado") getIO().emit("chat_privado_editado", out);
+    else if (tipo === "privado") {
+      getIO().emit("chat_privado_editado", out);
+      // Compatibilidad con clientes que ya escuchan *_actualizado
+      getIO().emit("chat_privado_actualizado", out);
+      emitChatsActivosActualizados();
+    }
     else getIO().emit("chat_grupal_editado", out);
 
     res.json({ ok: true, mensaje: out });
@@ -1247,7 +1262,10 @@ chatRouter.delete("/mensaje/:tipo/:id", requireAuth, async (req, res) => {
     await prisma[modelo].delete({ where: { id: Number(id) } });
 
     if (tipo === "general") getIO().emit("chat_general_borrado", { id: actual.id, usuario_nickname: actual.usuarioNickname });
-    else if (tipo === "privado") getIO().emit("chat_privado_borrado", { id: actual.id, de_nickname: actual.deNickname, para_nickname: actual.paraNickname });
+    else if (tipo === "privado") {
+      getIO().emit("chat_privado_borrado", { id: actual.id, de_nickname: actual.deNickname, para_nickname: actual.paraNickname });
+      emitChatsActivosActualizados();
+    }
     else getIO().emit("chat_grupal_borrado", { id: actual.id, grupo_id: actual.grupoId, usuario_nickname: actual.usuarioNickname });
 
     res.json({ ok: true });
@@ -1278,7 +1296,10 @@ chatRouter.post("/mensaje/:tipo/:id/prioridad", requireAuth, async (req, res) =>
 
     const out = serializarMensaje(actualizado);
     if (tipo === "general") getIO().emit("chat_general_actualizado", out);
-    else if (tipo === "privado") getIO().emit("chat_privado_actualizado", out);
+    else if (tipo === "privado") {
+      getIO().emit("chat_privado_actualizado", out);
+      emitChatsActivosActualizados();
+    }
     else getIO().emit("chat_grupal_actualizado", out);
 
     res.json({ ok: true, success: true, mensaje: out });

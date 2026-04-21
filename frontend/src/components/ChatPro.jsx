@@ -398,12 +398,12 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         .catch(() => {});
     }, 15000);
 
-    // Recargar chats activos cada 12s como fallback si se pierden eventos de socket
+    // Recargar chats activos cada 4s como fallback si se pierden eventos de socket
     const pollChats = setInterval(() => {
       authFetch(`${SERVER_URL}/api/chat/activos`)
         .then((data) => { if (data) setChatsActivos(data); })
         .catch(() => {});
-    }, 12000);
+    }, 4000);
 
     return () => { clearInterval(interval); clearInterval(pollChats); };
   }, [open]);
@@ -442,6 +442,42 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectCount]);
+
+  // Fallback de sincronización del chat abierto: evita desfaces si un evento socket se pierde.
+  useEffect(() => {
+    if (!open || !tipoChat || !chatActual) return;
+
+    const syncOpenChat = async () => {
+      try {
+        if (tipoChat === "general") {
+          const data = await authFetch(`${SERVER_URL}/api/chat/general`);
+          setMensajesGeneral((data || []).sort((a, b) => new Date(a.fecha || 0) - new Date(b.fecha || 0)));
+          return;
+        }
+
+        if (tipoChat === "privado") {
+          const data = await authFetch(`${SERVER_URL}/api/chat/privado/${chatActual}`);
+          const sorted = (data || []).sort((a, b) => new Date(a.fecha || 0) - new Date(b.fecha || 0));
+          setMensajesPrivado((prev) => ({ ...prev, [chatActual]: sorted }));
+          const lect = {};
+          sorted.forEach((m) => { if (m.fecha_leido_otro) lect[String(m.id)] = m.fecha_leido_otro; });
+          if (Object.keys(lect).length) setLecturasPrivadas((prev) => ({ ...prev, ...lect }));
+          return;
+        }
+
+        if (tipoChat === "grupal") {
+          const data = await authFetch(`${SERVER_URL}/api/chat/grupos/${chatActual}/mensajes`);
+          const sorted = (data || []).sort((a, b) => new Date(a.fecha || 0) - new Date(b.fecha || 0));
+          setMensajesGrupal((prev) => ({ ...prev, [String(chatActual)]: sorted }));
+        }
+      } catch (_) {}
+    };
+
+    // Primer sync inmediato + intervalo corto
+    syncOpenChat();
+    const interval = setInterval(syncOpenChat, 3000);
+    return () => clearInterval(interval);
+  }, [open, tipoChat, chatActual, SERVER_URL]);
 
   // ============================
   // 👤 Usuarios activos (socket)
@@ -907,15 +943,6 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     
     // Obtener el nombre de usuario una vez al inicio
     const userDisplayName = user?.nickname || user?.name;
-
-    // Limpiar listeners anteriores antes de registrar nuevos
-    socket.off("chat_general_nuevo");
-    socket.off("chat_privado_nuevo");
-    socket.off("chat_grupal_nuevo");
-    socket.off("chat_grupo_creado");
-    socket.off("chats_activos_actualizados");
-    socket.off("chat_grupo_solicitud_nueva");
-    socket.off("chat_grupo_solicitud_respondida");
 
     // Handler para actualizar chats activos cuando hay cambios (definir primero)
     const handleChatsActivosActualizados = async () => {
@@ -1383,6 +1410,9 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     socket.on("chat_general_actualizado", handleGeneralActualizado);
     socket.on("chat_privado_actualizado", handlePrivadoActualizado);
     socket.on("chat_grupal_actualizado", handleGrupalActualizado);
+    socket.on("chat_general_editado", handleGeneralActualizado);
+    socket.on("chat_privado_editado", handlePrivadoActualizado);
+    socket.on("chat_grupal_editado", handleGrupalActualizado);
 
     return () => {
       socket.off("chat_general_nuevo", handleGeneral);
@@ -1399,6 +1429,9 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       socket.off("chat_general_actualizado", handleGeneralActualizado);
       socket.off("chat_privado_actualizado", handlePrivadoActualizado);
       socket.off("chat_grupal_actualizado", handleGrupalActualizado);
+      socket.off("chat_general_editado", handleGeneralActualizado);
+      socket.off("chat_privado_editado", handlePrivadoActualizado);
+      socket.off("chat_grupal_editado", handleGrupalActualizado);
     };
   }, [socket, open, tipoChat, chatActual, tabPrincipal, user, SERVER_URL, esAdmin, configNotificaciones]);
 
