@@ -4322,20 +4322,30 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const asegurarLocalStream = async () => {
     if (localStreamRef.current) return localStreamRef.current;
     if (!navigator.mediaDevices?.getUserMedia) {
-      showAlert("Tu dispositivo no soporta videollamadas.", "warning");
-      throw new Error("getUserMedia no disponible");
+      throw new Error("Tu dispositivo no soporta videollamadas.");
     }
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    localStreamRef.current = stream;
-    setLocalStream(stream);
-    return stream;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      localStreamRef.current = stream;
+      setLocalStream(stream);
+      return stream;
+    } catch (err) {
+      const name = String(err?.name || "");
+      if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+        throw new Error("Permite camara y microfono para iniciar la videollamada.");
+      }
+      if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+        throw new Error("No se encontraron camara o microfono disponibles.");
+      }
+      throw new Error("No se pudo acceder a la camara/microfono.");
+    }
   };
 
   const esperarConexionSocket = async (timeoutMs = 9000) => {
-    if (!socket) throw new Error("Socket no disponible");
-    if (socket.connected) return;
+    if (!socket) return false;
+    if (socket.connected) return true;
 
-    await new Promise((resolve, reject) => {
+    return await new Promise((resolve) => {
       let settled = false;
       const cleanup = () => {
         socket.off("connect", onConnect);
@@ -4346,16 +4356,16 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         if (settled) return;
         settled = true;
         cleanup();
-        resolve();
+        resolve(true);
       };
       const onConnectError = () => {
-        // Se deja que el timeout controle el error final mientras Socket.IO reintenta.
+        // Esperar al timeout: Socket.IO puede recuperarse solo.
       };
       const timer = setTimeout(() => {
         if (settled) return;
         settled = true;
         cleanup();
-        reject(new Error("timeout socket"));
+        resolve(false);
       }, timeoutMs);
 
       socket.on("connect", onConnect);
@@ -4373,8 +4383,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       return;
     }
     try {
-      await esperarConexionSocket();
       await asegurarLocalStream();
+      const connected = await esperarConexionSocket();
       const room = obtenerRoomLlamada();
       const userDisplayName = user?.nickname || user?.name || "usuario";
       const destinatarios = [];
@@ -4393,20 +4403,48 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       );
       setCallActivo(true);
       callRoomRef.current = room;
-      socket.emit("set_in_call", { inCall: true });
+
+      const emitirInvitacion = () => {
+        socket.emit("set_in_call", { inCall: true });
+        console.log("📞 Emitiendo call_invite a:", unicos, "Room:", room, "Socket:", socket.connected ? "✅ conectado" : "⏳ conectando");
+        socket.emit("call_invite", {
+          room,
+          fromNickname: userDisplayName,
+          toNicknames: unicos,
+          tipo: tipoChat,
+        });
+        socket.emit("call_join", { room, nickname: userDisplayName });
+      };
+
       // Ring saliente — suena mientras espera que contesten
       playOutgoingCallTone();
       outgoingRingRef.current = setInterval(() => playOutgoingCallTone(), 3200);
-      console.log("📞 Emitiendo call_invite a:", unicos, "Room:", room, "Socket:", socket.connected ? "✅ conectado" : "⏳ conectando");
-      socket.emit("call_invite", {
-        room,
-        fromNickname: userDisplayName,
-        toNicknames: unicos,
-        tipo: tipoChat,
-      });
-      socket.emit("call_join", { room, nickname: userDisplayName });
+
+      if (connected && socket.connected) {
+        emitirInvitacion();
+        return;
+      }
+
+      showAlert("Reconectando chat para enviar la llamada...", "warning");
+      let emitted = false;
+      const onConnect = () => {
+        if (emitted) return;
+        emitted = true;
+        socket.off("connect", onConnect);
+        emitirInvitacion();
+      };
+      socket.on("connect", onConnect);
+      setTimeout(() => {
+        if (emitted) return;
+        socket.off("connect", onConnect);
+        showAlert("No se pudo reconectar el chat para iniciar la llamada.", "error");
+        limpiarLlamada();
+      }, 12000);
+      try {
+        socket.connect();
+      } catch (_) {}
     } catch (err) {
-      showAlert("No se pudo iniciar la videollamada.", "error");
+      showAlert(err?.message || "No se pudo iniciar la videollamada.", "error");
       limpiarLlamada();
     }
   };
@@ -4414,18 +4452,44 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const aceptarLlamada = async () => {
     if (!socket || !callIncoming) return;
     try {
-      await esperarConexionSocket();
       playCallSound("accept");
       await asegurarLocalStream();
+      const connected = await esperarConexionSocket();
       const userDisplayName = user?.nickname || user?.name || "usuario";
       const room = callIncoming.room;
       setCallActivo(true);
       callRoomRef.current = room;
-      socket.emit("set_in_call", { inCall: true });
-      socket.emit("call_join", { room, nickname: userDisplayName });
+
+      const unirLlamada = () => {
+        socket.emit("set_in_call", { inCall: true });
+        socket.emit("call_join", { room, nickname: userDisplayName });
+      };
+
+      if (connected && socket.connected) {
+        unirLlamada();
+      } else {
+        let joined = false;
+        const onConnect = () => {
+          if (joined) return;
+          joined = true;
+          socket.off("connect", onConnect);
+          unirLlamada();
+        };
+        socket.on("connect", onConnect);
+        setTimeout(() => {
+          if (joined) return;
+          socket.off("connect", onConnect);
+          showAlert("No se pudo reconectar para aceptar la llamada.", "error");
+          limpiarLlamada();
+        }, 12000);
+        try {
+          socket.connect();
+        } catch (_) {}
+      }
+
       setCallIncoming(null);
     } catch (err) {
-      showAlert("No se pudo aceptar la videollamada.", "error");
+      showAlert(err?.message || "No se pudo aceptar la videollamada.", "error");
       limpiarLlamada();
     }
   };
