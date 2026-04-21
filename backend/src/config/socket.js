@@ -7,7 +7,11 @@ let io;
 const usuariosActivos = {};
 
 function normalizeNick(value) {
-  return String(value || "").trim().toLowerCase();
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
 }
 
 function resolveActiveNickKey(nickname) {

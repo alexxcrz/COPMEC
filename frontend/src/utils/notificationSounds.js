@@ -7,6 +7,9 @@ export const NOTIFICATION_SOUNDS = [
   { id: "ping",     label: "Ping",     emoji: "✨" },
   { id: "marimba",  label: "Marimba",  emoji: "🎵" },
   { id: "digital",  label: "Digital",  emoji: "💻" },
+  { id: "cristal",  label: "Cristal",  emoji: "🧊" },
+  { id: "pulso",    label: "Pulso",    emoji: "💓" },
+  { id: "chime",    label: "Chime",    emoji: "🎐" },
 ];
 
 export const SOUND_PREF_KEY = "copmec_notification_sound";
@@ -121,6 +124,61 @@ const PLAYERS = {
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
       osc.start(t);
       osc.stop(t + 0.1);
+    });
+  },
+
+  // Cristal: golpe brillante con cola corta
+  cristal(ctx, volume = 1) {
+    const vol = clampVolume(volume);
+    [[1320, 0.16], [1760, 0.10], [2200, 0.07]].forEach(([freq, gainBase], i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "triangle";
+      const t = ctx.currentTime + i * 0.02;
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(gainBase * vol, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+      osc.start(t);
+      osc.stop(t + 0.37);
+    });
+  },
+
+  // Pulso: doble latido cálido
+  pulso(ctx, volume = 1) {
+    const vol = clampVolume(volume);
+    [0, 0.16].forEach((offset) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      const t = ctx.currentTime + offset;
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(190, t);
+      osc.frequency.exponentialRampToValueAtTime(130, t + 0.14);
+      gain.gain.setValueAtTime(0.26 * vol, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+      osc.start(t);
+      osc.stop(t + 0.21);
+    });
+  },
+
+  // Chime: tres notas ascendentes ligeras
+  chime(ctx, volume = 1) {
+    const vol = clampVolume(volume);
+    [784, 988, 1175].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      const t = ctx.currentTime + i * 0.09;
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.17 * vol, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+      osc.start(t);
+      osc.stop(t + 0.42);
     });
   },
 };

@@ -367,6 +367,51 @@ div.chat-tabs div.tab.active * {
   gap: 0;
 }
 
+.chat-audio-settings {
+  padding: 14px 12px;
+  gap: 12px;
+}
+
+.chat-audio-settings-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--cp-text);
+}
+
+.chat-audio-field {
+  display: grid;
+  gap: 6px;
+}
+
+.chat-audio-label {
+  font-size: 0.78rem;
+  color: var(--cp-text-2);
+  font-weight: 600;
+}
+
+.chat-audio-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.chat-audio-test-btn {
+  min-height: 34px;
+  border-radius: 10px;
+  border: 1px solid var(--cp-border-2);
+  background: var(--cp-white);
+  color: var(--cp-text);
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px 8px;
+}
+
+.chat-audio-test-btn:hover {
+  background: var(--cp-green-light);
+  border-color: var(--cp-green-2);
+}
+
 .usuario-item-pro {
   display: flex;
   align-items: center;

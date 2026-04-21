@@ -3,7 +3,6 @@
 
 import { useState, useEffect } from "react";
 import { Modal } from "./Modal";
-import { NOTIFICATION_SOUNDS, getSoundPref, setSoundPref, playNotificationSound } from "../utils/notificationSounds";
 
 // ── Constantes y utilidades ───────────────────────────────────────────────────
 
@@ -94,40 +93,6 @@ function InfoField({ label, value, placeholder = "No definido", wide, children }
     <div className={`ep-field${wide ? " ep-field--wide" : ""}`}>
       <span className="ep-field__label">{label}</span>
       {children || <strong className="ep-field__value">{value || <span className="ep-field__empty">{placeholder}</span>}</strong>}
-    </div>
-  );
-}
-
-// ── Componente interno: selector de sonido ────────────────────────────────────
-
-function SoundPicker() {
-  const [selected, setSelected] = useState(getSoundPref);
-
-  function handleSelect(id) {
-    setSelected(id);
-    setSoundPref(id);
-    playNotificationSound(id);
-  }
-
-  return (
-    <div className="ep-section">
-      <div className="ep-section__title">Sonido de notificación</div>
-      <div className="ep-sound-grid">
-        {NOTIFICATION_SOUNDS.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            className={`ep-sound-btn${selected === s.id ? " ep-sound-btn--active" : ""}`}
-            onClick={() => handleSelect(s.id)}
-            title={`Probar: ${s.label}`}
-          >
-            <span className="ep-sound-emoji">{s.emoji}</span>
-            <span className="ep-sound-label">{s.label}</span>
-            {selected === s.id && <span className="ep-sound-check">✓</span>}
-          </button>
-        ))}
-      </div>
-      <p className="ep-sound-hint">Toca para escuchar · El seleccionado sonará con cada mensaje nuevo</p>
     </div>
   );
 }
@@ -318,9 +283,6 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
             )}
           </div>
         </div>
-
-        {/* ── SONIDO ───────────────────────────────────────────────────────── */}
-        <SoundPicker />
 
         {/* ── CONTRASEÑA ───────────────────────────────────────────────────── */}
         <div className="ep-section">

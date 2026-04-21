@@ -13,14 +13,21 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
   const AUDIO_PREF_KEYS = {
     msgSound: "copmec_chat_msg_sound",
-    callSound: "copmec_chat_call_sound",
+    callIncomingSound: "copmec_chat_call_incoming_sound",
+    callOutgoingSound: "copmec_chat_call_outgoing_sound",
     msgVolume: "copmec_chat_msg_volume",
     callVolume: "copmec_chat_call_volume",
   };
   const CALL_SOUND_OPTIONS = [
-    { id: "ring", label: "Ring" },
+    { id: "ringIncoming", label: "Ring entrante" },
+    { id: "ringOutgoing", label: "Ring saliente" },
     { id: "campana", label: "Campana" },
+    { id: "ping", label: "Ping" },
     { id: "digital", label: "Digital" },
+    { id: "marimba", label: "Marimba" },
+    { id: "chime", label: "Chime" },
+    { id: "cristal", label: "Cristal" },
+    { id: "pulso", label: "Pulso" },
   ];
   const getStoredVolume = (key, fallback) => {
     const raw = Number(localStorage.getItem(key));
@@ -45,7 +52,14 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const esAdmin = user?.role === 'Lead';
   const [audioSettings, setAudioSettings] = useState(() => ({
     msgSound: localStorage.getItem(AUDIO_PREF_KEYS.msgSound) || "campana",
-    callSound: localStorage.getItem(AUDIO_PREF_KEYS.callSound) || "ring",
+    callIncomingSound:
+      localStorage.getItem(AUDIO_PREF_KEYS.callIncomingSound)
+      || localStorage.getItem("copmec_chat_call_sound")
+      || "ringIncoming",
+    callOutgoingSound:
+      localStorage.getItem(AUDIO_PREF_KEYS.callOutgoingSound)
+      || localStorage.getItem("copmec_chat_call_sound")
+      || "ringOutgoing",
     msgVolume: getStoredVolume(AUDIO_PREF_KEYS.msgVolume, 0.85),
     callVolume: getStoredVolume(AUDIO_PREF_KEYS.callVolume, 0.9),
   }));
@@ -261,7 +275,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     setAudioSettings((prev) => {
       const next = { ...prev, [key]: value };
       if (key === "msgSound") localStorage.setItem(AUDIO_PREF_KEYS.msgSound, next.msgSound);
-      if (key === "callSound") localStorage.setItem(AUDIO_PREF_KEYS.callSound, next.callSound);
+      if (key === "callIncomingSound") localStorage.setItem(AUDIO_PREF_KEYS.callIncomingSound, next.callIncomingSound);
+      if (key === "callOutgoingSound") localStorage.setItem(AUDIO_PREF_KEYS.callOutgoingSound, next.callOutgoingSound);
       if (key === "msgVolume") localStorage.setItem(AUDIO_PREF_KEYS.msgVolume, String(next.msgVolume));
       if (key === "callVolume") localStorage.setItem(AUDIO_PREF_KEYS.callVolume, String(next.callVolume));
       return next;
@@ -277,7 +292,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const doPlay = () => {
         const t = ctx.currentTime;
-        if (tipo === "ring") {
+        if (tipo === "ringOutgoing") {
           [[480, 0], [440, 0], [480, 0.6], [440, 0.6]].forEach(([freq, start]) => {
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
@@ -286,6 +301,16 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
             gain.gain.setValueAtTime(0.20 * volume, t + start);
             gain.gain.exponentialRampToValueAtTime(0.001, t + start + 0.4);
             osc.start(t + start); osc.stop(t + start + 0.42);
+          });
+        } else if (tipo === "ringIncoming") {
+          [[920, 0], [920, 0.18], [740, 0.62], [740, 0.8]].forEach(([freq, start]) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.type = "triangle"; osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.26 * volume, t + start);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + start + 0.22);
+            osc.start(t + start); osc.stop(t + start + 0.24);
           });
         } else if (tipo === "accept") {
           [523, 659, 784].forEach((freq, i) => {
@@ -307,6 +332,16 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
             gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.18 + 0.5);
             osc.start(t + i * 0.18); osc.stop(t + i * 0.18 + 0.52);
           });
+        } else if (tipo === "reject") {
+          [520, 420, 320].forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.type = "square"; osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.22 * volume, t + i * 0.09);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.09 + 0.2);
+            osc.start(t + i * 0.09); osc.stop(t + i * 0.09 + 0.22);
+          });
         }
       };
       if (ctx.state === "suspended") {
@@ -318,12 +353,21 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   };
 
   const playIncomingCallTone = () => {
-    if (audioSettings.callSound === "ring") {
-      playCallSound("ring");
+    if (audioSettings.callIncomingSound === "ringIncoming") {
+      playCallSound("ringIncoming");
       return;
     }
-    const played = playNotificationSound(audioSettings.callSound, { volume: audioSettings.callVolume });
-    if (!played) playCallSound("ring");
+    const played = playNotificationSound(audioSettings.callIncomingSound, { volume: audioSettings.callVolume });
+    if (!played) playCallSound("ringIncoming");
+  };
+
+  const playOutgoingCallTone = () => {
+    if (audioSettings.callOutgoingSound === "ringOutgoing") {
+      playCallSound("ringOutgoing");
+      return;
+    }
+    const played = playNotificationSound(audioSettings.callOutgoingSound, { volume: audioSettings.callVolume });
+    if (!played) playCallSound("ringOutgoing");
   };
 
   const playIncomingMessageSound = () => {
@@ -564,10 +608,18 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     const userDisplayName = user.nickname || user.name;
     if (!userDisplayName) return;
 
-    socket.emit("login_chat", {
-      nickname: userDisplayName,
-      photo: user.photo || null,
-    });
+    const emitirLoginChat = () => {
+      socket.emit("login_chat", {
+        nickname: userDisplayName,
+        photo: user.photo || null,
+      });
+    };
+
+    emitirLoginChat();
+    socket.on("connect", emitirLoginChat);
+    const loginPulse = setInterval(() => {
+      if (socket.connected) emitirLoginChat();
+    }, 20000);
 
     const handleUsuarios = (lista) => {
       // Usar la lista que viene del socket directamente (sin round-trip REST)
@@ -682,6 +734,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     setTimeout(cargarChatsYOTP, 1000);
 
     return () => {
+      clearInterval(loginPulse);
+      socket.off("connect", emitirLoginChat);
       socket.off("usuarios_activos", handleUsuarios);
       socket.off("estados_actualizados", handleEstadosActualizados);
       document.removeEventListener("mousemove", emitirActividad);
@@ -1613,7 +1667,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
     const handleCallRejected = (payload) => {
       if (!payload?.room || callRoomRef.current !== payload.room) return;
-      playCallSound("hangup");
+      playCallSound("reject");
       showAlert(`${payload.nickname || "Usuario"} rechazó la videollamada.`, "warning");
       if (outgoingRingRef.current) {
         clearInterval(outgoingRingRef.current);
@@ -1654,7 +1708,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       socket.off("call_rejected", handleCallRejected);
       socket.off("call_invite_status", handleCallInviteStatus);
     };
-  }, [socket, user, callActivo, audioSettings.callSound, audioSettings.callVolume]);
+  }, [socket, user, callActivo, audioSettings.callIncomingSound, audioSettings.callOutgoingSound, audioSettings.callVolume]);
 
   // ── Sincronizar localVideoRef con localStreamRef ─────────────────────────
   useEffect(() => {
@@ -1702,7 +1756,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         ringtoneRef.current = null;
       }
     };
-  }, [callIncoming, audioSettings.callSound, audioSettings.callVolume]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [callIncoming, audioSettings.callIncomingSound, audioSettings.callVolume]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ============================
   // ⬇ Scroll automático y marcar mensajes como leídos cuando se ven mensajes
@@ -4289,8 +4343,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       callRoomRef.current = room;
       socket.emit("set_in_call", { inCall: true });
       // Ring saliente — suena mientras espera que contesten
-      playCallSound("ring");
-      outgoingRingRef.current = setInterval(() => playCallSound("ring"), 3200);
+      playOutgoingCallTone();
+      outgoingRingRef.current = setInterval(() => playOutgoingCallTone(), 3200);
       socket.emit("call_invite", {
         room,
         fromNickname: userDisplayName,
@@ -4323,6 +4377,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   };
 
   const rechazarLlamada = () => {
+    playCallSound("reject");
     if (socket && callIncoming?.room && callIncoming?.fromSocketId) {
       const userDisplayName = user?.nickname || user?.name || "Usuario";
       socket.emit("call_reject", {
@@ -5046,13 +5101,13 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                   )}
 
                   {tabPrincipal === "ajustes" && (
-                    <div className="usuarios-list-pro" style={{ padding: "14px 12px", gap: 12 }}>
-                      <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--cp-text-1)" }}>
+                    <div className="usuarios-list-pro chat-audio-settings">
+                      <div className="chat-audio-settings-title">
                         Sonidos del chat
                       </div>
 
-                      <label style={{ display: "grid", gap: 6 }}>
-                        <span style={{ fontSize: "0.78rem", color: "var(--cp-text-2)" }}>Sonido de mensaje</span>
+                      <label className="chat-audio-field">
+                        <span className="chat-audio-label">Sonido de mensaje</span>
                         <select
                           value={audioSettings.msgSound}
                           onChange={(e) => saveAudioSetting("msgSound", e.target.value)}
@@ -5063,8 +5118,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                         </select>
                       </label>
 
-                      <label style={{ display: "grid", gap: 6 }}>
-                        <span style={{ fontSize: "0.78rem", color: "var(--cp-text-2)" }}>
+                      <label className="chat-audio-field">
+                        <span className="chat-audio-label">
                           Volumen mensaje ({Math.round(audioSettings.msgVolume * 100)}%)
                         </span>
                         <input
@@ -5077,11 +5132,11 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                         />
                       </label>
 
-                      <label style={{ display: "grid", gap: 6 }}>
-                        <span style={{ fontSize: "0.78rem", color: "var(--cp-text-2)" }}>Tono de llamada</span>
+                      <label className="chat-audio-field">
+                        <span className="chat-audio-label">Tono entrante</span>
                         <select
-                          value={audioSettings.callSound}
-                          onChange={(e) => saveAudioSetting("callSound", e.target.value)}
+                          value={audioSettings.callIncomingSound}
+                          onChange={(e) => saveAudioSetting("callIncomingSound", e.target.value)}
                         >
                           {CALL_SOUND_OPTIONS.map((s) => (
                             <option key={s.id} value={s.id}>{s.label}</option>
@@ -5089,8 +5144,20 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                         </select>
                       </label>
 
-                      <label style={{ display: "grid", gap: 6 }}>
-                        <span style={{ fontSize: "0.78rem", color: "var(--cp-text-2)" }}>
+                      <label className="chat-audio-field">
+                        <span className="chat-audio-label">Tono saliente</span>
+                        <select
+                          value={audioSettings.callOutgoingSound}
+                          onChange={(e) => saveAudioSetting("callOutgoingSound", e.target.value)}
+                        >
+                          {CALL_SOUND_OPTIONS.map((s) => (
+                            <option key={s.id} value={s.id}>{s.label}</option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="chat-audio-field">
+                        <span className="chat-audio-label">
                           Volumen llamada ({Math.round(audioSettings.callVolume * 100)}%)
                         </span>
                         <input
@@ -5103,10 +5170,10 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                         />
                       </label>
 
-                      <div style={{ display: "flex", gap: 8 }}>
+                      <div className="chat-audio-actions">
                         <button
                           type="button"
-                          className="chat-user-header-btn"
+                          className="chat-audio-test-btn"
                           onClick={playIncomingMessageSound}
                           title="Probar sonido de mensaje"
                         >
@@ -5114,11 +5181,19 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                         </button>
                         <button
                           type="button"
-                          className="chat-user-header-btn"
+                          className="chat-audio-test-btn"
                           onClick={playIncomingCallTone}
                           title="Probar tono de llamada"
                         >
                           Probar llamada
+                        </button>
+                        <button
+                          type="button"
+                          className="chat-audio-test-btn"
+                          onClick={playOutgoingCallTone}
+                          title="Probar tono saliente"
+                        >
+                          Probar salida
                         </button>
                       </div>
                     </div>
