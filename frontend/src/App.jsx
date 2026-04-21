@@ -352,6 +352,7 @@ const INITIAL_ROUTE_STATE = getInitialRouteState();
 
 function App() { // NOSONAR
   const socketRef = useRef(null);
+  const [socketConnectCount, setSocketConnectCount] = useState(0);
   const [state, setState] = useState(loadState);
   const [page, setPage] = useState(() => {
     const urlPage = INITIAL_ROUTE_STATE.page;
@@ -4945,6 +4946,7 @@ function App() { // NOSONAR
     });
     socket.on("connect", () => {
       socket.emit("login_chat", { nickname: currentUser.name, photo: null });
+      setSocketConnectCount((c) => c + 1);
     });
     // No interferir con la reconexión automática de Socket.IO.
     // Socket.IO ya maneja "Session ID unknown" creando una sesión nueva en el siguiente intento.
@@ -5504,9 +5506,9 @@ function App() { // NOSONAR
         </div>
       </Modal>
 
-      {currentUser && socketRef.current ? (
+      {currentUser && socketConnectCount > 0 ? (
         <AlertModalProvider>
-          <ChatPro socket={socketRef.current} user={currentUser} />
+          <ChatPro socket={socketRef.current} user={currentUser} connectCount={socketConnectCount} />
         </AlertModalProvider>
       ) : null}
 

@@ -9,7 +9,7 @@ import { playNotificationSound } from "../utils/notificationSounds";
 // COPMEC: removed getServerUrl
 // COPMEC: removed ReunionesPerfilUsuario
 
-export default function ChatPro({ socket, user, onClose, solicitudPending, onSolicitudConsumida, mensajePrioritarioPending, onMensajePrioritarioConsumido }) {
+export default function ChatPro({ socket, user, onClose, solicitudPending, onSolicitudConsumida, mensajePrioritarioPending, onMensajePrioritarioConsumido, connectCount }) {
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
   const authFetch = async (url, opts = {}) => {
@@ -393,8 +393,51 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     
     // Recargar estados cada 30 segundos para actualizaciones en tiempo real
     const interval = setInterval(cargarEstados, 30000);
-    return () => clearInterval(interval);
+
+    // Recargar chats activos cada 12s como fallback si se pierden eventos de socket
+    const pollChats = setInterval(() => {
+      authFetch(`${SERVER_URL}/api/chat/activos`)
+        .then((data) => { if (data) setChatsActivos(data); })
+        .catch(() => {});
+    }, 12000);
+
+    return () => { clearInterval(interval); clearInterval(pollChats); };
   }, [open]);
+
+  // Re-fetch chats y mensajes abiertos cuando el socket se reconecta (connectCount > 1)
+  useEffect(() => {
+    if (!connectCount || connectCount <= 1) return;
+    authFetch(`${SERVER_URL}/api/chat/activos`)
+      .then((data) => { if (data) setChatsActivos(data); })
+      .catch(() => {});
+    if (tipoChat === "privado" && chatActual) {
+      authFetch(`/api/chat/privado/${chatActual}`)
+        .then((data) => {
+          const sorted = (data || []).sort((a, b) => new Date(a.fecha || 0) - new Date(b.fecha || 0));
+          setMensajesPrivado((prev) => ({ ...prev, [chatActual]: sorted }));
+          const lect = {};
+          sorted.forEach((m) => { if (m.fecha_leido_otro) lect[String(m.id)] = m.fecha_leido_otro; });
+          if (Object.keys(lect).length) setLecturasPrivadas((prev) => ({ ...prev, ...lect }));
+        })
+        .catch(() => {});
+    }
+    if (tipoChat === "grupal" && chatActual) {
+      authFetch(`/api/chat/grupos/${chatActual}/mensajes`)
+        .then((data) => {
+          const sorted = (data || []).sort((a, b) => new Date(a.fecha || 0) - new Date(b.fecha || 0));
+          setMensajesGrupal((prev) => ({ ...prev, [String(chatActual)]: sorted }));
+        })
+        .catch(() => {});
+    }
+    if (tipoChat === "general") {
+      authFetch(`${SERVER_URL}/api/chat/general`)
+        .then((data) => {
+          setMensajesGeneral((data || []).sort((a, b) => new Date(a.fecha || 0) - new Date(b.fecha || 0)));
+        })
+        .catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connectCount]);
 
   // ============================
   // 👤 Usuarios activos (socket)
@@ -3386,6 +3429,13 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
               }),
             };
           });
+          // Marcar como leído de inmediato si el backend ya lo registró (auto-mensaje)
+          if (respuesta.mensaje.fecha_leido_otro) {
+            setLecturasPrivadas((prev) => ({
+              ...prev,
+              [String(respuesta.mensaje.id)]: respuesta.mensaje.fecha_leido_otro,
+            }));
+          }
         }
       } else if (tipoChat === "grupal") {
         respuesta = await authFetch(`${SERVER_URL}/api/chat/grupos/${chatActual}/mensajes`, {
