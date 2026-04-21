@@ -20,6 +20,11 @@ function resolveActiveNickKey(nickname) {
   return Object.keys(usuariosActivos).find((key) => normalizeNick(key) === target) || null;
 }
 
+function getUserRoomKey(nickname) {
+  const key = normalizeNick(nickname);
+  return key ? `user:${key}` : null;
+}
+
 // Intervalo que marca usuarios como ausentes tras 1 hora de inactividad
 setInterval(() => {
   let changed = false;
@@ -64,6 +69,7 @@ export function initSocket(httpServer) {
 
   io.on("connection", (socket) => {
     let usuarioNombre = null;
+    let usuarioRoomKey = null;
 
     // ── LOGIN CHAT ──────────────────────────────────────────
     socket.on("login_chat", ({ nickname, photo }) => {
@@ -71,6 +77,15 @@ export function initSocket(httpServer) {
       if (!safeNickname) return;
       usuarioNombre = safeNickname;
       socket.data.nickname = safeNickname;
+
+      const nextRoomKey = getUserRoomKey(safeNickname);
+      if (usuarioRoomKey && usuarioRoomKey !== nextRoomKey) {
+        socket.leave(usuarioRoomKey);
+      }
+      if (nextRoomKey) {
+        socket.join(nextRoomKey);
+        usuarioRoomKey = nextRoomKey;
+      }
 
       if (!usuariosActivos[safeNickname]) {
         usuariosActivos[safeNickname] = { sockets: [], photo: photo || null, lastActivity: Date.now(), inCall: false, _wasAway: false };
@@ -113,10 +128,14 @@ export function initSocket(httpServer) {
       const reachedNicknames = [];
 
       requested.forEach((nick) => {
-        const targets = getSocketsByNickname(nick);
+        const roomKey = getUserRoomKey(nick);
+        const roomSet = roomKey ? io.sockets.adapter.rooms.get(roomKey) : null;
+        const targets = roomSet ? Array.from(roomSet) : [];
+
         if (targets.length > 0) {
           reachedNicknames.push(nick);
         }
+
         targets.forEach((socketId) => {
           delivered += 1;
           io.to(socketId).emit("call_invite", {
