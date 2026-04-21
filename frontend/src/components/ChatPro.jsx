@@ -315,6 +315,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const sendCallSignalFallback = async ({ type, room, toNicknames, sdp, candidate, nickname, fromPeerId }) => {
     return authFetch(`${SERVER_URL}/api/chat/calls/signal`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         type,
         room,
