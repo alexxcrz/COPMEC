@@ -4582,9 +4582,15 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
           </svg>
-          {noLeidos > 0 && (
-            <span className="chat-badge">{noLeidos > 9 ? "9+" : noLeidos}</span>
-          )}
+          {(() => {
+            // Usar chatsActivos como fuente de verdad (incluye no-leídos del servidor)
+            // y noLeidos como respaldo para mensajes llegados antes de que carguen los chats
+            const fromChats = chatsActivos.reduce((t, c) => t + (c.mensajes_no_leidos || 0), 0);
+            const total = Math.max(noLeidos, fromChats);
+            return total > 0 ? (
+              <span className="chat-badge">{total > 99 ? "99+" : total}</span>
+            ) : null;
+          })()}
         </button>
       )}
 

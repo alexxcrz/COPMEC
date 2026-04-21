@@ -4933,8 +4933,13 @@ function App() { // NOSONAR
   };
 
   // Socket.IO connection — se recrea limpio cuando el servidor reinicia (socketResetKey)
+  // IMPORTANTE: dep es currentUser?.id (primitivo), NO el objeto currentUser.
+  // El objeto currentUser es recreado en cada sync del estado (SSE), lo que causaba
+  // que el socket se destruyera/recreara constantemente generando el bucle de 400.
   useEffect(() => {
-    if (!currentUser) return;
+    const userId = currentUser?.id;
+    const userName = currentUser?.name;
+    if (!userId) return;
 
     // Destruir socket anterior limpiamente
     if (socketRef.current) {
@@ -4965,7 +4970,7 @@ function App() { // NOSONAR
 
     socket.on("connect", () => {
       if (resetTimer) { clearTimeout(resetTimer); resetTimer = null; }
-      socket.emit("login_chat", { nickname: currentUser.name, photo: null });
+      socket.emit("login_chat", { nickname: userName, photo: null });
       setSocketConnectCount((c) => c + 1);
     });
 
@@ -4981,7 +4986,8 @@ function App() { // NOSONAR
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [currentUser, socketResetKey]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id, socketResetKey]);
 
   if (isBootstrapMasterSession) {
     return <BootstrapLeadSetup setupForm={bootstrapLeadForm} onChange={updateBootstrapLeadField} onSubmit={handleCreateFirstLead} error={bootstrapLeadError} areaOptions={departmentOptions} onAddArea={handleAddAreaToBootstrap} />;
