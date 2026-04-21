@@ -4935,41 +4935,49 @@ function App() { // NOSONAR
   // Socket.IO connection — se recrea limpio cuando el servidor reinicia (socketResetKey)
   useEffect(() => {
     if (!currentUser) return;
-    // Limpiar socket anterior si existe
+
+    // Destruir socket anterior limpiamente
     if (socketRef.current) {
       socketRef.current.disconnect();
       socketRef.current = null;
     }
-    const reconnectTimer = { id: null };
+
+    // destroyed=true cuando el efecto se limpia: evita que un disconnect intencional
+    // programe otro reset y genere un bucle infinito.
+    let destroyed = false;
+    let resetTimer = null;
+
+    const scheduleReset = (delay) => {
+      if (destroyed || resetTimer) return;
+      resetTimer = setTimeout(() => {
+        if (!destroyed) setSocketResetKey((k) => k + 1);
+      }, delay);
+    };
+
     const socket = io(API_BASE_URL || window.location.origin, {
       withCredentials: true,
       transports: ["polling"],
       upgrade: false,
-      reconnection: false, // manual: evita que Socket.IO reintente con el sid antiguo
+      reconnection: false, // reconnection manual: evita reintentos con sid antiguo
       timeout: 45000,
-      forceNew: true,      // sid limpio en cada creación
+      forceNew: true,      // siempre handshake limpio (sin sid heredado)
     });
+
     socket.on("connect", () => {
-      clearTimeout(reconnectTimer.id);
-      reconnectTimer.id = null;
+      if (resetTimer) { clearTimeout(resetTimer); resetTimer = null; }
       socket.emit("login_chat", { nickname: currentUser.name, photo: null });
       setSocketConnectCount((c) => c + 1);
     });
-    socket.on("disconnect", () => {
-      // Recrear el socket después de 3s (cubre server restart, timeout, etc.)
-      if (!reconnectTimer.id) {
-        reconnectTimer.id = setTimeout(() => setSocketResetKey((k) => k + 1), 3000);
-      }
-    });
-    socket.on("connect_error", () => {
-      // Con reconnection:false no hay reintentos automáticos, recrear limpio tras 5s
-      if (!reconnectTimer.id) {
-        reconnectTimer.id = setTimeout(() => setSocketResetKey((k) => k + 1), 5000);
-      }
-    });
+
+    // Cualquier desconexión (server restart, timeout, 400) → recrear en 3s
+    socket.on("disconnect", () => scheduleReset(3000));
+    socket.on("connect_error", () => scheduleReset(5000));
+
     socketRef.current = socket;
     return () => {
-      clearTimeout(reconnectTimer.id);
+      destroyed = true;            // detener cualquier reset pendiente
+      clearTimeout(resetTimer);
+      resetTimer = null;
       socket.disconnect();
       socketRef.current = null;
     };
