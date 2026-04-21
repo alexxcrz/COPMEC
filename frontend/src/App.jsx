@@ -5506,7 +5506,7 @@ function App() { // NOSONAR
         </div>
       </Modal>
 
-      {currentUser && socketConnectCount > 0 ? (
+      {currentUser ? (
         <AlertModalProvider>
           <ChatPro socket={socketRef.current} user={currentUser} connectCount={socketConnectCount} />
         </AlertModalProvider>
