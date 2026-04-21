@@ -1291,6 +1291,12 @@ span.chat-item-menu-btn:active {
   overflow-wrap: break-word;
   max-width: 100%;
 }
+/* Formato de texto en mensajes */
+.msg-texto strong { font-weight: 700; }
+.msg-texto em { font-style: italic; }
+.msg-texto u { text-decoration: underline; }
+.msg-texto s { text-decoration: line-through; }
+.msg-texto code { font-family: monospace; background: rgba(0,0,0,0.12); padding: 1px 4px; border-radius: 4px; font-size: 0.88em; }
 
 .msg-selected {
   outline: 2px solid var(--azul-primario);
@@ -4351,7 +4357,8 @@ span.chat-item-menu-btn:active {
   }
 
   .call-videos {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: 1fr;
   }
 }
 
@@ -4366,9 +4373,10 @@ span.chat-item-menu-btn:active {
   }
 
   .chat-btn-tool {
-    height: 20px;
-    min-width: 20px;
-    padding: 2px 4px;
+    height: 24px;
+    min-width: 24px;
+    padding: 2px 5px;
+    font-size: 0.8rem;
   }
 
   .chat-input-pro {
@@ -4381,6 +4389,7 @@ span.chat-item-menu-btn:active {
 
   .chat-header-pro {
     padding-left: 44px;
+    border-radius: 0;
   }
 
   .header-avatar {
@@ -4392,6 +4401,42 @@ span.chat-item-menu-btn:active {
   .chat-btn-enviar {
     min-width: 26px;
     height: 26px;
+  }
+
+  /* Mensajes más redondeados en móvil */
+  .msg-yo-pro,
+  .msg-otro-pro {
+    border-radius: 18px !important;
+    max-width: 88vw;
+  }
+  .msg-yo-pro { border-bottom-right-radius: 4px !important; }
+  .msg-otro-pro { border-bottom-left-radius: 4px !important; }
+
+  /* Chat panel full screen en móvil */
+  .chat-panel-pro {
+    border-radius: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    inset: 0 !important;
+  }
+
+  /* Emojis picker visible */
+  .emoji-picker-wrap {
+    width: 100vw !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 100% !important;
+  }
+
+  /* Videos en llamada: 2 columnas horizontales */
+  .call-videos {
+    grid-template-columns: repeat(2, 1fr) !important;
+    grid-auto-rows: 45vw;
+  }
+
+  .call-window {
+    border-radius: 0 !important;
   }
 }
 

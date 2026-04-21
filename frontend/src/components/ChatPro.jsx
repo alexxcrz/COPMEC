@@ -4144,6 +4144,10 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       await stopScreenShare();
       return;
     }
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      showAlert("Compartir pantalla no está disponible en este dispositivo o navegador.", "warning");
+      return;
+    }
     try {
       const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
       screenStreamRef.current = screenStream;

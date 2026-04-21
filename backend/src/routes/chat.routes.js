@@ -150,7 +150,7 @@ chatRouter.post("/general", requireAuth, async (req, res) => {
     let archivoUrl = archivo_url || null;
     let archivoNombre = archivo_nombre || null;
     let archivoTipo = archivo_tipo || null;
-    let archivoTamaño = archivo_tamaño ? BigInt(archivo_tamaño) : null;
+    let archivoTamaño = archivo_tamaño ? archivo_tamaño ? Number(archivo_tamaño) : null : null;
 
     if (archivo_id) {
       const arch = await prisma.chatArchivo.findUnique({ where: { id: Number(archivo_id) } });
@@ -218,10 +218,17 @@ chatRouter.post("/general/leer", requireAuth, async (req, res) => {
     });
 
     if (mensajes.length > 0) {
-      await prisma.chatGeneralLeido.createMany({
-        data: mensajes.map((m) => ({ mensajeId: m.id, usuarioNickname: nombre })),
-        skipDuplicates: true,
+      const existentes = await prisma.chatGeneralLeido.findMany({
+        where: { usuarioNickname: nombre, mensajeId: { in: mensajes.map((m) => m.id) } },
+        select: { mensajeId: true },
       });
+      const existentesSet = new Set(existentes.map((e) => e.mensajeId));
+      const nuevos = mensajes.filter((m) => !existentesSet.has(m.id));
+      if (nuevos.length > 0) {
+        await prisma.chatGeneralLeido.createMany({
+          data: nuevos.map((m) => ({ mensajeId: m.id, usuarioNickname: nombre })),
+        });
+      }
     }
 
     res.json({ ok: true, mensajes_marcados: mensajes.length });
@@ -287,7 +294,7 @@ chatRouter.post("/privado", requireAuth, async (req, res) => {
     let archivoUrl = archivo_url || null;
     let archivoNombre = archivo_nombre || null;
     let archivoTipo = archivo_tipo || null;
-    let archivoTamaño = archivo_tamaño ? BigInt(archivo_tamaño) : null;
+    let archivoTamaño = archivo_tamaño ? archivo_tamaño ? Number(archivo_tamaño) : null : null;
 
     if (archivo_id) {
       const arch = await prisma.chatArchivo.findUnique({ where: { id: Number(archivo_id) } });
@@ -350,10 +357,17 @@ chatRouter.post("/privado/:nickname/leer", requireAuth, async (req, res) => {
     });
 
     if (noLeidos.length > 0) {
-      await prisma.chatPrivadoLeido.createMany({
-        data: noLeidos.map((m) => ({ mensajeId: m.id, usuarioNickname: nombre })),
-        skipDuplicates: true,
+      const existentes = await prisma.chatPrivadoLeido.findMany({
+        where: { usuarioNickname: nombre, mensajeId: { in: noLeidos.map((m) => m.id) } },
+        select: { mensajeId: true },
       });
+      const existentesSet = new Set(existentes.map((e) => e.mensajeId));
+      const nuevos = noLeidos.filter((m) => !existentesSet.has(m.id));
+      if (nuevos.length > 0) {
+        await prisma.chatPrivadoLeido.createMany({
+          data: nuevos.map((m) => ({ mensajeId: m.id, usuarioNickname: nombre })),
+        });
+      }
 
       const marcados = await prisma.chatPrivadoLeido.findMany({
         where: { usuarioNickname: nombre, mensajeId: { in: noLeidos.map((m) => m.id) } },
@@ -585,7 +599,7 @@ chatRouter.post("/grupos/:id/mensajes", requireAuth, async (req, res) => {
     let archivoUrl = archivo_url || null;
     let archivoNombre = archivo_nombre || null;
     let archivoTipo = archivo_tipo || null;
-    let archivoTamaño = archivo_tamaño ? BigInt(archivo_tamaño) : null;
+    let archivoTamaño = archivo_tamaño ? archivo_tamaño ? Number(archivo_tamaño) : null : null;
 
     if (archivo_id) {
       const arch = await prisma.chatArchivo.findUnique({ where: { id: Number(archivo_id) } });
@@ -642,14 +656,21 @@ chatRouter.post("/grupos/:id/leer", requireAuth, async (req, res) => {
     });
 
     if (noLeidos.length > 0) {
-      await prisma.chatGrupalLeido.createMany({
-        data: noLeidos.map((m) => ({
-          mensajeId: m.id,
-          grupoId: Number(id),
-          usuarioNickname: nombre,
-        })),
-        skipDuplicates: true,
+      const existentes = await prisma.chatGrupalLeido.findMany({
+        where: { usuarioNickname: nombre, mensajeId: { in: noLeidos.map((m) => m.id) } },
+        select: { mensajeId: true },
       });
+      const existentesSet = new Set(existentes.map((e) => e.mensajeId));
+      const nuevos = noLeidos.filter((m) => !existentesSet.has(m.id));
+      if (nuevos.length > 0) {
+        await prisma.chatGrupalLeido.createMany({
+          data: nuevos.map((m) => ({
+            mensajeId: m.id,
+            grupoId: Number(id),
+            usuarioNickname: nombre,
+          })),
+        });
+      }
     }
 
     res.json({ ok: true, mensajes_marcados: noLeidos.length });
@@ -1041,7 +1062,7 @@ chatRouter.post("/archivo", requireAuth, upload.single("archivo"), async (req, r
       data: {
         nombreOriginal: req.file.originalname,
         tipoMime: req.file.mimetype,
-        tamaño: BigInt(req.file.size),
+        tamaño: req.file.size,
         url: `/api/chat/archivo-local/${req.file.filename}`,
         subidoPor: nombre,
       },

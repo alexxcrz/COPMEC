@@ -298,6 +298,68 @@
   margin: 0;
 }
 
+/* ── Responsive móvil ───────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .incidencias-kpi-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .incidencias-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .incidencias-search-wrap {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .incidencias-filters {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .incidencias-filters select,
+  .filter-select-wrap {
+    width: 100%;
+  }
+
+  .incidencias-table th,
+  .incidencias-table td {
+    font-size: 0.75rem;
+    padding: 0.5rem 0.4rem;
+  }
+
+  /* Ocultar columnas menos importantes en pantallas pequeñas */
+  .incidencias-table th:nth-child(3),
+  .incidencias-table td:nth-child(3),
+  .incidencias-table th:nth-child(6),
+  .incidencias-table td:nth-child(6),
+  .incidencias-table th:nth-child(7),
+  .incidencias-table td:nth-child(7) {
+    display: none;
+  }
+
+  .card-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .incidencias-kpi-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  /* Ocultar más columnas en pantallas muy pequeñas */
+  .incidencias-table th:nth-child(8),
+  .incidencias-table td:nth-child(8) {
+    display: none;
+  }
+}
+
 /* ── Modal form ─────────────────────────────────────────────────────────── */
 .incidencia-form {
   display: grid;
