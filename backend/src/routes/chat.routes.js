@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { requireAuth } from "../middleware/auth.middleware.js";
-import { getIO, getSocketsByNickname, getUsuariosActivos } from "../config/socket.js";
+import { getIO, getUsuariosActivos } from "../config/socket.js";
 import { prismaChat as prisma } from "../config/prisma-chat.js";
 import { getWarehouseState } from "../services/warehouse.store.js";
 
@@ -46,6 +46,49 @@ function getNombre(req) {
 
 function getAllUsers() {
   return getWarehouseState().users || [];
+}
+
+const callSignalQueues = new Map();
+let callSignalSequence = 0;
+const CALL_SIGNAL_TTL_MS = 90 * 1000;
+
+function normalizeNick(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function cleanupExpiredCallSignals() {
+  const now = Date.now();
+  for (const [key, queue] of callSignalQueues.entries()) {
+    const nextQueue = queue.filter((item) => now - Number(item.createdAt || 0) < CALL_SIGNAL_TTL_MS);
+    if (nextQueue.length > 0) {
+      callSignalQueues.set(key, nextQueue);
+    } else {
+      callSignalQueues.delete(key);
+    }
+  }
+}
+
+setInterval(cleanupExpiredCallSignals, 30000).unref?.();
+
+function enqueueCallSignal(targetNickname, signal) {
+  const key = normalizeNick(targetNickname);
+  if (!key) return;
+  const queue = callSignalQueues.get(key) || [];
+  queue.push(signal);
+  callSignalQueues.set(key, queue.slice(-400));
+}
+
+function drainCallSignals(targetNickname) {
+  cleanupExpiredCallSignals();
+  const key = normalizeNick(targetNickname);
+  if (!key) return [];
+  const queue = callSignalQueues.get(key) || [];
+  callSignalQueues.delete(key);
+  return queue;
 }
 
 function emitChatsActivosActualizados() {
@@ -106,6 +149,74 @@ chatRouter.get("/usuarios/estados", requireAuth, (req, res) => {
     res.json(estados);
   } catch (e) {
     res.status(500).json({ error: "Error obteniendo estados" });
+  }
+});
+
+chatRouter.get("/calls/pending", requireAuth, (req, res) => {
+  try {
+    const nombre = getNombre(req);
+    if (!nombre) return res.json({ signals: [] });
+    const signals = drainCallSignals(nombre);
+    res.json({ signals });
+  } catch (e) {
+    res.status(500).json({ error: "Error obteniendo señales de llamada" });
+  }
+});
+
+chatRouter.post("/calls/signal", requireAuth, (req, res) => {
+  try {
+    const senderName = getNombre(req);
+    if (!senderName) {
+      return res.status(400).json({ ok: false, message: "Usuario sin nombre configurado" });
+    }
+
+    const {
+      type,
+      room,
+      toNickname,
+      toNicknames,
+      sdp,
+      candidate,
+      fromPeerId,
+      nickname,
+    } = req.body || {};
+
+    const requestedNicknames = Array.from(
+      new Set(
+        [
+          ...((Array.isArray(toNicknames) ? toNicknames : []).map((item) => String(item || "").trim())),
+          String(toNickname || "").trim(),
+        ].filter(Boolean),
+      ),
+    ).filter((target) => normalizeNick(target) !== normalizeNick(senderName));
+
+    if (!type || !room || requestedNicknames.length === 0) {
+      return res.status(400).json({ ok: false, message: "Señal de llamada incompleta" });
+    }
+
+    const signal = {
+      id: `call-${++callSignalSequence}`,
+      type,
+      room,
+      fromNickname: senderName,
+      from: fromPeerId || `rest:${normalizeNick(senderName)}`,
+      nickname: nickname || senderName,
+      createdAt: Date.now(),
+    };
+
+    if (sdp) signal.sdp = sdp;
+    if (candidate) signal.candidate = candidate;
+
+    requestedNicknames.forEach((target) => enqueueCallSignal(target, signal));
+
+    res.json({
+      ok: true,
+      delivered: requestedNicknames.length,
+      requestedNicknames,
+      reachedNicknames: requestedNicknames,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: "No fue posible enviar la señal de llamada" });
   }
 });
 

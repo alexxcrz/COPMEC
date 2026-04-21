@@ -287,9 +287,45 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const ringtoneRef = useRef(null);
   const outgoingRingRef = useRef(null);
   const lastActivityEmitRef = useRef(0);
+  const callSignalPollBusyRef = useRef(false);
 
   const isSameNickname = (a, b) =>
     String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+
+  const normalizeCallNick = (value) =>
+    String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toLowerCase();
+
+  const buildRestPeerId = (nickname) => `rest:${normalizeCallNick(nickname)}`;
+
+  const isRestPeerId = (peerId) => String(peerId || "").startsWith("rest:");
+
+  const getPeerNicknamesForFallback = () => Array.from(
+    new Set(
+      Object.values(peerConnectionsRef.current)
+        .map((entry) => entry?.nickname)
+        .filter(Boolean)
+        .filter((nickname) => !isSameNickname(nickname, user?.nickname || user?.name || "")),
+    ),
+  );
+
+  const sendCallSignalFallback = async ({ type, room, toNicknames, sdp, candidate, nickname, fromPeerId }) => {
+    return authFetch(`${SERVER_URL}/api/chat/calls/signal`, {
+      method: "POST",
+      body: JSON.stringify({
+        type,
+        room,
+        toNicknames,
+        sdp,
+        candidate,
+        nickname,
+        fromPeerId,
+      }),
+    });
+  };
 
   const saveAudioSetting = (key, value) => {
     setAudioSettings((prev) => {
@@ -1745,6 +1781,130 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       socket.off("call_invite_status", handleCallInviteStatus);
     };
   }, [socket, user, callActivo, audioSettings.callIncomingSound, audioSettings.callOutgoingSound, audioSettings.callVolume]);
+
+  useEffect(() => {
+    const userDisplayName = user?.nickname || user?.name;
+    if (!userDisplayName || !SERVER_URL) return undefined;
+
+    const handleRestSignal = async (payload) => {
+      if (!payload?.type || !payload?.room) return;
+
+      if (payload.type === "invite") {
+        if (callActivo && callRoomRef.current === payload.room) return;
+
+        playIncomingCallTone();
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification("Llamada entrante", {
+            body: `${payload.fromNickname || "Usuario"} te está llamando`,
+            icon: "/copmec-favicon.svg",
+            tag: `call-${payload.room}`,
+          });
+        }
+
+        setCallIncoming({
+          room: payload.room,
+          fromNickname: payload.fromNickname || "Usuario",
+          fromSocketId: payload.from || buildRestPeerId(payload.fromNickname || "usuario"),
+        });
+        return;
+      }
+
+      if (callRoomRef.current !== payload.room) return;
+
+      if (payload.type === "join") {
+        if (!callActivo || !payload.from) return;
+        if (outgoingRingRef.current) {
+          clearInterval(outgoingRingRef.current);
+          outgoingRingRef.current = null;
+        }
+        playCallSound("accept");
+        showAlert(`${payload.nickname || payload.fromNickname || "Usuario"} aceptó la videollamada.`, "success");
+        const pc = crearPeerConnection(payload.from, payload.nickname || payload.fromNickname || "Usuario");
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        await sendCallSignalFallback({
+          type: "offer",
+          room: payload.room,
+          toNicknames: [payload.nickname || payload.fromNickname].filter(Boolean),
+          sdp: offer,
+          nickname: userDisplayName,
+          fromPeerId: buildRestPeerId(userDisplayName),
+        }).catch(() => {});
+        return;
+      }
+
+      if (payload.type === "offer") {
+        if (!callActivo) return;
+        const pc = crearPeerConnection(payload.from, payload.nickname || payload.fromNickname || "Usuario");
+        await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        await sendCallSignalFallback({
+          type: "answer",
+          room: payload.room,
+          toNicknames: [payload.nickname || payload.fromNickname].filter(Boolean),
+          sdp: answer,
+          nickname: userDisplayName,
+          fromPeerId: buildRestPeerId(userDisplayName),
+        }).catch(() => {});
+        return;
+      }
+
+      if (payload.type === "answer") {
+        const pc = peerConnectionsRef.current[payload.from]?.pc;
+        if (!pc) return;
+        await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+        return;
+      }
+
+      if (payload.type === "ice") {
+        const candidate = new RTCIceCandidate(payload.candidate);
+        const pc = peerConnectionsRef.current[payload.from]?.pc;
+        if (pc && pc.remoteDescription) {
+          await pc.addIceCandidate(candidate).catch(() => {});
+        } else {
+          if (!pendingCandidatesRef.current[payload.from]) {
+            pendingCandidatesRef.current[payload.from] = [];
+          }
+          pendingCandidatesRef.current[payload.from].push(candidate);
+        }
+        return;
+      }
+
+      if (payload.type === "reject") {
+        playCallSound("reject");
+        showAlert(`${payload.nickname || payload.fromNickname || "Usuario"} rechazó la videollamada.`, "warning");
+        if (outgoingRingRef.current) {
+          clearInterval(outgoingRingRef.current);
+          outgoingRingRef.current = null;
+        }
+        return;
+      }
+
+      if (payload.type === "leave" && payload.from) {
+        limpiarPeer(payload.from);
+      }
+    };
+
+    const pollSignals = async () => {
+      if (callSignalPollBusyRef.current) return;
+      callSignalPollBusyRef.current = true;
+      try {
+        const data = await authFetch(`${SERVER_URL}/api/chat/calls/pending`);
+        const signals = Array.isArray(data?.signals) ? data.signals : [];
+        for (const signal of signals) {
+          await handleRestSignal(signal);
+        }
+      } catch (_) {
+      } finally {
+        callSignalPollBusyRef.current = false;
+      }
+    };
+
+    pollSignals();
+    const interval = setInterval(pollSignals, 2000);
+    return () => clearInterval(interval);
+  }, [SERVER_URL, user, callActivo, audioSettings.callIncomingSound, audioSettings.callOutgoingSound, audioSettings.callVolume]);
 
   // ── Sincronizar localVideoRef con localStreamRef ─────────────────────────
   useEffect(() => {
@@ -4306,12 +4466,23 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       local.getTracks().forEach((track) => pc.addTrack(track, local));
     }
     pc.onicecandidate = (event) => {
-      if (event.candidate && socket && callRoomRef.current) {
-        socket.emit("call_ice", {
-          to: socketId,
-          room: callRoomRef.current,
-          candidate: event.candidate,
-        });
+      if (event.candidate && callRoomRef.current) {
+        if (socket && socket.connected && !isRestPeerId(socketId)) {
+          socket.emit("call_ice", {
+            to: socketId,
+            room: callRoomRef.current,
+            candidate: event.candidate,
+          });
+        } else {
+          sendCallSignalFallback({
+            type: "ice",
+            room: callRoomRef.current,
+            toNicknames: nickname ? [nickname] : [],
+            candidate: event.candidate,
+            nickname: user?.nickname || user?.name || "Usuario",
+            fromPeerId: buildRestPeerId(user?.nickname || user?.name || "usuario"),
+          }).catch(() => {});
+        }
       }
     };
     pc.ontrack = (event) => {
@@ -4397,7 +4568,6 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   };
 
   const iniciarLlamada = async () => {
-    if (!socket) return;
     if (tipoChat !== "privado" && tipoChat !== "grupal") {
       showAlert("La videollamada solo está disponible en chats privados y grupos.", "warning");
       return;
@@ -4445,24 +4615,20 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         return;
       }
 
-      showAlert("Reconectando chat para enviar la llamada...", "warning");
-      let emitted = false;
-      const onConnect = () => {
-        if (emitted) return;
-        emitted = true;
-        socket.off("connect", onConnect);
-        emitirInvitacion();
-      };
-      socket.on("connect", onConnect);
-      setTimeout(() => {
-        if (emitted) return;
-        socket.off("connect", onConnect);
-        showAlert("No se pudo reconectar el chat para iniciar la llamada.", "error");
-        limpiarLlamada();
-      }, 12000);
-      try {
-        socket.connect();
-      } catch (_) {}
+      const fallbackResult = await sendCallSignalFallback({
+        type: "invite",
+        room,
+        toNicknames: unicos,
+        nickname: userDisplayName,
+        fromPeerId: buildRestPeerId(userDisplayName),
+      });
+      const delivered = Number(fallbackResult?.delivered || 0);
+      if (delivered > 0) {
+        showAlert(`✓ Invitación enviada por canal alterno a ${delivered} usuario(s)`, "success");
+        return;
+      }
+      showAlert("No se pudo iniciar la llamada por el canal alterno.", "error");
+      limpiarLlamada();
     } catch (err) {
       showAlert(err?.message || "No se pudo iniciar la videollamada.", "error");
       limpiarLlamada();
@@ -4470,7 +4636,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   };
 
   const aceptarLlamada = async () => {
-    if (!socket || !callIncoming) return;
+    if (!callIncoming) return;
     try {
       playCallSound("accept");
       await asegurarLocalStream();
@@ -4488,23 +4654,18 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       if (connected && socket.connected) {
         unirLlamada();
       } else {
-        let joined = false;
-        const onConnect = () => {
-          if (joined) return;
-          joined = true;
-          socket.off("connect", onConnect);
-          unirLlamada();
-        };
-        socket.on("connect", onConnect);
-        setTimeout(() => {
-          if (joined) return;
-          socket.off("connect", onConnect);
-          showAlert("No se pudo reconectar para aceptar la llamada.", "error");
+        const fallbackResult = await sendCallSignalFallback({
+          type: "join",
+          room,
+          toNicknames: [callIncoming.fromNickname].filter(Boolean),
+          nickname: userDisplayName,
+          fromPeerId: buildRestPeerId(userDisplayName),
+        });
+        if (!Number(fallbackResult?.delivered || 0)) {
+          showAlert("No se pudo aceptar la llamada por el canal alterno.", "error");
           limpiarLlamada();
-        }, 12000);
-        try {
-          socket.connect();
-        } catch (_) {}
+          return;
+        }
       }
 
       setCallIncoming(null);
@@ -4516,21 +4677,37 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
   const rechazarLlamada = () => {
     playCallSound("reject");
-    if (socket && callIncoming?.room && callIncoming?.fromSocketId) {
+    if (socket && socket.connected && callIncoming?.room && callIncoming?.fromSocketId && !isRestPeerId(callIncoming.fromSocketId)) {
       const userDisplayName = user?.nickname || user?.name || "Usuario";
       socket.emit("call_reject", {
         to: callIncoming.fromSocketId,
         room: callIncoming.room,
         nickname: userDisplayName,
       });
+    } else if (callIncoming?.room && callIncoming?.fromNickname) {
+      sendCallSignalFallback({
+        type: "reject",
+        room: callIncoming.room,
+        toNicknames: [callIncoming.fromNickname],
+        nickname: user?.nickname || user?.name || "Usuario",
+        fromPeerId: buildRestPeerId(user?.nickname || user?.name || "usuario"),
+      }).catch(() => {});
     }
     setCallIncoming(null);
   };
 
   const colgarLlamada = () => {
     playCallSound("hangup");
-    if (socket && callRoomRef.current) {
+    if (socket && socket.connected && callRoomRef.current) {
       socket.emit("call_leave", { room: callRoomRef.current });
+    } else if (callRoomRef.current) {
+      sendCallSignalFallback({
+        type: "leave",
+        room: callRoomRef.current,
+        toNicknames: getPeerNicknamesForFallback(),
+        nickname: user?.nickname || user?.name || "Usuario",
+        fromPeerId: buildRestPeerId(user?.nickname || user?.name || "usuario"),
+      }).catch(() => {});
     }
     limpiarLlamada();
   };
