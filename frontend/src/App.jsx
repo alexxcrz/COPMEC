@@ -353,6 +353,7 @@ const INITIAL_ROUTE_STATE = getInitialRouteState();
 function App() { // NOSONAR
   const socketRef = useRef(null);
   const [socketConnectCount, setSocketConnectCount] = useState(0);
+  const [socketResetKey, setSocketResetKey] = useState(0);
   const [state, setState] = useState(loadState);
   const [page, setPage] = useState(() => {
     const urlPage = INITIAL_ROUTE_STATE.page;
@@ -4931,38 +4932,46 @@ function App() { // NOSONAR
     Zap,
   };
 
-  // Socket.IO connection — mounted once when user logs in
+  // Socket.IO connection — se recrea limpio cuando el servidor reinicia (socketResetKey)
   useEffect(() => {
-    if (!currentUser || socketRef.current) return;
+    if (!currentUser) return;
+    // Limpiar socket anterior si existe
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
     const socket = io(API_BASE_URL || window.location.origin, {
       withCredentials: true,
       transports: ["polling"],
       upgrade: false,
+      reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 2000,
       reconnectionDelayMax: 10000,
       timeout: 45000,
-      forceNew: false,
+      forceNew: true,
     });
     socket.on("connect", () => {
       socket.emit("login_chat", { nickname: currentUser.name, photo: null });
       setSocketConnectCount((c) => c + 1);
     });
-    // No interferir con la reconexión automática de Socket.IO.
-    // Socket.IO ya maneja "Session ID unknown" creando una sesión nueva en el siguiente intento.
-    // Llamar disconnect()/connect() manualmente aquí bypassea el backoff exponencial
-    // y crea un bucle de reconexión infinito a alta velocidad.
-    // Con reconnectionDelay:2000 y reconnectionDelayMax:10000, Socket.IO hace backoff automático.
+    socket.on("connect_error", (err) => {
+      // Si el servidor reinició y no reconoce el sid, destruir el socket
+      // y crear uno nuevo desde cero (sid limpio) después de un breve delay.
+      const is400 = err?.description === 400 || Number(err?.context?.status) === 400;
+      const isUnknownSession = String(err?.message || "").toLowerCase().includes("session id unknown");
+      if (is400 || isUnknownSession) {
+        socket.disconnect();
+        socketRef.current = null;
+        setTimeout(() => setSocketResetKey((k) => k + 1), 3000);
+      }
+    });
     socketRef.current = socket;
-    return () => {}; // keep socket alive across renders
-  }, [currentUser]);
-
-  useEffect(() => {
-    if (!currentUser && socketRef.current) {
-      socketRef.current.disconnect();
+    return () => {
+      socket.disconnect();
       socketRef.current = null;
-    }
-  }, [currentUser]);
+    };
+  }, [currentUser, socketResetKey]);
 
   if (isBootstrapMasterSession) {
     return <BootstrapLeadSetup setupForm={bootstrapLeadForm} onChange={updateBootstrapLeadField} onSubmit={handleCreateFirstLead} error={bootstrapLeadError} areaOptions={departmentOptions} onAddArea={handleAddAreaToBootstrap} />;
