@@ -13,11 +13,16 @@ export function initSocket(httpServer) {
       methods: ["GET", "POST"],
       credentials: true,
     },
-    // Render free tier no soporta WebSocket upgrades; forzar polling
+    // Render free tier: forzar polling, sin upgrade a WebSocket
     transports: ["polling"],
+    allowUpgrades: false,
     allowEIO3: true,
-    pingTimeout: 20000,
-    pingInterval: 10000,
+    // Mantener por debajo del timeout de 55s del proxy de Render
+    pingInterval: 20000,
+    pingTimeout: 25000,
+    connectTimeout: 45000,
+    // Evitar que las sesiones queden colgadas
+    maxHttpBufferSize: 1e6,
   });
 
   io.engine.on("connection_error", (err) => {

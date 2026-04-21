@@ -7026,8 +7026,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                 )}
                                 {(m.reenviado_de_usuario || m.reenviado_de_chat) && (
                                   <div className="msg-forwarded">
-                                    Reenviado · {m.reenviado_de_usuario || "Usuario"} ·{" "}
-                                    {m.reenviado_de_chat || "Chat"}
+                                    ↪ Reenviado de {m.reenviado_de_usuario || m.reenviado_de_chat || "Usuario"}
                                   </div>
                                 )}
                                 {m.reply_to_text && (

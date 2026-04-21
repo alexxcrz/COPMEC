@@ -4936,15 +4936,21 @@ function App() { // NOSONAR
     const socket = io(API_BASE_URL || window.location.origin, {
       withCredentials: true,
       transports: ["polling"],
+      upgrade: false,
       reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 20000,
+      reconnectionDelay: 2000,
+      reconnectionDelayMax: 10000,
+      timeout: 45000,
+      forceNew: false,
     });
     socket.on("connect", () => {
       socket.emit("login_chat", { nickname: currentUser.name, photo: null });
     });
-    socket.emit("login_chat", { nickname: currentUser.name, photo: null });
+    socket.on("connect_error", () => {
+      // Forzar nueva sesión al reconectar para evitar "Session ID unknown"
+      socket.io.opts.forceNew = true;
+      setTimeout(() => { socket.io.opts.forceNew = false; }, 500);
+    });
     socketRef.current = socket;
     return () => {}; // keep socket alive across renders
   }, [currentUser]);

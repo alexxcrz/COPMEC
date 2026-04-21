@@ -1882,7 +1882,7 @@ span.chat-item-menu-btn:active {
 .video-record-btn.cancel { background: #f1f5f9; color: #475569; }
 
 .msg-star { color: #f59e0b; }
-.msg-forwarded { font-size: 0.64rem; color: var(--cp-text-2); margin-bottom: 4px; }
+.msg-forwarded { font-size: 0.64rem; color: rgba(255,255,255,0.7); margin-bottom: 4px; font-style: italic; }
 .msg-reply { border-left: 3px solid var(--cp-green-2); padding-left: 7px; margin-bottom: 5px; display: flex; flex-direction: column; gap: 1px; color: var(--cp-text-2); font-size: 0.7rem; }
 .msg-reply-user { font-weight: 700; color: var(--cp-green-2); }
 .msg-reply-text { color: var(--cp-text); }
@@ -2251,9 +2251,10 @@ span.chat-item-menu-btn:active {
 }
 
 .msg-forwarded {
-  font-size: 0.6rem;
-  color: var(--chat-muted);
+  font-size: 0.62rem;
+  color: rgba(255,255,255,0.7);
   margin-bottom: 3px;
+  font-style: italic;
 }
 
 .msg-reply {
