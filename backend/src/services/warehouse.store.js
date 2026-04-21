@@ -94,8 +94,7 @@ function normalizeRole(role) {
 }
 
 function supportsManagedPermissionOverrides(role) {
-  const normalizedRole = normalizeRole(role);
-  return normalizedRole === ROLE_LEAD || normalizedRole === ROLE_SR;
+  return true;
 }
 
 function defaultPassword() {

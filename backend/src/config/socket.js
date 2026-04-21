@@ -97,8 +97,18 @@ export function initSocket(httpServer) {
           io.to(socketId).emit("call_invite", {
             room,
             fromNickname: fromNickname || socket.data.nickname || "Usuario",
+            fromSocketId: socket.id,
           });
         });
+      });
+    });
+
+    socket.on("call_reject", ({ to, room, nickname }) => {
+      if (!to || !room) return;
+      io.to(to).emit("call_rejected", {
+        room,
+        fromSocketId: socket.id,
+        nickname: nickname || socket.data.nickname || "Usuario",
       });
     });
 

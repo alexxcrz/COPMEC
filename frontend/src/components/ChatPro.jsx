@@ -1534,6 +1534,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       setCallIncoming({
         room: payload.room,
         fromNickname: payload.fromNickname || "Usuario",
+        fromSocketId: payload.fromSocketId || null,
       });
     };
 
@@ -1560,6 +1561,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         clearInterval(outgoingRingRef.current);
         outgoingRingRef.current = null;
       }
+      showAlert(`${payload.nickname || "Usuario"} aceptó la videollamada.`, "success");
       const pc = crearPeerConnection(payload.socketId, payload.nickname || "Usuario");
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
@@ -1607,6 +1609,15 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       if (payload.socketId) limpiarPeer(payload.socketId);
     };
 
+    const handleCallRejected = (payload) => {
+      if (!payload?.room || callRoomRef.current !== payload.room) return;
+      showAlert(`${payload.nickname || "Usuario"} rechazó la videollamada.`, "warning");
+      if (outgoingRingRef.current) {
+        clearInterval(outgoingRingRef.current);
+        outgoingRingRef.current = null;
+      }
+    };
+
     socket.on("call_invite", handleInvite);
     socket.on("call_users", handleUsers);
     socket.on("call_user_joined", handleUserJoined);
@@ -1614,6 +1625,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     socket.on("call_answer", handleAnswer);
     socket.on("call_ice", handleIce);
     socket.on("call_user_left", handleUserLeft);
+    socket.on("call_rejected", handleCallRejected);
 
     return () => {
       socket.off("call_invite", handleInvite);
@@ -1623,6 +1635,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       socket.off("call_answer", handleAnswer);
       socket.off("call_ice", handleIce);
       socket.off("call_user_left", handleUserLeft);
+      socket.off("call_rejected", handleCallRejected);
     };
   }, [socket, user, callActivo, audioSettings.callSound, audioSettings.callVolume]);
 
@@ -4293,6 +4306,14 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   };
 
   const rechazarLlamada = () => {
+    if (socket && callIncoming?.room && callIncoming?.fromSocketId) {
+      const userDisplayName = user?.nickname || user?.name || "Usuario";
+      socket.emit("call_reject", {
+        to: callIncoming.fromSocketId,
+        room: callIncoming.room,
+        nickname: userDisplayName,
+      });
+    }
     setCallIncoming(null);
   };
 
