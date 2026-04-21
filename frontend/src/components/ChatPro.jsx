@@ -277,6 +277,14 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       }
     } catch {}
   };
+
+  const playIncomingMessageSound = () => {
+    const played = playNotificationSound();
+    if (!played) {
+      // Fallback si el sonido configurado falla por política de autoplay o contexto.
+      playCallSound("accept");
+    }
+  };
   const makeInitialsAvatar = (name) => {
     const safeName = (name && typeof name === 'string' ? name : '').trim();
     const colors = ['#0f766e','#1d4ed8','#7c3aed','#b45309','#032121','#be185d','#0369a1','#166534'];
@@ -1024,9 +1032,9 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         return [...prev, mensaje];
       });
       const esNuestroMensaje = mensaje.usuario_nickname === userDisplayName;
-      if (!esNuestroMensaje && (!open || tipoChat !== "general")) {
+      if (!esNuestroMensaje) {
         setNoLeidos((n) => n + 1);
-        playNotificationSound();
+        playIncomingMessageSound();
       }
     };
 
@@ -1186,7 +1194,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       if (!esSelfMessageOuter && (!viendoEste || esMensajeIXORAAdmin)) {
         if (esMensajeIXORAAdmin || !viendoEste) {
           setNoLeidos((n) => n + 1);
-          playNotificationSound();
+          playIncomingMessageSound();
         }
       }
     };
@@ -1231,9 +1239,9 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
       const viendoEste = open && tipoChat === "grupal" && chatActual === String(mensaje.grupo_id);
       const esNuestroMensaje = mensaje.usuario_nickname === userDisplayName;
-      if (!esNuestroMensaje && !viendoEste) {
+      if (!esNuestroMensaje) {
         setNoLeidos((n) => n + 1);
-        playNotificationSound();
+        playIncomingMessageSound();
       }
     };
 
@@ -1460,6 +1468,16 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     const handleInvite = (payload) => {
       if (!payload?.room) return;
       if (callActivo && callRoomRef.current === payload.room) return;
+
+      playCallSound("ring");
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("Llamada entrante", {
+          body: `${payload.fromNickname || "Usuario"} te está llamando`,
+          icon: "/copmec-favicon.svg",
+          tag: `call-${payload.room}`,
+        });
+      }
+
       setCallIncoming({
         room: payload.room,
         fromNickname: payload.fromNickname || "Usuario",
@@ -1573,9 +1591,13 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       } catch {}
     };
     document.addEventListener("click", warmUp, { once: true });
+    document.addEventListener("pointerdown", warmUp, { once: true });
+    document.addEventListener("keydown", warmUp, { once: true });
     document.addEventListener("touchstart", warmUp, { once: true });
     return () => {
       document.removeEventListener("click", warmUp);
+      document.removeEventListener("pointerdown", warmUp);
+      document.removeEventListener("keydown", warmUp);
       document.removeEventListener("touchstart", warmUp);
     };
   }, []);

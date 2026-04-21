@@ -117,9 +117,9 @@ const PLAYERS = {
 export function playNotificationSound(id) {
   const soundId = id || getSoundPref();
   const player = PLAYERS[soundId];
-  if (!player) return;
+  if (!player) return false;
   const ctx = getCtx();
-  if (!ctx) return;
+  if (!ctx) return false;
   try {
     // Resume context if suspended (browser autoplay policy)
     if (ctx.state === "suspended") {
@@ -127,7 +127,9 @@ export function playNotificationSound(id) {
     } else {
       player(ctx);
     }
+    return true;
   } catch {
     // Silently ignore errors (e.g., tab not focused)
+    return false;
   }
 }
