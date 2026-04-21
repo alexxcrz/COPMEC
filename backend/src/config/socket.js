@@ -126,11 +126,16 @@ export function initSocket(httpServer) {
       const requested = Array.from(new Set(toNicknames.map((nick) => String(nick || "").trim()).filter(Boolean)));
       let delivered = 0;
       const reachedNicknames = [];
+      
+        console.log(`📞 call_invite: from=${fromNickname}, targets=${requested.join(", ")}, active=${Object.keys(usuariosActivos).join(", ")}`);
 
       requested.forEach((nick) => {
         const roomKey = getUserRoomKey(nick);
         const roomSet = roomKey ? io.sockets.adapter.rooms.get(roomKey) : null;
         const targets = roomSet ? Array.from(roomSet) : [];
+        
+          if (targets.length === 0) console.log(`   ⚠️  "${nick}" not in room ${roomKey}`);
+          else console.log(`   ✓ "${nick}" → ${targets.length} sockets`);
 
         if (targets.length > 0) {
           reachedNicknames.push(nick);
@@ -146,6 +151,7 @@ export function initSocket(httpServer) {
         });
       });
 
+        console.log(`   Result: delivered=${delivered}`);
       socket.emit("call_invite_status", {
         room,
         requestedNicknames: requested,
@@ -153,6 +159,8 @@ export function initSocket(httpServer) {
         delivered,
       });
     });
+
+      // ── VIDEOLLAMADAS (WebRTC) ──────────────────────────────
 
     socket.on("call_reject", ({ to, room, nickname }) => {
       if (!to || !room) return;
