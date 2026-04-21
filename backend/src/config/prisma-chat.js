@@ -2,9 +2,5 @@
 import { PrismaClient } from "../../node_modules/.prisma/chat-client/index.js";
 
 export const prismaChat = new PrismaClient({
-  datasources: {
-    db: {
-      url: process.env.CHAT_DB_URL ?? "file:/var/data/chat.db",
-    },
-  },
+  datasourceUrl: process.env.CHAT_DB_URL ?? "file:/var/data/chat.db",
 });
