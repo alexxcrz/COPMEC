@@ -4217,12 +4217,12 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     const yo = normalizar(user?.nickname || user?.name || "usuario");
     if (tipoChat === "privado") {
       const otro = normalizar(chatActual || "usuario");
-      return `ixora-${[yo, otro].sort().join("-")}`;
+      return `copmec-${[yo, otro].sort().join("-")}`;
     }
     if (tipoChat === "grupal") {
-      return `ixora-grupo-${normalizar(chatActual || "grupo")}`;
+      return `copmec-grupo-${normalizar(chatActual || "grupo")}`;
     }
-    return `ixora-general-${yo}`;
+    return `copmec-general-${yo}`;
   };
 
   const getIceServers = () => {
