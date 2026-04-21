@@ -46,9 +46,9 @@ export function initSocket(httpServer) {
       methods: ["GET", "POST"],
       credentials: true,
     },
-    // Render free tier: forzar polling, sin upgrade a WebSocket
-    transports: ["polling"],
-    allowUpgrades: false,
+    // Preferir WebSocket y dejar polling como respaldo para handshakes inestables.
+    transports: ["websocket", "polling"],
+    allowUpgrades: true,
     allowEIO3: true,
     // Mantener por debajo del timeout de 55s del proxy de Render
     pingInterval: 20000,

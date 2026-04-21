@@ -4956,8 +4956,8 @@ function App() { // NOSONAR
 
     const socket = io(API_BASE_URL || window.location.origin, {
       withCredentials: true,
-      transports: ["polling"],
-      upgrade: false,
+      transports: ["websocket", "polling"],
+      upgrade: true,
       reconnection: true,            // Socket.IO gestiona reconexión (sin race conditions)
       reconnectionDelay: 3000,       // 3s entre intentos
       reconnectionDelayMax: 10000,   // máximo 10s de espera
