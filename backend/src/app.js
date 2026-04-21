@@ -7,6 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  chatRateLimitMaxRequests,
   authRateLimitMaxRequests,
   corsOriginValidator,
   isProduction,
@@ -90,7 +91,7 @@ app.use(rateLimit({
   max: maxRequestsPerWindow,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => req.path === "/api/health",
+  skip: (req) => req.path === "/api/health" || req.path.startsWith("/api/chat"),
   handler: (req, res) => {
     auditSecurityEvent("rate_limited", req, { scope: "global" });
     res.status(429).json({ message: "Demasiadas solicitudes. Intenta de nuevo en unos minutos." });
@@ -116,6 +117,17 @@ const authLimiter = rateLimit({
   handler: (req, res) => {
     auditSecurityEvent("rate_limited", req, { scope: "auth_login" });
     res.status(429).json({ message: "Demasiados intentos de autenticación. Intenta más tarde." });
+  },
+});
+
+const chatLimiter = rateLimit({
+  windowMs,
+  max: chatRateLimitMaxRequests,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    auditSecurityEvent("rate_limited", req, { scope: "chat" });
+    res.status(429).json({ message: "Chat temporalmente limitado por alta actividad. Reintentando..." });
   },
 });
 
@@ -147,7 +159,7 @@ app.use("/api/imports", requireAuth, uploadLimiter, importRouter);
 app.use("/api/uploads", requireAuth, uploadLimiter, uploadRouter);
 app.use("/api/biblioteca", requireAuth, bibliotecaRouter);
 app.use("/api/warehouse", requireAuth, warehouseRouter);
-app.use("/api/chat", requireAuth, chatRouter);
+app.use("/api/chat", requireAuth, chatLimiter, chatRouter);
 
 if (hasFrontendBuild) {
   app.use(express.static(frontendDistPath));

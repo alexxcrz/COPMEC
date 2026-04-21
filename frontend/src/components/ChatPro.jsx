@@ -36,10 +36,30 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   };
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+  const rateLimitedUntilRef = useRef(0);
   const authFetch = async (url, opts = {}) => {
+    const method = String(opts?.method || "GET").toUpperCase();
     const fullUrl = url.startsWith('http') ? url : (API_BASE_URL + (url.startsWith('/') ? url : '/' + url));
+    const isChatGet = method === "GET" && fullUrl.includes("/api/chat/");
+    if (isChatGet && Date.now() < rateLimitedUntilRef.current) {
+      const err = new Error("Rate limit de chat activo");
+      err.status = 429;
+      err.isRateLimited = true;
+      throw err;
+    }
     const r = await fetch(fullUrl, { ...opts, credentials: 'include' });
-    if (!r.ok) { const err = new Error(r.statusText || 'Request failed'); err.status = r.status; throw err; }
+    if (!r.ok) {
+      if (r.status === 429 && isChatGet) {
+        const retryAfterHeader = Number.parseInt(r.headers.get("retry-after") || "", 10);
+        const waitMs = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
+          ? retryAfterHeader * 1000
+          : 15000;
+        rateLimitedUntilRef.current = Date.now() + waitMs;
+      }
+      const err = new Error(r.statusText || 'Request failed');
+      err.status = r.status;
+      throw err;
+    }
     try { return await r.json(); } catch { return null; }
   };
   const mensajePrioritarioProcessedRef = useRef(null);
@@ -502,12 +522,12 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     cargarUsuarios();
     cargarEstados();
     
-    // Recargar estados cada 15 segundos como fallback
+    // Recargar estados como fallback, evitando presión innecesaria al backend
     const interval = setInterval(() => {
       authFetch(`${SERVER_URL}/api/chat/usuarios/estados`)
         .then((estados) => setEstadosUsuarios(estados || {}))
         .catch(() => {});
-    }, 15000);
+    }, 45000);
 
     return () => { clearInterval(interval); };
   }, [open]);
@@ -530,7 +550,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     };
 
     syncActivos();
-    const interval = setInterval(syncActivos, 4000);
+    const interval = setInterval(syncActivos, 15000);
     return () => {
       cancelled = true;
       clearInterval(interval);
@@ -602,9 +622,9 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       } catch (_) {}
     };
 
-    // Primer sync inmediato + intervalo corto
+    // Primer sync inmediato + intervalo moderado para evitar 429
     syncOpenChat();
-    const interval = setInterval(syncOpenChat, 3000);
+    const interval = setInterval(syncOpenChat, 12000);
     return () => clearInterval(interval);
   }, [open, tipoChat, chatActual, SERVER_URL]);
 
