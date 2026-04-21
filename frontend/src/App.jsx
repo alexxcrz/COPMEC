@@ -4948,11 +4948,37 @@ function App() { // NOSONAR
     });
     socket.on("connect_error", (err) => {
       // "Session ID unknown" ocurre cuando el servidor reinicia y pierde las sesiones en memoria.
-      // Desconectamos el socket antiguo y lo reconectamos para obtener una sesión nueva.
+      // Solución robusta: destruir el socket y crear uno nuevo para evitar bucles infinitos.
       const msg = err?.message || "";
       if (msg.includes("Session ID unknown") || msg.includes("Invalid namespace") || msg.includes("not authorized")) {
-        socket.disconnect();
-        setTimeout(() => { socket.connect(); }, 300);
+        try { socket.disconnect(); } catch (e) {}
+        socketRef.current = null;
+        setTimeout(() => {
+          // Crear un nuevo socket limpio
+          const newSocket = io(API_BASE_URL || window.location.origin, {
+            withCredentials: true,
+            transports: ["polling"],
+            upgrade: false,
+            reconnectionAttempts: Infinity,
+            reconnectionDelay: 2000,
+            reconnectionDelayMax: 10000,
+            timeout: 45000,
+            forceNew: true,
+          });
+          newSocket.on("connect", () => {
+            newSocket.emit("login_chat", { nickname: currentUser.name, photo: null });
+          });
+          // Copiar el mismo handler para errores
+          newSocket.on("connect_error", (err) => {
+            const msg = err?.message || "";
+            if (msg.includes("Session ID unknown") || msg.includes("Invalid namespace") || msg.includes("not authorized")) {
+              try { newSocket.disconnect(); } catch (e) {}
+              socketRef.current = null;
+              setTimeout(() => { /* no reconectar más, dejar que el useEffect lo maneje */ }, 1000);
+            }
+          });
+          socketRef.current = newSocket;
+        }, 500);
       }
     });
     socketRef.current = socket;
