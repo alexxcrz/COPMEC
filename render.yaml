@@ -5,7 +5,6 @@ services:
     rootDir: backend
     plan: free
     buildCommand: cd backend && npm install --include=dev && cd ../frontend && npm install --include=dev && npm run build
-    preDeployCommand: npx prisma db push --config=chat.config.ts --skip-generate
     startCommand: npm start
     healthCheckPath: /api/health
     autoDeployTrigger: commit
