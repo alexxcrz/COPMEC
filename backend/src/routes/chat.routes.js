@@ -503,7 +503,9 @@ chatRouter.get("/activos", requireAuth, async (req, res) => {
 
           if (!ultimo) return null;
 
-          const noLeidos = await prisma.chatPrivado.count({
+          const noLeidos = conv.otro_usuario === nombre
+            ? 0  // Auto-mensajes: siempre leídos
+            : await prisma.chatPrivado.count({
             where: {
               deNickname: conv.otro_usuario,
               paraNickname: nombre,

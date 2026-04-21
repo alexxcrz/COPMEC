@@ -1032,6 +1032,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       setChatsActivos((prev) => {
         const existe = prev.some((c) => c.otro_usuario === otroUsuario);
         const esMioMensaje = mensaje.de_nickname === userDisplayName;
+        // Mensaje a uno mismo: siempre ya leído, independientemente de userDisplayName
+        const esSelfMessage = mensaje.de_nickname === mensaje.para_nickname;
         const viendoEste = open && tipoChat === "privado" && chatActual === otroUsuario;
         // Si es mensaje de IXORA para admin, siempre contar como no leído hasta que se abra
         const esMensajeIXORAAdmin = mensaje.de_nickname === "IXORA" && esAdmin && mensaje.es_admin;
@@ -1040,9 +1042,9 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
           return prev.map((c) => {
             if (c.otro_usuario === otroUsuario) {
               // Si estás viendo este chat, limpiar contador a 0 (excepto si es IXORA para admin)
-              // Si es tu mensaje, también poner a 0
-              const nuevosNoLeidos = (viendoEste && !esMensajeIXORAAdmin) || (esMioMensaje && !esMensajeIXORAAdmin)
-                ? 0  // Limpiar a 0 si estás viendo el chat o es tu mensaje
+              // Si es tu mensaje o mensaje a ti mismo, también poner a 0
+              const nuevosNoLeidos = (viendoEste && !esMensajeIXORAAdmin) || (esMioMensaje && !esMensajeIXORAAdmin) || esSelfMessage
+                ? 0
                 : (c.mensajes_no_leidos || 0) + 1;
               return {
                 ...c,
@@ -1062,7 +1064,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
             ultimo_mensaje: mensaje.mensaje,
             ultima_fecha: mensaje.fecha,
             ultimo_remitente: mensaje.de_nickname,
-            mensajes_no_leidos: (viendoEste && !esMensajeIXORAAdmin) || (esMioMensaje && !esMensajeIXORAAdmin) ? 0 : 1,
+            mensajes_no_leidos: (viendoEste && !esMensajeIXORAAdmin) || (esMioMensaje && !esMensajeIXORAAdmin) || esSelfMessage ? 0 : 1,
           },
           ...prev,
         ];
@@ -1072,6 +1074,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       // Solo reproducir sonido e incrementar contador si NO estás viendo el chat
       // Y si es mensaje de IXORA para admin, siempre notificar
       const esMensajeIXORAAdmin = mensaje.de_nickname === "IXORA" && esAdmin && mensaje.es_admin;
+      // Mensaje a uno mismo: nunca notificar
+      const esSelfMessageOuter = mensaje.de_nickname === mensaje.para_nickname;
       
       // Si estás viendo este chat, marcar el mensaje como leído inmediatamente en el servidor
       if (viendoEste && !esMensajeIXORAAdmin) {
@@ -1081,7 +1085,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         });
       }
       
-      if (!viendoEste || esMensajeIXORAAdmin) {
+      if (!esSelfMessageOuter && (!viendoEste || esMensajeIXORAAdmin)) {
         if (esMensajeIXORAAdmin || !viendoEste) {
           setNoLeidos((n) => n + 1);
           playNotificationSound();
@@ -1299,7 +1303,9 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     const handlePrivadoLeidos = (payload) => {
       if (!payload?.mensajes || !Array.isArray(payload.mensajes)) return;
       const userDisplayName = user?.nickname || user?.name;
-      if (payload.de_nickname !== userDisplayName) return;
+      // Aceptar si somos el remitente (de_nickname) o si es un auto-mensaje (de === para)
+      const esSelfMsg = payload.de_nickname === payload.para_nickname;
+      if (payload.de_nickname !== userDisplayName && !esSelfMsg) return;
       setLecturasPrivadas((prev) => {
         const next = { ...prev };
         payload.mensajes.forEach((m) => {
