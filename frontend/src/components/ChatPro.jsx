@@ -228,6 +228,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const pendingCandidatesRef = useRef({});
   const callRoomRef = useRef(null);
   const ringtoneRef = useRef(null);
+  const outgoingRingRef = useRef(null);
 
   // Toca un sonido de videollamada — patrón idéntico a notificationSounds.js:
   // ctx fresco cada vez, sin async/await, sin estado compartido.
@@ -262,9 +263,9 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
             const gain = ctx.createGain();
             osc.connect(gain); gain.connect(ctx.destination);
             osc.type = "sine"; osc.frequency.value = freq;
-            gain.gain.setValueAtTime(0.22, t + i * 0.18);
-            gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.18 + 0.35);
-            osc.start(t + i * 0.18); osc.stop(t + i * 0.18 + 0.37);
+            gain.gain.setValueAtTime(0.45, t + i * 0.18);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.18 + 0.5);
+            osc.start(t + i * 0.18); osc.stop(t + i * 0.18 + 0.52);
           });
         }
       };
@@ -1357,6 +1358,11 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     const handleUserJoined = async (payload) => {
       if (!payload?.room || callRoomRef.current !== payload.room) return;
       if (!callActivo || payload.socketId === socket.id) return;
+      // Parar ring saliente cuando alguien contesta
+      if (outgoingRingRef.current) {
+        clearInterval(outgoingRingRef.current);
+        outgoingRingRef.current = null;
+      }
       const pc = crearPeerConnection(payload.socketId, payload.nickname || "Usuario");
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
@@ -3939,6 +3945,10 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   };
 
   const limpiarLlamada = () => {
+    if (outgoingRingRef.current) {
+      clearInterval(outgoingRingRef.current);
+      outgoingRingRef.current = null;
+    }
     Object.keys(peerConnectionsRef.current).forEach(limpiarPeer);
     if (screenStreamRef.current) {
       screenStreamRef.current.getTracks().forEach((t) => t.stop());
@@ -4038,6 +4048,9 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       );
       setCallActivo(true);
       callRoomRef.current = room;
+      // Ring saliente — suena mientras espera que contesten
+      playCallSound("ring");
+      outgoingRingRef.current = setInterval(() => playCallSound("ring"), 3200);
       socket.emit("call_invite", {
         room,
         fromNickname: userDisplayName,
