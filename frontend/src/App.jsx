@@ -4932,62 +4932,54 @@ function App() { // NOSONAR
     Zap,
   };
 
-  // Socket.IO connection — se recrea limpio cuando el servidor reinicia (socketResetKey)
-  // IMPORTANTE: dep es currentUser?.id (primitivo), NO el objeto currentUser.
-  // El objeto currentUser es recreado en cada sync del estado (SSE), lo que causaba
-  // que el socket se destruyera/recreara constantemente generando el bucle de 400.
+  // Socket.IO — reconexión automática gestionada por Socket.IO internamente.
+  //
+  // Por qué reconnection:true resuelve el bucle de 400 "Session ID unknown":
+  //   - Con reconnection:false el cliente tenía que recrear el socket manualmente
+  //     (via scheduleReset). Cualquier race condition dejaba el sid expirado en vuelo.
+  //   - Con reconnection:true, cuando Socket.IO reconecta llama a Manager.open()
+  //     que crea un NUEVO engine.io.Socket (sin sid). El handshake siempre es fresco.
+  //
+  // Por qué dep es currentUser?.id (primitivo, no el objeto):
+  //   - currentUser es recalculado en cada sync SSE del estado, aunque el usuario
+  //     sea el mismo. Usar el objeto como dep destruía/recreaba el socket ~cada 3s.
   useEffect(() => {
     const userId = currentUser?.id;
     const userName = currentUser?.name;
     if (!userId) return;
 
-    // Destruir socket anterior limpiamente
+    // Destruir socket anterior si existe (p.ej. cambio de usuario)
     if (socketRef.current) {
       socketRef.current.disconnect();
       socketRef.current = null;
     }
 
-    // destroyed=true cuando el efecto se limpia: evita que un disconnect intencional
-    // programe otro reset y genere un bucle infinito.
-    let destroyed = false;
-    let resetTimer = null;
-
-    const scheduleReset = (delay) => {
-      if (destroyed || resetTimer) return;
-      resetTimer = setTimeout(() => {
-        if (!destroyed) setSocketResetKey((k) => k + 1);
-      }, delay);
-    };
-
     const socket = io(API_BASE_URL || window.location.origin, {
       withCredentials: true,
       transports: ["polling"],
       upgrade: false,
-      reconnection: false, // reconnection manual: evita reintentos con sid antiguo
-      timeout: 45000,
-      forceNew: true,      // siempre handshake limpio (sin sid heredado)
+      reconnection: true,            // Socket.IO gestiona reconexión (sin race conditions)
+      reconnectionDelay: 3000,       // 3s entre intentos
+      reconnectionDelayMax: 10000,   // máximo 10s de espera
+      reconnectionAttempts: Infinity,
+      timeout: 30000,
+      forceNew: true,                // nuevo Manager en cada montaje (sin cache)
     });
 
     socket.on("connect", () => {
-      if (resetTimer) { clearTimeout(resetTimer); resetTimer = null; }
       socket.emit("login_chat", { nickname: userName, photo: null });
       setSocketConnectCount((c) => c + 1);
     });
 
-    // Cualquier desconexión (server restart, timeout, 400) → recrear en 3s
-    socket.on("disconnect", () => scheduleReset(3000));
-    socket.on("connect_error", () => scheduleReset(5000));
-
     socketRef.current = socket;
     return () => {
-      destroyed = true;            // detener cualquier reset pendiente
-      clearTimeout(resetTimer);
-      resetTimer = null;
+      // disconnect() también llama io.reconnection(false) internamente,
+      // así que el socket no intentará reconectarse después del desmontaje.
       socket.disconnect();
       socketRef.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser?.id, socketResetKey]);
+  }, [currentUser?.id]);
 
   if (isBootstrapMasterSession) {
     return <BootstrapLeadSetup setupForm={bootstrapLeadForm} onChange={updateBootstrapLeadField} onSubmit={handleCreateFirstLead} error={bootstrapLeadError} areaOptions={departmentOptions} onAddArea={handleAddAreaToBootstrap} />;
