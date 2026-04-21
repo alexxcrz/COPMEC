@@ -7323,18 +7323,30 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                     })}
                                   </div>
                                   {estaDestacado && <span className="msg-star">⭐</span>}
-                                  {fueEntregado && (
+                                  {esMio && tipoChat === "privado" && (
                                     <span
-                                      className={`msg-read-indicator ${
-                                        fueLeido ? "read" : "delivered"
-                                      }`}
+                                      className={`msg-read-indicator ${fueLeido ? "read" : fueEntregado ? "delivered" : "sent"}`}
                                       title={fueLeido ? "Leído" : "Enviado"}
                                     >
-                                      {/* Double check SVG */}
-                                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="10" viewBox="0 0 15 10" fill="none">
-                                        <path d="M1 5L4 8L9 2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                                        <path d="M5 5L8 8L13 2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                                      </svg>
+                                      {fueLeido ? (
+                                        /* Leído: 2 anillos + punto verde */
+                                        <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                          <circle cx="10" cy="10" r="8.5" stroke="#22c55e" strokeWidth="1.8"/>
+                                          <circle cx="10" cy="10" r="5.5" stroke="#22c55e" strokeWidth="1.5"/>
+                                          <circle cx="10" cy="10" r="2.2" fill="#22c55e"/>
+                                        </svg>
+                                      ) : fueEntregado ? (
+                                        /* Entregado: 2 anillos blancos */
+                                        <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                          <circle cx="10" cy="10" r="8.5" stroke="white" strokeWidth="1.8"/>
+                                          <circle cx="10" cy="10" r="5" stroke="white" strokeWidth="1.5"/>
+                                        </svg>
+                                      ) : (
+                                        /* Enviado: 1 anillo blanco */
+                                        <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                          <circle cx="10" cy="10" r="8.5" stroke="white" strokeWidth="1.8"/>
+                                        </svg>
+                                      )}
                                     </span>
                                   )}
                                 </div>

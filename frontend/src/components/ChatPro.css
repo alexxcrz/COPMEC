@@ -1251,18 +1251,28 @@ span.chat-item-menu-btn:active {
 
 /* Mis mensajes: verde claro con cola derecha */
 .msg-yo-pro {
-  background: #d4edda;
-  color: #163c33 !important;
+  background: #1a6644;
+  color: #ffffff !important;
   border-radius: 16px 4px 16px 16px;
   align-self: flex-end;
 }
+.msg-yo-pro .msg-hora,
+.msg-yo-pro .msg-usuario-nombre { color: rgba(255,255,255,0.75) !important; }
+.msg-yo-pro .msg-mention-link { color: #86efac !important; }
+.msg-yo-pro .msg-texto code { background: rgba(255,255,255,0.15); color: #fff; }
+.msg-yo-pro .msg-link-externo { color: #86efac !important; }
 
-/* Mensajes recibidos: blanco con cola izquierda */
+/* Mensajes recibidos: azul con cola izquierda */
 .msg-otro-pro {
-  background: #ffffff;
-  color: #163c33;
+  background: #1e40af;
+  color: #ffffff;
   border-radius: 4px 16px 16px 16px;
 }
+.msg-otro-pro .msg-hora,
+.msg-otro-pro .msg-usuario-nombre { color: rgba(255,255,255,0.75) !important; }
+.msg-otro-pro .msg-mention-link { color: #93c5fd !important; }
+.msg-otro-pro .msg-texto code { background: rgba(255,255,255,0.15); color: #fff; }
+.msg-otro-pro .msg-link-externo { color: #93c5fd !important; }
 
 .ultimo-mensaje-container,
 .ultimo-mensaje,
@@ -1876,8 +1886,9 @@ span.chat-item-menu-btn:active {
 .msg-reply { border-left: 3px solid var(--cp-green-2); padding-left: 7px; margin-bottom: 5px; display: flex; flex-direction: column; gap: 1px; color: var(--cp-text-2); font-size: 0.7rem; }
 .msg-reply-user { font-weight: 700; color: var(--cp-green-2); }
 .msg-reply-text { color: var(--cp-text); }
-.msg-read-indicator { width: 9px; height: 9px; border-radius: 50%; border: 1px solid #3b82f6; display: inline-block; position: relative; flex-shrink: 0; }
-.msg-read-indicator.read::after { content: ""; position: absolute; inset: 1.5px; background: #22c55e; border-radius: 50%; }
+.msg-read-indicator { width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; opacity: 0.85; }
+.msg-read-indicator.read::after { content: none; }
+.msg-read-indicator.read { opacity: 1; }
 .msg-reaccion-list { display: flex; gap: 4px; flex-wrap: wrap; }
 .msg-reaccion-pill { background: rgba(3,33,33,0.07); border: 1px solid var(--cp-border); border-radius: 10px; padding: 1px 5px; font-size: 0.65rem; }
 .msg-prioridad-badge { display: inline-block; margin-left: 4px; padding: 1px 5px; background: #ff6b6b; color: #fff; border-radius: 6px; font-size: 0.6rem; font-weight: 700; }
@@ -2264,21 +2275,29 @@ span.chat-item-menu-btn:active {
   color: var(--chat-text);
 }
 
+/* Indicador de estado de mensaje — anillos */
 .msg-read-indicator {
   display: inline-flex;
   align-items: center;
-  gap: 0;
+  justify-content: center;
   flex-shrink: 0;
-  opacity: 0.55;
+  width: 18px;
+  height: 18px;
+  opacity: 0.85;
+}
+
+.msg-read-indicator svg {
+  width: 18px;
+  height: 18px;
+  overflow: visible;
 }
 
 .msg-read-indicator.read {
   opacity: 1;
-  color: #22c55e;
 }
 
 .msg-read-indicator.delivered {
-  color: currentColor;
+  opacity: 0.75;
 }
 
 .msg-star {
