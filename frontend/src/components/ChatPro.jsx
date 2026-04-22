@@ -744,6 +744,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     if (!userDisplayName) return;
 
     const emitirLoginChat = () => {
+      console.log('[LOGIN] Emitiendo login_chat para', userDisplayName, '- Socket conectado:', socket?.connected);
       socket.emit("login_chat", {
         nickname: userDisplayName,
         photo: user.photo || null,
@@ -751,9 +752,23 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     };
 
     emitirLoginChat();
-    socket.on("connect", emitirLoginChat);
+    socket.on("connect", () => {
+      console.log('[SOCKET] ✅ CONECTADO');
+      emitirLoginChat();
+    });
+    socket.on("disconnect", (reason) => {
+      console.log('[SOCKET] ❌ DESCONECTADO -', reason);
+    });
+    socket.on("connect_error", (error) => {
+      console.error('[SOCKET] 🔴 ERROR DE CONEXIÓN:', error?.message || error);
+    });
     const loginPulse = setInterval(() => {
-      if (socket.connected) emitirLoginChat();
+      if (socket.connected) {
+        console.log('[SOCKET] 💓 Pulso login');
+        emitirLoginChat();
+      } else {
+        console.log('[SOCKET] ⚠️ Socket desconectado, pulso login no enviado');
+      }
     }, 20000);
 
     const handleUsuarios = (lista) => {
@@ -1910,11 +1925,19 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
     const handleRestSignal = async (payload) => {
       if (!payload?.type || !payload?.room) return;
+      console.log('[REST-SIGNAL] Tipo:', payload.type, 'Room:', payload.room);
 
       if (payload.type === "invite") {
-        if (callActivo && callRoomRef.current === payload.room) return;
-        if (isDuplicateInvite(payload.room)) return;
+        if (callActivo && callRoomRef.current === payload.room) {
+          console.log('[REST-SIGNAL] Invitación descartada - ya en llamada');
+          return;
+        }
+        if (isDuplicateInvite(payload.room)) {
+          console.log('[REST-SIGNAL] Invitación duplicada');
+          return;
+        }
         pendingInviteTransportRef.current = "rest";
+        console.log('[REST-SIGNAL] 🟡 Invitación por REST de', payload.fromNickname);
 
         playIncomingCallTone();
         if (navigator.vibrate) {
@@ -2034,22 +2057,34 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     };
 
     const pollSignals = async () => {
-      if (callSignalPollBusyRef.current) return;
+      if (callSignalPollBusyRef.current) {
+        console.log('[POLL] Polling ocupado, saltando...');
+        return;
+      }
       callSignalPollBusyRef.current = true;
       try {
+        const isSocketConnected = socket?.connected;
+        console.log('[POLL] Polling señales... Socket:', isSocketConnected ? '✅' : '❌');
         const data = await authFetch(`${SERVER_URL}/api/chat/calls/pending`);
         const signals = Array.isArray(data?.signals) ? data.signals : [];
+        if (signals.length > 0) {
+          console.log('[POLL] 📬', signals.length, 'señales recibidas');
+        }
         for (const signal of signals) {
           await handleRestSignal(signal);
         }
-      } catch (_) {
+      } catch (err) {
+        console.error('[POLL] Error:', err?.message);
       } finally {
         callSignalPollBusyRef.current = false;
       }
     };
 
     pollSignals();
-    const interval = setInterval(pollSignals, 2000);
+    // Más frecuente en móvil o cuando socket está offline
+    const pollInterval = socket?.connected ? 2000 : 1000; // 1s si sin socket, 2s si conectado
+    console.log('[POLL] Iniciando polling cada', pollInterval, 'ms');
+    const interval = setInterval(pollSignals, pollInterval);
     return () => clearInterval(interval);
   }, [SERVER_URL, user, callActivo, audioSettings.callIncomingSound, audioSettings.callOutgoingSound, audioSettings.callVolume]);
 
