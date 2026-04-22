@@ -49,6 +49,32 @@ function getAllUsers() {
   return getWarehouseState().users || [];
 }
 
+function buildUserAliases(userLike) {
+  const aliases = [
+    userLike?.name,
+    userLike?.nickname,
+    userLike?.email,
+    userLike?.login,
+    userLike,
+  ]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+  return Array.from(new Set(aliases));
+}
+
+function resolveTargetAliases(targetNickname) {
+  const raw = String(targetNickname || "").trim();
+  if (!raw) return [];
+
+  const targetKey = normalizeNick(raw);
+  const userMatch = getAllUsers().find((user) => {
+    const aliases = buildUserAliases(user);
+    return aliases.some((alias) => normalizeNick(alias) === targetKey);
+  });
+
+  return Array.from(new Set([raw, ...buildUserAliases(userMatch)]));
+}
+
 // callSignalQueue helpers imported from ../utils/callSignalQueue.js
 
 function emitChatsActivosActualizados() {
@@ -114,10 +140,23 @@ chatRouter.get("/usuarios/estados", requireAuth, (req, res) => {
 
 chatRouter.get("/calls/pending", requireAuth, (req, res) => {
   try {
-    const nombre = getNombre(req);
-    if (!nombre) return res.json({ signals: [] });
-    const signals = drainCallSignals(nombre);
-    res.json({ signals });
+    const authUser = req.auth?.user;
+    const aliases = buildUserAliases(authUser);
+    if (!aliases.length) return res.json({ signals: [] });
+
+    const merged = [];
+    const seenIds = new Set();
+    aliases.forEach((alias) => {
+      const bucket = drainCallSignals(alias);
+      bucket.forEach((signal) => {
+        const id = String(signal?.id || "");
+        if (id && seenIds.has(id)) return;
+        if (id) seenIds.add(id);
+        merged.push(signal);
+      });
+    });
+
+    res.json({ signals: merged });
   } catch (e) {
     res.status(500).json({ error: "Error obteniendo señales de llamada" });
   }
@@ -177,7 +216,10 @@ chatRouter.post("/calls/signal", requireAuth, (req, res) => {
     if (sdp) signal.sdp = sdp;
     if (candidate) signal.candidate = candidate;
 
-    requestedNicknames.forEach((target) => enqueueCallSignal(target, signal));
+    requestedNicknames.forEach((target) => {
+      const aliases = resolveTargetAliases(target);
+      aliases.forEach((alias) => enqueueCallSignal(alias, signal));
+    });
 
     res.json({
       ok: true,

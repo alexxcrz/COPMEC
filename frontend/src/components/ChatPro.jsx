@@ -41,7 +41,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     const method = String(opts?.method || "GET").toUpperCase();
     const fullUrl = url.startsWith('http') ? url : (API_BASE_URL + (url.startsWith('/') ? url : '/' + url));
     const isChatGet = method === "GET" && fullUrl.includes("/api/chat/");
-    if (isChatGet && Date.now() < rateLimitedUntilRef.current) {
+    const isCriticalChatSync = fullUrl.includes("/api/chat/calls/pending") || fullUrl.includes("/api/chat/usuarios/estados");
+    if (isChatGet && !isCriticalChatSync && Date.now() < rateLimitedUntilRef.current) {
       const err = new Error("Rate limit de chat activo");
       err.status = 429;
       err.isRateLimited = true;
@@ -49,7 +50,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     }
     const r = await fetch(fullUrl, { ...opts, credentials: 'include' });
     if (!r.ok) {
-      if (r.status === 429 && isChatGet) {
+      if (r.status === 429 && isChatGet && !isCriticalChatSync) {
         const retryAfterHeader = Number.parseInt(r.headers.get("retry-after") || "", 10);
         const waitMs = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
           ? retryAfterHeader * 1000
@@ -293,6 +294,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const remoteStreamsRef = useRef({});
   const pendingCandidatesRef = useRef({});
   const callRoomRef = useRef(null);
+  const outgoingCallTimeoutRef = useRef(null);
   const ringtoneRef = useRef(null);
   const outgoingRingRef = useRef(null);
   const lastActivityEmitRef = useRef(0);
@@ -307,6 +309,15 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       .replace(/[\u0300-\u036f]/g, "")
       .trim()
       .toLowerCase();
+
+  const getEstadoUsuario = (displayName) => {
+    const direct = estadosUsuarios[displayName];
+    if (direct) return direct;
+    const wanted = normalizeCallNick(displayName);
+    if (!wanted) return "offline";
+    const matchKey = Object.keys(estadosUsuarios).find((key) => normalizeCallNick(key) === wanted);
+    return (matchKey ? estadosUsuarios[matchKey] : null) || "offline";
+  };
 
   const buildRestPeerId = (nickname) => `rest:${normalizeCallNick(nickname)}`;
 
@@ -4457,6 +4468,10 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   };
 
   const limpiarLlamada = () => {
+    if (outgoingCallTimeoutRef.current) {
+      clearTimeout(outgoingCallTimeoutRef.current);
+      outgoingCallTimeoutRef.current = null;
+    }
     if (outgoingRingRef.current) {
       clearInterval(outgoingRingRef.current);
       outgoingRingRef.current = null;
@@ -4634,9 +4649,21 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       // Ring saliente — suena mientras espera que contesten
       playOutgoingCallTone();
       outgoingRingRef.current = setInterval(() => playOutgoingCallTone(), 3200);
+      outgoingCallTimeoutRef.current = setTimeout(() => {
+        if (callRoomRef.current !== room) return;
+        showAlert("No hubo respuesta a la videollamada. Intento finalizado.", "warning");
+        colgarLlamada();
+      }, 45000);
 
       if (connected && socket.connected) {
         emitirInvitacion();
+        sendCallSignalFallback({
+          type: "invite",
+          room,
+          toNicknames: unicos,
+          nickname: userDisplayName,
+          fromPeerId: buildRestPeerId(userDisplayName),
+        }).catch(() => {});
         return;
       }
 
@@ -5389,7 +5416,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                 })
                 .map((u) => {
                   const displayName = u.nickname || u.name || "Usuario";
-                  const estado = estadosUsuarios[displayName] || 'offline';
+                  const estado = getEstadoUsuario(displayName);
                   const isUserActive = u.active === 1;
                   
                   // Determinar título del estado
@@ -5582,7 +5609,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                             }).map((chat) => {
                               const userDisplayName = user?.nickname || user?.name;
                               const esMioUltimoMensaje = chat.ultimo_remitente === userDisplayName;
-                              const estado = estadosUsuarios[chat.otro_usuario] || 'offline';
+                              const estado = getEstadoUsuario(chat.otro_usuario);
                               
                               let statusTitle = 'Usuario offline';
                               if (estado === 'en-llamada') {
@@ -5726,7 +5753,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                               }).map((chat) => {
                                 const userDisplayName = user?.nickname || user?.name;
                                 const esMioUltimoMensaje = chat.ultimo_remitente === userDisplayName;
-                                const estado = estadosUsuarios[chat.otro_usuario] || 'offline';
+                                const estado = getEstadoUsuario(chat.otro_usuario);
                                 
                                 let statusTitle = 'Usuario offline';
                                 if (estado === 'en-llamada') {

@@ -1,6 +1,7 @@
 import { Server } from "socket.io";
 import { corsOriginValidator } from "./env.js";
 import { normalizeNick, enqueueCallSignal, nextSignalId } from "../utils/callSignalQueue.js";
+import { getWarehouseState } from "../services/warehouse.store.js";
 
 let io;
 
@@ -16,6 +17,33 @@ function resolveActiveNickKey(nickname) {
 function getUserRoomKey(nickname) {
   const key = normalizeNick(nickname);
   return key ? `user:${key}` : null;
+}
+
+function buildUserAliases(userLike) {
+  const aliases = [
+    userLike?.name,
+    userLike?.nickname,
+    userLike?.email,
+    userLike?.login,
+    userLike,
+  ]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+  return Array.from(new Set(aliases));
+}
+
+function resolveTargetAliases(targetNickname) {
+  const raw = String(targetNickname || "").trim();
+  if (!raw) return [];
+
+  const users = getWarehouseState().users || [];
+  const targetKey = normalizeNick(raw);
+  const userMatch = users.find((user) => {
+    const aliases = buildUserAliases(user);
+    return aliases.some((alias) => normalizeNick(alias) === targetKey);
+  });
+
+  return Array.from(new Set([raw, ...buildUserAliases(userMatch)]));
 }
 
 // Intervalo que marca usuarios como ausentes tras 1 hora de inactividad
@@ -145,7 +173,7 @@ export function initSocket(httpServer) {
 
         // REST fallback: if this target had no active sockets, enqueue for HTTP polling
         if (targets.length === 0) {
-          enqueueCallSignal(nick, {
+          const signal = {
             id: nextSignalId(),
             type: "invite",
             room,
@@ -153,7 +181,9 @@ export function initSocket(httpServer) {
             from: `rest:${normalizeNick(fromNickname || socket.data.nickname || "")}`,
             nickname: fromNickname || socket.data.nickname || "Usuario",
             createdAt: Date.now(),
-          });
+          };
+          const aliases = resolveTargetAliases(nick);
+          aliases.forEach((alias) => enqueueCallSignal(alias, signal));
           console.log(`   ↪ enqueued REST fallback invite for "${nick}"`);
         }
       });
