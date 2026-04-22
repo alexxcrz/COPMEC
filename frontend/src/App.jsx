@@ -391,8 +391,8 @@ function App() { // NOSONAR
   const [inventoryActionsMenuOpen, setInventoryActionsMenuOpen] = useState(false);
   const [inventorySearch, setInventorySearch] = useState("");
   const [dashboardFilters, setDashboardFilters] = useState({ periodType: "week", periodKey: "all", responsibleId: "all", area: "all", source: "all", startDate: "", endDate: "" });
-  const [pauseState, setPauseState] = useState({ open: false, activityId: null, reason: "", error: "", completed: false });
-  const [boardPauseState, setBoardPauseState] = useState({ open: false, boardId: null, rowId: null, reason: "", error: "", completed: false });
+  const [pauseState, setPauseState] = useState({ open: false, activityId: null, reason: "", error: "", completed: false, continueReady: false });
+  const [boardPauseState, setBoardPauseState] = useState({ open: false, boardId: null, rowId: null, reason: "", error: "", completed: false, continueReady: false });
   const [pieceDeductionModal, setPieceDeductionModal] = useState({ open: false, boardId: null, rowId: null, items: [] });
   const [catalogModal, setCatalogModal] = useState({ open: false, mode: "create", id: null, name: "", limit: "", mandatory: "true", frequency: "weekly", category: "General" });
   const [editWeekId, setEditWeekId] = useState(null);
@@ -468,6 +468,8 @@ function App() { // NOSONAR
   const customBoardActionsMenuRef = useRef(null);
   const inventoryActionsMenuRef = useRef(null);
   const sessionSnapshotRef = useRef({ userId: "", sessionVersion: 0 });
+  const pauseContinueTimerRef = useRef(null);
+  const boardPauseContinueTimerRef = useRef(null);
 
   function dismissAppToast(toastId) {
     setAppToasts((current) => current.map((toast) => (toast.id === toastId ? { ...toast, isClosing: true } : toast)));
@@ -2283,7 +2285,24 @@ function App() { // NOSONAR
 
   function handleConfirmPause() {
     if (pauseState.completed) {
-      setPauseState({ open: false, activityId: null, reason: "", error: "", completed: false });
+      if (!pauseState.continueReady) return;
+      // Reanudar actividad al presionar Continuar
+      const resumeIso = new Date().toISOString();
+      setState((current) => ({
+        ...current,
+        activities: current.activities.map((activity) => {
+          if (activity.id !== pauseState.activityId) return activity;
+          return { ...activity, status: STATUS_RUNNING, lastResumedAt: resumeIso };
+        }),
+        pauseLogs: current.pauseLogs.map((log) => {
+          if (log.id !== pauseState.pauseLogId) return log;
+          const pausedAt = new Date(log.pausedAt).getTime();
+          const resumedAt = new Date(resumeIso).getTime();
+          return { ...log, resumedAt: resumeIso, pauseDurationSeconds: Math.round((resumedAt - pausedAt) / 1000) };
+        }),
+      }));
+      if (pauseContinueTimerRef.current) clearTimeout(pauseContinueTimerRef.current);
+      setPauseState({ open: false, activityId: null, reason: "", error: "", completed: false, continueReady: false, pauseLogId: null });
       return;
     }
 
@@ -2293,6 +2312,7 @@ function App() { // NOSONAR
     }
 
     const nowIso = new Date().toISOString();
+    const pauseLogId = makeId("pause");
 
     setState((current) => ({
       ...current,
@@ -2306,7 +2326,7 @@ function App() { // NOSONAR
         };
       }),
       pauseLogs: current.pauseLogs.concat({
-        id: makeId("pause"),
+        id: pauseLogId,
         weekActivityId: pauseState.activityId,
         pauseReason: pauseState.reason.trim(),
         pausedAt: nowIso,
@@ -2315,10 +2335,17 @@ function App() { // NOSONAR
       }),
     }));
 
+    if (pauseContinueTimerRef.current) clearTimeout(pauseContinueTimerRef.current);
+    pauseContinueTimerRef.current = setTimeout(() => {
+      setPauseState((current) => (current.completed ? { ...current, continueReady: true } : current));
+    }, 3000);
+
     setPauseState((current) => ({
       ...current,
       error: "",
       completed: true,
+      continueReady: false,
+      pauseLogId,
     }));
   }
 
@@ -2326,12 +2353,21 @@ function App() { // NOSONAR
     const board = (state.controlBoards || []).find((item) => item.id === boardId);
     const row = board?.rows?.find((item) => item.id === rowId);
     if (!board || !row || !canOperateBoardRowRecord(currentUser, board, row, normalizedPermissions) || row.status !== STATUS_RUNNING) return;
-    setBoardPauseState({ open: true, boardId, rowId, reason: "", error: "", completed: false });
+    setBoardPauseState({ open: true, boardId, rowId, reason: "", error: "", completed: false, continueReady: false });
   }
 
   function handleConfirmBoardPause() {
     if (boardPauseState.completed) {
-      setBoardPauseState({ open: false, boardId: null, rowId: null, reason: "", error: "", completed: false });
+      if (!boardPauseState.continueReady) return;
+      // Reanudar fila al presionar Continuar
+      requestJson(`/warehouse/boards/${boardPauseState.boardId}/rows/${boardPauseState.rowId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: STATUS_RUNNING }),
+      }).then((remoteState) => {
+        applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      }).catch(() => {});
+      if (boardPauseContinueTimerRef.current) clearTimeout(boardPauseContinueTimerRef.current);
+      setBoardPauseState({ open: false, boardId: null, rowId: null, reason: "", error: "", completed: false, continueReady: false });
       return;
     }
 
@@ -2348,10 +2384,15 @@ function App() { // NOSONAR
       }),
     }).then((remoteState) => {
       applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      if (boardPauseContinueTimerRef.current) clearTimeout(boardPauseContinueTimerRef.current);
+      boardPauseContinueTimerRef.current = setTimeout(() => {
+        setBoardPauseState((current) => (current.completed ? { ...current, continueReady: true } : current));
+      }, 3000);
       setBoardPauseState((current) => ({
         ...current,
         error: "",
         completed: true,
+        continueReady: false,
       }));
     }).catch((error) => {
       setBoardPauseState((current) => ({ ...current, error: error?.message || "No se pudo pausar la fila." }));
@@ -5264,12 +5305,12 @@ function App() { // NOSONAR
         {page === PAGE_NOT_FOUND ? <PaginaNoEncontrada contexto={paginasContexto} /> : null}
       </section>
 
-      <Modal open={pauseState.open} title="Actividad en pausa" confirmLabel={pauseState.completed ? "Continuar" : "Confirmar pausa"} cancelLabel="Cancelar" hideCancel={pauseState.completed} onClose={() => setPauseState({ open: false, activityId: null, reason: "", error: "", completed: false })} onConfirm={handleConfirmPause}>
+      <Modal open={pauseState.open} title="Actividad en pausa" confirmLabel={pauseState.completed ? (pauseState.continueReady ? "Continuar" : "Espera un momento...") : "Confirmar pausa"} cancelLabel="Cancelar" hideCancel={pauseState.completed} confirmDisabled={pauseState.completed && !pauseState.continueReady} onClose={() => { if (pauseContinueTimerRef.current) clearTimeout(pauseContinueTimerRef.current); setPauseState({ open: false, activityId: null, reason: "", error: "", completed: false, continueReady: false, pauseLogId: null }); }} onConfirm={handleConfirmPause}>
         <div className="modal-form-grid">
           {pauseState.completed ? (
             <>
               <p className="validation-text success">Continuemos. La pausa de la actividad quedó registrada correctamente.</p>
-              <p className="modal-footnote">Cuando pulses continuar se cerrará este modal.</p>
+              <p className="modal-footnote">{pauseState.continueReady ? "Cuando pulses continuar la actividad se reanudará." : "El botón Continuar se habilitará en unos segundos..."}</p>
             </>
           ) : (
             <>
@@ -5284,12 +5325,12 @@ function App() { // NOSONAR
         </div>
       </Modal>
 
-      <Modal open={boardPauseState.open} title="Pausar fila" confirmLabel={boardPauseState.completed ? "Continuar" : "Confirmar pausa"} cancelLabel="Cancelar" hideCancel={boardPauseState.completed} onClose={() => setBoardPauseState({ open: false, boardId: null, rowId: null, reason: "", error: "", completed: false })} onConfirm={handleConfirmBoardPause}>
+      <Modal open={boardPauseState.open} title="Pausar fila" confirmLabel={boardPauseState.completed ? (boardPauseState.continueReady ? "Continuar" : "Espera un momento...") : "Confirmar pausa"} cancelLabel="Cancelar" hideCancel={boardPauseState.completed} confirmDisabled={boardPauseState.completed && !boardPauseState.continueReady} onClose={() => { if (boardPauseContinueTimerRef.current) clearTimeout(boardPauseContinueTimerRef.current); setBoardPauseState({ open: false, boardId: null, rowId: null, reason: "", error: "", completed: false, continueReady: false }); }} onConfirm={handleConfirmBoardPause}>
         <div className="modal-form-grid">
           {boardPauseState.completed ? (
             <>
               <p className="validation-text success">Continuemos. La fila quedó pausada y el motivo se guardó correctamente.</p>
-              <p className="modal-footnote">Pulsa continuar para cerrar este modal.</p>
+              <p className="modal-footnote">{boardPauseState.continueReady ? "Pulsa continuar para reanudar la fila." : "El botón Continuar se habilitará en unos segundos..."}</p>
             </>
           ) : (
             <>

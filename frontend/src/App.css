@@ -8853,6 +8853,42 @@ tbody tr:hover {
   }
 }
 
+/* Tablet landscape: permitir scroll horizontal en tableros en lugar de ocultar contenido */
+@media (min-width: 721px) and (max-width: 1180px) and (orientation: landscape) {
+  .content-shell,
+  .page-grid,
+  .board-page-layout {
+    overflow-x: auto;
+  }
+
+  .table-wrap,
+  .board-table-wrap,
+  .custom-board-table-wrap,
+  .board-preview-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .board-table-clean,
+  .board-runtime-table,
+  .board-preview-table {
+    width: auto !important;
+    min-width: 1080px !important;
+    table-layout: auto;
+  }
+
+  .board-runtime-table th,
+  .board-runtime-table td,
+  .board-table-clean th,
+  .board-table-clean td,
+  .board-preview-table th,
+  .board-preview-table td {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+}
+
 .ep-hero__status {
   font-size: 0.72rem;
   color: rgba(255,255,255,0.65);

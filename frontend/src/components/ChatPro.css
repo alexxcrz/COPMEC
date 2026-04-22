@@ -1795,7 +1795,17 @@ span.chat-item-menu-btn:active {
     max-height: 720px;
   }
 
-  .chat-sidebar {
+  /* Mostrar ambos paneles en landscape — igual que en escritorio */
+  .chat-pro-ventana:not(.mobile-chat-open) .chat-main-panel,
+  .chat-pro-ventana.mobile-chat-open .chat-main-panel {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .chat-pro-ventana:not(.mobile-chat-open) .chat-sidebar,
+  .chat-pro-ventana.mobile-chat-open .chat-sidebar {
+    display: flex;
     width: 280px;
     min-width: 250px;
     max-width: 300px;
