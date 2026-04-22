@@ -286,6 +286,7 @@ export function initSocket(httpServer) {
     socket.on("call_leave", ({ room }) => {
       if (!room) return;
       socket.leave(room);
+      socket.to(room).emit("call_user_left", { room, socketId: socket.id });
 
       // Actualizar historial: si es "pendiente", marcar como "perdida" (no respondida)
       try { prisma.chatLlamada?.findFirst({
@@ -304,7 +305,7 @@ export function initSocket(httpServer) {
           data: { estado: nuevoEstado, finalizadaEn: fin, duracionSegundos: duracion },
         });
       }).catch(() => {}); } catch (_) {}
-    };
+    });
 
     socket.on("call_offer", ({ to, room, sdp, nickname }) => {
       if (!to || !room || !sdp) return;
