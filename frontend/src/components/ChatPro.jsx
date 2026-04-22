@@ -1823,7 +1823,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
   useEffect(() => {
     const userDisplayName = user?.nickname || user?.name;
-    if (!userDisplayName || !SERVER_URL) return undefined;
+    if (!userDisplayName) return undefined;
 
     const handleRestSignal = async (payload) => {
       if (!payload?.type || !payload?.room) return;
@@ -5319,10 +5319,10 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                 setTipoChat(null);
                 setChatActual(null);
               }}
-              title="Usuarios"
+              title="Players"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="15" height="15"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-              Usuarios
+              Players
             </div>
             <div
               className={`tab tab-circular ${tabPrincipal === "ajustes" ? "active" : ""}`}
@@ -5390,7 +5390,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                           type="text"
                           value={filtroUsuarios}
                           onChange={(e) => setFiltroUsuarios(e.target.value)}
-                          placeholder="Buscar usuario..."
+                          placeholder="Buscar player..."
                         />
                       </div>
               <div

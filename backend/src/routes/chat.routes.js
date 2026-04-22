@@ -51,6 +51,7 @@ function getAllUsers() {
 
 function buildUserAliases(userLike) {
   const aliases = [
+    userLike?.id,
     userLike?.name,
     userLike?.nickname,
     userLike?.email,
@@ -140,6 +141,8 @@ chatRouter.get("/usuarios/estados", requireAuth, (req, res) => {
         }
       }
     });
+    const activos = Object.entries(estados).filter(([, status]) => status === "activo" || status === "en-llamada").length;
+    console.log(`[chat/status] users=${Object.keys(estados).length} activeOrCall=${activos}`);
     res.json(estados);
   } catch (e) {
     res.status(500).json({ error: "Error obteniendo estados" });
@@ -167,6 +170,9 @@ chatRouter.get("/calls/pending", requireAuth, (req, res) => {
       });
     });
 
+    if (merged.length > 0) {
+      console.log(`[calls/pending] user=${authUser?.name || authUser?.id || "unknown"} aliases=${aliases.join("|")} drained=${merged.length}`);
+    }
     res.json({ signals: merged });
   } catch (e) {
     res.status(500).json({ error: "Error obteniendo señales de llamada" });
@@ -230,6 +236,7 @@ chatRouter.post("/calls/signal", requireAuth, (req, res) => {
     requestedNicknames.forEach((target) => {
       const aliases = resolveTargetAliases(target);
       aliases.forEach((alias) => enqueueCallSignal(alias, signal));
+      console.log(`[calls/signal] type=${type} room=${room} target=${target} aliases=${aliases.join("|")}`);
     });
 
     res.json({
