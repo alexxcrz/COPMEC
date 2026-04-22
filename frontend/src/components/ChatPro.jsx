@@ -1724,6 +1724,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       if (isDuplicateInvite(payload.room)) return;
       pendingInviteTransportRef.current = "socket";
 
+      console.log('[INVITE] Llamada entrante de', payload.fromNickname);
       playIncomingCallTone();
       if (navigator.vibrate) {
         navigator.vibrate([200, 100, 200, 100, 200]); // Vibración de llamada
@@ -1745,6 +1746,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         fromNickname: payload.fromNickname || "Usuario",
         fromSocketId: payload.fromSocketId || null,
       });
+      console.log('[INVITE] Modal de invitación mostrado');
     };
 
     const handleUsers = (payload) => {
@@ -2040,14 +2042,16 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     return () => clearInterval(interval);
   }, [SERVER_URL, user, callActivo, audioSettings.callIncomingSound, audioSettings.callOutgoingSound, audioSettings.callVolume]);
 
-  // ── Sincronizar localVideoRef con localStreamRef ─────────────────────────
+  // ── Sincronizar localVideoRef con localStreamRef y state ─────────────────────────
   useEffect(() => {
-    if (localVideoRef.current && localStreamRef.current) {
-      if (localVideoRef.current.srcObject !== localStreamRef.current) {
+    if (callActivo && localVideoRef.current) {
+      // Asignar stream cuando call inicia o cuando stream cambia
+      if (localStreamRef.current && localVideoRef.current.srcObject !== localStreamRef.current) {
+        console.log('[VIDEO] Sincronizando localVideoRef con stream');
         localVideoRef.current.srcObject = localStreamRef.current;
       }
     }
-  }, [callActivo]);
+  }, [callActivo, localStream]);
 
   // ── Pre-calentar AudioContext en primer gesto de usuario ──────────────────
   useEffect(() => {
@@ -4550,6 +4554,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       stream,
       nickname: peerConnectionsRef.current[id]?.nickname || "Usuario",
     }));
+    console.log('[STREAMS] Actualizando remoteStreams:', lista.length, 'streams');
     setRemoteStreams(lista);
   };
 
@@ -4626,6 +4631,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       }
     };
     pc.ontrack = (event) => {
+      console.log('[ONTRACK] Track remoto recibido de', socketId, '- tipo:', event.track.kind);
       if (!remoteStreamsRef.current[socketId]) {
         remoteStreamsRef.current[socketId] = new MediaStream();
       }
@@ -4651,13 +4657,19 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   };
 
   const asegurarLocalStream = async () => {
-    if (localStreamRef.current) return localStreamRef.current;
+    if (localStreamRef.current) {
+      setLocalStream(localStreamRef.current);
+      return localStreamRef.current;
+    }
     if (!navigator.mediaDevices?.getUserMedia) {
       throw new Error("Tu dispositivo no soporta videollamadas.");
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       localStreamRef.current = stream;
+      setLocalStream(stream); // Disparar useEffect para sincronización
+      console.log('[STREAM] Local stream obtenido y guardado');
+      return stream;
       setLocalStream(stream);
       return stream;
     } catch (err) {
@@ -4930,8 +4942,9 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       await stopScreenShare();
       return;
     }
+    // Permitir screen share si getDisplayMedia está disponible (funciona en algunos móviles)
     if (!navigator.mediaDevices?.getDisplayMedia) {
-      showAlert("Compartir pantalla no está disponible en este dispositivo o navegador.", "warning");
+      showAlert("Compartir pantalla no está disponible en este navegador.", "warning");
       return;
     }
     try {
@@ -4954,9 +4967,14 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       }
       if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
       setSharingScreen(true);
+      setLocalStream(localStreamRef.current); // Trigger reactivity
       screenTrack.addEventListener("ended", () => stopScreenShare(), { once: true });
-    } catch {
-      // user cancelled
+    } catch (err) {
+      console.log('[SCREEN] Screen share denied or unavailable:', err.message);
+      // No mostrar error si el usuario canceló
+      if (err.name !== 'NotAllowedError') {
+        showAlert("No se pudo compartir la pantalla. " + err.message, "warning");
+      }
     }
   };
 

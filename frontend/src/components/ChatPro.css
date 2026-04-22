@@ -3191,12 +3191,24 @@ span.chat-item-menu-btn:active {
 .call-overlay {
   position: fixed;
   inset: 0;
-  z-index: 8000;
+  z-index: 9999;
   background: rgba(0, 0, 0, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
+  backdrop-filter: blur(1px);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .call-window {
@@ -3321,14 +3333,16 @@ span.chat-item-menu-btn:active {
 
 .call-incoming-card {
   background: var(--chat-surface);
-  border: 1px solid var(--chat-border);
-  border-radius: 12px;
-  padding: 12px;
-  width: min(280px, 90vw);
+  border: 2px solid var(--borde-visible);
+  border-radius: 20px;
+  padding: 20px;
+  width: min(320px, 92vw);
   text-align: center;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  animation: slideUp 300ms ease-out;
 }
 
 .call-user {
@@ -3344,21 +3358,33 @@ span.chat-item-menu-btn:active {
 
 .call-btn {
   border: none;
-  border-radius: 10px;
-  padding: 6px 12px;
+  border-radius: 16px;
+  padding: 10px 16px;
   cursor: pointer;
   font-weight: 600;
-  font-size: 0.72rem;
+  font-size: 0.85rem;
+  transition: all 200ms ease;
+  flex: 1;
 }
 
 .call-btn.accept {
   background: #22c55e;
   color: #fff;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+}
+
+.call-btn.accept:active {
+  transform: scale(0.97);
 }
 
 .call-btn.reject {
   background: #ef4444;
   color: #fff;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.call-btn.reject:active {
+  transform: scale(0.97);
 }
 
 .msg-btn-reaccion {
