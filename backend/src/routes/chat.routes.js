@@ -114,13 +114,21 @@ chatRouter.get("/usuarios", requireAuth, (_req, res) => {
 
 chatRouter.get("/usuarios/estados", requireAuth, (req, res) => {
   try {
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+    res.set("Pragma", "no-cache");
+    res.set("Expires", "0");
     const activosArr = getUsuariosActivos();
     const activosMap = {};
-    activosArr.forEach((u) => { activosMap[u.nickname] = u; });
+    activosArr.forEach((u) => {
+      const nick = String(u?.nickname || "").trim();
+      if (!nick) return;
+      activosMap[nick] = u;
+      activosMap[normalizeNick(nick)] = u;
+    });
     const estados = {};
     getAllUsers().forEach((u) => {
       if (u.isActive) {
-        const info = activosMap[u.name];
+        const info = activosMap[u.name] || activosMap[normalizeNick(u.name)];
         if (!info) {
           estados[u.name] = "offline";
         } else if (info.inCall) {
@@ -140,6 +148,9 @@ chatRouter.get("/usuarios/estados", requireAuth, (req, res) => {
 
 chatRouter.get("/calls/pending", requireAuth, (req, res) => {
   try {
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+    res.set("Pragma", "no-cache");
+    res.set("Expires", "0");
     const authUser = req.auth?.user;
     const aliases = buildUserAliases(authUser);
     if (!aliases.length) return res.json({ signals: [] });

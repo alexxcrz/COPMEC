@@ -48,7 +48,11 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       err.isRateLimited = true;
       throw err;
     }
-    const r = await fetch(fullUrl, { ...opts, credentials: 'include' });
+    const r = await fetch(fullUrl, {
+      ...opts,
+      credentials: 'include',
+      ...(isCriticalChatSync && method === "GET" ? { cache: "no-store" } : {}),
+    });
     if (!r.ok) {
       if (r.status === 429 && isChatGet && !isCriticalChatSync) {
         const retryAfterHeader = Number.parseInt(r.headers.get("retry-after") || "", 10);
