@@ -1788,8 +1788,10 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       playCallSound("accept");
       showAlert(`${payload.nickname || "Usuario"} aceptó la videollamada.`, "success");
       const pc = crearPeerConnection(payload.socketId, payload.nickname || "Usuario");
+      console.log('[PC] Creando offer para', socketId);
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
+      console.log('[PC] Offer creado y local description seteada');
       socket.emit("call_offer", {
         to: payload.socketId,
         room: payload.room,
@@ -1804,8 +1806,10 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       if (!callActivo) return;
       const pc = crearPeerConnection(payload.from, payload.nickname || "Usuario");
       await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+      console.log('[PC] Creando answer para', payload.from);
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
+      console.log('[PC] Answer creado y local description seteada');
       socket.emit("call_answer", { to: payload.from, room: payload.room, sdp: answer });
     };
 
@@ -4556,12 +4560,16 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   };
 
   const actualizarRemoteStreams = () => {
-    const lista = Object.entries(remoteStreamsRef.current).map(([id, stream]) => ({
-      id,
-      stream,
-      nickname: peerConnectionsRef.current[id]?.nickname || "Usuario",
-    }));
-    console.log('[STREAMS] Actualizando remoteStreams:', lista.length, 'streams');
+    const lista = Object.entries(remoteStreamsRef.current).map(([id, stream]) => {
+      const tracks = stream.getTracks();
+      console.log('[STREAMS] Stream', id, '-', tracks.map(t => `${t.kind}(${t.enabled})`).join(',') || 'sin tracks');
+      return {
+        id,
+        stream,
+        nickname: peerConnectionsRef.current[id]?.nickname || "Usuario",
+      };
+    });
+    console.log('[STREAMS] Total:', lista.length, 'streams remotos');
     setRemoteStreams(lista);
   };
 
@@ -4615,7 +4623,9 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     const pc = new RTCPeerConnection({ iceServers: getIceServers() });
     const local = localStreamRef.current;
     if (local) {
-      local.getTracks().forEach((track) => pc.addTrack(track, local));
+      const tracks = local.getTracks();
+      console.log('[PC] Agregando', tracks.length, 'tracks a pc de', socketId, '-', tracks.map(t => t.kind).join(','));
+      tracks.forEach((track) => pc.addTrack(track, local));
     }
     pc.onicecandidate = (event) => {
       if (event.candidate && callRoomRef.current) {
@@ -4638,12 +4648,19 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       }
     };
     pc.ontrack = (event) => {
-      console.log('[ONTRACK] Track remoto recibido de', socketId, '- tipo:', event.track.kind);
+      console.log('[ONTRACK] Track remoto de', socketId, '-', event.track.kind, '- enabled:', event.track.enabled);
       if (!remoteStreamsRef.current[socketId]) {
+        console.log('[ONTRACK] Creando nuevo MediaStream para', socketId);
         remoteStreamsRef.current[socketId] = new MediaStream();
       }
-      event.streams[0].getTracks().forEach((track) => {
-        remoteStreamsRef.current[socketId].addTrack(track);
+      // Agregar todos los tracks del evento
+      event.streams.forEach((stream, idx) => {
+        stream.getTracks().forEach((track) => {
+          console.log('[ONTRACK] Agregando track:', track.kind, 'enabled:', track.enabled, '- stream idx:', idx);
+          if (!remoteStreamsRef.current[socketId].getTracks().find(t => t.id === track.id)) {
+            remoteStreamsRef.current[socketId].addTrack(track);
+          }
+        });
       });
       actualizarRemoteStreams();
     };
@@ -4665,17 +4682,35 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
   const asegurarLocalStream = async () => {
     if (localStreamRef.current) {
+      console.log('[STREAM] Stream ya existe, reutilizando');
       setLocalStream(localStreamRef.current);
       return localStreamRef.current;
     }
     if (!navigator.mediaDevices?.getUserMedia) {
-      throw new Error("Tu dispositivo no soporta videollamadas.");
+      const msg = "Tu dispositivo no soporta videollamadas.";
+      console.error('[STREAM]', msg);
+      throw new Error(msg);
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      console.log('[STREAM] Solicitando acceso a cámara y micrófono...');
+      const constraints = {
+        video: {
+          facingMode: 'user',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       localStreamRef.current = stream;
       setLocalStream(stream); // Disparar useEffect para sincronización
-      console.log('[STREAM] Local stream obtenido y guardado');
+      const videoTrack = stream.getVideoTracks()[0];
+      const audioTrack = stream.getAudioTracks()[0];
+      console.log('[STREAM] Local stream obtenido - Video:', videoTrack?.label || 'N/A', 'Audio:', audioTrack?.label || 'N/A');
       return stream;
       setLocalStream(stream);
       return stream;
