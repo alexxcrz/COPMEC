@@ -9,6 +9,22 @@ import { NOTIFICATION_SOUNDS, playNotificationSound } from "../utils/notificatio
 // COPMEC: removed getServerUrl
 // COPMEC: removed ReunionesPerfilUsuario
 
+// Componente estable para cada video remoto — evita parpadeo al reasignar srcObject
+const VideoTile = React.memo(function VideoTile({ stream, nickname }) {
+  const videoRef = useRef(null);
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream || null;
+    }
+  }, [stream]);
+  return (
+    <div className="call-video-box">
+      <video className="call-video" autoPlay playsInline ref={videoRef} />
+      <span className="call-label">{nickname || "Usuario"}</span>
+    </div>
+  );
+});
+
 export default function ChatPro({ socket, user, onClose, solicitudPending, onSolicitudConsumida, mensajePrioritarioPending, onMensajePrioritarioConsumido, connectCount }) {
 
   const AUDIO_PREF_KEYS = {
@@ -9170,19 +9186,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                 <div className="call-empty">Esperando participantes...</div>
               )}
               {remoteStreams.map((item) => (
-                <div key={item.id} className="call-video-box">
-                  <video
-                    className="call-video"
-                    autoPlay
-                    playsInline
-                    ref={(el) => {
-                      if (el && item.stream) {
-                        el.srcObject = item.stream;
-                      }
-                    }}
-                  />
-                  <span className="call-label">{item.nickname || "Usuario"}</span>
-                </div>
+                <VideoTile key={item.id} stream={item.stream} nickname={item.nickname} />
               ))}
             </div>
             <div className="call-controls">

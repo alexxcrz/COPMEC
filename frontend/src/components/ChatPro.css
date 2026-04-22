@@ -4343,15 +4343,13 @@ span.chat-item-menu-btn:active {
   }
 
   .chat-pro-ventana {
-    top: 0;
-    left: 0;
-    transform: none;
-    width: 100vw;
-    height: 100vh;
-    height: 100dvh;
-    border-radius: 0;
-    inset: 0;
-    max-height: 100dvh;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: calc(100vw - 16px);
+    height: calc(100dvh - 16px);
+    border-radius: 24px;
+    max-height: calc(100dvh - 16px);
   }
 
   .chat-sidebar {
@@ -4424,11 +4422,11 @@ span.chat-item-menu-btn:active {
   }
 
   .call-window {
-    width: calc(100vw - 24px) !important;
-    height: calc(100dvh - 24px) !important;
-    border-radius: 40px !important;
-    max-height: calc(100dvh - 24px) !important;
-    margin: 12px !important;
+    width: calc(100vw - 32px) !important;
+    height: calc(100dvh - 32px) !important;
+    border-radius: 28px !important;
+    max-height: calc(100dvh - 32px) !important;
+    margin: 16px !important;
   }
 
   /* Stacked video layout para móvil */
@@ -4545,7 +4543,7 @@ span.chat-item-menu-btn:active {
   }
 
   .call-window {
-    border-radius: 0 !important;
+    border-radius: 28px !important;
   }
 
   .call-control {

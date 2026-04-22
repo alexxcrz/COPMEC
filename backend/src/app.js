@@ -125,6 +125,8 @@ const chatLimiter = rateLimit({
   max: chatRateLimitMaxRequests,
   standardHeaders: true,
   legacyHeaders: false,
+  // Excluir señales de llamada: mandan muchos ICE candidates en ráfaga
+  skip: (req) => req.path === "/calls/signal" || req.path === "/calls/pending",
   handler: (req, res) => {
     auditSecurityEvent("rate_limited", req, { scope: "chat" });
     res.status(429).json({ message: "Chat temporalmente limitado por alta actividad. Reintentando..." });
