@@ -1860,7 +1860,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       playCallSound("accept");
       showAlert(`${payload.nickname || "Usuario"} aceptó la videollamada.`, "success");
       const pc = crearPeerConnection(payload.socketId, payload.nickname || "Usuario");
-      console.log('[PC] Creando offer para', socketId);
+      console.log('[PC] Creando offer para', payload.socketId);
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       console.log('[PC] Offer creado y local description seteada');
