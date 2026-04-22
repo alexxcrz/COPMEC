@@ -513,6 +513,69 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       playCallSound("accept");
     }
   };
+
+  // Evita que errores de Notification interrumpan el flujo de invitación.
+  const showIncomingCallNotification = (room, fromNickname) => {
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+    const title = "Llamada entrante";
+    const body = `${fromNickname || "Usuario"} te está llamando`;
+    const tag = `call-${room}`;
+
+    try {
+      if (navigator.serviceWorker?.ready) {
+        navigator.serviceWorker.ready
+          .then((registration) => {
+            if (!registration?.showNotification) {
+              new Notification(title, {
+                body,
+                icon: "/copmec-favicon.svg",
+                tag,
+                requireInteraction: true,
+              });
+              return;
+            }
+
+            return registration.showNotification(title, {
+              body,
+              icon: "/copmec-favicon.svg",
+              badge: "/copmec-favicon.svg",
+              tag,
+              requireInteraction: true,
+              actions: [
+                { action: "accept", title: "Aceptar" },
+                { action: "reject", title: "Rechazar" },
+              ],
+              data: {
+                type: "call_invite",
+                room,
+                callerName: fromNickname || "Usuario",
+                url: "/",
+              },
+            });
+          })
+          .catch(() => {
+            new Notification(title, {
+              body,
+              icon: "/copmec-favicon.svg",
+              tag,
+              requireInteraction: true,
+            });
+          });
+        return;
+      }
+
+      new Notification(title, {
+        body,
+        icon: "/copmec-favicon.svg",
+        tag,
+        requireInteraction: true,
+      });
+    } catch (err) {
+      console.warn("[NOTIFICATION] Error mostrando notificación de llamada:", err?.message || err);
+    }
+  };
+
   const makeInitialsAvatar = (name) => {
     const safeName = (name && typeof name === 'string' ? name : '').trim();
     const colors = ['#0f766e','#1d4ed8','#7c3aed','#b45309','#032121','#be185d','#0369a1','#166534'];
@@ -1751,26 +1814,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       if (navigator.vibrate) {
         navigator.vibrate([200, 100, 200, 100, 200]); // Vibración de llamada
       }
-      if ("Notification" in window && Notification.permission === "granted") {
-        const notification = new Notification("Llamada entrante", {
-          body: `${payload.fromNickname || "Usuario"} te está llamando`,
-          icon: "/copmec-favicon.svg",
-          tag: `call-${payload.room}`,
-          requireInteraction: true,
-          actions: [
-            { action: "accept", title: "Aceptar", icon: "✓" },
-            { action: "reject", title: "Rechazar", icon: "✕" },
-          ],
-        });
-        // Manejar clicks en acciones de notificación
-        notification.onclick = () => {
-          console.log('[NOTIFICATION] Clicked');
-          window.focus();
-        };
-        notification.onclose = () => {
-          console.log('[NOTIFICATION] Closed');
-        };
-      }
+
+      showIncomingCallNotification(payload.room, payload.fromNickname || "Usuario");
 
       // Precargar stream para aceptación más rápida
       asegurarLocalStream().catch(() => {});
@@ -1969,14 +2014,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         if (navigator.vibrate) {
           navigator.vibrate([200, 100, 200, 100, 200]); // Vibración de llamada
         }
-        if ("Notification" in window && Notification.permission === "granted") {
-          new Notification("Llamada entrante", {
-            body: `${payload.fromNickname || "Usuario"} te está llamando`,
-            icon: "/copmec-favicon.svg",
-            tag: `call-${payload.room}`,
-            requireInteraction: true,
-          });
-        }
+
+        showIncomingCallNotification(payload.room, payload.fromNickname || "Usuario");
 
         // Precargar stream para aceptación más rápida
         asegurarLocalStream().catch(() => {});
