@@ -56,7 +56,16 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
           : 15000;
         rateLimitedUntilRef.current = Date.now() + waitMs;
       }
-      const err = new Error(r.statusText || 'Request failed');
+      let backendMessage = "";
+      try {
+        const payload = await r.clone().json();
+        backendMessage = payload?.message || payload?.error || "";
+      } catch (_) {
+        try {
+          backendMessage = await r.clone().text();
+        } catch (_) {}
+      }
+      const err = new Error(backendMessage || r.statusText || 'Request failed');
       err.status = r.status;
       throw err;
     }
@@ -313,13 +322,27 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   );
 
   const sendCallSignalFallback = async ({ type, room, toNicknames, sdp, candidate, nickname, fromPeerId }) => {
+    const normalizedTargets = Array.from(
+      new Set(
+        (Array.isArray(toNicknames) ? toNicknames : [])
+          .map((target) => String(target || "").trim())
+          .filter(Boolean),
+      ),
+    );
+
+    if (!type || !room || normalizedTargets.length === 0) {
+      const err = new Error("Señal de llamada incompleta (faltan destinatarios o sala)");
+      err.status = 400;
+      throw err;
+    }
+
     return authFetch(`${SERVER_URL}/api/chat/calls/signal`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         type,
         room,
-        toNicknames,
+        toNicknames: normalizedTargets,
         sdp,
         candidate,
         nickname,
@@ -4589,9 +4612,10 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
           destinatarios.push(...grupo.miembros);
         }
       }
-      const unicos = Array.from(new Set(destinatarios)).filter(
-        (n) => n && n !== userDisplayName
-      );
+      const unicos = Array.from(new Set(destinatarios)).filter((n) => {
+        if (!n) return false;
+        return normalizeCallNick(n) !== normalizeCallNick(userDisplayName);
+      });
       setCallActivo(true);
       callRoomRef.current = room;
 

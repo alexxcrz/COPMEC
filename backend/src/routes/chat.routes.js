@@ -148,10 +148,20 @@ chatRouter.post("/calls/signal", requireAuth, (req, res) => {
           String(toNickname || "").trim(),
         ].filter(Boolean),
       ),
-    ).filter((target) => normalizeNick(target) !== normalizeNick(senderName));
+    );
 
     if (!type || !room || requestedNicknames.length === 0) {
-      return res.status(400).json({ ok: false, message: "Señal de llamada incompleta" });
+      return res.status(400).json({
+        ok: false,
+        message: "Señal de llamada incompleta",
+        reason: {
+          hasType: Boolean(type),
+          hasRoom: Boolean(room),
+          hasTargets: requestedNicknames.length > 0,
+          senderName,
+          requestedNicknames,
+        },
+      });
     }
 
     const signal = {
