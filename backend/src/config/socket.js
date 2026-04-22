@@ -2,6 +2,7 @@ import { Server } from "socket.io";
 import { corsOriginValidator } from "./env.js";
 import { normalizeNick, enqueueCallSignal, nextSignalId } from "../utils/callSignalQueue.js";
 import { getWarehouseState } from "../services/warehouse.store.js";
+import { prismaChat as prisma } from "./prisma-chat.js";
 
 let io;
 
@@ -149,7 +150,18 @@ export function initSocket(httpServer) {
       let delivered = 0;
       const reachedNicknames = [];
       
-        console.log(`📞 call_invite: from=${fromNickname}, targets=${requested.join(", ")}, active=${Object.keys(usuariosActivos).join(", ")}`);
+      console.log(`📞 call_invite: from=${fromNickname}, targets=${requested.join(", ")}, active=${Object.keys(usuariosActivos).join(", ")}`);
+
+      // Registrar llamada en historial
+      prisma.chatLlamada.create({
+        data: {
+          room,
+          iniciador: fromNickname || socket.data.nickname || "Usuario",
+          receptores: JSON.stringify(requested),
+          tipo: requested.length > 1 ? "grupal" : "privado",
+          estado: "perdida",
+        },
+      }).catch(() => {});
 
       requested.forEach((nick) => {
         const roomKey = getUserRoomKey(nick);
@@ -212,6 +224,12 @@ export function initSocket(httpServer) {
       socket.data.nickname = socket.data.nickname || nickname;
       socket.join(room);
 
+      // Actualizar historial: marcar como activa
+      prisma.chatLlamada.updateMany({
+        where: { room, estado: { in: ["perdida", "activa"] } },
+        data: { estado: "activa", aceptadaEn: new Date() },
+      }).catch(() => {});
+
       const roomSet = io.sockets.adapter.rooms.get(room) || new Set();
       const users = Array.from(roomSet).map((id) => {
         const s = io.sockets.sockets.get(id);
@@ -230,6 +248,22 @@ export function initSocket(httpServer) {
       if (!room) return;
       socket.leave(room);
       socket.to(room).emit("call_user_left", { room, socketId: socket.id });
+
+      // Actualizar historial: marcar como finalizada
+      prisma.chatLlamada.findFirst({
+        where: { room, estado: "activa" },
+        orderBy: { iniciadaEn: "desc" },
+      }).then((record) => {
+        if (!record) return;
+        const fin = new Date();
+        const duracion = record.aceptadaEn
+          ? Math.round((fin.getTime() - new Date(record.aceptadaEn).getTime()) / 1000)
+          : null;
+        return prisma.chatLlamada.update({
+          where: { id: record.id },
+          data: { estado: "finalizada", finalizadaEn: fin, duracionSegundos: duracion },
+        });
+      }).catch(() => {});
     });
 
     socket.on("call_offer", ({ to, room, sdp, nickname }) => {

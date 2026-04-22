@@ -377,3 +377,20 @@ model ChatNotificacionConfig {
 
   @@map("chat_notificaciones_config")
 }
+
+model ChatLlamada {
+  id              Int       @id @default(autoincrement())
+  room            String
+  iniciador       String
+  receptores      String    // JSON array de nicknames
+  tipo            String    @default("privado") // privado | grupal
+  estado          String    @default("perdida") // activa | finalizada | rechazada | perdida
+  iniciadaEn      DateTime  @default(now())
+  aceptadaEn      DateTime?
+  finalizadaEn    DateTime?
+  duracionSegundos Int?
+
+  @@index([iniciador])
+  @@index([iniciadaEn])
+  @@map("chat_llamadas")
+}

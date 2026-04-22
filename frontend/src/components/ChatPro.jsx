@@ -139,6 +139,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const [estadosUsuarios, setEstadosUsuarios] = useState({}); // { nickname: 'activo'|'ausente'|'offline' }
   const [chatsActivos, setChatsActivos] = useState([]);
   const [grupos, setGrupos] = useState([]);
+  const [historialLlamadas, setHistorialLlamadas] = useState([]);
+  const [historialCargando, setHistorialCargando] = useState(false);
 
   const [mensajesGeneral, setMensajesGeneral] = useState([]);
   const [mensajesPrivado, setMensajesPrivado] = useState({});
@@ -1035,6 +1037,16 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
     cargarGrupos();
   }, [open, tabPrincipal]);
+
+  // 📞 Cargar historial de llamadas
+  useEffect(() => {
+    if (!open || tabPrincipal !== "historial") return;
+    setHistorialCargando(true);
+    authFetch(`${SERVER_URL}/api/chat/calls/historial`)
+      .then((data) => setHistorialLlamadas(Array.isArray(data) ? data : []))
+      .catch(() => setHistorialLlamadas([]))
+      .finally(() => setHistorialCargando(false));
+  }, [open, tabPrincipal, SERVER_URL]);
 
   useEffect(() => {
     if (!open) return;
@@ -5408,6 +5420,18 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
               Players
             </div>
             <div
+              className={`tab tab-circular ${tabPrincipal === "historial" ? "active" : ""}`}
+              onClick={() => {
+                setTabPrincipal("historial");
+                setTipoChat(null);
+                setChatActual(null);
+              }}
+              title="Historial de llamadas"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="15" height="15"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.65 3.4 2 2 0 0 1 3.62 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8a16 16 0 0 0 7.29 7.29l1.06-1.06a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              Llamadas
+            </div>
+            <div
               className={`tab tab-circular ${tabPrincipal === "ajustes" ? "active" : ""}`}
               onClick={() => {
                 setTabPrincipal("ajustes");
@@ -5552,6 +5576,60 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                     </div>
                   );
                 })}
+                    </div>
+                  )}
+
+                  {tabPrincipal === "historial" && (
+                    <div className="usuarios-list-pro">
+                      <div className="chat-audio-settings-title" style={{ marginBottom: 8 }}>
+                        Historial de Llamadas
+                      </div>
+                      {historialCargando ? (
+                        <div style={{ textAlign: "center", padding: "20px", opacity: 0.5 }}>Cargando...</div>
+                      ) : historialLlamadas.length === 0 ? (
+                        <div style={{ textAlign: "center", padding: "24px 12px", opacity: 0.5, fontSize: 13 }}>
+                          <div style={{ fontSize: 28, marginBottom: 8 }}>📞</div>
+                          Sin llamadas registradas
+                        </div>
+                      ) : (
+                        historialLlamadas.map((ll) => {
+                          const yo = user?.nickname || user?.name || "";
+                          const contraparte = ll.fueIniciador
+                            ? (ll.receptores || []).join(", ")
+                            : ll.iniciador;
+                          const fecha = new Date(ll.iniciadaEn);
+                          const fechaStr = fecha.toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
+                          const horaStr = fecha.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+                          let durStr = "";
+                          if (ll.duracionSegundos != null) {
+                            const m = Math.floor(ll.duracionSegundos / 60);
+                            const s = ll.duracionSegundos % 60;
+                            durStr = m > 0 ? `${m}m ${s}s` : `${s}s`;
+                          }
+                          const estadoIcon = {
+                            finalizada: "✅",
+                            activa: "🔴",
+                            rechazada: "❌",
+                            perdida: "📵",
+                          }[ll.estado] || "📞";
+                          return (
+                            <div key={ll.id} className="usuario-item-pro" style={{ cursor: "default", flexDirection: "column", alignItems: "flex-start", gap: 2, padding: "8px 12px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%" }}>
+                                <span style={{ fontSize: 15 }}>{estadoIcon}</span>
+                                <span style={{ fontWeight: 600, fontSize: 13, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {ll.fueIniciador ? "📤 " : "📥 "}{contraparte || "Desconocido"}
+                                </span>
+                                <span style={{ fontSize: 11, opacity: 0.5, whiteSpace: "nowrap" }}>{fechaStr} {horaStr}</span>
+                              </div>
+                              <div style={{ fontSize: 11, opacity: 0.55, paddingLeft: 21, display: "flex", gap: 10 }}>
+                                <span>{ll.tipo === "grupal" ? "Grupal" : "Privada"}</span>
+                                <span style={{ textTransform: "capitalize" }}>{ll.estado}</span>
+                                {durStr && <span>⏱ {durStr}</span>}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
                   )}
 

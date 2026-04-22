@@ -178,7 +178,7 @@ chatRouter.get("/calls/pending", requireAuth, (req, res) => {
   }
 });
 
-chatRouter.post("/calls/signal", requireAuth, (req, res) => {
+chatRouter.post("/calls/signal", requireAuth, async (req, res) => {
   try {
     const senderName = getNombre(req);
     if (!senderName) {
@@ -219,6 +219,48 @@ chatRouter.post("/calls/signal", requireAuth, (req, res) => {
       });
     }
 
+    // ── Registro automático de historial de llamadas ────────────────────────
+    if (type === "invite") {
+      // Crear registro de llamada al inicio
+      prisma.chatLlamada.create({
+        data: {
+          room,
+          iniciador: senderName,
+          receptores: JSON.stringify(requestedNicknames),
+          tipo: requestedNicknames.length > 1 ? "grupal" : "privado",
+          estado: "perdida",
+        },
+      }).catch(() => {});
+    } else if (type === "join") {
+      // Marcar como activa cuando alguien acepta
+      prisma.chatLlamada.updateMany({
+        where: { room, estado: { in: ["perdida", "activa"] } },
+        data: { estado: "activa", aceptadaEn: new Date() },
+      }).catch(() => {});
+    } else if (type === "reject") {
+      // Marcar como rechazada
+      prisma.chatLlamada.updateMany({
+        where: { room, estado: "perdida" },
+        data: { estado: "rechazada", finalizadaEn: new Date() },
+      }).catch(() => {});
+    } else if (type === "leave") {
+      // Calcular duración y marcar como finalizada
+      prisma.chatLlamada.findFirst({
+        where: { room, estado: "activa" },
+        orderBy: { iniciadaEn: "desc" },
+      }).then((record) => {
+        if (!record) return;
+        const fin = new Date();
+        const duracion = record.aceptadaEn
+          ? Math.round((fin.getTime() - new Date(record.aceptadaEn).getTime()) / 1000)
+          : null;
+        return prisma.chatLlamada.update({
+          where: { id: record.id },
+          data: { estado: "finalizada", finalizadaEn: fin, duracionSegundos: duracion },
+        });
+      }).catch(() => {});
+    }
+
     const signal = {
       id: nextSignalId(),
       type,
@@ -246,6 +288,53 @@ chatRouter.post("/calls/signal", requireAuth, (req, res) => {
     });
   } catch (e) {
     res.status(500).json({ ok: false, message: "No fue posible enviar la señal de llamada" });
+  }
+});
+
+// Historial de llamadas del usuario autenticado
+chatRouter.get("/calls/historial", requireAuth, async (req, res) => {
+  try {
+    const nombre = getNombre(req);
+    if (!nombre) return res.status(401).json({ error: "No autenticado" });
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+
+    // Buscar llamadas donde el usuario fue iniciador o receptor
+    const todas = await prisma.chatLlamada.findMany({
+      where: {
+        OR: [
+          { iniciador: nombre },
+        ],
+      },
+      orderBy: { iniciadaEn: "desc" },
+      take: limit * 2,
+    });
+
+    // Filtrar también las donde es receptor
+    const mias = [];
+    for (const ll of todas) {
+      let receptoresArr = [];
+      try { receptoresArr = JSON.parse(ll.receptores); } catch (_) {}
+      const esReceptor = receptoresArr.includes(nombre);
+      if (ll.iniciador === nombre || esReceptor) {
+        mias.push({
+          id: ll.id,
+          room: ll.room,
+          iniciador: ll.iniciador,
+          receptores: receptoresArr,
+          tipo: ll.tipo,
+          estado: ll.estado,
+          iniciadaEn: ll.iniciadaEn,
+          aceptadaEn: ll.aceptadaEn,
+          finalizadaEn: ll.finalizadaEn,
+          duracionSegundos: ll.duracionSegundos,
+          fueIniciador: ll.iniciador === nombre,
+        });
+      }
+    }
+
+    res.json(mias.slice(0, limit));
+  } catch (e) {
+    res.status(500).json({ error: "Error obteniendo historial de llamadas" });
   }
 });
 
