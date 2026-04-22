@@ -1,3 +1,5 @@
+import { useMemo, useState } from "react";
+
 export default function GestionInventario({ contexto }) {
   const {
     inventoryFileInputRef,
@@ -49,7 +51,14 @@ export default function GestionInventario({ contexto }) {
     orderInventoryTransferMovements,
     orderInventoryTransferSummary,
     actionPermissions,
+    duplicateInventoryItem,
+    Copy,
+    inventoryColumns,
+    createInventoryColumn,
+    deleteInventoryColumn,
   } = contexto;
+
+  const [newColumnLabel, setNewColumnLabel] = useState("");
 
   const getTransferredUnits = (item) => (item?.transferTargets || []).reduce((sum, target) => sum + Number(target?.availableUnits || 0), 0);
   const getAvailableTransferUnits = (item) => Math.max(0, Number(item?.stockUnits || 0));
@@ -59,6 +68,10 @@ export default function GestionInventario({ contexto }) {
   const isCleaningInventoryTab = inventoryTab === INVENTORY_DOMAIN_CLEANING;
   const isOrderInventoryTab = inventoryTab === INVENTORY_DOMAIN_ORDERS;
   const showPresentationColumn = isBaseInventoryTab || isCleaningInventoryTab;
+  const currentInventoryColumns = useMemo(
+    () => (inventoryColumns || []).filter((column) => column.domain === inventoryTab),
+    [inventoryColumns, inventoryTab],
+  );
   const inventoryTitle = inventoryTab === INVENTORY_DOMAIN_CLEANING ? "Insumos de limpieza" : inventoryTab === INVENTORY_DOMAIN_ORDERS ? "Insumos para pedidos" : "Productos";
 
   function formatCleaningLocation(item) {
@@ -182,11 +195,59 @@ export default function GestionInventario({ contexto }) {
                 <button type="button" className="custom-board-menu-item" onClick={() => { setInventoryActionsMenuOpen(false); inventoryFileInputRef.current?.click(); }} disabled={!currentInventoryImportPermission}>
                   Importar CSV / Excel
                 </button>
+                {createInventoryColumn ? (
+                  <div className="custom-board-menu-item" style={{ display: "grid", gap: "0.45rem" }}>
+                    <input
+                      value={newColumnLabel}
+                      onChange={(event) => setNewColumnLabel(event.target.value)}
+                      placeholder="Nueva columna"
+                      disabled={!currentInventoryManagePermission}
+                    />
+                    <button
+                      type="button"
+                      className="icon-button"
+                      disabled={!currentInventoryManagePermission || !newColumnLabel.trim()}
+                      onClick={async () => {
+                        try {
+                          await createInventoryColumn({ domain: inventoryTab, label: newColumnLabel.trim() });
+                          setNewColumnLabel("");
+                          setInventoryActionsMenuOpen(false);
+                        } catch {
+                          // El toast de error se gestiona en App.jsx
+                        }
+                      }}
+                    >
+                      <Plus size={14} /> Agregar columna
+                    </button>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>
         </div>
       </article>
+      {currentInventoryColumns.length ? (
+        <article className="surface-card inventory-surface-card table-card">
+          <div className="card-header-row">
+            <div>
+              <h3>Columnas personalizadas</h3>
+              <p>Información adicional para {inventoryTitle.toLowerCase()}.</p>
+            </div>
+          </div>
+          <div className="saved-board-list board-builder-launch-list">
+            {currentInventoryColumns.map((column) => (
+              <span key={column.id} className="chip">
+                {column.label}
+                {deleteInventoryColumn ? (
+                  <button type="button" className="icon-button danger" onClick={() => deleteInventoryColumn(column.id)} disabled={!currentInventoryManagePermission}>
+                    <Trash2 size={13} />
+                  </button>
+                ) : null}
+              </span>
+            ))}
+          </div>
+        </article>
+      ) : null}
       <details className="inventory-stat-collapsible">
         <summary className="inventory-stat-summary">Indicadores</summary>
         <div className="inventory-stat-grid inventory-stat-grid-collapsed">
@@ -311,6 +372,7 @@ export default function GestionInventario({ contexto }) {
                     <th>{isBaseInventoryTab ? "Piezas por caja" : "Stock"}</th>
                     <th>{isBaseInventoryTab ? "Cajas por tarima" : "Ubicación / resguardo"}</th>
                     {showControlColumn ? <th>{isCleaningInventoryTab ? "Consumo / control" : "Control"}</th> : null}
+                    {currentInventoryColumns.map((column) => <th key={column.id}>{column.label}</th>)}
                     <th>Acciones</th>
                   </tr>
                 </thead>
@@ -332,12 +394,14 @@ export default function GestionInventario({ contexto }) {
                       {showControlColumn ? (
                         <td>{renderInventoryControlCell(item)}</td>
                       ) : null}
+                      {currentInventoryColumns.map((column) => <td key={`${item.id}-${column.id}`}>{item.customFields?.[column.key] || "-"}</td>)}
                       <td>
                         <div className="row-actions compact">
-                          {!isBaseInventoryTab ? <button type="button" className="icon-button" onClick={() => openInventoryRestockModal(item)} disabled={!currentInventoryManagePermission}><Plus size={15} /> Surtir</button> : null}
-                          {!isBaseInventoryTab ? <button type="button" className="icon-button" onClick={() => isOrderInventoryTab ? openOrderInventoryTransfer(item) : openInventoryMovement(item, INVENTORY_MOVEMENT_CONSUME)} disabled={!currentInventoryManagePermission}><ArrowUp size={15} /> {isOrderInventoryTab ? "Transferir" : "Descontar"}</button> : null}
-                          <button type="button" className="icon-button" onClick={() => openEditInventoryItem(item)} disabled={!currentInventoryManagePermission}><Pencil size={15} /> Editar</button>
-                          <button type="button" className="icon-button danger" onClick={() => setDeleteInventoryId(item.id)} disabled={!currentInventoryDeletePermission}><Trash2 size={15} /> Eliminar</button>
+                          {!isBaseInventoryTab ? <button type="button" className="icon-button" title="Surtir" onClick={() => openInventoryRestockModal(item)} disabled={!currentInventoryManagePermission}><Plus size={15} /></button> : null}
+                          {!isBaseInventoryTab ? <button type="button" className="icon-button" title={isOrderInventoryTab ? "Transferir" : "Descontar"} onClick={() => isOrderInventoryTab ? openOrderInventoryTransfer(item) : openInventoryMovement(item, INVENTORY_MOVEMENT_CONSUME)} disabled={!currentInventoryManagePermission}><ArrowUp size={15} /></button> : null}
+                          <button type="button" className="icon-button" title="Editar" onClick={() => openEditInventoryItem(item)} disabled={!currentInventoryManagePermission}><Pencil size={15} /></button>
+                          {duplicateInventoryItem ? <button type="button" className="icon-button" title="Duplicar artículo" onClick={() => duplicateInventoryItem(item.id)} disabled={!currentInventoryManagePermission}><Copy size={15} /></button> : null}
+                          <button type="button" className="icon-button danger" title="Eliminar" onClick={() => setDeleteInventoryId(item.id)} disabled={!currentInventoryDeletePermission}><Trash2 size={15} /></button>
                         </div>
                       </td>
                     </tr>

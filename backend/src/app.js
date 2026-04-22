@@ -114,6 +114,7 @@ const authLimiter = rateLimit({
   max: authRateLimitMaxRequests,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.method === "GET",
   handler: (req, res) => {
     auditSecurityEvent("rate_limited", req, { scope: "auth_login" });
     res.status(429).json({ message: "Demasiados intentos de autenticación. Intenta más tarde." });

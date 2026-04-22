@@ -1,7 +1,7 @@
 ﻿/* eslint-disable */
 import {
   BarChart3, LayoutDashboard, ClipboardList, CalendarDays, Package,
-  Users, PieChart, BookOpen, OctagonAlert,
+  Users, PieChart, BookOpen, OctagonAlert, ClipboardCheck,
 } from "lucide-react";
 
 export const STORAGE_KEY = "sicfla.almacen.state.v1";
@@ -24,6 +24,7 @@ export const PAGE_CUSTOM_BOARDS = "customBoards";
 export const PAGE_ADMIN = "admin";
 export const PAGE_DASHBOARD = "dashboard";
 export const PAGE_HISTORY = "history";
+export const PAGE_PROCESS_AUDITS = "processAudits";
 export const PAGE_INVENTORY = "inventory";
 export const PAGE_USERS = "users";
 export const PAGE_BIBLIOTECA = "biblioteca";
@@ -36,6 +37,7 @@ export const PAGE_ROUTE_SLUGS = {
   [PAGE_BOARD]: "creador-de-tableros",
   [PAGE_ADMIN]: "creador-de-tableros",
   [PAGE_HISTORY]: "historial",
+  [PAGE_PROCESS_AUDITS]: "auditorias-procesos",
   [PAGE_INVENTORY]: "inventario",
   [PAGE_USERS]: "administrador",
   [PAGE_BIBLIOTECA]: "biblioteca",
@@ -55,6 +57,8 @@ export const PAGE_ROUTE_ALIASES = {
   [PAGE_ADMIN]: PAGE_BOARD,
   historial: PAGE_HISTORY,
   [PAGE_HISTORY]: PAGE_HISTORY,
+  "auditorias-procesos": PAGE_PROCESS_AUDITS,
+  [PAGE_PROCESS_AUDITS]: PAGE_PROCESS_AUDITS,
   inventario: PAGE_INVENTORY,
   [PAGE_INVENTORY]: PAGE_INVENTORY,
   administrador: PAGE_USERS,
@@ -719,6 +723,7 @@ export const NAV_ITEMS = [
   { id: PAGE_CUSTOM_BOARDS,  label: "Mis tableros",         icon: LayoutDashboard, group: "General",    roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
   { id: PAGE_BOARD,          label: "Creador de tableros",  icon: ClipboardList,   group: "Producción", roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
   { id: PAGE_HISTORY,        label: "Historial",            icon: CalendarDays,    group: "Producción", roles: [ROLE_LEAD, ROLE_SR] },
+  { id: PAGE_PROCESS_AUDITS, label: "Auditorías",           icon: ClipboardCheck,  group: "Producción", roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
   { id: PAGE_INVENTORY,      label: "Inventario",           icon: Package,         group: "Producción", roles: [ROLE_LEAD, ROLE_SR] },
   { id: PAGE_BIBLIOTECA,    label: "Biblioteca",           icon: BookOpen,        group: "Recursos",   roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
   { id: PAGE_INCIDENCIAS,   label: "Incidencias",          icon: OctagonAlert,    group: "Recursos",   roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
@@ -767,6 +772,9 @@ export const ACTION_DEFINITIONS = [
   { id: "createIncidencia",       label: "Registrar incidencias",                  category: "Incidencias",           defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
   { id: "editIncidencia",         label: "Editar incidencias",                     category: "Incidencias",           defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "deleteIncidencia",       label: "Eliminar incidencias",                   category: "Incidencias",           defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "viewProcessAudits",      label: "Ver auditorías de procesos",             category: "Auditorías",            defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
+  { id: "manageProcessAudits",    label: "Gestionar auditorías de procesos",       category: "Auditorías",            defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
+  { id: "manageProcessAuditTemplates", label: "Gestionar plantillas de auditoría", category: "Auditorías",            defaultRoles: [ROLE_LEAD, ROLE_SR] },
 ];
 
 export const BOARD_PERMISSION_ACTION_IDS = new Set([
@@ -786,6 +794,7 @@ export const PAGE_ACTION_GROUPS = {
   [PAGE_BOARD]: ["createCatalog", "editCatalog", "deleteCatalog", "createBoard", "editBoard", "saveTemplate", "editTemplate", "deleteTemplate", "duplicateBoard", "duplicateBoardWithRows", "deleteBoard"],
   [PAGE_ADMIN]: [],
   [PAGE_HISTORY]: [],
+  [PAGE_PROCESS_AUDITS]: ["viewProcessAudits", "manageProcessAudits", "manageProcessAuditTemplates"],
   [PAGE_INVENTORY]: ["viewBaseInventory", "manageInventory", "deleteInventory", "importInventory", "viewCleaningInventory", "manageCleaningInventory", "deleteCleaningInventory", "importCleaningInventory", "viewOrderInventory", "manageOrderInventory", "deleteOrderInventory", "importOrderInventory"],
   [PAGE_USERS]: ["createUsers", "editUsers", "deleteUsers", "resetPasswords", "managePermissions"],
   [PAGE_BIBLIOTECA]: ["uploadBiblioteca", "deleteBiblioteca"],
@@ -821,7 +830,7 @@ export const RESPONSIBLE_VISUALS = {
 
 // ROLE_PERMISSION_MATRIX: por defecto todos los roles tienen acceso a todas las pestañas.
 // Los permisos reales se configuran manualmente en el panel de Permisos.
-export const ALL_PAGES = [PAGE_DASHBOARD, PAGE_CUSTOM_BOARDS, PAGE_BOARD, PAGE_HISTORY, PAGE_INVENTORY, PAGE_USERS, PAGE_BIBLIOTECA, PAGE_INCIDENCIAS];
+export const ALL_PAGES = [PAGE_DASHBOARD, PAGE_CUSTOM_BOARDS, PAGE_BOARD, PAGE_HISTORY, PAGE_PROCESS_AUDITS, PAGE_INVENTORY, PAGE_USERS, PAGE_BIBLIOTECA, PAGE_INCIDENCIAS];
 export const ALL_ACTION_IDS = ACTION_DEFINITIONS.map((item) => item.id);
 
 export const ROLE_PERMISSION_MATRIX = {

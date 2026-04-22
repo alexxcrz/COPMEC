@@ -45,6 +45,7 @@ import GestionInventario from "./paginas/GestionInventario";
 import GestionIncidencias from "./paginas/GestionIncidencias";
 import GestionUsuarios from "./paginas/GestionUsuarios";
 import HistorialSemanas from "./paginas/HistorialSemanas";
+import AuditoriasProcesos from "./paginas/AuditoriasProcesosCompact";
 import MisTableros from "./paginas/MisTableros";
 import PaginaNoEncontrada from "./paginas/PaginaNoEncontrada";
 import PanelIndicadores from "./paginas/PanelIndicadores";
@@ -116,7 +117,7 @@ import {
 
   ENABLE_LEGACY_WHOLE_STATE_SYNC,
 
-  PAGE_BOARD, PAGE_CUSTOM_BOARDS, PAGE_ADMIN, PAGE_DASHBOARD, PAGE_HISTORY,
+  PAGE_BOARD, PAGE_CUSTOM_BOARDS, PAGE_ADMIN, PAGE_DASHBOARD, PAGE_HISTORY, PAGE_PROCESS_AUDITS,
 
   PAGE_INVENTORY, PAGE_USERS, PAGE_BIBLIOTECA, PAGE_INCIDENCIAS, PAGE_NOT_FOUND,
 
@@ -310,6 +311,8 @@ import {
 
   supportsManagedPermissionOverrides, createUserModalState, getManagedUserIds, normalizeAreaOption,
 
+  splitAreaAndSubArea, joinAreaAndSubArea, getAreaRoot,
+
   normalizeBoardVisibilityType, normalizeBoardSharedDepartments, normalizeBoardAccessUserIds,
 
   getNormalizedBoardVisibility, getBoardAssignmentSummary, buildAreaCatalog,
@@ -404,7 +407,7 @@ function App() { // NOSONAR
   const [userRoleFilter, setUserRoleFilter] = useState("Todos los roles");
   const [usersViewTab, setUsersViewTab] = useState("table");
   const [passwordForm, setPasswordForm] = useState({ password: "", confirmPassword: "", message: "" });
-  const [areaModal, setAreaModal] = useState({ open: false, target: "user", name: "", error: "" });
+  const [areaModal, setAreaModal] = useState({ open: false, target: "user", name: "", parentArea: "", error: "" });
   const [controlBoardDraft, setControlBoardDraft] = useState(createEmptyBoardDraft);
   const [controlBoardFeedback, setControlBoardFeedback] = useState("");
   const [boardImportedRowsDraft, setBoardImportedRowsDraft] = useState([]);
@@ -1607,10 +1610,31 @@ function App() { // NOSONAR
     () => buildAreaCatalog(state.users, state.areaCatalog),
     [state.areaCatalog, state.users],
   );
+
+  // Root areas (no slash) for the first-level selector in the user modal
+  const rootAreaOptions = useMemo(
+    () => Array.from(new Set(departmentOptions.map((area) => getAreaRoot(area) || area))).filter(Boolean).sort((a, b) => a.localeCompare(b)),
+    [departmentOptions],
+  );
+
+  // Sub-areas for a given root area
+  const getSubAreaOptions = (rootArea) => {
+    const normalizedRoot = normalizeAreaOption(rootArea);
+    return departmentOptions
+      .filter((area) => {
+        const { area: r, subArea: s } = splitAreaAndSubArea(area);
+        return r === normalizedRoot && Boolean(s);
+      })
+      .map((area) => splitAreaAndSubArea(area).subArea);
+  };
+
   const userAreaOptions = useMemo(() => {
     if (!currentUser || currentUser.role === ROLE_LEAD) return departmentOptions;
-    const actorArea = normalizeAreaOption(getUserArea(currentUser));
-    return departmentOptions.filter((area) => area === actorArea);
+    const actorRoot = getAreaRoot(getUserArea(currentUser));
+    return departmentOptions.filter((area) => {
+      const r = getAreaRoot(area);
+      return !actorRoot || r === actorRoot;
+    });
   }, [currentUser, departmentOptions]);
 
   const activeCatalogItems = useMemo(
@@ -1672,19 +1696,21 @@ function App() { // NOSONAR
     });
   }, [state.activities, state.weeks, userMap]);
 
-  function handleAddAreaOption() {
+  function handleAddAreaOption(parentArea = "") {
     if (currentUser && currentUser.role !== ROLE_LEAD) {
       return;
     }
-    setAreaModal({ open: true, target: "user", name: "", error: "" });
+    setAreaModal({ open: true, target: "user", name: "", parentArea: parentArea || "", error: "" });
   }
 
   function handleAddAreaToBootstrap() {
-    setAreaModal({ open: true, target: "bootstrap", name: "", error: "" });
+    setAreaModal({ open: true, target: "bootstrap", name: "", parentArea: "", error: "" });
   }
 
   async function confirmAddArea() {
-    const nextArea = normalizeAreaOption(areaModal.name);
+    const nextArea = areaModal.parentArea
+      ? joinAreaAndSubArea(areaModal.parentArea, areaModal.name)
+      : normalizeAreaOption(areaModal.name);
     if (!nextArea) {
       setAreaModal((current) => ({ ...current, error: "Escribe el nombre del área." }));
       return;
@@ -1697,7 +1723,7 @@ function App() { // NOSONAR
     try {
       const result = await requestJson("/warehouse/areas", {
         method: "POST",
-        body: JSON.stringify({ name: nextArea }),
+        body: JSON.stringify({ name: areaModal.name, parentArea: areaModal.parentArea || "" }),
       });
       applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
     } catch (error) {
@@ -1708,10 +1734,15 @@ function App() { // NOSONAR
     if (areaModal.target === "bootstrap") {
       setBootstrapLeadForm((current) => ({ ...current, area: nextArea }));
     } else {
-      setUserModal((current) => ({ ...current, area: nextArea }));
+      // If parentArea is set, we're adding a subArea → preserve the root area and select subArea in modal
+      setUserModal((current) => ({
+        ...current,
+        area: areaModal.parentArea ? normalizeAreaOption(areaModal.parentArea) : nextArea,
+        subArea: areaModal.parentArea ? normalizeAreaOption(areaModal.name) : "",
+      }));
     }
 
-    setAreaModal({ open: false, target: "user", name: "", error: "" });
+    setAreaModal({ open: false, target: "user", name: "", parentArea: "", error: "" });
   }
 
   const normalizedPermissions = useMemo(
@@ -2566,6 +2597,8 @@ function App() { // NOSONAR
   function openCreateUser() {
     if (!actionPermissions.createUsers) return;
     const defaultRole = creatableRoles[0] || ROLE_JR;
+    const currentUserAreaFull = getUserArea(currentUser);
+    const { area: currentRootArea, subArea: currentSubArea } = splitAreaAndSubArea(currentUserAreaFull);
     const nextModal = createUserModalState({
       open: true,
       mode: "create",
@@ -2573,7 +2606,8 @@ function App() { // NOSONAR
       name: "",
       username: "",
       role: defaultRole,
-      area: getUserArea(currentUser),
+      area: currentRootArea,
+      subArea: currentSubArea,
       jobTitle: "",
       isActive: "true",
       password: "",
@@ -2587,6 +2621,8 @@ function App() { // NOSONAR
 
   function openEditUser(user) {
     if (!actionPermissions.editUsers) return;
+    const fullArea = getUserArea(user);
+    const { area: rootArea, subArea } = splitAreaAndSubArea(fullArea);
     const nextModal = createUserModalState({
       open: true,
       mode: "edit",
@@ -2594,7 +2630,8 @@ function App() { // NOSONAR
       name: user.name,
       username: user.email,
       role: user.role,
-      area: getUserArea(user),
+      area: rootArea,
+      subArea,
       jobTitle: getUserJobTitle(user),
       isActive: String(user.isActive),
       password: "",
@@ -2615,12 +2652,13 @@ function App() { // NOSONAR
       state.users || [],
       userModal.mode === "edit" ? userModal.id : null,
     );
+    const fullArea = joinAreaAndSubArea(userModal.area, userModal.subArea);
     const payload = {
       name: userModal.name.trim(),
       username: resolvedPlayerAccess,
       role: userModal.role,
-      area: userModal.area.trim(),
-      department: userModal.area.trim(),
+      area: fullArea,
+      department: fullArea,
       jobTitle: userModal.jobTitle.trim(),
       isActive: userModal.isActive === "true",
       managerId: userModal.managerId || currentUser?.id || null,
@@ -3639,6 +3677,11 @@ function App() { // NOSONAR
       activityCatalogIds: inventoryModal.domain === INVENTORY_DOMAIN_CLEANING ? normalizedActivityConsumptions.map((entry) => entry.catalogActivityId) : [],
       activityConsumptions: normalizedActivityConsumptions,
       consumptionPerStart: inventoryModal.domain === INVENTORY_DOMAIN_CLEANING ? Number(normalizedActivityConsumptions[0]?.quantity || 0) : 0,
+      customFields: Object.fromEntries(
+        Object.entries(inventoryModal.customFields || {})
+          .map(([key, value]) => [String(key || "").trim(), String(value || "").trim()])
+          .filter(([key]) => key),
+      ),
     };
 
     if (!payload.code || !payload.name) return;
@@ -4625,6 +4668,10 @@ function App() { // NOSONAR
     });
     return Array.from(existing).sort((a, b) => a.localeCompare(b, "es-MX"));
   }, [state.inventory]);
+  const inventoryCustomColumnsForModal = useMemo(
+    () => (state.inventoryColumns || []).filter((column) => column.domain === inventoryModal.domain),
+    [inventoryModal.domain, state.inventoryColumns],
+  );
   const shouldShowTransferTargetEmptyState = !hasOrderTransferTargets;
   const shouldShowTransferRemainingUnits = (movement) => movement.remainingUnits !== null;
   const shouldShowTransferMovementEmptyState = orderInventoryTransferMovements.length === 0;
@@ -4828,6 +4875,117 @@ function App() { // NOSONAR
     openEditUser,
     openFinishBoardRowConfirm,
     openInventoryMovement,
+    deleteArea: async (areaName) => {
+      try {
+        const result = await requestJson(`/warehouse/areas/${encodeURIComponent(areaName)}`, { method: "DELETE" });
+        applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      } catch (error) {
+        pushAppToast(error?.message || "No se pudo eliminar el área.", "danger");
+      }
+    },
+    handleAddAreaOption,
+    rootAreaOptions,
+    splitAreaAndSubArea,
+    inventoryColumns: Array.isArray(state.inventoryColumns) ? state.inventoryColumns : [],
+    createInventoryColumn: async (payload) => {
+      try {
+        const result = await requestJson("/warehouse/inventory/columns", {
+          method: "POST",
+          body: JSON.stringify(payload || {}),
+        });
+        applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+        pushAppToast("Columna de inventario creada.", "success");
+      } catch (error) {
+        pushAppToast(error?.message || "No se pudo crear la columna.", "danger");
+        throw error;
+      }
+    },
+    deleteInventoryColumn: async (columnId) => {
+      try {
+        const result = await requestJson(`/warehouse/inventory/columns/${columnId}`, { method: "DELETE" });
+        applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+        pushAppToast("Columna de inventario eliminada.", "success");
+      } catch (error) {
+        pushAppToast(error?.message || "No se pudo eliminar la columna.", "danger");
+        throw error;
+      }
+    },
+    duplicateInventoryItem: async (itemId) => {
+      try {
+        const result = await requestJson(`/warehouse/inventory/${itemId}/duplicate`, { method: "POST" });
+        applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+        pushAppToast("Artículo duplicado correctamente.", "success");
+      } catch (error) {
+        pushAppToast(error?.message || "No se pudo duplicar el artículo.", "danger");
+      }
+    },
+    processAuditTemplates: Array.isArray(state.processAuditTemplates) ? state.processAuditTemplates : [],
+    processAudits: Array.isArray(state.processAudits) ? state.processAudits : [],
+    upsertProcessAuditTemplate: async (payload) => {
+      try {
+        const result = await requestJson("/warehouse/process-audits/templates", {
+          method: "POST",
+          body: JSON.stringify(payload || {}),
+        });
+        applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+        return result.data.templateId;
+      } catch (error) {
+        throw error;
+      }
+    },
+    deleteProcessAuditTemplate: async (templateId) => {
+      try {
+        const result = await requestJson(`/warehouse/process-audits/templates/${templateId}`, { method: "DELETE" });
+        applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      } catch (error) {
+        throw error;
+      }
+    },
+    createProcessAudit: async (payload) => {
+      try {
+        const result = await requestJson("/warehouse/process-audits", {
+          method: "POST",
+          body: JSON.stringify(payload || {}),
+        });
+        applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+        return result.data.auditId;
+      } catch (error) {
+        throw error;
+      }
+    },
+    updateProcessAudit: async (auditId, payload) => {
+      try {
+        const result = await requestJson(`/warehouse/process-audits/${auditId}`, {
+          method: "PATCH",
+          body: JSON.stringify(payload || {}),
+        });
+        applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+        return result.data.auditId;
+      } catch (error) {
+        throw error;
+      }
+    },
+    addProcessAuditEvidence: async (auditId, payload) => {
+      try {
+        const result = await requestJson(`/warehouse/process-audits/${auditId}/evidences`, {
+          method: "POST",
+          body: JSON.stringify(payload || {}),
+        });
+        applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+        return result.data.evidenceId;
+      } catch (error) {
+        throw error;
+      }
+    },
+    removeProcessAuditEvidence: async (auditId, evidenceId) => {
+      try {
+        const result = await requestJson(`/warehouse/process-audits/${auditId}/evidences/${evidenceId}`, { method: "DELETE" });
+        applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+        return result.data.evidenceId;
+      } catch (error) {
+        throw error;
+      }
+    },
     Package,
     PAGE_CUSTOM_BOARDS,
     PAGE_DASHBOARD,
@@ -4842,6 +5000,7 @@ function App() { // NOSONAR
     PieChart,
     Play,
     Plus,
+    pushAppToast,
     requestJson,
     ROLE_LEAD,
     ROLE_JR,
@@ -5059,6 +5218,7 @@ function App() { // NOSONAR
         {page === PAGE_CUSTOM_BOARDS ? <MisTableros contexto={paginasContexto} /> : null}
         {page === PAGE_DASHBOARD ? <PanelIndicadores contexto={paginasContexto} /> : null}
         {page === PAGE_HISTORY ? <HistorialSemanas contexto={paginasContexto} /> : null}
+        {page === PAGE_PROCESS_AUDITS ? <AuditoriasProcesos contexto={paginasContexto} /> : null}
         {page === PAGE_INVENTORY ? <GestionInventario contexto={paginasContexto} /> : null}
         {page === PAGE_USERS ? <GestionUsuarios contexto={paginasContexto} /> : null}
         {page === PAGE_BIBLIOTECA ? <BibliotecaPage currentUser={currentUser} canUpload={actionPermissions.uploadBiblioteca} canDelete={actionPermissions.deleteBiblioteca} /> : null}
@@ -5176,14 +5336,20 @@ function App() { // NOSONAR
         </div>
       </Modal>
 
-      <Modal open={areaModal.open} backdropClassName="area-modal-backdrop" title="Agregar área" confirmLabel="Guardar área" cancelLabel="Cancelar" onClose={() => setAreaModal({ open: false, target: "user", name: "", error: "" })} onConfirm={confirmAddArea}>
+      <Modal open={areaModal.open} backdropClassName="area-modal-backdrop" title={areaModal.parentArea ? "Agregar subárea" : "Agregar área"} confirmLabel={areaModal.parentArea ? "Guardar subárea" : "Guardar área"} cancelLabel="Cancelar" onClose={() => setAreaModal({ open: false, target: "user", name: "", parentArea: "", error: "" })} onConfirm={confirmAddArea}>
         <div className="modal-form-grid">
+          {areaModal.parentArea ? (
+            <label className="app-modal-field">
+              <span>Área padre</span>
+              <input value={areaModal.parentArea} readOnly />
+            </label>
+          ) : null}
           <label className="app-modal-field">
-            <span>Nombre del área</span>
-            <input value={areaModal.name} onChange={(event) => setAreaModal((current) => ({ ...current, name: event.target.value, error: "" }))} placeholder="Ej: LOGISTICA" />
+            <span>{areaModal.parentArea ? "Nombre de la subárea" : "Nombre del área"}</span>
+            <input value={areaModal.name} onChange={(event) => setAreaModal((current) => ({ ...current, name: event.target.value, error: "" }))} placeholder={areaModal.parentArea ? "Ej: TURNO MAÑANA" : "Ej: LOGISTICA"} />
           </label>
           {areaModal.error ? <p className="validation-text">{areaModal.error}</p> : null}
-          <p className="modal-footnote">La nueva área se agregará al catálogo y se seleccionará automáticamente.</p>
+          <p className="modal-footnote">{areaModal.parentArea ? `La nueva subárea se creará bajo ${areaModal.parentArea}.` : "La nueva área se agregará al catálogo y se seleccionará automáticamente."}</p>
         </div>
       </Modal>
 
@@ -5225,13 +5391,25 @@ function App() { // NOSONAR
             <label className="app-modal-field">
               <span>Área</span>
               <div className="area-selector-row">
-                <select value={userModal.area} onChange={(event) => setUserModal((current) => ({ ...current, area: event.target.value }))}>
+                <select value={userModal.area} onChange={(event) => setUserModal((current) => ({ ...current, area: event.target.value, subArea: "" }))}>
                   <option value="">Seleccionar área...</option>
-                  {userAreaOptions.map((area) => <option key={area} value={area}>{area}</option>)}
+                  {(currentUser?.role === ROLE_LEAD ? rootAreaOptions : Array.from(new Set(userAreaOptions.map((a) => getAreaRoot(a) || a))).filter(Boolean)).map((area) => <option key={area} value={area}>{area}</option>)}
                 </select>
-                {currentUser?.role === ROLE_LEAD ? <button type="button" className="icon-button area-add-button" onClick={handleAddAreaOption} aria-label="Agregar nueva área"><Plus size={16} /></button> : null}
+                {currentUser?.role === ROLE_LEAD ? <button type="button" className="icon-button area-add-button" onClick={() => handleAddAreaOption()} aria-label="Agregar nueva área"><Plus size={16} /></button> : null}
               </div>
             </label>
+            {userModal.area ? (
+              <label className="app-modal-field">
+                <span>Subárea <small style={{ fontWeight: 400, opacity: 0.65 }}>(opcional)</small></span>
+                <div className="area-selector-row">
+                  <select value={userModal.subArea} onChange={(event) => setUserModal((current) => ({ ...current, subArea: event.target.value }))}>
+                    <option value="">Sin subárea</option>
+                    {getSubAreaOptions(userModal.area).map((sub) => <option key={sub} value={sub}>{sub}</option>)}
+                  </select>
+                  {currentUser?.role === ROLE_LEAD ? <button type="button" className="icon-button area-add-button" onClick={() => handleAddAreaOption(userModal.area)} aria-label="Agregar nueva subárea"><Plus size={16} /></button> : null}
+                </div>
+              </label>
+            ) : null}
             <label className="app-modal-field">
               <span>Cargo</span>
               <input value={userModal.jobTitle} onChange={(event) => setUserModal((current) => ({ ...current, jobTitle: event.target.value }))} placeholder="Ej: Encargado de Mejora Continua" />
@@ -5691,6 +5869,22 @@ function App() { // NOSONAR
               </label>
             </>
           )}
+          {inventoryCustomColumnsForModal.map((column) => (
+            <label key={column.id} className="app-modal-field">
+              <span>{column.label}</span>
+              <input
+                value={inventoryModal.customFields?.[column.key] || ""}
+                onChange={(event) => setInventoryModal((current) => ({
+                  ...current,
+                  customFields: {
+                    ...(current.customFields || {}),
+                    [column.key]: event.target.value,
+                  },
+                }))}
+                placeholder={`Captura ${String(column.label || "dato").toLowerCase()}`}
+              />
+            </label>
+          ))}
           {shouldShowCleaningLinkFields ? (
             <>
               <label className="app-modal-field">

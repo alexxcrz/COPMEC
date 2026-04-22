@@ -34,6 +34,7 @@ const PAGE_PERMISSIONS = {
   admin: [ROLE_LEAD, ROLE_SR],
   dashboard: [ROLE_LEAD, ROLE_SR, ROLE_SSR],
   history: [ROLE_LEAD, ROLE_SR],
+  processAudits: [ROLE_LEAD, ROLE_SR, ROLE_SSR],
   inventory: [ROLE_LEAD, ROLE_SR],
   users: [ROLE_LEAD, ROLE_SR, ROLE_SSR],
   biblioteca: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
@@ -83,6 +84,9 @@ const ACTION_PERMISSIONS = {
   createIncidencia:        [ROLE_LEAD, ROLE_SR, ROLE_SSR],
   editIncidencia:          [ROLE_LEAD, ROLE_SR],
   deleteIncidencia:        [ROLE_LEAD, ROLE_SR],
+  viewProcessAudits:       [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  manageProcessAudits:     [ROLE_LEAD, ROLE_SR, ROLE_SSR],
+  manageProcessAuditTemplates: [ROLE_LEAD, ROLE_SR],
 };
 
 function normalizeRole(role) {
@@ -676,6 +680,11 @@ function normalizeInventoryItemRecord(item, fallbackId = null) {
   const activityConsumptions = domain === "cleaning"
     ? normalizeInventoryActivityConsumptions(item?.activityConsumptions, item?.activityCatalogIds, fallbackConsumptionPerStart)
     : [];
+  const customFields = item?.customFields && typeof item.customFields === "object"
+    ? Object.fromEntries(Object.entries(item.customFields)
+      .map(([key, value]) => [String(key || "").trim(), String(value || "").trim()])
+      .filter(([key]) => key))
+    : {};
   return {
     id: fallbackId || item?.id || makeId("inv"),
     code: String(item?.code || "").trim(),
@@ -694,6 +703,7 @@ function normalizeInventoryItemRecord(item, fallbackId = null) {
     activityCatalogIds: activityConsumptions.map((entry) => entry.catalogActivityId),
     activityConsumptions,
     consumptionPerStart: fallbackConsumptionPerStart,
+    customFields,
   };
 }
 
@@ -868,6 +878,17 @@ function normalizeState(state, previousState = null) {
       };
     }),
     inventoryItems: Array.isArray(state.inventoryItems) ? state.inventoryItems.map((item) => normalizeInventoryItemRecord(item, item?.id)) : getDefaultInventoryItems(),
+    inventoryColumns: Array.isArray(state.inventoryColumns)
+      ? state.inventoryColumns
+        .map((entry) => ({
+          id: String(entry?.id || makeId("invcol")).trim(),
+          domain: normalizeInventoryDomain(entry?.domain),
+          label: String(entry?.label || "").trim(),
+          key: String(entry?.key || "").trim(),
+          createdAt: entry?.createdAt || new Date().toISOString(),
+        }))
+        .filter((entry) => entry.label && entry.key)
+      : [],
     inventoryMovements: Array.isArray(state.inventoryMovements) ? state.inventoryMovements.map((movement) => normalizeInventoryMovementRecord(movement, null, movement?.id)) : [],
     catalog: Array.isArray(state.catalog) && state.catalog.length
       ? state.catalog.map((item) => sanitizeCatalogItemDraft(item, item?.id))
@@ -912,6 +933,10 @@ function normalizeState(state, previousState = null) {
     bibliotecaFiles: Array.isArray(state.bibliotecaFiles) ? state.bibliotecaFiles : [],
     bibliotecaNotifications: Array.isArray(state.bibliotecaNotifications) ? state.bibliotecaNotifications : [],
     customRoles: Array.isArray(state.customRoles) ? state.customRoles : [],
+    processAuditTemplates: Array.isArray(state.processAuditTemplates) && state.processAuditTemplates.length
+      ? state.processAuditTemplates
+      : getDefaultProcessAuditTemplates(),
+    processAudits: Array.isArray(state.processAudits) ? state.processAudits : [],
     incidencias: Array.isArray(state.incidencias) ? state.incidencias : [],
     incidenciaNotifications: Array.isArray(state.incidenciaNotifications) ? state.incidenciaNotifications : [],
   };
@@ -1200,6 +1225,7 @@ function buildSampleState() {
       { id: "cat-rampas", name: "Revisión de rampas", timeLimitMinutes: 35, isMandatory: false, isDeleted: false, frequency: "weekly", category: "Seguridad" },
     ],
     inventoryItems: getDefaultInventoryItems(),
+    inventoryColumns: [],
     inventoryMovements: [],
     activities: [],
     pauseLogs: [],
@@ -1210,8 +1236,139 @@ function buildSampleState() {
     permissions: buildDefaultPermissions(),
     auditLog: [],
     controlBoards: [],
+    processAuditTemplates: getDefaultProcessAuditTemplates(),
+    processAudits: [],
     updatedAt: new Date().toISOString(),
   };
+}
+
+function getDefaultProcessAuditTemplates() {
+  const defaults = [
+    {
+      area: "Inventario",
+      process: "Revisión",
+      questions: [
+        { type: "yesno", text: "¿El proceso sigue el estándar vigente?", required: true },
+        { type: "yesno", text: "¿La captura coincide con la evidencia física?", required: true },
+        { type: "text", text: "Hallazgo principal", required: false, placeholder: "Describe la desviación o mejora" },
+      ],
+    },
+    {
+      area: "Inventario",
+      process: "Acomodo",
+      questions: [
+        { type: "yesno", text: "¿Los pasillos están libres y señalizados?", required: true },
+        { type: "yesno", text: "¿Se respeta FIFO/PEPS en el acomodo?", required: true },
+        { type: "text", text: "Observación de acomodo", required: false, placeholder: "Ej. rack 4 con producto fuera de ubicación" },
+      ],
+    },
+    {
+      area: "Inventario",
+      process: "Recepción",
+      questions: [
+        { type: "yesno", text: "¿La mercancía llegó sin daño visible?", required: true },
+        { type: "yesno", text: "¿La cantidad coincide con el documento?", required: true },
+        { type: "text", text: "Incidencia en recepción", required: false, placeholder: "Describe faltantes, daños o bloqueos" },
+      ],
+    },
+    {
+      area: "Inventario",
+      process: "Devoluciones",
+      questions: [
+        { type: "yesno", text: "¿La devolución fue identificada y separada?", required: true },
+        { type: "yesno", text: "¿Se registró el motivo correctamente?", required: true },
+        { type: "text", text: "Detalle de devolución", required: false, placeholder: "Cliente, lote o causa" },
+      ],
+    },
+    {
+      area: "Inventario",
+      process: "Reingresos",
+      questions: [
+        { type: "yesno", text: "¿El producto reingresado cumple condición aceptable?", required: true },
+        { type: "yesno", text: "¿El reingreso quedó documentado?", required: true },
+        { type: "text", text: "Observación de reingreso", required: false, placeholder: "Indica lote, ubicación o restricción" },
+      ],
+    },
+    {
+      area: "Inventario",
+      process: "Traspasos",
+      questions: [
+        { type: "yesno", text: "¿El origen y destino están validados?", required: true },
+        { type: "yesno", text: "¿La cantidad traspasada coincide?", required: true },
+        { type: "text", text: "Comentario del traspaso", required: false, placeholder: "Explica diferencias o bloqueos" },
+      ],
+    },
+    {
+      area: "Limpieza",
+      process: "General",
+      questions: [
+        { type: "yesno", text: "¿El área quedó limpia y ordenada?", required: true },
+        { type: "yesno", text: "¿Se usaron los insumos correctos?", required: true },
+        { type: "text", text: "Pendiente detectado", required: false, placeholder: "Zona, insumo o seguimiento" },
+      ],
+    },
+    {
+      area: "Limpieza",
+      process: "Limpieza de naves",
+      questions: [
+        { type: "yesno", text: "¿Se limpiaron pasillos, racks y esquinas?", required: true },
+        { type: "yesno", text: "¿No quedan residuos o derrames?", required: true },
+        { type: "text", text: "Hallazgo en nave", required: false, placeholder: "Indica zona y acción requerida" },
+      ],
+    },
+    {
+      area: "Limpieza",
+      process: "Oficinas y baños",
+      questions: [
+        { type: "yesno", text: "¿Se sanitizaron superficies de contacto?", required: true },
+        { type: "yesno", text: "¿Hay insumos suficientes y repuestos?", required: true },
+        { type: "text", text: "Observación de sanitización", required: false, placeholder: "Indica faltante o corrección" },
+      ],
+    },
+    {
+      area: "Pedidos",
+      process: "Picking",
+      questions: [
+        { type: "yesno", text: "¿El surtido coincide contra el pedido?", required: true },
+        { type: "yesno", text: "¿El empaque final es correcto?", required: true },
+        { type: "text", text: "Observación de picking", required: false, placeholder: "SKU, caja o tiempo detectado" },
+      ],
+    },
+    {
+      area: "Pedidos",
+      process: "Clientes",
+      questions: [
+        { type: "yesno", text: "¿La preparación cumple prioridad y ventana?", required: true },
+        { type: "yesno", text: "¿Se validó documentación y salida?", required: true },
+        { type: "text", text: "Comentario del pedido", required: false, placeholder: "Anota bloqueo o ajuste" },
+      ],
+    },
+    {
+      area: "Pedidos",
+      process: "Paqueterías",
+      questions: [
+        { type: "yesno", text: "¿La guía y el bulto coinciden?", required: true },
+        { type: "yesno", text: "¿El cierre fue registrado sin incidencias?", required: true },
+        { type: "text", text: "Detalle de paquetería", required: false, placeholder: "Transportista, guía o incidencia" },
+      ],
+    },
+  ];
+
+  return defaults.map((item) => ({
+    id: makeId("pat"),
+    area: String(item.area || "").trim(),
+    process: String(item.process || "").trim(),
+    isActive: true,
+    questions: (item.questions || []).map((question) => ({
+      id: makeId("patq"),
+      type: question.type === "text" ? "text" : "yesno",
+      text: String(question.text || "").trim(),
+      required: Boolean(question.required),
+      placeholder: String(question.placeholder || "").trim(),
+    })),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }));
 }
 
 function ensureStore() {
@@ -1239,12 +1396,12 @@ function getStateBackupFilePaths() {
 
   return fs.readdirSync(backupDirectory)
     .filter((fileName) => fileName.startsWith("warehouse-state-") && fileName.endsWith(".json"))
-    .sort()
     .map((fileName) => path.join(backupDirectory, fileName));
 }
 
 function pruneStateBackups() {
   const backupPaths = getStateBackupFilePaths();
+
   const excessCount = backupPaths.length - MAX_WAREHOUSE_STATE_BACKUPS;
   if (excessCount <= 0) {
     return;
@@ -2044,7 +2201,30 @@ function normalizeKey(value) {
 }
 
 function normalizeAreaOption(area) {
-  return String(area || "").trim().toUpperCase();
+  return String(area || "")
+    .trim()
+    .toUpperCase()
+    .replaceAll("\\", "/")
+    .replaceAll(" - ", " / ")
+    .replaceAll(" > ", " / ")
+    .replace(/\s*\/\s*/g, " / ");
+}
+
+function splitAreaAndSubArea(areaValue) {
+  const normalizedValue = normalizeAreaOption(areaValue);
+  if (!normalizedValue) return { area: "", subArea: "" };
+  const parts = normalizedValue.split("/").map((entry) => String(entry || "").trim()).filter(Boolean);
+  return {
+    area: parts[0] || "",
+    subArea: parts.length > 1 ? parts.slice(1).join(" / ") : "",
+  };
+}
+
+function buildAreaWithSubArea(area, subArea = "") {
+  const normalizedArea = normalizeAreaOption(area);
+  const normalizedSubArea = normalizeAreaOption(subArea);
+  if (!normalizedArea) return "";
+  return normalizedSubArea ? `${normalizedArea} / ${normalizedSubArea}` : normalizedArea;
 }
 
 function normalizeBoardVisibilityType(value) {
@@ -2393,7 +2573,7 @@ export function createWarehouseInventoryMovement(auth, payload) {
   };
 }
 
-export function addWarehouseArea(auth, areaName) {
+export function addWarehouseArea(auth, areaName, parentArea = "") {
   const currentUser = findWarehouseUserById(auth?.userId);
   if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
 
@@ -2402,7 +2582,10 @@ export function addWarehouseArea(auth, areaName) {
     return { ok: false, reason: "forbidden" };
   }
 
-  const nextArea = normalizeAreaOption(areaName);
+  const normalizedParentArea = String(parentArea || "").trim();
+  const nextArea = normalizedParentArea
+    ? buildAreaWithSubArea(normalizedParentArea, areaName)
+    : normalizeAreaOption(areaName);
   if (!nextArea) return { ok: false, reason: "invalid_payload" };
   const nextCatalog = buildAreaCatalogEntries(currentState.users, (currentState.areaCatalog || []).concat(nextArea));
   if ((currentState.areaCatalog || []).includes(nextArea)) {
@@ -2415,6 +2598,417 @@ export function addWarehouseArea(auth, areaName) {
   };
 
   return { ok: true, state: replaceWarehouseState(nextState), area: nextArea };
+}
+
+export function removeWarehouseArea(auth, areaName) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const currentState = getRawWarehouseState();
+  if (!canUserDoWarehouseAction(currentUser, "editUsers", currentState.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const normalizedTarget = normalizeAreaOption(areaName);
+  if (!normalizedTarget) return { ok: false, reason: "invalid_payload" };
+
+  const { area: rootArea, subArea } = splitAreaAndSubArea(normalizedTarget);
+  const deletingRootArea = !subArea;
+  const currentCatalog = Array.isArray(currentState.areaCatalog) ? currentState.areaCatalog : [];
+
+  const nextCatalog = currentCatalog.filter((entry) => {
+    const normalizedEntry = normalizeAreaOption(entry);
+    if (!normalizedEntry) return false;
+    if (deletingRootArea) {
+      return normalizedEntry !== rootArea && !normalizedEntry.startsWith(`${rootArea} / `);
+    }
+    return normalizedEntry !== normalizedTarget;
+  });
+
+  if (nextCatalog.length === currentCatalog.length) {
+    return { ok: false, reason: "area_not_found" };
+  }
+
+  const nextUsers = (currentState.users || []).map((user) => {
+    const userArea = normalizeAreaOption(user.area || user.department || "");
+    if (!userArea) return user;
+
+    if (deletingRootArea) {
+      if (userArea === rootArea || userArea.startsWith(`${rootArea} / `)) {
+        return { ...user, area: "", department: "" };
+      }
+      return user;
+    }
+
+    if (userArea === normalizedTarget) {
+      return { ...user, area: rootArea, department: rootArea };
+    }
+    return user;
+  });
+
+  const nextState = {
+    ...currentState,
+    users: nextUsers,
+    areaCatalog: nextCatalog,
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState), removedArea: normalizedTarget };
+}
+
+export function duplicateWarehouseInventoryItem(auth, itemId) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const currentState = getRawWarehouseState();
+  const sourceItem = (currentState.inventoryItems || []).find((entry) => entry.id === itemId);
+  if (!sourceItem) return { ok: false, reason: "item_not_found" };
+  if (!canUserDoWarehouseAction(currentUser, getInventoryManageActionId(sourceItem.domain), currentState.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const existingCodes = new Set((currentState.inventoryItems || []).map((entry) => normalizeKey(entry.code)));
+  const baseCode = String(sourceItem.code || "").trim() || "ITEM";
+  let copyCode = `${baseCode}-COPY`;
+  let copyCounter = 2;
+  while (existingCodes.has(normalizeKey(copyCode))) {
+    copyCode = `${baseCode}-COPY-${copyCounter}`;
+    copyCounter += 1;
+  }
+
+  const duplicateItem = sanitizeInventoryItemDraft({
+    ...sourceItem,
+    id: makeId("inv"),
+    code: copyCode,
+  });
+
+  const sourceIndex = (currentState.inventoryItems || []).findIndex((entry) => entry.id === sourceItem.id);
+  const nextInventoryItems = [...(currentState.inventoryItems || [])];
+  nextInventoryItems.splice(sourceIndex + 1, 0, duplicateItem);
+
+  const nextState = {
+    ...currentState,
+    inventoryItems: nextInventoryItems,
+  };
+
+  return {
+    ok: true,
+    state: replaceWarehouseState(nextState),
+    itemId: duplicateItem.id,
+    itemCode: duplicateItem.code,
+    sourceItemId: sourceItem.id,
+  };
+}
+
+export function createWarehouseInventoryColumn(auth, payload = {}) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const currentState = getRawWarehouseState();
+  if (!canUserDoWarehouseAction(currentUser, "manageInventory", currentState.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const domain = normalizeInventoryDomain(payload?.domain);
+  const label = String(payload?.label || "").trim();
+  if (!label) return { ok: false, reason: "invalid_payload" };
+
+  const nextKeyBase = normalizeKey(payload?.key || label).replace(/[^a-z0-9]/g, "");
+  const keySeed = nextKeyBase || "campo";
+  const existingKeys = new Set((currentState.inventoryColumns || [])
+    .filter((entry) => normalizeInventoryDomain(entry.domain) === domain)
+    .map((entry) => String(entry.key || "").trim().toLowerCase()));
+
+  let key = keySeed;
+  let index = 2;
+  while (existingKeys.has(key)) {
+    key = `${keySeed}${index}`;
+    index += 1;
+  }
+
+  const column = {
+    id: makeId("invcol"),
+    domain,
+    label,
+    key,
+    createdAt: new Date().toISOString(),
+  };
+
+  const nextState = {
+    ...currentState,
+    inventoryColumns: [...(currentState.inventoryColumns || []), column],
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState), column };
+}
+
+export function deleteWarehouseInventoryColumn(auth, columnId) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const currentState = getRawWarehouseState();
+  if (!canUserDoWarehouseAction(currentUser, "manageInventory", currentState.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const currentColumns = currentState.inventoryColumns || [];
+  const target = currentColumns.find((entry) => entry.id === columnId);
+  if (!target) return { ok: false, reason: "column_not_found" };
+
+  const nextColumns = currentColumns.filter((entry) => entry.id !== columnId);
+  const nextItems = (currentState.inventoryItems || []).map((item) => {
+    const nextCustomFields = { ...(item.customFields || {}) };
+    delete nextCustomFields[target.key];
+    return normalizeInventoryItemRecord({
+      ...item,
+      customFields: nextCustomFields,
+    }, item.id);
+  });
+
+  const nextState = {
+    ...currentState,
+    inventoryColumns: nextColumns,
+    inventoryItems: nextItems,
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState), columnId };
+}
+
+function normalizeProcessAuditQuestion(question = {}, fallbackId = null) {
+  return {
+    id: fallbackId || String(question?.id || makeId("paqq")).trim(),
+    type: question?.type === "text" ? "text" : "yesno",
+    text: String(question?.text || "").trim(),
+    required: Boolean(question?.required),
+    placeholder: String(question?.placeholder || "").trim(),
+  };
+}
+
+function normalizeProcessAuditTemplate(template = {}, fallbackId = null) {
+  return {
+    id: fallbackId || String(template?.id || makeId("pat")).trim(),
+    area: String(template?.area || "").trim(),
+    process: String(template?.process || "").trim(),
+    isActive: template?.isActive !== false,
+    questions: (Array.isArray(template?.questions) ? template.questions : [])
+      .map((question) => normalizeProcessAuditQuestion(question, question?.id || null))
+      .filter((question) => question.text),
+    createdAt: template?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export function upsertProcessAuditTemplate(auth, payload = {}) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const currentState = getRawWarehouseState();
+  if (!canUserDoWarehouseAction(currentUser, "manageProcessAuditTemplates", currentState.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const normalizedTemplate = normalizeProcessAuditTemplate(payload, payload?.id || null);
+  if (!normalizedTemplate.area || !normalizedTemplate.process || !normalizedTemplate.questions.length) {
+    return { ok: false, reason: "invalid_payload" };
+  }
+
+  const currentTemplates = currentState.processAuditTemplates || [];
+  const existingIndex = currentTemplates.findIndex((entry) => entry.id === normalizedTemplate.id);
+  const nextTemplates = existingIndex >= 0
+    ? currentTemplates.map((entry, index) => (index === existingIndex ? { ...entry, ...normalizedTemplate, updatedAt: new Date().toISOString() } : entry))
+    : [normalizedTemplate, ...currentTemplates];
+
+  const nextState = {
+    ...currentState,
+    processAuditTemplates: nextTemplates,
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState), templateId: normalizedTemplate.id };
+}
+
+export function deleteProcessAuditTemplate(auth, templateId) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const currentState = getRawWarehouseState();
+  if (!canUserDoWarehouseAction(currentUser, "manageProcessAuditTemplates", currentState.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const currentTemplates = currentState.processAuditTemplates || [];
+  if (!currentTemplates.some((entry) => entry.id === templateId)) {
+    return { ok: false, reason: "template_not_found" };
+  }
+
+  const nextState = {
+    ...currentState,
+    processAuditTemplates: currentTemplates.filter((entry) => entry.id !== templateId),
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState), templateId };
+}
+
+export function createProcessAudit(auth, payload = {}) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const currentState = getRawWarehouseState();
+  if (!canUserDoWarehouseAction(currentUser, "manageProcessAudits", currentState.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const area = String(payload?.area || "").trim();
+  const process = String(payload?.process || "").trim();
+  if (!area || !process) return { ok: false, reason: "invalid_payload" };
+
+  const template = payload?.templateId
+    ? (currentState.processAuditTemplates || []).find((entry) => entry.id === payload.templateId)
+    : null;
+  const sourceQuestions = Array.isArray(payload?.questions) && payload.questions.length
+    ? payload.questions
+    : (template?.questions || []);
+
+  const questions = sourceQuestions
+    .map((question) => normalizeProcessAuditQuestion(question, question?.id || makeId("paq")))
+    .filter((question) => question.text)
+    .map((question) => ({
+      ...question,
+      answer: question.type === "yesno" ? null : "",
+    }));
+
+  if (!questions.length) return { ok: false, reason: "invalid_payload" };
+
+  const startedAt = new Date().toISOString();
+  const audit = {
+    id: makeId("auditp"),
+    area,
+    process,
+    templateId: template?.id || null,
+    status: "open",
+    startedAt,
+    closedAt: null,
+    auditorId: currentUser.id,
+    auditorName: currentUser.name,
+    questions,
+    evidences: [],
+    notes: String(payload?.notes || "").trim(),
+    updatedAt: startedAt,
+  };
+
+  const nextState = {
+    ...currentState,
+    processAudits: [audit, ...(currentState.processAudits || [])],
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState), auditId: audit.id };
+}
+
+export function updateProcessAudit(auth, auditId, payload = {}) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const currentState = getRawWarehouseState();
+  const existingAudit = (currentState.processAudits || []).find((entry) => entry.id === auditId);
+  if (!existingAudit) return { ok: false, reason: "audit_not_found" };
+  if (!canUserDoWarehouseAction(currentUser, "manageProcessAudits", currentState.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const nextQuestions = Array.isArray(payload?.questions)
+    ? payload.questions.map((question) => {
+      const previousQuestion = (existingAudit.questions || []).find((entry) => entry.id === question.id) || {};
+      const normalizedQuestion = normalizeProcessAuditQuestion({ ...previousQuestion, ...question }, question.id || previousQuestion.id || null);
+      return {
+        ...normalizedQuestion,
+        answer: normalizedQuestion.type === "yesno"
+          ? (question?.answer === true ? true : question?.answer === false ? false : null)
+          : String(question?.answer ?? "").trim(),
+      };
+    })
+    : existingAudit.questions;
+
+  const shouldClose = payload?.status === "closed";
+  const nextAudit = {
+    ...existingAudit,
+    area: payload?.area !== undefined ? String(payload.area || "").trim() : existingAudit.area,
+    process: payload?.process !== undefined ? String(payload.process || "").trim() : existingAudit.process,
+    notes: payload?.notes !== undefined ? String(payload.notes || "").trim() : existingAudit.notes,
+    status: shouldClose ? "closed" : "open",
+    closedAt: shouldClose ? (existingAudit.closedAt || new Date().toISOString()) : null,
+    questions: nextQuestions,
+    updatedAt: new Date().toISOString(),
+  };
+
+  const nextState = {
+    ...currentState,
+    processAudits: (currentState.processAudits || []).map((entry) => (entry.id === auditId ? nextAudit : entry)),
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState), auditId };
+}
+
+export function addProcessAuditEvidence(auth, auditId, payload = {}) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const currentState = getRawWarehouseState();
+  if (!canUserDoWarehouseAction(currentUser, "manageProcessAudits", currentState.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const audit = (currentState.processAudits || []).find((entry) => entry.id === auditId);
+  if (!audit) return { ok: false, reason: "audit_not_found" };
+
+  const url = String(payload?.url || payload?.fileUrl || "").trim();
+  if (!url) return { ok: false, reason: "invalid_payload" };
+
+  const evidence = {
+    id: makeId("audev"),
+    url,
+    thumbnailUrl: String(payload?.thumbnailUrl || payload?.fileThumbUrl || url).trim(),
+    name: String(payload?.name || payload?.originalName || "Evidencia").trim(),
+    mimeType: String(payload?.mimeType || payload?.fileMimeType || "").trim(),
+    createdAt: new Date().toISOString(),
+    uploadedById: currentUser.id,
+    uploadedByName: currentUser.name,
+  };
+
+  const nextState = {
+    ...currentState,
+    processAudits: (currentState.processAudits || []).map((entry) => (
+      entry.id === auditId
+        ? { ...entry, evidences: [evidence, ...(entry.evidences || [])], updatedAt: new Date().toISOString() }
+        : entry
+    )),
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState), auditId, evidenceId: evidence.id };
+}
+
+export function removeProcessAuditEvidence(auth, auditId, evidenceId) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const currentState = getRawWarehouseState();
+  if (!canUserDoWarehouseAction(currentUser, "manageProcessAudits", currentState.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const audit = (currentState.processAudits || []).find((entry) => entry.id === auditId);
+  if (!audit) return { ok: false, reason: "audit_not_found" };
+
+  const nextEvidences = (audit.evidences || []).filter((entry) => entry.id !== evidenceId);
+  if (nextEvidences.length === (audit.evidences || []).length) return { ok: false, reason: "evidence_not_found" };
+
+  const nextState = {
+    ...currentState,
+    processAudits: (currentState.processAudits || []).map((entry) => (
+      entry.id === auditId
+        ? { ...entry, evidences: nextEvidences, updatedAt: new Date().toISOString() }
+        : entry
+    )),
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState), auditId, evidenceId };
 }
 
 function sanitizeCatalogItemDraft(payload = {}, existingId = null) {

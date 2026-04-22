@@ -1,6 +1,6 @@
 ﻿/* eslint-disable */
 import {
-  STORAGE_KEY, SIDEBAR_COLLAPSED_KEY, ACTIVE_PAGE_KEY, DASHBOARD_SECTIONS_KEY, NOTIFICATION_READ_KEY, NOTIFICATION_DELETED_KEY, NOTIFICATION_INBOX_KEY, EMPTY_OBJECT, BOOTSTRAP_MASTER_ID, MASTER_USERNAME, API_BASE_URL, ENABLE_LEGACY_WHOLE_STATE_SYNC, PAGE_BOARD, PAGE_CUSTOM_BOARDS, PAGE_ADMIN, PAGE_DASHBOARD, PAGE_HISTORY, PAGE_INVENTORY, PAGE_USERS, PAGE_BIBLIOTECA, PAGE_INCIDENCIAS, PAGE_NOT_FOUND, PAGE_ROUTE_SLUGS, PAGE_ROUTE_ALIASES, EMPTY_LOGIN_DIRECTORY, ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR, STATUS_PENDING, STATUS_RUNNING, STATUS_PAUSED, STATUS_FINISHED, INVENTORY_DOMAIN_BASE, INVENTORY_DOMAIN_CLEANING, INVENTORY_DOMAIN_ORDERS, INVENTORY_MOVEMENT_RESTOCK, INVENTORY_MOVEMENT_CONSUME, INVENTORY_MOVEMENT_TRANSFER, CONTROL_STATUS_OPTIONS, USER_ROLES, PERMISSION_SCHEMA_VERSION, ROLE_LEVEL, TEMPORARY_PASSWORD_MIN_LENGTH, PROFILE_SELF_EDIT_LIMIT, DEFAULT_AREA_OPTIONS, DEFAULT_BOARD_SECTION_OPTIONS, INVENTORY_LOOKUP_LOGISTICS_FIELD, BOARD_ACTIVITY_LIST_FIELD, DEFAULT_JOB_TITLE_BY_ROLE, DASHBOARD_CHART_PALETTE, DEFAULT_DASHBOARD_SECTION_STATE, DEFAULT_ADMIN_TAB, ACTIVITY_FREQUENCY_OPTIONS, ACTIVITY_FREQUENCY_LABELS, ACTIVITY_FREQUENCY_DAY_OFFSETS, BOARD_FIELD_TYPES, BOARD_FIELD_TYPE_DETAILS, BOARD_FIELD_WIDTHS, COLOR_RULE_OPERATORS, BOARD_FIELD_WIDTH_STYLES, BOARD_FIELD_MIN_WIDTH_BY_TYPE, DEFAULT_BOARD_AUX_COLUMNS_ORDER, BOARD_AUX_COLUMN_DEFINITIONS, BOARD_AUX_COLUMN_IDS, BOARD_TEMPLATES, FORMULA_OPERATIONS, OPTION_SOURCE_TYPES, INVENTORY_PROPERTIES, INVENTORY_IMPORT_FIELD_ALIASES, INVENTORY_DOMAIN_OPTIONS, INVENTORY_MOVEMENT_OPTIONS, CLEANING_SITE_OPTIONS, DEFAULT_CLEANING_SITE, BOARD_OPERATIONAL_CONTEXT_NONE, BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE, BOARD_OPERATIONAL_CONTEXT_CUSTOM, BOARD_OPERATIONAL_CONTEXT_OPTIONS, NAV_ITEMS, ACTION_DEFINITIONS, BOARD_PERMISSION_ACTION_IDS, BOARD_PERMISSION_ACTIONS, PAGE_ACTION_GROUPS, PERMISSION_PRESETS, RESPONSIBLE_VISUALS, ALL_PAGES, ALL_ACTION_IDS, ROLE_PERMISSION_MATRIX, KPI_STYLES
+  STORAGE_KEY, SIDEBAR_COLLAPSED_KEY, ACTIVE_PAGE_KEY, DASHBOARD_SECTIONS_KEY, NOTIFICATION_READ_KEY, NOTIFICATION_DELETED_KEY, NOTIFICATION_INBOX_KEY, EMPTY_OBJECT, BOOTSTRAP_MASTER_ID, MASTER_USERNAME, API_BASE_URL, ENABLE_LEGACY_WHOLE_STATE_SYNC, PAGE_BOARD, PAGE_CUSTOM_BOARDS, PAGE_ADMIN, PAGE_DASHBOARD, PAGE_HISTORY, PAGE_PROCESS_AUDITS, PAGE_INVENTORY, PAGE_USERS, PAGE_BIBLIOTECA, PAGE_INCIDENCIAS, PAGE_NOT_FOUND, PAGE_ROUTE_SLUGS, PAGE_ROUTE_ALIASES, EMPTY_LOGIN_DIRECTORY, ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR, STATUS_PENDING, STATUS_RUNNING, STATUS_PAUSED, STATUS_FINISHED, INVENTORY_DOMAIN_BASE, INVENTORY_DOMAIN_CLEANING, INVENTORY_DOMAIN_ORDERS, INVENTORY_MOVEMENT_RESTOCK, INVENTORY_MOVEMENT_CONSUME, INVENTORY_MOVEMENT_TRANSFER, CONTROL_STATUS_OPTIONS, USER_ROLES, PERMISSION_SCHEMA_VERSION, ROLE_LEVEL, TEMPORARY_PASSWORD_MIN_LENGTH, PROFILE_SELF_EDIT_LIMIT, DEFAULT_AREA_OPTIONS, DEFAULT_BOARD_SECTION_OPTIONS, INVENTORY_LOOKUP_LOGISTICS_FIELD, BOARD_ACTIVITY_LIST_FIELD, DEFAULT_JOB_TITLE_BY_ROLE, DASHBOARD_CHART_PALETTE, DEFAULT_DASHBOARD_SECTION_STATE, DEFAULT_ADMIN_TAB, ACTIVITY_FREQUENCY_OPTIONS, ACTIVITY_FREQUENCY_LABELS, ACTIVITY_FREQUENCY_DAY_OFFSETS, BOARD_FIELD_TYPES, BOARD_FIELD_TYPE_DETAILS, BOARD_FIELD_WIDTHS, COLOR_RULE_OPERATORS, BOARD_FIELD_WIDTH_STYLES, BOARD_FIELD_MIN_WIDTH_BY_TYPE, DEFAULT_BOARD_AUX_COLUMNS_ORDER, BOARD_AUX_COLUMN_DEFINITIONS, BOARD_AUX_COLUMN_IDS, BOARD_TEMPLATES, FORMULA_OPERATIONS, OPTION_SOURCE_TYPES, INVENTORY_PROPERTIES, INVENTORY_IMPORT_FIELD_ALIASES, INVENTORY_DOMAIN_OPTIONS, INVENTORY_MOVEMENT_OPTIONS, CLEANING_SITE_OPTIONS, DEFAULT_CLEANING_SITE, BOARD_OPERATIONAL_CONTEXT_NONE, BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE, BOARD_OPERATIONAL_CONTEXT_CUSTOM, BOARD_OPERATIONAL_CONTEXT_OPTIONS, NAV_ITEMS, ACTION_DEFINITIONS, BOARD_PERMISSION_ACTION_IDS, BOARD_PERMISSION_ACTIONS, PAGE_ACTION_GROUPS, PERMISSION_PRESETS, RESPONSIBLE_VISUALS, ALL_PAGES, ALL_ACTION_IDS, ROLE_PERMISSION_MATRIX, KPI_STYLES
 } from "./constantes.js";
 import { getExcelJsModule } from "./utilidadesImportExcel.js";
 
@@ -552,6 +552,7 @@ export function createInventoryModalState(mode = "create", item = {}, fallbackDo
       catalogActivityId: entry.catalogActivityId,
       quantity: entry.quantity ? String(entry.quantity) : "",
     })),
+    customFields: { ...(normalized.customFields || {}) },
   };
 }
 
@@ -1964,6 +1965,7 @@ export function getHeaderEyebrowText(page) {
   if (page === PAGE_DASHBOARD) return "Panel principal";
   if (page === PAGE_USERS) return "Players y permisos";
   if (page === PAGE_BIBLIOTECA) return "Documentos y recursos";
+  if (page === PAGE_PROCESS_AUDITS) return "Auditoría operativa";
   return "Operación diaria";
 }
 
@@ -2578,6 +2580,7 @@ export function createUserModalState(overrides = {}) {
     username: "",
     role: ROLE_JR,
     area: "",
+    subArea: "",
     jobTitle: "",
     isActive: "true",
     password: "",
@@ -2612,7 +2615,36 @@ export function getManagedUserIds(users, userId) {
 }
 
 export function normalizeAreaOption(area) {
-  return String(area || "").trim().toUpperCase();
+  return String(area || "")
+    .trim()
+    .toUpperCase()
+    .replaceAll("\\", "/")
+    .replaceAll(" - ", " / ")
+    .replaceAll(" > ", " / ")
+    .replace(/\s*\/\s*/g, " / ");
+}
+
+export function getAreaRoot(area) {
+  const normalized = normalizeAreaOption(area);
+  if (!normalized) return "";
+  return normalized.split("/")[0]?.trim() || "";
+}
+
+export function splitAreaAndSubArea(area) {
+  const normalized = normalizeAreaOption(area);
+  if (!normalized) return { area: "", subArea: "" };
+  const parts = normalized.split("/").map((entry) => String(entry || "").trim()).filter(Boolean);
+  return {
+    area: parts[0] || "",
+    subArea: parts.length > 1 ? parts.slice(1).join(" / ") : "",
+  };
+}
+
+export function joinAreaAndSubArea(area, subArea = "") {
+  const normalizedArea = normalizeAreaOption(area);
+  const normalizedSubArea = normalizeAreaOption(subArea);
+  if (!normalizedArea) return "";
+  return normalizedSubArea ? `${normalizedArea} / ${normalizedSubArea}` : normalizedArea;
 }
 
 export function normalizeBoardVisibilityType(value) {
@@ -2710,7 +2742,9 @@ export function canViewUserByAreaScope(actor, target) {
   if (actor.role === ROLE_LEAD) return true;
   if (actor.id === target.id) return true;
   if ([ROLE_SR, ROLE_SSR].includes(actor.role)) {
-    return Boolean(getUserArea(actor)) && getUserArea(actor) === getUserArea(target);
+    const actorAreaRoot = getAreaRoot(getUserArea(actor));
+    const targetAreaRoot = getAreaRoot(getUserArea(target));
+    return Boolean(actorAreaRoot) && actorAreaRoot === targetAreaRoot;
   }
   return false;
 }
@@ -2956,6 +2990,7 @@ export function buildSampleState() {
     weeks: starterWorkspace?.weeks || weeks,
     catalog,
     inventoryItems,
+    inventoryColumns: [],
     inventoryMovements: [],
     activities: starterWorkspace?.activities || activities,
     pauseLogs: starterWorkspace?.pauseLogs || pauseLogs,
@@ -2966,6 +3001,8 @@ export function buildSampleState() {
     boardTemplates: [],
     permissions: buildDefaultPermissions(),
     auditLog: [],
+    processAuditTemplates: [],
+    processAudits: [],
   };
 }
 
@@ -3039,10 +3076,13 @@ export function buildNormalizedWarehouseState(parsed, sampleState, users, normal
       : sampleState.boardWeekHistory,
     controlBoards: getNormalizedControlBoards(parsed.controlBoards, users, normalizedPermissions, sampleState),
     inventoryItems: Array.isArray(parsed.inventoryItems) && parsed.inventoryItems.length ? parsed.inventoryItems.map((item) => normalizeInventoryItemRecord(item)) : sampleState.inventoryItems,
+    inventoryColumns: Array.isArray(parsed.inventoryColumns) ? parsed.inventoryColumns : sampleState.inventoryColumns,
     inventoryMovements: Array.isArray(parsed.inventoryMovements) ? parsed.inventoryMovements : sampleState.inventoryMovements,
     boardTemplates: Array.isArray(parsed.boardTemplates) ? parsed.boardTemplates : [],
     permissions: normalizedPermissions,
     auditLog: Array.isArray(parsed.auditLog) ? parsed.auditLog : [],
+    processAuditTemplates: Array.isArray(parsed.processAuditTemplates) ? parsed.processAuditTemplates : sampleState.processAuditTemplates,
+    processAudits: Array.isArray(parsed.processAudits) ? parsed.processAudits : sampleState.processAudits,
   };
 }
 

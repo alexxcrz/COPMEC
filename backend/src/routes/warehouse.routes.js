@@ -8,6 +8,9 @@ import {
   bulkImportWarehouseBoardRows,
   createWarehouseBoardRow,
   createWarehouseInventoryItem,
+  duplicateWarehouseInventoryItem,
+  createWarehouseInventoryColumn,
+  deleteWarehouseInventoryColumn,
   createWarehouseInventoryMovement,
   createWarehouseTemplate,
   createWarehouseUser,
@@ -45,9 +48,16 @@ import {
   deleteIncidencia,
   addEvidenciaToIncidencia,
   removeEvidenciaFromIncidencia,
+  removeWarehouseArea,
   addCotizacionToIncidencia,
   updateCotizacion,
   deleteCotizacion,
+  upsertProcessAuditTemplate,
+  deleteProcessAuditTemplate,
+  createProcessAudit,
+  updateProcessAudit,
+  addProcessAuditEvidence,
+  removeProcessAuditEvidence,
 } from "../services/warehouse.store.js";
 
 export const warehouseRouter = Router();
@@ -235,6 +245,146 @@ warehouseRouter.delete("/inventory/:itemId", requireAuth, (req, res) => {
     revision: result.state?.revision,
   });
   res.json({ ok: true, data: { state: result.state, itemId: result.itemId, itemCode: result.itemCode } });
+});
+
+warehouseRouter.post("/inventory/:itemId/duplicate", requireAuth, (req, res) => {
+  const result = duplicateWarehouseInventoryItem(req.auth, req.params.itemId);
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "item_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
+    res.status(status).json({ ok: false, message: "No fue posible duplicar el artículo de inventario." });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_inventory_item_duplicated", req, {
+    sourceItemId: result.sourceItemId,
+    itemId: result.itemId,
+    itemCode: result.itemCode,
+    revision: result.state?.revision,
+  });
+  res.status(201).json({ ok: true, data: { state: result.state, itemId: result.itemId, itemCode: result.itemCode } });
+});
+
+warehouseRouter.post("/inventory/columns", requireAuth, (req, res) => {
+  const result = createWarehouseInventoryColumn(req.auth, req.body || {});
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "forbidden" ? 403 : 400;
+    res.status(status).json({ ok: false, message: "No fue posible crear la columna de inventario." });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_inventory_column_created", req, {
+    columnId: result.column?.id,
+    columnKey: result.column?.key,
+    revision: result.state?.revision,
+  });
+  res.status(201).json({ ok: true, data: { state: result.state, column: result.column } });
+});
+
+warehouseRouter.delete("/inventory/columns/:columnId", requireAuth, (req, res) => {
+  const result = deleteWarehouseInventoryColumn(req.auth, req.params.columnId);
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "column_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
+    res.status(status).json({ ok: false, message: "No fue posible eliminar la columna de inventario." });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_inventory_column_deleted", req, {
+    columnId: result.columnId,
+    revision: result.state?.revision,
+  });
+  res.json({ ok: true, data: { state: result.state, columnId: result.columnId } });
+});
+
+warehouseRouter.post("/process-audits/templates", requireAuth, (req, res) => {
+  const result = upsertProcessAuditTemplate(req.auth, req.body || {});
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "forbidden" ? 403 : 400;
+    res.status(status).json({ ok: false, message: "No fue posible guardar la plantilla de auditoría." });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_process_audit_template_saved", req, {
+    templateId: result.templateId,
+    revision: result.state?.revision,
+  });
+  res.status(201).json({ ok: true, data: { state: result.state, templateId: result.templateId } });
+});
+
+warehouseRouter.delete("/process-audits/templates/:templateId", requireAuth, (req, res) => {
+  const result = deleteProcessAuditTemplate(req.auth, req.params.templateId);
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "template_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
+    res.status(status).json({ ok: false, message: "No fue posible eliminar la plantilla de auditoría." });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_process_audit_template_deleted", req, {
+    templateId: result.templateId,
+    revision: result.state?.revision,
+  });
+  res.json({ ok: true, data: { state: result.state, templateId: result.templateId } });
+});
+
+warehouseRouter.post("/process-audits", requireAuth, (req, res) => {
+  const result = createProcessAudit(req.auth, req.body || {});
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "forbidden" ? 403 : 400;
+    res.status(status).json({ ok: false, message: "No fue posible crear la auditoría." });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_process_audit_created", req, {
+    auditId: result.auditId,
+    revision: result.state?.revision,
+  });
+  res.status(201).json({ ok: true, data: { state: result.state, auditId: result.auditId } });
+});
+
+warehouseRouter.patch("/process-audits/:auditId", requireAuth, (req, res) => {
+  const result = updateProcessAudit(req.auth, req.params.auditId, req.body || {});
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "audit_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
+    res.status(status).json({ ok: false, message: "No fue posible actualizar la auditoría." });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_process_audit_updated", req, {
+    auditId: result.auditId,
+    revision: result.state?.revision,
+  });
+  res.json({ ok: true, data: { state: result.state, auditId: result.auditId } });
+});
+
+warehouseRouter.post("/process-audits/:auditId/evidences", requireAuth, (req, res) => {
+  const result = addProcessAuditEvidence(req.auth, req.params.auditId, req.body || {});
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "audit_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
+    res.status(status).json({ ok: false, message: "No fue posible agregar la evidencia." });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_process_audit_evidence_added", req, {
+    auditId: result.auditId,
+    evidenceId: result.evidenceId,
+    revision: result.state?.revision,
+  });
+  res.status(201).json({ ok: true, data: { state: result.state, auditId: result.auditId, evidenceId: result.evidenceId } });
+});
+
+warehouseRouter.delete("/process-audits/:auditId/evidences/:evidenceId", requireAuth, (req, res) => {
+  const result = removeProcessAuditEvidence(req.auth, req.params.auditId, req.params.evidenceId);
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "audit_not_found" ? 404 : result.reason === "evidence_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
+    res.status(status).json({ ok: false, message: "No fue posible eliminar la evidencia." });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_process_audit_evidence_deleted", req, {
+    auditId: result.auditId,
+    evidenceId: result.evidenceId,
+    revision: result.state?.revision,
+  });
+  res.json({ ok: true, data: { state: result.state, auditId: result.auditId, evidenceId: result.evidenceId } });
 });
 
 warehouseRouter.post("/inventory/import", requireAuth, (req, res) => {
@@ -455,7 +605,7 @@ warehouseRouter.patch("/users/me/profile", (req, res) => {
 });
 
 warehouseRouter.post("/areas", requireWarehouseAction("manageUsers"), (req, res) => {
-  const result = addWarehouseArea(req.auth, req.body?.name || "");
+  const result = addWarehouseArea(req.auth, req.body?.name || "", req.body?.parentArea || "");
   if (!result.ok) {
     const status = result.reason === "auth_required" ? 401 : result.reason === "forbidden" ? 403 : result.reason === "duplicate_area" ? 409 : 400;
     res.status(status).json({ ok: false, message: result.reason === "duplicate_area" ? "Esa área ya existe." : "No fue posible agregar el área." });
@@ -467,6 +617,22 @@ warehouseRouter.post("/areas", requireWarehouseAction("manageUsers"), (req, res)
     revision: result.state?.revision,
   });
   res.status(201).json({ ok: true, data: { state: result.state, area: result.area } });
+});
+
+warehouseRouter.delete("/areas/:areaName", requireWarehouseAction("manageUsers"), (req, res) => {
+  const targetArea = decodeURIComponent(String(req.params.areaName || ""));
+  const result = removeWarehouseArea(req.auth, targetArea);
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "forbidden" ? 403 : result.reason === "area_not_found" ? 404 : 400;
+    res.status(status).json({ ok: false, message: result.reason === "area_not_found" ? "Área o subárea no encontrada." : "No fue posible eliminar el área." });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_area_removed", req, {
+    area: result.removedArea,
+    revision: result.state?.revision,
+  });
+  res.json({ ok: true, data: { state: result.state, removedArea: result.removedArea } });
 });
 
 warehouseRouter.post("/catalog", requireWarehouseAction("createCatalog"), (req, res) => {

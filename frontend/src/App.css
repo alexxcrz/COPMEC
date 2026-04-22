@@ -8422,6 +8422,248 @@ tbody tr:hover {
   flex-wrap: wrap;
 }
 
+.audit-shell {
+  align-items: start;
+}
+
+.audit-topbar-card,
+.audit-surface-compact {
+  gap: 1.15rem;
+}
+
+.audit-topbar-actions,
+.audit-inline-actions,
+.audit-response-head,
+.audit-answer-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.68rem;
+  flex-wrap: wrap;
+}
+
+.audit-topbar-actions {
+  justify-content: flex-end;
+}
+
+.audit-form-grid,
+.audit-active-meta-grid,
+.audit-response-grid,
+.audit-template-modal-grid,
+.audit-question-editor-grid {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.audit-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.audit-active-meta-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.audit-response-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.audit-template-modal-grid {
+  grid-template-columns: minmax(360px, 0.9fr) minmax(0, 1.5fr);
+  align-items: start;
+}
+
+.audit-question-editor-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.audit-template-library-card,
+.audit-template-editor-card {
+  min-height: 100%;
+  min-width: 0;
+}
+
+.audit-template-editor-card .audit-form-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.audit-template-modal-grid > section {
+  min-width: 0;
+}
+
+.audit-field-span-2 {
+  grid-column: span 2;
+}
+
+.audit-field-span-full {
+  grid-column: 1 / -1;
+}
+
+.audit-template-preview-stack,
+.audit-preview-question-list,
+.audit-editor-shell,
+.audit-question-editor-list,
+.audit-template-library-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.audit-preview-question-row {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.4rem 1.5rem;
+  border: 1px solid rgba(20, 58, 49, 0.08);
+  border-radius: 1rem;
+  background: rgba(248, 251, 250, 0.88);
+  font-size: 1rem;
+}
+
+.audit-template-headline {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.audit-template-headline strong {
+  font-size: 0.94rem;
+}
+
+.audit-mini-stat {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1.6rem 1.4rem;
+}
+
+.audit-mini-stat strong {
+  font-size: 1.65rem;
+  font-weight: 700;
+}
+
+.audit-mini-stat p,
+.audit-history-card p,
+.audit-area-stat-card p,
+.audit-template-library-item p,
+.audit-editor-shell p {
+  margin: 0;
+  font-size: 0.96rem;
+}
+
+.audit-response-card,
+.audit-history-card,
+.audit-evidence-card,
+.audit-area-stat-card,
+.audit-template-library-item,
+.audit-question-editor-card {
+  padding: 1.2rem;
+}
+
+.audit-response-card strong,
+.audit-history-card strong,
+.audit-template-library-item strong,
+.audit-question-editor-card strong {
+  font-size: 1.12rem;
+}
+
+.sicfla-modal.audit-template-modal {
+  width: min(96vw, 1720px);
+  max-height: 84vh;
+}
+
+.audit-template-modal .sicfla-modal-body {
+  max-height: 66vh;
+  overflow: auto;
+  overflow-x: hidden;
+}
+
+.audit-template-library-list,
+.audit-question-editor-list {
+  max-height: 52vh;
+  overflow: auto;
+  padding-right: 0.5rem;
+}
+
+.audit-template-mobile-tabs {
+  display: none;
+}
+
+.audit-template-mobile-tab {
+  border: 1px solid rgba(3, 33, 33, 0.2);
+  background: #ffffff;
+  color: #164138;
+  border-radius: 999px;
+  min-height: 2.25rem;
+  padding: 0.4rem 0.95rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.audit-template-mobile-tab.active {
+  background: #032121;
+  color: #ffffff;
+  border-color: #032121;
+}
+
+.audit-panel-hidden-mobile {
+  display: block;
+}
+
+@media (max-width: 1280px) {
+  .audit-template-modal-grid {
+    grid-template-columns: minmax(300px, 0.85fr) minmax(0, 1.15fr);
+  }
+}
+
+@media (max-width: 1180px) {
+  .sicfla-modal.audit-template-modal {
+    width: min(98vw, 1120px);
+    max-height: 90vh;
+  }
+
+  .audit-template-modal-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.95rem;
+  }
+
+  .audit-template-mobile-tabs {
+    display: flex;
+    gap: 0.6rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .audit-panel-hidden-mobile {
+    display: none;
+  }
+}
+
+@media (max-width: 1020px) {
+  .sicfla-modal.audit-template-modal {
+    width: min(99vw, 980px);
+    max-height: 92vh;
+  }
+
+  .audit-form-grid,
+  .audit-active-meta-grid,
+  .audit-question-editor-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .audit-form-grid,
+  .audit-active-meta-grid,
+  .audit-response-grid,
+  .audit-question-editor-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .audit-field-span-2,
+  .audit-field-span-full {
+    grid-column: auto;
+  }
+
+  .audit-topbar-actions {
+    justify-content: flex-start;
+  }
+}
+
 .ep-hero__nick {
   font-size: 0.75rem;
   color: rgba(255,255,255,0.65);
@@ -8430,6 +8672,93 @@ tbody tr:hover {
 .ep-hero__job {
   font-size: 0.72rem;
   color: rgba(255,255,255,0.55);
+}
+
+@media (min-width: 721px) and (max-width: 1180px) {
+  .content-shell,
+  .page-grid,
+  .board-page-layout {
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .table-wrap,
+  .board-table-wrap,
+  .custom-board-table-wrap,
+  .board-preview-table-wrap {
+    overflow-x: hidden;
+  }
+
+  .board-table-clean,
+  .board-runtime-table,
+  .board-preview-table {
+    width: 100% !important;
+    min-width: 100% !important;
+    table-layout: fixed;
+  }
+
+  .board-runtime-table th,
+  .board-runtime-table td,
+  .board-table-clean th,
+  .board-table-clean td,
+  .board-preview-table th,
+  .board-preview-table td {
+    min-width: 0 !important;
+    width: auto !important;
+    max-width: none;
+    padding: 0.54rem 0.5rem;
+    font-size: 0.78rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .board-runtime-table .board-pdf-hide,
+  .board-preview-table .board-pdf-hide {
+    display: none;
+  }
+
+  .board-meta-inline {
+    gap: 0.4rem;
+  }
+
+  .board-meta-inline span {
+    font-size: 0.7rem;
+  }
+
+  .custom-board-toolbar-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 0.5rem;
+    align-items: end;
+  }
+
+  .board-top-select,
+  .board-top-select.min-width,
+  .min-width {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .board-top-select select,
+  .board-inline-select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .created-board-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .created-board-card .toolbar-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .created-board-card .toolbar-actions > * {
+    width: 100%;
+  }
 }
 
 .ep-hero__status {

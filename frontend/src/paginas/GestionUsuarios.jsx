@@ -48,6 +48,11 @@ export default function GestionUsuarios({ contexto }) {
     submitRoleModal,
     handleDeleteCustomRole,
     setRoleModalOpen,
+    deleteArea,
+    handleAddAreaOption,
+    rootAreaOptions,
+    splitAreaAndSubArea,
+    ROLE_LEAD,
   } = contexto;
 
   return (
@@ -156,14 +161,25 @@ export default function GestionUsuarios({ contexto }) {
 
           {usersViewTab === "area" ? (
             <div className="saved-board-list permissions-preset-list">
-              {usersByAreaGroups.map((group) => (
+              {usersByAreaGroups.map((group) => {
+                const { area: rootArea, subArea } = splitAreaAndSubArea ? splitAreaAndSubArea(group.area) : { area: group.area, subArea: "" };
+                const isSubArea = Boolean(subArea);
+                return (
                 <article key={group.area} className="surface-card" style={{ minWidth: "320px", flex: "1 1 360px" }}>
                   <div className="card-header-row">
                     <div>
                       <h3>{group.area}</h3>
                       <p>{group.users.length} perfil(es) visibles en esta área.</p>
                     </div>
-                    <span className="chip primary">{group.users.filter((user) => user.isActive).length} activos</span>
+                    <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                      <span className="chip primary">{group.users.filter((user) => user.isActive).length} activos</span>
+                      {currentUser?.role === ROLE_LEAD ? (
+                        <>
+                          {!isSubArea ? <button type="button" className="icon-button" title="Agregar subárea" onClick={() => handleAddAreaOption(group.area)}><Plus size={14} /></button> : null}
+                          <button type="button" className="icon-button danger" title={isSubArea ? "Eliminar subárea" : "Eliminar área y subáreas"} onClick={() => deleteArea(group.area)}><Trash2 size={14} /></button>
+                        </>
+                      ) : null}
+                    </div>
                   </div>
                   <div className="saved-board-list board-builder-launch-list">
                     {group.users.map((user) => (
@@ -189,7 +205,8 @@ export default function GestionUsuarios({ contexto }) {
                     ))}
                   </div>
                 </article>
-              ))}
+              );
+              })}
             </div>
           ) : null}
 

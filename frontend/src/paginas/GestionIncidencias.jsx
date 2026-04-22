@@ -838,7 +838,8 @@ export default function GestionIncidencias({ contexto }) {
           </div>
           {actionPermissions.createIncidencia ? (
             <button type="button" className="primary-button sm-button" onClick={openCreate}>
-              <Plus size={14} /> Nueva incidencia
+              <Plus size={14} />
+              <span className="incidencias-new-label">Nueva incidencia</span>
             </button>
           ) : null}
         </div>
