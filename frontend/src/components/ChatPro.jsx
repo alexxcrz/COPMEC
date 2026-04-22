@@ -336,6 +336,25 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     ),
   );
 
+  const getPlayerAliases = (value) => {
+    const raw = String(value || "").trim();
+    if (!raw) return [];
+    const targetKey = normalizeCallNick(raw);
+    const player = (Array.isArray(usuariosCOPMEC) ? usuariosCOPMEC : []).find((p) => {
+      const options = [p?.nickname, p?.name, p?.email, p?.id]
+        .map((v) => String(v || "").trim())
+        .filter(Boolean);
+      return options.some((opt) => normalizeCallNick(opt) === targetKey);
+    });
+    return Array.from(new Set([
+      raw,
+      player?.nickname,
+      player?.name,
+      player?.email,
+      player?.id,
+    ].map((v) => String(v || "").trim()).filter(Boolean)));
+  };
+
   const sendCallSignalFallback = async ({ type, room, toNicknames, sdp, candidate, nickname, fromPeerId }) => {
     const normalizedTargets = Array.from(
       new Set(
@@ -4622,13 +4641,13 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       const userDisplayName = user?.nickname || user?.name || "usuario";
       const destinatarios = [];
       if (tipoChat === "privado") {
-        if (chatActual) destinatarios.push(chatActual);
+        if (chatActual) destinatarios.push(...getPlayerAliases(chatActual));
       } else if (tipoChat === "grupal") {
         const grupo = Array.isArray(grupos)
           ? grupos.find((g) => String(g.id) === String(chatActual))
           : null;
         if (grupo?.miembros?.length) {
-          destinatarios.push(...grupo.miembros);
+          grupo.miembros.forEach((m) => destinatarios.push(...getPlayerAliases(m)));
         }
       }
       const unicos = Array.from(new Set(destinatarios)).filter((n) => {
@@ -5420,8 +5439,9 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                 })
                 .map((u) => {
                   const displayName = u.nickname || u.name || "Usuario";
-                  const estado = getEstadoUsuario(displayName);
                   const isUserActive = u.active === 1;
+                  const estadoBase = getEstadoUsuario(displayName);
+                  const estado = estadoBase === "offline" && isUserActive ? "activo" : estadoBase;
                   
                   // Determinar título del estado
                   let statusTitle = 'Usuario offline';
@@ -5613,7 +5633,14 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                             }).map((chat) => {
                               const userDisplayName = user?.nickname || user?.name;
                               const esMioUltimoMensaje = chat.ultimo_remitente === userDisplayName;
-                              const estado = getEstadoUsuario(chat.otro_usuario);
+                              const estadoBase = getEstadoUsuario(chat.otro_usuario);
+                              const relacionado = (Array.isArray(usuariosCOPMEC) ? usuariosCOPMEC : []).find((u) => {
+                                const opts = [u?.nickname, u?.name, u?.email, u?.id]
+                                  .map((v) => String(v || "").trim())
+                                  .filter(Boolean);
+                                return opts.some((opt) => normalizeCallNick(opt) === normalizeCallNick(chat.otro_usuario));
+                              });
+                              const estado = estadoBase === "offline" && Number(relacionado?.active) === 1 ? "activo" : estadoBase;
                               
                               let statusTitle = 'Usuario offline';
                               if (estado === 'en-llamada') {
@@ -5757,7 +5784,14 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                               }).map((chat) => {
                                 const userDisplayName = user?.nickname || user?.name;
                                 const esMioUltimoMensaje = chat.ultimo_remitente === userDisplayName;
-                                const estado = getEstadoUsuario(chat.otro_usuario);
+                                const estadoBase = getEstadoUsuario(chat.otro_usuario);
+                                const relacionado = (Array.isArray(usuariosCOPMEC) ? usuariosCOPMEC : []).find((u) => {
+                                  const opts = [u?.nickname, u?.name, u?.email, u?.id]
+                                    .map((v) => String(v || "").trim())
+                                    .filter(Boolean);
+                                  return opts.some((opt) => normalizeCallNick(opt) === normalizeCallNick(chat.otro_usuario));
+                                });
+                                const estado = estadoBase === "offline" && Number(relacionado?.active) === 1 ? "activo" : estadoBase;
                                 
                                 let statusTitle = 'Usuario offline';
                                 if (estado === 'en-llamada') {
