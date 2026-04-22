@@ -1697,11 +1697,15 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       pendingInviteTransportRef.current = "socket";
 
       playIncomingCallTone();
+      if (navigator.vibrate) {
+        navigator.vibrate([200, 100, 200, 100, 200]); // Vibración de llamada
+      }
       if ("Notification" in window && Notification.permission === "granted") {
         new Notification("Llamada entrante", {
           body: `${payload.fromNickname || "Usuario"} te está llamando`,
           icon: "/copmec-favicon.svg",
           tag: `call-${payload.room}`,
+          requireInteraction: true,
         });
       }
 
@@ -1869,11 +1873,15 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         pendingInviteTransportRef.current = "rest";
 
         playIncomingCallTone();
+        if (navigator.vibrate) {
+          navigator.vibrate([200, 100, 200, 100, 200]); // Vibración de llamada
+        }
         if ("Notification" in window && Notification.permission === "granted") {
           new Notification("Llamada entrante", {
             body: `${payload.fromNickname || "Usuario"} te está llamando`,
             icon: "/copmec-favicon.svg",
             tag: `call-${payload.room}`,
+            requireInteraction: true,
           });
         }
 

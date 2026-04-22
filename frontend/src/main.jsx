@@ -9,3 +9,19 @@ createRoot(document.getElementById('root')).render(
     <App />
   </StrictMode>,
 )
+
+// ─── Registrar Service Worker para notificaciones push ─────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/service-worker.js')
+    .then((registration) => {
+      console.log('✓ Service Worker registrado:', registration);
+      // Solicitar permisos de notificación
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().then((permission) => {
+          console.log('Notificaciones:', permission);
+        });
+      }
+    })
+    .catch((err) => console.error('Error registrando SW:', err));
+}
+
