@@ -301,24 +301,36 @@ chatRouter.get("/calls/historial", requireAuth, async (req, res) => {
     // Obtener aliases del usuario autenticado para búsqueda flexible
     const users = getAllUsers();
     const currentUser = users.find((u) => u.name === nombre);
-    const userAliases = currentUser ? buildUserAliases(currentUser) : [nombre];
+    const userAliases = Array.from(new Set(currentUser ? buildUserAliases(currentUser) : [nombre]));
+    const userAliasNorm = new Set(userAliases.map((alias) => normalizeNick(alias)).filter(Boolean));
+    userAliasNorm.add(normalizeNick(nombre));
 
     // Buscar llamadas donde el usuario fue iniciador o receptor
     const todas = await prisma.chatLlamada.findMany({
       orderBy: { iniciadaEn: "desc" },
-      take: limit * 3,  // Obtener más para filtrar por receptores
+      take: Math.min(limit * 20, 1000),
     });
 
     // Filtrar por iniciador o receptor (con flexibilidad de aliases)
     const mias = [];
     for (const ll of todas) {
+      let receptoresArr = [];
+      try {
+        receptoresArr = Array.isArray(ll.receptores)
+          ? ll.receptores
+          : JSON.parse(ll.receptores || "[]");
+      } catch (_) {}
+
+      const iniciadorNorm = normalizeNick(ll.iniciador);
+      const esIniciador = iniciadorNorm && userAliasNorm.has(iniciadorNorm);
+
       // Verificar si es iniciador
-      if (ll.iniciador === nombre || userAliases.includes(ll.iniciador)) {
+      if (esIniciador) {
         mias.push({
           id: ll.id,
           room: ll.room,
           iniciador: ll.iniciador,
-          receptores: Array.isArray(ll.receptores) ? ll.receptores : [],
+          receptores: receptoresArr,
           tipo: ll.tipo,
           estado: ll.estado,
           iniciadaEn: ll.iniciadaEn,
@@ -331,17 +343,8 @@ chatRouter.get("/calls/historial", requireAuth, async (req, res) => {
       }
 
       // Verificar si es receptor
-      let receptoresArr = [];
-      try {
-        receptoresArr = Array.isArray(ll.receptores) 
-          ? ll.receptores 
-          : JSON.parse(ll.receptores || "[]");
-      } catch (_) {}
-      
       // Buscar si algún alias del usuario está en los receptores
-      const esReceptor = receptoresArr.some((r) =>
-        r === nombre || userAliases.includes(r)
-      );
+      const esReceptor = receptoresArr.some((r) => userAliasNorm.has(normalizeNick(r)));
 
       if (esReceptor) {
         mias.push({

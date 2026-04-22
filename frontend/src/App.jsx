@@ -3842,6 +3842,12 @@ function App() { // NOSONAR
   }
 
   async function handleLogout() {
+      if (socketRef.current) {
+        try {
+          socketRef.current.disconnect();
+        } catch (_) {}
+        socketRef.current = null;
+      }
     try {
       await requestJson("/auth/logout", { method: "POST" });
     } catch {

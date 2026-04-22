@@ -57,7 +57,10 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     const method = String(opts?.method || "GET").toUpperCase();
     const fullUrl = url.startsWith('http') ? url : (API_BASE_URL + (url.startsWith('/') ? url : '/' + url));
     const isChatGet = method === "GET" && fullUrl.includes("/api/chat/");
-    const isCriticalChatSync = fullUrl.includes("/api/chat/calls/pending") || fullUrl.includes("/api/chat/usuarios/estados");
+    const isCriticalChatSync =
+      fullUrl.includes("/api/chat/calls/pending") ||
+      fullUrl.includes("/api/chat/usuarios/estados") ||
+      fullUrl.includes("/api/chat/calls/historial");
     if (isChatGet && !isCriticalChatSync && Date.now() < rateLimitedUntilRef.current) {
       const err = new Error("Rate limit de chat activo");
       err.status = 429;
@@ -1135,11 +1138,26 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   // 📞 Cargar historial de llamadas
   useEffect(() => {
     if (!open || tabPrincipal !== "historial") return;
-    setHistorialCargando(true);
-    authFetch(`${SERVER_URL}/api/chat/calls/historial`)
-      .then((data) => setHistorialLlamadas(Array.isArray(data) ? data : []))
-      .catch(() => setHistorialLlamadas([]))
-      .finally(() => setHistorialCargando(false));
+    let cancelado = false;
+    const cargarHistorial = async (mostrarLoader = false) => {
+      if (mostrarLoader) setHistorialCargando(true);
+      try {
+        const data = await authFetch(`${SERVER_URL}/api/chat/calls/historial`);
+        if (!cancelado) setHistorialLlamadas(Array.isArray(data) ? data : []);
+      } catch (_) {
+        if (!cancelado) setHistorialLlamadas([]);
+      } finally {
+        if (mostrarLoader && !cancelado) setHistorialCargando(false);
+      }
+    };
+
+    cargarHistorial(true);
+    const interval = setInterval(() => cargarHistorial(false), 15000);
+
+    return () => {
+      cancelado = true;
+      clearInterval(interval);
+    };
   }, [open, tabPrincipal, SERVER_URL]);
 
   useEffect(() => {
@@ -5465,9 +5483,9 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
       {/* PANEL */}
       {open && (
-        <div className={`chat-pro-ventana ${tipoChat && window.innerWidth <= 767 ? 'mobile-chat-open' : ''}`}>
+        <div className={`chat-pro-ventana ${tipoChat && window.innerWidth <= 980 ? 'mobile-chat-open' : ''}`}>
           {/* Botón volver en móvil */}
-          {tipoChat && window.innerWidth <= 767 && (
+          {tipoChat && window.innerWidth <= 980 && (
             <button 
               className="chat-back-button"
               onClick={() => {
@@ -5709,8 +5727,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                 .map((u) => {
                   const displayName = u.nickname || u.name || "Usuario";
                   const isUserActive = u.active === 1;
-                  const estadoBase = getEstadoUsuario(displayName);
-                  const estado = estadoBase === "offline" && isUserActive ? "activo" : estadoBase;
+                  const estado = getEstadoUsuario(displayName);
                   
                   // Determinar título del estado
                   let statusTitle = 'Usuario offline';
@@ -5751,9 +5768,6 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                       <span style={{ color: getColorForName(displayName) }}>
                         {displayName}
                       </span>
-                      {!isUserActive && (
-                        <span className="status-inactivo" title="Usuario inactivo">⚫</span>
-                      )}
                     </div>
                   );
                 })}
@@ -5790,6 +5804,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                           const estadoIcon = {
                             finalizada: "✅",
                             activa: "🔴",
+                            pendiente: "🕓",
                             rechazada: "❌",
                             perdida: "📵",
                           }[ll.estado] || "📞";
@@ -5957,13 +5972,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                               const userDisplayName = user?.nickname || user?.name;
                               const esMioUltimoMensaje = chat.ultimo_remitente === userDisplayName;
                               const estadoBase = getEstadoUsuario(chat.otro_usuario);
-                              const relacionado = (Array.isArray(usuariosCOPMEC) ? usuariosCOPMEC : []).find((u) => {
-                                const opts = [u?.nickname, u?.name, u?.email, u?.id]
-                                  .map((v) => String(v || "").trim())
-                                  .filter(Boolean);
-                                return opts.some((opt) => normalizeCallNick(opt) === normalizeCallNick(chat.otro_usuario));
-                              });
-                              const estado = estadoBase === "offline" && Number(relacionado?.active) === 1 ? "activo" : estadoBase;
+                              const estado = estadoBase;
                               
                               let statusTitle = 'Usuario offline';
                               if (estado === 'en-llamada') {
@@ -6108,13 +6117,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                 const userDisplayName = user?.nickname || user?.name;
                                 const esMioUltimoMensaje = chat.ultimo_remitente === userDisplayName;
                                 const estadoBase = getEstadoUsuario(chat.otro_usuario);
-                                const relacionado = (Array.isArray(usuariosCOPMEC) ? usuariosCOPMEC : []).find((u) => {
-                                  const opts = [u?.nickname, u?.name, u?.email, u?.id]
-                                    .map((v) => String(v || "").trim())
-                                    .filter(Boolean);
-                                  return opts.some((opt) => normalizeCallNick(opt) === normalizeCallNick(chat.otro_usuario));
-                                });
-                                const estado = estadoBase === "offline" && Number(relacionado?.active) === 1 ? "activo" : estadoBase;
+                                const estado = estadoBase;
                                 
                                 let statusTitle = 'Usuario offline';
                                 if (estado === 'en-llamada') {

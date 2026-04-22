@@ -113,7 +113,10 @@ export function initSocket(httpServer) {
       if (!usuariosActivos[safeNickname]) {
         usuariosActivos[safeNickname] = { sockets: [], photo: photo || null, lastActivity: Date.now(), inCall: false, _wasAway: false };
       } else {
-        usuariosActivos[safeNickname].lastActivity = Date.now();
+        // El login periódico mantiene la sesión/socket, pero no cuenta como actividad real.
+        if (!usuariosActivos[safeNickname].lastActivity) {
+          usuariosActivos[safeNickname].lastActivity = Date.now();
+        }
         usuariosActivos[safeNickname]._wasAway = false;
       }
       if (!usuariosActivos[safeNickname].sockets.includes(socket.id)) {

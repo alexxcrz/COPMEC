@@ -1732,6 +1732,57 @@ span.chat-item-menu-btn:active {
   .chat-sidebar { width: 100%; max-width: 100%; }
 }
 
+@media (max-width: 980px) {
+  .chat-pro-ventana {
+    width: 100vw;
+    height: 100dvh;
+    top: 0;
+    left: 0;
+    transform: none;
+    border-radius: 0;
+  }
+
+  .chat-pro-ventana:not(.mobile-chat-open) .chat-main-panel {
+    display: none;
+  }
+
+  .chat-pro-ventana:not(.mobile-chat-open) .chat-sidebar {
+    width: 100%;
+    max-width: 100%;
+    min-width: 100%;
+  }
+
+  .chat-pro-ventana.mobile-chat-open .chat-sidebar {
+    display: none;
+  }
+
+  .chat-pro-ventana.mobile-chat-open .chat-main-panel {
+    display: flex;
+    width: 100%;
+  }
+
+  .chat-tabs {
+    overflow-x: auto;
+    overflow-y: hidden;
+    justify-content: flex-start;
+    white-space: nowrap;
+    scrollbar-width: none;
+  }
+
+  .chat-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chat-tabs .tab,
+  .chat-tabs .tab.tab-circular {
+    flex: 0 0 auto;
+    min-width: 86px;
+    padding: 10px 8px;
+    font-size: 0.74rem;
+    gap: 4px;
+  }
+}
+
 /* Scrollbar delgado Telegram-style */
 .chat-sidebar-content::-webkit-scrollbar,
 .chat-body-pro::-webkit-scrollbar { width: 4px; }
