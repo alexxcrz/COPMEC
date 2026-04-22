@@ -1725,6 +1725,13 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       pendingInviteTransportRef.current = "socket";
 
       console.log('[INVITE] Llamada entrante de', payload.fromNickname);
+      
+      // Si el chat no está abierto, abrirlo para mostrar el modal en móvil
+      if (!open) {
+        console.log('[INVITE] Chat cerrado, abriendo para mostrar modal');
+        setOpen(true);
+      }
+      
       playIncomingCallTone();
       if (navigator.vibrate) {
         navigator.vibrate([200, 100, 200, 100, 200]); // Vibración de llamada
