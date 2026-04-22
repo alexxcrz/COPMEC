@@ -1752,12 +1752,24 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         navigator.vibrate([200, 100, 200, 100, 200]); // Vibración de llamada
       }
       if ("Notification" in window && Notification.permission === "granted") {
-        new Notification("Llamada entrante", {
+        const notification = new Notification("Llamada entrante", {
           body: `${payload.fromNickname || "Usuario"} te está llamando`,
           icon: "/copmec-favicon.svg",
           tag: `call-${payload.room}`,
           requireInteraction: true,
+          actions: [
+            { action: "accept", title: "Aceptar", icon: "✓" },
+            { action: "reject", title: "Rechazar", icon: "✕" },
+          ],
         });
+        // Manejar clicks en acciones de notificación
+        notification.onclick = () => {
+          console.log('[NOTIFICATION] Clicked');
+          window.focus();
+        };
+        notification.onclose = () => {
+          console.log('[NOTIFICATION] Closed');
+        };
       }
 
       // Precargar stream para aceptación más rápida
@@ -1896,6 +1908,18 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       showAlert(`❌ No se pudo entregar la llamada a ${targets}. Verifica que esté conectado al chat.`, "warning");
     };
 
+    // Cancelación: cuando alguien acepta en otro dispositivo
+    const handleCallCancelled = (payload) => {
+      console.log('[CALL-CANCELLED] Invitación cancelada:', payload?.reason);
+      if (payload?.reason === "accepted_on_another_device") {
+        setCallIncoming(null);
+        if (outgoingRingRef.current) {
+          clearInterval(outgoingRingRef.current);
+          outgoingRingRef.current = null;
+        }
+      }
+    };
+
     socket.on("call_invite", handleInvite);
     socket.on("call_users", handleUsers);
     socket.on("call_user_joined", handleUserJoined);
@@ -1905,6 +1929,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     socket.on("call_user_left", handleUserLeft);
     socket.on("call_rejected", handleCallRejected);
     socket.on("call_invite_status", handleCallInviteStatus);
+    socket.on("call_cancelled", handleCallCancelled);
 
     return () => {
       socket.off("call_invite", handleInvite);
@@ -1916,6 +1941,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       socket.off("call_user_left", handleUserLeft);
       socket.off("call_rejected", handleCallRejected);
       socket.off("call_invite_status", handleCallInviteStatus);
+      socket.off("call_cancelled", handleCallCancelled);
     };
   }, [socket, user, callActivo, audioSettings.callIncomingSound, audioSettings.callOutgoingSound, audioSettings.callVolume]);
 
@@ -4899,6 +4925,11 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
       const unirLlamada = () => {
         socket.emit("set_in_call", { inCall: true });
+        // 🔔 Cancelar invitación en otros dispositivos del usuario
+        socket.emit("call_accepted", { 
+          room, 
+          fromNickname: callIncoming.fromNickname 
+        });
         socket.emit("call_join", { room, nickname: userDisplayName });
       };
 

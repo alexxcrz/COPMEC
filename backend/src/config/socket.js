@@ -152,14 +152,15 @@ export function initSocket(httpServer) {
       
       console.log(`📞 call_invite: from=${fromNickname}, targets=${requested.join(", ")}, active=${Object.keys(usuariosActivos).join(", ")}`);
 
-      // Registrar llamada en historial (fire-and-forget)
+      // Registrar llamada en historial con estado "pendiente" (no "perdida")
       try { prisma.chatLlamada?.create({
         data: {
           room,
           iniciador: fromNickname || socket.data.nickname || "Usuario",
           receptores: JSON.stringify(requested),
           tipo: requested.length > 1 ? "grupal" : "privado",
-          estado: "perdida",
+          estado: "pendiente",
+          iniciadaEn: new Date(),
         },
       }).catch(() => {}); } catch (_) {}
 
@@ -217,6 +218,44 @@ export function initSocket(httpServer) {
         fromSocketId: socket.id,
         nickname: nickname || socket.data.nickname || "Usuario",
       });
+      
+      // Actualizar historial: marcar como "rechazada"
+      try {
+        prisma.chatLlamada?.updateMany({
+          where: { room, estado: "pendiente" },
+          data: { estado: "rechazada", finalizadaEn: new Date() },
+        }).catch(() => {});
+      } catch (_) {}
+    });
+
+    // ── ACEPTAR LLAMADA: Cancelar en otros dispositivos del usuario ─────────
+    socket.on("call_accepted", ({ room, fromNickname }) => {
+      if (!room) return;
+      const nickAceptador = socket.data.nickname;
+      console.log(`✅ call_accepted: room=${room}, aceptador=${nickAceptador}, from=${fromNickname}`);
+      
+      // Obtener todos los sockets del usuario que está aceptando
+      const userObj = usuariosActivos[nickAceptador];
+      if (userObj && userObj.sockets.length > 1) {
+        // Enviar "call_cancelled" a todos los otros sockets del mismo usuario
+        userObj.sockets.forEach((sid) => {
+          if (sid !== socket.id) {
+            io.to(sid).emit("call_cancelled", {
+              room,
+              reason: "accepted_on_another_device",
+            });
+            console.log(`   ↪ Cancelada invitación en dispositivo ${sid}`);
+          }
+        });
+      }
+
+      // Actualizar historial: registrar aceptación
+      try {
+        prisma.chatLlamada?.updateMany({
+          where: { room, estado: { in: ["perdida", "activa"] } },
+          data: { estado: "activa", aceptadaEn: new Date() },
+        }).catch(() => {});
+      } catch (_) {}
     });
 
     socket.on("call_join", ({ room, nickname }) => {
@@ -224,9 +263,9 @@ export function initSocket(httpServer) {
       socket.data.nickname = socket.data.nickname || nickname;
       socket.join(room);
 
-      // Actualizar historial: marcar como activa
+      // Actualizar historial: marcar como activa (cambiar de "pendiente" o mantener "activa")
       try { prisma.chatLlamada?.updateMany({
-        where: { room, estado: { in: ["perdida", "activa"] } },
+        where: { room, estado: { in: ["pendiente", "activa"] } },
         data: { estado: "activa", aceptadaEn: new Date() },
       }).catch(() => {}); } catch (_) {}
 
@@ -247,11 +286,10 @@ export function initSocket(httpServer) {
     socket.on("call_leave", ({ room }) => {
       if (!room) return;
       socket.leave(room);
-      socket.to(room).emit("call_user_left", { room, socketId: socket.id });
 
-      // Actualizar historial: marcar como finalizada
+      // Actualizar historial: si es "pendiente", marcar como "perdida" (no respondida)
       try { prisma.chatLlamada?.findFirst({
-        where: { room, estado: "activa" },
+        where: { room, estado: { in: ["pendiente", "activa"] } },
         orderBy: { iniciadaEn: "desc" },
       }).then((record) => {
         if (!record) return;
@@ -259,12 +297,14 @@ export function initSocket(httpServer) {
         const duracion = record.aceptadaEn
           ? Math.round((fin.getTime() - new Date(record.aceptadaEn).getTime()) / 1000)
           : null;
+        // Si es pendiente → perdida; si es activa → finalizada
+        const nuevoEstado = record.estado === "pendiente" ? "perdida" : "finalizada";
         return prisma.chatLlamada.update({
           where: { id: record.id },
-          data: { estado: "finalizada", finalizadaEn: fin, duracionSegundos: duracion },
+          data: { estado: nuevoEstado, finalizadaEn: fin, duracionSegundos: duracion },
         });
       }).catch(() => {}); } catch (_) {}
-    });
+    };
 
     socket.on("call_offer", ({ to, room, sdp, nickname }) => {
       if (!to || !room || !sdp) return;

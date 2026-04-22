@@ -298,24 +298,52 @@ chatRouter.get("/calls/historial", requireAuth, async (req, res) => {
 
     if (!prisma.chatLlamada) return res.json([]);
 
+    // Obtener aliases del usuario autenticado para búsqueda flexible
+    const users = getAllUsers();
+    const currentUser = users.find((u) => u.name === nombre);
+    const userAliases = currentUser ? buildUserAliases(currentUser) : [nombre];
+
     // Buscar llamadas donde el usuario fue iniciador o receptor
     const todas = await prisma.chatLlamada.findMany({
-      where: {
-        OR: [
-          { iniciador: nombre },
-        ],
-      },
       orderBy: { iniciadaEn: "desc" },
-      take: limit * 2,
+      take: limit * 3,  // Obtener más para filtrar por receptores
     });
 
-    // Filtrar también las donde es receptor
+    // Filtrar por iniciador o receptor (con flexibilidad de aliases)
     const mias = [];
     for (const ll of todas) {
+      // Verificar si es iniciador
+      if (ll.iniciador === nombre || userAliases.includes(ll.iniciador)) {
+        mias.push({
+          id: ll.id,
+          room: ll.room,
+          iniciador: ll.iniciador,
+          receptores: Array.isArray(ll.receptores) ? ll.receptores : [],
+          tipo: ll.tipo,
+          estado: ll.estado,
+          iniciadaEn: ll.iniciadaEn,
+          aceptadaEn: ll.aceptadaEn,
+          finalizadaEn: ll.finalizadaEn,
+          duracionSegundos: ll.duracionSegundos,
+          fueIniciador: true,
+        });
+        continue;
+      }
+
+      // Verificar si es receptor
       let receptoresArr = [];
-      try { receptoresArr = JSON.parse(ll.receptores); } catch (_) {}
-      const esReceptor = receptoresArr.includes(nombre);
-      if (ll.iniciador === nombre || esReceptor) {
+      try {
+        receptoresArr = Array.isArray(ll.receptores) 
+          ? ll.receptores 
+          : JSON.parse(ll.receptores || "[]");
+      } catch (_) {}
+      
+      // Buscar si algún alias del usuario está en los receptores
+      const esReceptor = receptoresArr.some((r) =>
+        r === nombre || userAliases.includes(r)
+      );
+
+      if (esReceptor) {
         mias.push({
           id: ll.id,
           room: ll.room,
@@ -327,13 +355,14 @@ chatRouter.get("/calls/historial", requireAuth, async (req, res) => {
           aceptadaEn: ll.aceptadaEn,
           finalizadaEn: ll.finalizadaEn,
           duracionSegundos: ll.duracionSegundos,
-          fueIniciador: ll.iniciador === nombre,
+          fueIniciador: false,
         });
       }
     }
 
     res.json(mias.slice(0, limit));
   } catch (e) {
+    console.error("[historial] Error:", e?.message);
     // Si la tabla no existe aún en producción, devolver array vacío
     res.json([]);
   }
