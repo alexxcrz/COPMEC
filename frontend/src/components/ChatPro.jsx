@@ -300,6 +300,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const callRoomRef = useRef(null);
   const outgoingCallTimeoutRef = useRef(null);
   const incomingInviteRef = useRef({ room: null, ts: 0 });
+  const callTransportRef = useRef(null);
+  const pendingInviteTransportRef = useRef(null);
   const ringtoneRef = useRef(null);
   const outgoingRingRef = useRef(null);
   const lastActivityEmitRef = useRef(0);
@@ -1692,6 +1694,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       if (!payload?.room) return;
       if (callActivo && callRoomRef.current === payload.room) return;
       if (isDuplicateInvite(payload.room)) return;
+      pendingInviteTransportRef.current = "socket";
 
       playIncomingCallTone();
       if ("Notification" in window && Notification.permission === "granted") {
@@ -1710,6 +1713,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     };
 
     const handleUsers = (payload) => {
+      if (callTransportRef.current && callTransportRef.current !== "socket") return;
       if (!payload?.room || callRoomRef.current !== payload.room) return;
       if (Array.isArray(payload.users)) {
         payload.users.forEach((u) => {
@@ -1725,6 +1729,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     };
 
     const handleUserJoined = async (payload) => {
+      if (callTransportRef.current && callTransportRef.current !== "socket") return;
       if (!payload?.room || callRoomRef.current !== payload.room) return;
       if (!callActivo || payload.socketId === socket.id) return;
       if (outgoingCallTimeoutRef.current) {
@@ -1750,6 +1755,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     };
 
     const handleOffer = async (payload) => {
+      if (callTransportRef.current && callTransportRef.current !== "socket") return;
       if (!payload?.room || callRoomRef.current !== payload.room) return;
       if (!callActivo) return;
       const pc = crearPeerConnection(payload.from, payload.nickname || "Usuario");
@@ -1760,6 +1766,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     };
 
     const handleAnswer = async (payload) => {
+      if (callTransportRef.current && callTransportRef.current !== "socket") return;
       if (!payload?.room || callRoomRef.current !== payload.room) return;
       const pc = peerConnectionsRef.current[payload.from]?.pc;
       if (!pc) return;
@@ -1767,6 +1774,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     };
 
     const handleIce = async (payload) => {
+      if (callTransportRef.current && callTransportRef.current !== "socket") return;
       if (!payload?.room || callRoomRef.current !== payload.room) return;
       const candidate = new RTCIceCandidate(payload.candidate);
       const pc = peerConnectionsRef.current[payload.from]?.pc;
@@ -1781,11 +1789,13 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     };
 
     const handleUserLeft = (payload) => {
+      if (callTransportRef.current && callTransportRef.current !== "socket") return;
       if (!payload?.room || callRoomRef.current !== payload.room) return;
       if (payload.socketId) limpiarPeer(payload.socketId);
     };
 
     const handleCallRejected = (payload) => {
+      if (callTransportRef.current && callTransportRef.current !== "socket") return;
       if (!payload?.room || callRoomRef.current !== payload.room) return;
       if (outgoingCallTimeoutRef.current) {
         clearTimeout(outgoingCallTimeoutRef.current);
@@ -1850,6 +1860,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       if (payload.type === "invite") {
         if (callActivo && callRoomRef.current === payload.room) return;
         if (isDuplicateInvite(payload.room)) return;
+        pendingInviteTransportRef.current = "rest";
 
         playIncomingCallTone();
         if ("Notification" in window && Notification.permission === "granted") {
@@ -1869,9 +1880,11 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       }
 
       if (callRoomRef.current !== payload.room) return;
+      if (callTransportRef.current && callTransportRef.current !== "rest") return;
 
       if (payload.type === "join") {
         if (!callActivo || !payload.from) return;
+        if (peerConnectionsRef.current[payload.from]?.pc) return;
         if (outgoingCallTimeoutRef.current) {
           clearTimeout(outgoingCallTimeoutRef.current);
           outgoingCallTimeoutRef.current = null;
@@ -1899,6 +1912,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       if (payload.type === "offer") {
         if (!callActivo) return;
         const pc = crearPeerConnection(payload.from, payload.nickname || payload.fromNickname || "Usuario");
+        if (pc.remoteDescription) return;
         await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
@@ -4525,6 +4539,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     setCallVideoOff(false);
     setSharingScreen(false);
     callRoomRef.current = null;
+    callTransportRef.current = null;
+    pendingInviteTransportRef.current = null;
   };
 
   const crearPeerConnection = (socketId, nickname) => {
@@ -4688,10 +4704,12 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       }, 45000);
 
       if (connected && socket.connected) {
+        callTransportRef.current = "socket";
         emitirInvitacion();
         return;
       }
 
+      callTransportRef.current = "rest";
       const fallbackResult = await sendCallSignalFallback({
         type: "invite",
         room,
@@ -4728,9 +4746,12 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         socket.emit("call_join", { room, nickname: userDisplayName });
       };
 
-      if (connected && socket.connected) {
+      const preferSocket = pendingInviteTransportRef.current === "socket";
+      if (preferSocket && connected && socket.connected && !isRestPeerId(callIncoming?.fromSocketId)) {
+        callTransportRef.current = "socket";
         unirLlamada();
       } else {
+        callTransportRef.current = "rest";
         const fallbackResult = await sendCallSignalFallback({
           type: "join",
           room,

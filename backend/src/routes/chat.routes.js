@@ -56,7 +56,6 @@ function buildUserAliases(userLike) {
     userLike?.nickname,
     userLike?.email,
     userLike?.login,
-    userLike,
   ]
     .map((value) => String(value || "").trim())
     .filter(Boolean);
