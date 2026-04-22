@@ -152,8 +152,8 @@ export function initSocket(httpServer) {
       
       console.log(`📞 call_invite: from=${fromNickname}, targets=${requested.join(", ")}, active=${Object.keys(usuariosActivos).join(", ")}`);
 
-      // Registrar llamada en historial
-      prisma.chatLlamada.create({
+      // Registrar llamada en historial (fire-and-forget)
+      try { prisma.chatLlamada?.create({
         data: {
           room,
           iniciador: fromNickname || socket.data.nickname || "Usuario",
@@ -161,7 +161,7 @@ export function initSocket(httpServer) {
           tipo: requested.length > 1 ? "grupal" : "privado",
           estado: "perdida",
         },
-      }).catch(() => {});
+      }).catch(() => {}); } catch (_) {}
 
       requested.forEach((nick) => {
         const roomKey = getUserRoomKey(nick);
@@ -225,10 +225,10 @@ export function initSocket(httpServer) {
       socket.join(room);
 
       // Actualizar historial: marcar como activa
-      prisma.chatLlamada.updateMany({
+      try { prisma.chatLlamada?.updateMany({
         where: { room, estado: { in: ["perdida", "activa"] } },
         data: { estado: "activa", aceptadaEn: new Date() },
-      }).catch(() => {});
+      }).catch(() => {}); } catch (_) {}
 
       const roomSet = io.sockets.adapter.rooms.get(room) || new Set();
       const users = Array.from(roomSet).map((id) => {
@@ -250,7 +250,7 @@ export function initSocket(httpServer) {
       socket.to(room).emit("call_user_left", { room, socketId: socket.id });
 
       // Actualizar historial: marcar como finalizada
-      prisma.chatLlamada.findFirst({
+      try { prisma.chatLlamada?.findFirst({
         where: { room, estado: "activa" },
         orderBy: { iniciadaEn: "desc" },
       }).then((record) => {
@@ -263,7 +263,7 @@ export function initSocket(httpServer) {
           where: { id: record.id },
           data: { estado: "finalizada", finalizadaEn: fin, duracionSegundos: duracion },
         });
-      }).catch(() => {});
+      }).catch(() => {}); } catch (_) {}
     });
 
     socket.on("call_offer", ({ to, room, sdp, nickname }) => {

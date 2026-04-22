@@ -219,47 +219,45 @@ chatRouter.post("/calls/signal", requireAuth, async (req, res) => {
       });
     }
 
-    // ── Registro automático de historial de llamadas ────────────────────────
-    if (type === "invite") {
-      // Crear registro de llamada al inicio
-      prisma.chatLlamada.create({
-        data: {
-          room,
-          iniciador: senderName,
-          receptores: JSON.stringify(requestedNicknames),
-          tipo: requestedNicknames.length > 1 ? "grupal" : "privado",
-          estado: "perdida",
-        },
-      }).catch(() => {});
-    } else if (type === "join") {
-      // Marcar como activa cuando alguien acepta
-      prisma.chatLlamada.updateMany({
-        where: { room, estado: { in: ["perdida", "activa"] } },
-        data: { estado: "activa", aceptadaEn: new Date() },
-      }).catch(() => {});
-    } else if (type === "reject") {
-      // Marcar como rechazada
-      prisma.chatLlamada.updateMany({
-        where: { room, estado: "perdida" },
-        data: { estado: "rechazada", finalizadaEn: new Date() },
-      }).catch(() => {});
-    } else if (type === "leave") {
-      // Calcular duración y marcar como finalizada
-      prisma.chatLlamada.findFirst({
-        where: { room, estado: "activa" },
-        orderBy: { iniciadaEn: "desc" },
-      }).then((record) => {
-        if (!record) return;
-        const fin = new Date();
-        const duracion = record.aceptadaEn
-          ? Math.round((fin.getTime() - new Date(record.aceptadaEn).getTime()) / 1000)
-          : null;
-        return prisma.chatLlamada.update({
-          where: { id: record.id },
-          data: { estado: "finalizada", finalizadaEn: fin, duracionSegundos: duracion },
-        });
-      }).catch(() => {});
-    }
+    // ── Registro automático de historial de llamadas (fire-and-forget, nunca bloquea) ─
+    try {
+      if (type === "invite") {
+        prisma.chatLlamada?.create({
+          data: {
+            room,
+            iniciador: senderName,
+            receptores: JSON.stringify(requestedNicknames),
+            tipo: requestedNicknames.length > 1 ? "grupal" : "privado",
+            estado: "perdida",
+          },
+        }).catch(() => {});
+      } else if (type === "join") {
+        prisma.chatLlamada?.updateMany({
+          where: { room, estado: { in: ["perdida", "activa"] } },
+          data: { estado: "activa", aceptadaEn: new Date() },
+        }).catch(() => {});
+      } else if (type === "reject") {
+        prisma.chatLlamada?.updateMany({
+          where: { room, estado: "perdida" },
+          data: { estado: "rechazada", finalizadaEn: new Date() },
+        }).catch(() => {});
+      } else if (type === "leave") {
+        prisma.chatLlamada?.findFirst({
+          where: { room, estado: "activa" },
+          orderBy: { iniciadaEn: "desc" },
+        }).then((record) => {
+          if (!record) return;
+          const fin = new Date();
+          const duracion = record.aceptadaEn
+            ? Math.round((fin.getTime() - new Date(record.aceptadaEn).getTime()) / 1000)
+            : null;
+          return prisma.chatLlamada.update({
+            where: { id: record.id },
+            data: { estado: "finalizada", finalizadaEn: fin, duracionSegundos: duracion },
+          });
+        }).catch(() => {});
+      }
+    } catch (_) { /* historial no bloquea la señal */ }
 
     const signal = {
       id: nextSignalId(),
@@ -298,6 +296,8 @@ chatRouter.get("/calls/historial", requireAuth, async (req, res) => {
     if (!nombre) return res.status(401).json({ error: "No autenticado" });
     const limit = Math.min(Number(req.query.limit) || 50, 200);
 
+    if (!prisma.chatLlamada) return res.json([]);
+
     // Buscar llamadas donde el usuario fue iniciador o receptor
     const todas = await prisma.chatLlamada.findMany({
       where: {
@@ -334,7 +334,8 @@ chatRouter.get("/calls/historial", requireAuth, async (req, res) => {
 
     res.json(mias.slice(0, limit));
   } catch (e) {
-    res.status(500).json({ error: "Error obteniendo historial de llamadas" });
+    // Si la tabla no existe aún en producción, devolver array vacío
+    res.json([]);
   }
 });
 

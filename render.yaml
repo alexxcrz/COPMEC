@@ -4,7 +4,7 @@ services:
     runtime: node
     rootDir: backend
     plan: free
-    buildCommand: cd backend && npm install --include=dev && cd ../frontend && npm install --include=dev && npm run build
+    buildCommand: cd backend && npm install --include=dev && npx prisma db push --skip-generate || true && cd ../frontend && npm install --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     autoDeployTrigger: commit
