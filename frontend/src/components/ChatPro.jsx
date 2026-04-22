@@ -299,6 +299,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const pendingCandidatesRef = useRef({});
   const callRoomRef = useRef(null);
   const outgoingCallTimeoutRef = useRef(null);
+  const incomingInviteRef = useRef({ room: null, ts: 0 });
   const ringtoneRef = useRef(null);
   const outgoingRingRef = useRef(null);
   const lastActivityEmitRef = useRef(0);
@@ -336,23 +337,13 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     ),
   );
 
-  const getPlayerAliases = (value) => {
-    const raw = String(value || "").trim();
-    if (!raw) return [];
-    const targetKey = normalizeCallNick(raw);
-    const player = (Array.isArray(usuariosCOPMEC) ? usuariosCOPMEC : []).find((p) => {
-      const options = [p?.nickname, p?.name, p?.email, p?.id]
-        .map((v) => String(v || "").trim())
-        .filter(Boolean);
-      return options.some((opt) => normalizeCallNick(opt) === targetKey);
-    });
-    return Array.from(new Set([
-      raw,
-      player?.nickname,
-      player?.name,
-      player?.email,
-      player?.id,
-    ].map((v) => String(v || "").trim()).filter(Boolean)));
+  const isDuplicateInvite = (room) => {
+    const now = Date.now();
+    if (incomingInviteRef.current.room === room && (now - incomingInviteRef.current.ts) < 8000) {
+      return true;
+    }
+    incomingInviteRef.current = { room, ts: now };
+    return false;
   };
 
   const sendCallSignalFallback = async ({ type, room, toNicknames, sdp, candidate, nickname, fromPeerId }) => {
@@ -1700,6 +1691,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     const handleInvite = (payload) => {
       if (!payload?.room) return;
       if (callActivo && callRoomRef.current === payload.room) return;
+      if (isDuplicateInvite(payload.room)) return;
 
       playIncomingCallTone();
       if ("Notification" in window && Notification.permission === "granted") {
@@ -1735,6 +1727,10 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     const handleUserJoined = async (payload) => {
       if (!payload?.room || callRoomRef.current !== payload.room) return;
       if (!callActivo || payload.socketId === socket.id) return;
+      if (outgoingCallTimeoutRef.current) {
+        clearTimeout(outgoingCallTimeoutRef.current);
+        outgoingCallTimeoutRef.current = null;
+      }
       // Parar ring saliente cuando alguien contesta
       if (outgoingRingRef.current) {
         clearInterval(outgoingRingRef.current);
@@ -1791,6 +1787,10 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
     const handleCallRejected = (payload) => {
       if (!payload?.room || callRoomRef.current !== payload.room) return;
+      if (outgoingCallTimeoutRef.current) {
+        clearTimeout(outgoingCallTimeoutRef.current);
+        outgoingCallTimeoutRef.current = null;
+      }
       playCallSound("reject");
       showAlert(`${payload.nickname || "Usuario"} rechazó la videollamada.`, "warning");
       if (outgoingRingRef.current) {
@@ -1849,6 +1849,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
       if (payload.type === "invite") {
         if (callActivo && callRoomRef.current === payload.room) return;
+        if (isDuplicateInvite(payload.room)) return;
 
         playIncomingCallTone();
         if ("Notification" in window && Notification.permission === "granted") {
@@ -1871,6 +1872,10 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
       if (payload.type === "join") {
         if (!callActivo || !payload.from) return;
+        if (outgoingCallTimeoutRef.current) {
+          clearTimeout(outgoingCallTimeoutRef.current);
+          outgoingCallTimeoutRef.current = null;
+        }
         if (outgoingRingRef.current) {
           clearInterval(outgoingRingRef.current);
           outgoingRingRef.current = null;
@@ -1930,6 +1935,10 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       }
 
       if (payload.type === "reject") {
+        if (outgoingCallTimeoutRef.current) {
+          clearTimeout(outgoingCallTimeoutRef.current);
+          outgoingCallTimeoutRef.current = null;
+        }
         playCallSound("reject");
         showAlert(`${payload.nickname || payload.fromNickname || "Usuario"} rechazó la videollamada.`, "warning");
         if (outgoingRingRef.current) {
@@ -4641,13 +4650,13 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       const userDisplayName = user?.nickname || user?.name || "usuario";
       const destinatarios = [];
       if (tipoChat === "privado") {
-        if (chatActual) destinatarios.push(...getPlayerAliases(chatActual));
+        if (chatActual) destinatarios.push(chatActual);
       } else if (tipoChat === "grupal") {
         const grupo = Array.isArray(grupos)
           ? grupos.find((g) => String(g.id) === String(chatActual))
           : null;
         if (grupo?.miembros?.length) {
-          grupo.miembros.forEach((m) => destinatarios.push(...getPlayerAliases(m)));
+          destinatarios.push(...grupo.miembros);
         }
       }
       const unicos = Array.from(new Set(destinatarios)).filter((n) => {
@@ -4680,13 +4689,6 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
       if (connected && socket.connected) {
         emitirInvitacion();
-        sendCallSignalFallback({
-          type: "invite",
-          room,
-          toNicknames: unicos,
-          nickname: userDisplayName,
-          fromPeerId: buildRestPeerId(userDisplayName),
-        }).catch(() => {});
         return;
       }
 
