@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { BarChart3, Check, ClipboardList, Plus, Settings, Trash2, Upload, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BarChart3, Bold, Check, ClipboardList, Italic, List, Plus, RotateCcw, Settings, Trash2, Upload, X } from "lucide-react";
 import { Modal } from "../components/Modal";
 import { uploadFileToCloudinary } from "../services/upload.service";
 
@@ -197,6 +197,93 @@ function buildQuickStat(label, value) {
   return { label, value };
 }
 
+function wrapAnswerSelection(value, selectionStart, selectionEnd, prefix, suffix = prefix) {
+  const safeValue = String(value || "");
+  const start = Math.max(0, Number(selectionStart ?? 0));
+  const end = Math.max(start, Number(selectionEnd ?? start));
+  const selectedText = safeValue.slice(start, end);
+  const insertion = `${prefix}${selectedText}${suffix}`;
+  const nextValue = `${safeValue.slice(0, start)}${insertion}${safeValue.slice(end)}`;
+  const cursorOffset = selectedText ? insertion.length : prefix.length;
+
+  return {
+    value: nextValue,
+    selectionStart: start + prefix.length,
+    selectionEnd: start + cursorOffset,
+  };
+}
+
+function prefixAnswerLines(value, selectionStart, selectionEnd, prefix = "- ") {
+  const safeValue = String(value || "");
+  const start = Math.max(0, Number(selectionStart ?? 0));
+  const end = Math.max(start, Number(selectionEnd ?? start));
+  const blockStart = safeValue.lastIndexOf("\n", Math.max(0, start - 1)) + 1;
+  const lineBreakIndex = safeValue.indexOf("\n", end);
+  const blockEnd = lineBreakIndex >= 0 ? lineBreakIndex : safeValue.length;
+  const block = safeValue.slice(blockStart, blockEnd) || "";
+  const nextBlock = block
+    .split("\n")
+    .map((line) => (line.startsWith(prefix) ? line : `${prefix}${line}`))
+    .join("\n");
+  const nextValue = `${safeValue.slice(0, blockStart)}${nextBlock}${safeValue.slice(blockEnd)}`;
+
+  return {
+    value: nextValue,
+    selectionStart: blockStart,
+    selectionEnd: blockStart + nextBlock.length,
+  };
+}
+
+function renderRichInline(text, keyPrefix) {
+  const tokens = String(text || "").split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).filter(Boolean);
+  return tokens.map((token, index) => {
+    if (token.startsWith("**") && token.endsWith("**")) {
+      return <strong key={`${keyPrefix}-strong-${index}`}>{token.slice(2, -2)}</strong>;
+    }
+    if (token.startsWith("*") && token.endsWith("*")) {
+      return <em key={`${keyPrefix}-em-${index}`}>{token.slice(1, -1)}</em>;
+    }
+    return <span key={`${keyPrefix}-text-${index}`}>{token}</span>;
+  });
+}
+
+function renderRichAnswerPreview(value) {
+  const lines = String(value || "").split(/\r?\n/);
+  const blocks = [];
+  let listItems = [];
+
+  const flushList = () => {
+    if (!listItems.length) return;
+    blocks.push(
+      <ul key={`list-${blocks.length}`} className="audit-rich-preview-list">
+        {listItems.map((item, index) => <li key={`item-${blocks.length}-${index}`}>{renderRichInline(item, `list-${blocks.length}-${index}`)}</li>)}
+      </ul>,
+    );
+    listItems = [];
+  };
+
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      flushList();
+      return;
+    }
+    if (trimmed.startsWith("- ")) {
+      listItems.push(trimmed.slice(2));
+      return;
+    }
+    flushList();
+    blocks.push(
+      <p key={`paragraph-${blocks.length}`} className="audit-rich-preview-paragraph">
+        {renderRichInline(trimmed, `paragraph-${blocks.length}`)}
+      </p>,
+    );
+  });
+
+  flushList();
+  return blocks;
+}
+
 function TemplateQuestionEditor({
   draft,
   setDraft,
@@ -313,6 +400,8 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     deleteProcessAuditTemplate,
     createProcessAudit,
     updateProcessAudit,
+    deleteProcessAudit,
+    resetProcessAuditStats,
     addProcessAuditEvidence,
     removeProcessAuditEvidence,
     pushAppToast,
@@ -336,6 +425,15 @@ export default function AuditoriasProcesosCompact({ contexto }) {
   const [auditEditorOpen, setAuditEditorOpen] = useState(false);
   const [templateFilterArea, setTemplateFilterArea] = useState("");
   const [templateFilterProcess, setTemplateFilterProcess] = useState("");
+  const [deleteAuditModal, setDeleteAuditModal] = useState({
+    open: false,
+    auditId: "",
+    auditLabel: "",
+    leadPassword: "",
+    submitting: false,
+  });
+  const [resetStatsModal, setResetStatsModal] = useState({ open: false, submitting: false });
+  const textAnswerRefs = useRef(new Map());
 
   const resolvedTemplates = useMemo(() => {
     if (Array.isArray(processAuditTemplates) && processAuditTemplates.length > 0) {
@@ -468,6 +566,79 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     return () => clearTimeout(timer);
   }, [auditDraft, canManageAudits, isAuditDirty, updateProcessAudit]);
 
+  function updateAuditAnswer(questionId, nextAnswer) {
+    setAuditDraft((current) => ({
+      ...current,
+      questions: current.questions.map((item) => (item.id === questionId ? { ...item, answer: nextAnswer } : item)),
+    }));
+    setIsAuditDirty(true);
+  }
+
+  function applyTextAnswerFormat(questionId, formatType) {
+    const textarea = textAnswerRefs.current.get(questionId);
+    const question = (auditDraft?.questions || []).find((item) => item.id === questionId);
+    if (!textarea || !question) return;
+
+    const currentValue = String(question.answer || "");
+    const selectionStart = textarea.selectionStart ?? currentValue.length;
+    const selectionEnd = textarea.selectionEnd ?? currentValue.length;
+    const formatter = formatType === "bold"
+      ? wrapAnswerSelection(currentValue, selectionStart, selectionEnd, "**")
+      : formatType === "italic"
+        ? wrapAnswerSelection(currentValue, selectionStart, selectionEnd, "*")
+        : prefixAnswerLines(currentValue, selectionStart, selectionEnd);
+
+    updateAuditAnswer(questionId, formatter.value);
+    requestAnimationFrame(() => {
+      const nextTextarea = textAnswerRefs.current.get(questionId);
+      if (!nextTextarea) return;
+      nextTextarea.focus();
+      nextTextarea.setSelectionRange(formatter.selectionStart, formatter.selectionEnd);
+    });
+  }
+
+  function openDeleteAuditModal(audit) {
+    setDeleteAuditModal({
+      open: true,
+      auditId: audit?.id || "",
+      auditLabel: audit ? `${audit.area} · ${audit.process}` : "",
+      leadPassword: "",
+      submitting: false,
+    });
+  }
+
+  function closeDeleteAuditModal() {
+    setDeleteAuditModal({
+      open: false,
+      auditId: "",
+      auditLabel: "",
+      leadPassword: "",
+      submitting: false,
+    });
+  }
+
+  async function confirmDeleteAudit() {
+    if (!deleteAuditModal.auditId || !deleteAuditModal.leadPassword.trim()) {
+      pushAppToast("Captura la contraseña de un Lead.", "warning");
+      return;
+    }
+
+    setDeleteAuditModal((current) => ({ ...current, submitting: true }));
+    try {
+      await deleteProcessAudit(deleteAuditModal.auditId, deleteAuditModal.leadPassword.trim());
+      if (selectedAuditId === deleteAuditModal.auditId) {
+        setSelectedAuditId("");
+        setAuditEditorOpen(false);
+      }
+      setActiveTab("history");
+      closeDeleteAuditModal();
+      pushAppToast("Auditoría eliminada.", "success");
+    } catch (error) {
+      setDeleteAuditModal((current) => ({ ...current, submitting: false }));
+      pushAppToast(error?.message || "No se pudo eliminar la auditoría.", "danger");
+    }
+  }
+
   async function handleSaveTemplate() {
     if (!canManageTemplates) return;
 
@@ -538,6 +709,8 @@ export default function AuditoriasProcesosCompact({ contexto }) {
         notes: auditDraft.notes || "",
         questions: normalizeQuestionsForSave(auditDraft.questions || []),
       });
+      setAuditEditorOpen(false);
+      setActiveTab("history");
       pushAppToast("Auditoría cerrada.", "success");
     } catch (error) {
       pushAppToast(error?.message || "No se pudo cerrar la auditoría.", "danger");
@@ -576,6 +749,18 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     setAuditDraft((current) => ({ ...current, questions: nextQuestions }));
     setIsAuditDirty(true);
     setAuditEditorOpen(false);
+  }
+
+  async function handleResetStats() {
+    setResetStatsModal((s) => ({ ...s, submitting: true }));
+    try {
+      await resetProcessAuditStats();
+      setResetStatsModal({ open: false, submitting: false });
+      pushAppToast?.({ type: "success", message: "Contadores del dashboard reiniciados." });
+    } catch (err) {
+      pushAppToast?.({ type: "error", message: err?.message || "No fue posible reiniciar los contadores." });
+      setResetStatsModal((s) => ({ ...s, submitting: false }));
+    }
   }
 
   return (
@@ -705,21 +890,27 @@ export default function AuditoriasProcesosCompact({ contexto }) {
               <>
                 <div className="audit-active-meta-grid">
                   <article className="surface-card audit-mini-stat">
-                    <strong>{auditDraft.area}</strong>
                     <p>Área</p>
+                    <strong>{auditDraft.area}</strong>
                   </article>
                   <article className="surface-card audit-mini-stat">
-                    <strong>{auditDraft.process}</strong>
                     <p>Proceso</p>
+                    <strong>{auditDraft.process}</strong>
                   </article>
                   <article className="surface-card audit-mini-stat">
-                    <strong>{(auditDraft.questions || []).length}</strong>
                     <p>Preguntas</p>
+                    <strong>{(auditDraft.questions || []).length}</strong>
                   </article>
                   <article className="surface-card audit-mini-stat">
-                    <strong>{(auditDraft.evidences || []).length}</strong>
                     <p>Evidencias</p>
+                    <strong>{(auditDraft.evidences || []).length}</strong>
                   </article>
+                </div>
+
+                <div className="audit-active-subline subtle-line">
+                  <span>Inicio: {formatDateTime(auditDraft.startedAt)}</span>
+                  <span>Auditor: {auditDraft.auditorName || currentUser?.name || "Sin auditor"}</span>
+                  <span>Duración: {formatDuration(getAuditDurationSeconds(auditDraft))}</span>
                 </div>
 
                 <label className="app-modal-field audit-field-span-full">
@@ -731,12 +922,16 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                       setIsAuditDirty(true);
                     }}
                     placeholder="Observación general"
+                    disabled={!canManageAudits || auditDraft.status === "closed"}
                   />
                 </label>
 
                 <div className="audit-response-grid">
                   {(auditDraft.questions || []).map((question, index) => (
-                    <article key={question.id} className="surface-card audit-response-card">
+                    <article
+                      key={question.id}
+                      className={question.type === "text" ? "surface-card audit-response-card audit-response-card-text" : "surface-card audit-response-card audit-response-card-yesno"}
+                    >
                       <div className="audit-response-head">
                         <span className="chip">{index + 1}</span>
                         <strong>{question.text}</strong>
@@ -746,45 +941,56 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                           <button
                             type="button"
                             className={question.answer === true ? "primary-button" : "icon-button"}
-                            onClick={() => {
-                              setAuditDraft((current) => ({
-                                ...current,
-                                questions: current.questions.map((item) => (item.id === question.id ? { ...item, answer: true } : item)),
-                              }));
-                              setIsAuditDirty(true);
-                            }}
+                            onClick={() => updateAuditAnswer(question.id, true)}
+                            disabled={!canManageAudits || auditDraft.status === "closed"}
                           >
                             <Check size={15} /> Sí
                           </button>
                           <button
                             type="button"
                             className={question.answer === false ? "primary-button" : "icon-button"}
-                            onClick={() => {
-                              setAuditDraft((current) => ({
-                                ...current,
-                                questions: current.questions.map((item) => (item.id === question.id ? { ...item, answer: false } : item)),
-                              }));
-                              setIsAuditDirty(true);
-                            }}
+                            onClick={() => updateAuditAnswer(question.id, false)}
+                            disabled={!canManageAudits || auditDraft.status === "closed"}
                           >
                             <X size={15} /> No
                           </button>
                         </div>
                       ) : (
-                        <label className="app-modal-field">
-                          <span>Respuesta</span>
-                          <input
-                            value={String(question.answer || "")}
-                            onChange={(event) => {
-                              setAuditDraft((current) => ({
-                                ...current,
-                                questions: current.questions.map((item) => (item.id === question.id ? { ...item, answer: event.target.value } : item)),
-                              }));
-                              setIsAuditDirty(true);
-                            }}
-                            placeholder={question.placeholder || "Escribe aquí"}
-                          />
-                        </label>
+                        <div className="audit-text-answer-shell">
+                          <div className="audit-text-toolbar" role="toolbar" aria-label={`Formato para ${question.text}`}>
+                            <button type="button" className="icon-button" onClick={() => applyTextAnswerFormat(question.id, "bold")} disabled={!canManageAudits || auditDraft.status === "closed"}>
+                              <Bold size={14} /> Negrita
+                            </button>
+                            <button type="button" className="icon-button" onClick={() => applyTextAnswerFormat(question.id, "italic")} disabled={!canManageAudits || auditDraft.status === "closed"}>
+                              <Italic size={14} /> Itálica
+                            </button>
+                            <button type="button" className="icon-button" onClick={() => applyTextAnswerFormat(question.id, "list")} disabled={!canManageAudits || auditDraft.status === "closed"}>
+                              <List size={14} /> Lista
+                            </button>
+                          </div>
+                          <label className="app-modal-field">
+                            <span>Respuesta</span>
+                            <textarea
+                              ref={(node) => {
+                                if (node) textAnswerRefs.current.set(question.id, node);
+                                else textAnswerRefs.current.delete(question.id);
+                              }}
+                              value={String(question.answer || "")}
+                              onChange={(event) => updateAuditAnswer(question.id, event.target.value)}
+                              placeholder={question.placeholder || "Escribe aquí"}
+                              rows={5}
+                              disabled={!canManageAudits || auditDraft.status === "closed"}
+                            />
+                          </label>
+                          {String(question.answer || "").trim() ? (
+                            <div className="audit-rich-preview">
+                              <span>Vista previa</span>
+                              <div className="audit-rich-preview-body">
+                                {renderRichAnswerPreview(question.answer)}
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
                       )}
                     </article>
                   ))}
@@ -793,8 +999,9 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                 <div className="audit-inline-actions">
                   <label className="icon-button" style={{ cursor: uploadingEvidence ? "not-allowed" : "pointer", opacity: uploadingEvidence ? 0.6 : 1 }}>
                     <Upload size={15} /> {uploadingEvidence ? "Subiendo..." : "Evidencia"}
-                    <input type="file" accept="image/*,video/*" style={{ display: "none" }} onChange={handleUploadEvidence} disabled={uploadingEvidence || !canManageAudits} />
+                    <input type="file" accept="image/*,video/*" style={{ display: "none" }} onChange={handleUploadEvidence} disabled={uploadingEvidence || !canManageAudits || auditDraft.status === "closed"} />
                   </label>
+                  <button type="button" className="icon-button danger" onClick={() => openDeleteAuditModal(auditDraft)} disabled={!canManageAudits}>Eliminar</button>
                   <button type="button" className="primary-button" onClick={handleCloseAudit} disabled={!canManageAudits || auditDraft.status === "closed"}>Cerrar</button>
                 </div>
 
@@ -840,6 +1047,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                 <p className="subtle-line">Preguntas: {(audit.questions || []).length} · Evidencias: {(audit.evidences || []).length}</p>
                 <div className="audit-inline-actions">
                   <button type="button" className="icon-button" onClick={() => { setSelectedAuditId(audit.id); setActiveTab("capture"); }}>Abrir</button>
+                  <button type="button" className="icon-button danger" onClick={() => openDeleteAuditModal(audit)} disabled={!canManageAudits}>Eliminar</button>
                 </div>
               </article>
             ))}
@@ -855,7 +1063,19 @@ export default function AuditoriasProcesosCompact({ contexto }) {
               <h3>Dashboard</h3>
               <p>Vista general de auditorías por área.</p>
             </div>
-            <BarChart3 size={18} />
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              {currentUser?.role === "Lead" && (
+                <button
+                  type="button"
+                  className="icon-button danger"
+                  onClick={() => setResetStatsModal({ open: true, submitting: false })}
+                  title="Reiniciar todos los contadores"
+                >
+                  <RotateCcw size={15} /> Reiniciar
+                </button>
+              )}
+              <BarChart3 size={18} />
+            </div>
           </div>
           <div className="inventory-stat-grid inventory-stat-grid-collapsed">
             <article className="surface-card audit-mini-stat"><strong>{dashboardStats.total}</strong><p>Total</p></article>
@@ -984,6 +1204,45 @@ export default function AuditoriasProcesosCompact({ contexto }) {
               addLabel="Agregar"
             />
           </section>
+        </div>
+      </Modal>
+
+      <Modal
+        open={deleteAuditModal.open}
+        title="Eliminar auditoría"
+        confirmLabel={deleteAuditModal.submitting ? "Eliminando..." : "Eliminar auditoría"}
+        cancelLabel="Cancelar"
+        onClose={closeDeleteAuditModal}
+        onConfirm={confirmDeleteAudit}
+        confirmDisabled={deleteAuditModal.submitting || !deleteAuditModal.auditId || !deleteAuditModal.leadPassword.trim()}
+      >
+        <div className="audit-delete-modal-copy">
+          <p>Esta acción borra por completo la auditoría <strong>{deleteAuditModal.auditLabel || "seleccionada"}</strong>.</p>
+          <p className="subtle-line">Confirma con la contraseña de un Lead para continuar.</p>
+        </div>
+        <label className="app-modal-field">
+          <span>Contraseña del Lead</span>
+          <input
+            type="password"
+            value={deleteAuditModal.leadPassword}
+            onChange={(event) => setDeleteAuditModal((current) => ({ ...current, leadPassword: event.target.value }))}
+            placeholder="Ingresa la contraseña"
+          />
+        </label>
+      </Modal>
+
+      <Modal
+        open={resetStatsModal.open}
+        title="Reiniciar contadores del dashboard"
+        confirmLabel={resetStatsModal.submitting ? "Reiniciando..." : "Sí, reiniciar todo"}
+        cancelLabel="Cancelar"
+        onClose={() => setResetStatsModal({ open: false, submitting: false })}
+        onConfirm={handleResetStats}
+        confirmDisabled={resetStatsModal.submitting}
+      >
+        <div className="audit-delete-modal-copy">
+          <p>Esta acción eliminará <strong>todas las auditorías registradas</strong> y reiniciará los contadores del dashboard a cero.</p>
+          <p className="subtle-line">Solo el Lead principal puede hacer esto. No se puede deshacer.</p>
         </div>
       </Modal>
 

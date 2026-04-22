@@ -4983,6 +4983,26 @@ function App() { // NOSONAR
         throw error;
       }
     },
+    deleteProcessAudit: async (auditId, leadPassword) => {
+      try {
+        const result = await requestJson(`/warehouse/process-audits/${auditId}`, {
+          method: "DELETE",
+          body: JSON.stringify({ leadPassword }),
+        });
+        applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+        return result.data.auditId;
+      } catch (error) {
+        throw error;
+      }
+    },
+    resetProcessAuditStats: async () => {
+      try {
+        const result = await requestJson("/warehouse/process-audits/reset-stats", { method: "POST" });
+        applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      } catch (error) {
+        throw error;
+      }
+    },
     addProcessAuditEvidence: async (auditId, payload) => {
       try {
         const result = await requestJson(`/warehouse/process-audits/${auditId}/evidences`, {

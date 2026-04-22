@@ -2946,6 +2946,54 @@ export function updateProcessAudit(auth, auditId, payload = {}) {
   return { ok: true, state: replaceWarehouseState(nextState), auditId };
 }
 
+export function deleteProcessAudit(auth, auditId, leadPassword) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const currentState = getRawWarehouseState();
+  const existingAudit = (currentState.processAudits || []).find((entry) => entry.id === auditId);
+  if (!existingAudit) return { ok: false, reason: "audit_not_found" };
+  if (!canUserDoWarehouseAction(currentUser, "manageProcessAudits", currentState.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const normalizedPassword = String(leadPassword || "").trim();
+  if (!normalizedPassword) return { ok: false, reason: "lead_password_required" };
+
+  const approvingLead = (currentState.users || []).find((user) => (
+    user?.isActive
+    && user.role === ROLE_LEAD
+    && verifyPassword(normalizedPassword, user.passwordHash || user.password || "")
+  ));
+  if (!approvingLead) return { ok: false, reason: "invalid_lead_password" };
+
+  const nextState = {
+    ...currentState,
+    processAudits: (currentState.processAudits || []).filter((entry) => entry.id !== auditId),
+  };
+
+  return {
+    ok: true,
+    state: replaceWarehouseState(nextState),
+    auditId,
+    approvedByLeadId: approvingLead.id,
+  };
+}
+
+export function resetProcessAuditStats(auth) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+  if (currentUser.role !== ROLE_LEAD) return { ok: false, reason: "forbidden" };
+
+  const currentState = getRawWarehouseState();
+  const nextState = {
+    ...currentState,
+    processAudits: [],
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState) };
+}
+
 export function addProcessAuditEvidence(auth, auditId, payload = {}) {
   const currentUser = findWarehouseUserById(auth?.userId);
   if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };

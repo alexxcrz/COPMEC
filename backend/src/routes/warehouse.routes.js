@@ -56,6 +56,8 @@ import {
   deleteProcessAuditTemplate,
   createProcessAudit,
   updateProcessAudit,
+  deleteProcessAudit,
+  resetProcessAuditStats,
   addProcessAuditEvidence,
   removeProcessAuditEvidence,
 } from "../services/warehouse.store.js";
@@ -353,6 +355,47 @@ warehouseRouter.patch("/process-audits/:auditId", requireAuth, (req, res) => {
     revision: result.state?.revision,
   });
   res.json({ ok: true, data: { state: result.state, auditId: result.auditId } });
+});
+
+warehouseRouter.delete("/process-audits/:auditId", requireAuth, (req, res) => {
+  const result = deleteProcessAudit(req.auth, req.params.auditId, req.body?.leadPassword);
+  if (!result.ok) {
+    const status = result.reason === "auth_required"
+      ? 401
+      : result.reason === "audit_not_found"
+        ? 404
+        : result.reason === "forbidden"
+          ? 403
+          : 400;
+    const message = result.reason === "lead_password_required"
+      ? "Captura la contraseña de un Lead para eliminar la auditoría."
+      : result.reason === "invalid_lead_password"
+        ? "La contraseña del Lead no es válida."
+        : "No fue posible eliminar la auditoría.";
+    res.status(status).json({ ok: false, message });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_process_audit_deleted", req, {
+    auditId: result.auditId,
+    approvedByLeadId: result.approvedByLeadId,
+    revision: result.state?.revision,
+  });
+  res.json({ ok: true, data: { state: result.state, auditId: result.auditId } });
+});
+
+warehouseRouter.post("/process-audits/reset-stats", requireAuth, (req, res) => {
+  const result = resetProcessAuditStats(req.auth);
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "forbidden" ? 403 : 400;
+    const message = result.reason === "forbidden"
+      ? "Solo el Lead principal puede reiniciar los contadores."
+      : "No fue posible reiniciar los contadores.";
+    res.status(status).json({ ok: false, message });
+    return;
+  }
+  auditSecurityEvent("warehouse_process_audit_stats_reset", req, { revision: result.state?.revision });
+  res.json({ ok: true, data: { state: result.state } });
 });
 
 warehouseRouter.post("/process-audits/:auditId/evidences", requireAuth, (req, res) => {
