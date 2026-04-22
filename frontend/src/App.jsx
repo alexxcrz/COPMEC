@@ -4954,8 +4954,16 @@ function App() { // NOSONAR
       socketRef.current = null;
     }
 
-    const socket = io(API_BASE_URL || window.location.origin, {
+    // API_BASE_URL puede ser "/api"; para Socket.IO solo necesitamos el origin.
+    let socketBaseUrl = window.location.origin;
+    try {
+      const parsedApiUrl = new URL(API_BASE_URL || window.location.origin, window.location.origin);
+      socketBaseUrl = parsedApiUrl.origin;
+    } catch (_) {}
+
+    const socket = io(socketBaseUrl, {
       withCredentials: true,
+      path: "/socket.io",
       transports: ["websocket", "polling"],
       upgrade: true,
       reconnection: true,            // Socket.IO gestiona reconexión (sin race conditions)
