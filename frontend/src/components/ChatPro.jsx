@@ -1792,6 +1792,11 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       if (callTransportRef.current && callTransportRef.current !== "socket") return;
       if (!payload?.room || callRoomRef.current !== payload.room) return;
       if (payload.socketId) limpiarPeer(payload.socketId);
+      const remainingPeers = Object.keys(peerConnectionsRef.current).filter((id) => peerConnectionsRef.current[id]?.pc);
+      if (remainingPeers.length === 0 && callActivo) {
+        playCallSound("hangup");
+        limpiarLlamada();
+      }
     };
 
     const handleCallRejected = (payload) => {
@@ -1807,6 +1812,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         clearInterval(outgoingRingRef.current);
         outgoingRingRef.current = null;
       }
+      if (socket) socket.emit("set_in_call", { inCall: false });
     };
 
     const handleCallInviteStatus = (payload) => {
@@ -1964,6 +1970,11 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
       if (payload.type === "leave" && payload.from) {
         limpiarPeer(payload.from);
+        const remainingPeers = Object.keys(peerConnectionsRef.current).filter((id) => peerConnectionsRef.current[id]?.pc);
+        if (remainingPeers.length === 0 && callActivo) {
+          playCallSound("hangup");
+          limpiarLlamada();
+        }
       }
     };
 
@@ -4775,6 +4786,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
   const rechazarLlamada = () => {
     playCallSound("reject");
+    if (socket && socket.connected) socket.emit("set_in_call", { inCall: false });
     if (socket && socket.connected && callIncoming?.room && callIncoming?.fromSocketId && !isRestPeerId(callIncoming.fromSocketId)) {
       const userDisplayName = user?.nickname || user?.name || "Usuario";
       socket.emit("call_reject", {
