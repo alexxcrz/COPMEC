@@ -408,6 +408,7 @@ function App() { // NOSONAR
   const [usersViewTab, setUsersViewTab] = useState("table");
   const [passwordForm, setPasswordForm] = useState({ password: "", confirmPassword: "", message: "" });
   const [areaModal, setAreaModal] = useState({ open: false, target: "user", name: "", parentArea: "", error: "" });
+  const [areaDeleteModal, setAreaDeleteModal] = useState({ open: false, areaName: "", label: "", error: "", submitting: false });
   const [controlBoardDraft, setControlBoardDraft] = useState(createEmptyBoardDraft);
   const [controlBoardFeedback, setControlBoardFeedback] = useState("");
   const [boardImportedRowsDraft, setBoardImportedRowsDraft] = useState([]);
@@ -1745,6 +1746,46 @@ function App() { // NOSONAR
     }
 
     setAreaModal({ open: false, target: "user", name: "", parentArea: "", error: "" });
+  }
+
+  function openDeleteAreaModal(areaName, label = "") {
+    if (!areaName || currentUser?.role !== ROLE_LEAD) return;
+    setAreaDeleteModal({ open: true, areaName, label: label || areaName, error: "", submitting: false });
+  }
+
+  async function confirmDeleteArea() {
+    if (!areaDeleteModal.areaName) return;
+    setAreaDeleteModal((current) => ({ ...current, submitting: true, error: "" }));
+    try {
+      const result = await requestJson(`/warehouse/areas/${encodeURIComponent(areaDeleteModal.areaName)}`, {
+        method: "DELETE",
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+
+      const removedRoot = getAreaRoot(areaDeleteModal.areaName);
+      const isSubArea = areaDeleteModal.areaName.includes("/");
+      setUserModal((current) => {
+        if (isSubArea) {
+          if (current.area === removedRoot && current.subArea === splitAreaAndSubArea(areaDeleteModal.areaName).subArea) {
+            return { ...current, subArea: "" };
+          }
+          return current;
+        }
+        if (current.area === removedRoot) {
+          return { ...current, area: "", subArea: "" };
+        }
+        return current;
+      });
+
+      setAreaDeleteModal({ open: false, areaName: "", label: "", error: "", submitting: false });
+      setToast({ message: "Área eliminada correctamente.", kind: "success" });
+    } catch (error) {
+      setAreaDeleteModal((current) => ({
+        ...current,
+        submitting: false,
+        error: error?.message || "No se pudo eliminar el área.",
+      }));
+    }
   }
 
   const normalizedPermissions = useMemo(
@@ -5450,6 +5491,22 @@ function App() { // NOSONAR
         </div>
       </Modal>
 
+      <Modal
+        open={areaDeleteModal.open}
+        title="Eliminar área"
+        confirmLabel={areaDeleteModal.submitting ? "Eliminando..." : "Eliminar"}
+        cancelLabel="Cancelar"
+        onClose={() => setAreaDeleteModal({ open: false, areaName: "", label: "", error: "", submitting: false })}
+        onConfirm={confirmDeleteArea}
+        confirmDisabled={areaDeleteModal.submitting || !areaDeleteModal.areaName}
+      >
+        <div className="modal-form-grid">
+          <p>Vas a eliminar {areaDeleteModal.label || "esta área"}.</p>
+          <p className="modal-footnote">Si es subárea, los players migran al área raíz. Si es área raíz, se limpia el área de los players asignados.</p>
+          {areaDeleteModal.error ? <p className="validation-text">{areaDeleteModal.error}</p> : null}
+        </div>
+      </Modal>
+
       <Modal open={Boolean(editWeekId)} title="Editar semana" confirmLabel="Cerrar" hideCancel onClose={() => { setEditWeekId(null); setEditWeekActivityId(""); }}>
         <div className="modal-form-grid">
           <label className="app-modal-field">
@@ -5493,6 +5550,16 @@ function App() { // NOSONAR
                   {(currentUser?.role === ROLE_LEAD ? rootAreaOptions : Array.from(new Set(userAreaOptions.map((a) => getAreaRoot(a) || a))).filter(Boolean)).map((area) => <option key={area} value={area}>{area}</option>)}
                 </select>
                 {currentUser?.role === ROLE_LEAD ? <button type="button" className="icon-button area-add-button" onClick={() => handleAddAreaOption()} aria-label="Agregar nueva área"><Plus size={16} /></button> : null}
+                {currentUser?.role === ROLE_LEAD && userModal.area ? (
+                  <button
+                    type="button"
+                    className="icon-button danger"
+                    onClick={() => openDeleteAreaModal(userModal.area, `área ${userModal.area}`)}
+                    aria-label="Eliminar área seleccionada"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                ) : null}
               </div>
             </label>
             {userModal.area ? (
@@ -5504,6 +5571,16 @@ function App() { // NOSONAR
                     {getSubAreaOptions(userModal.area).map((sub) => <option key={sub} value={sub}>{sub}</option>)}
                   </select>
                   {currentUser?.role === ROLE_LEAD ? <button type="button" className="icon-button area-add-button" onClick={() => handleAddAreaOption(userModal.area)} aria-label="Agregar nueva subárea"><Plus size={16} /></button> : null}
+                  {currentUser?.role === ROLE_LEAD && userModal.subArea ? (
+                    <button
+                      type="button"
+                      className="icon-button danger"
+                      onClick={() => openDeleteAreaModal(joinAreaAndSubArea(userModal.area, userModal.subArea), `subárea ${userModal.subArea}`)}
+                      aria-label="Eliminar subárea seleccionada"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  ) : null}
                 </div>
               </label>
             ) : null}

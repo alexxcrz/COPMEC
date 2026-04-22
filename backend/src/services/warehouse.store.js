@@ -933,9 +933,9 @@ function normalizeState(state, previousState = null) {
     bibliotecaFiles: Array.isArray(state.bibliotecaFiles) ? state.bibliotecaFiles : [],
     bibliotecaNotifications: Array.isArray(state.bibliotecaNotifications) ? state.bibliotecaNotifications : [],
     customRoles: Array.isArray(state.customRoles) ? state.customRoles : [],
-    processAuditTemplates: Array.isArray(state.processAuditTemplates) && state.processAuditTemplates.length
-      ? state.processAuditTemplates
-      : getDefaultProcessAuditTemplates(),
+    processAuditTemplates: Array.isArray(state.processAuditTemplates)
+      ? state.processAuditTemplates.map((template) => normalizeProcessAuditTemplate(template, template?.id || null))
+      : [],
     processAudits: Array.isArray(state.processAudits) ? state.processAudits : [],
     incidencias: Array.isArray(state.incidencias) ? state.incidencias : [],
     incidenciaNotifications: Array.isArray(state.incidenciaNotifications) ? state.incidenciaNotifications : [],
@@ -1236,7 +1236,7 @@ function buildSampleState() {
     permissions: buildDefaultPermissions(),
     auditLog: [],
     controlBoards: [],
-    processAuditTemplates: getDefaultProcessAuditTemplates(),
+    processAuditTemplates: [],
     processAudits: [],
     updatedAt: new Date().toISOString(),
   };
@@ -2784,9 +2784,12 @@ function normalizeProcessAuditQuestion(question = {}, fallbackId = null) {
 }
 
 function normalizeProcessAuditTemplate(template = {}, fallbackId = null) {
+  const normalizedArea = normalizeAreaOption(template?.area || "");
+  const normalizedSubArea = normalizeAreaOption(template?.subArea || "");
   return {
     id: fallbackId || String(template?.id || makeId("pat")).trim(),
-    area: String(template?.area || "").trim(),
+    area: normalizedArea,
+    subArea: normalizedSubArea,
     process: String(template?.process || "").trim(),
     isActive: template?.isActive !== false,
     questions: (Array.isArray(template?.questions) ? template.questions : [])
@@ -2856,7 +2859,8 @@ export function createProcessAudit(auth, payload = {}) {
     return { ok: false, reason: "forbidden" };
   }
 
-  const area = String(payload?.area || "").trim();
+  const area = normalizeAreaOption(payload?.area || "");
+  const subArea = normalizeAreaOption(payload?.subArea || "");
   const process = String(payload?.process || "").trim();
   if (!area || !process) return { ok: false, reason: "invalid_payload" };
 
@@ -2881,6 +2885,7 @@ export function createProcessAudit(auth, payload = {}) {
   const audit = {
     id: makeId("auditp"),
     area,
+    subArea,
     process,
     templateId: template?.id || null,
     status: "open",
@@ -2929,7 +2934,8 @@ export function updateProcessAudit(auth, auditId, payload = {}) {
   const shouldClose = payload?.status === "closed";
   const nextAudit = {
     ...existingAudit,
-    area: payload?.area !== undefined ? String(payload.area || "").trim() : existingAudit.area,
+    area: payload?.area !== undefined ? normalizeAreaOption(payload.area || "") : existingAudit.area,
+    subArea: payload?.subArea !== undefined ? normalizeAreaOption(payload.subArea || "") : (existingAudit.subArea || ""),
     process: payload?.process !== undefined ? String(payload.process || "").trim() : existingAudit.process,
     notes: payload?.notes !== undefined ? String(payload.notes || "").trim() : existingAudit.notes,
     status: shouldClose ? "closed" : "open",

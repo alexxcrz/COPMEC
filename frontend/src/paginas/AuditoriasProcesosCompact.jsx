@@ -413,6 +413,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
   const [activeTab, setActiveTab] = useState("capture");
   const [templateDraft, setTemplateDraft] = useState(() => emptyTemplateDraft());
   const [newAuditArea, setNewAuditArea] = useState("");
+  const [newAuditSubArea, setNewAuditSubArea] = useState("");
   const [newAuditProcess, setNewAuditProcess] = useState("");
   const [newAuditTemplateId, setNewAuditTemplateId] = useState("");
   const [selectedAuditId, setSelectedAuditId] = useState("");
@@ -433,24 +434,20 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     submitting: false,
   });
   const [resetStatsModal, setResetStatsModal] = useState({ open: false, submitting: false });
+  const [auditViewerModal, setAuditViewerModal] = useState({ open: false, audit: null });
   const textAnswerRefs = useRef(new Map());
 
   const resolvedTemplates = useMemo(() => {
-    if (Array.isArray(processAuditTemplates) && processAuditTemplates.length > 0) {
-      return processAuditTemplates.map((template) => ({
-        ...template,
-        isFallback: false,
-        questions: (template.questions || []).map((question) => buildQuestionDraft(question)),
-      }));
-    }
-    return buildFallbackTemplates();
+    return (Array.isArray(processAuditTemplates) ? processAuditTemplates : []).map((template) => ({
+      ...template,
+      isFallback: false,
+      questions: (template.questions || []).map((question) => buildQuestionDraft(question)),
+    }));
   }, [processAuditTemplates]);
 
   const areaOptions = useMemo(() => {
-    const fromCatalog = Array.isArray(rootAreaOptions) ? rootAreaOptions : [];
-    const fromTemplates = resolvedTemplates.map((item) => item.area);
-    return Array.from(new Set([...fromCatalog, ...fromTemplates].filter(Boolean))).sort((a, b) => a.localeCompare(b, "es-MX"));
-  }, [resolvedTemplates, rootAreaOptions]);
+    return Array.from(new Set((Array.isArray(rootAreaOptions) ? rootAreaOptions : []).filter(Boolean))).sort((a, b) => a.localeCompare(b, "es-MX"));
+  }, [rootAreaOptions]);
 
   const processOptionsForArea = useMemo(() => {
     const byArea = new Map();
@@ -552,6 +549,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
       try {
         await updateProcessAudit(auditDraft.id, {
           area: auditDraft.area,
+          subArea: auditDraft.subArea || "",
           process: auditDraft.process,
           notes: auditDraft.notes || "",
           status: auditDraft.status,
@@ -688,6 +686,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     try {
       const createdAuditId = await createProcessAudit({
         area: newAuditArea.trim(),
+        subArea: newAuditSubArea.trim(),
         process: newAuditProcess.trim(),
         templateId: template && !template.isFallback ? template.id : null,
         questions: template
@@ -710,6 +709,13 @@ export default function AuditoriasProcesosCompact({ contexto }) {
         questions: normalizeQuestionsForSave(auditDraft.questions || []),
       });
       setAuditEditorOpen(false);
+      setSelectedAuditId("");
+      setAuditDraft(null);
+      setAuditQuestionsDraft(null);
+      setNewAuditArea("");
+      setNewAuditSubArea("");
+      setNewAuditProcess("");
+      setNewAuditTemplateId("");
       setActiveTab("history");
       pushAppToast("Auditoría cerrada.", "success");
     } catch (error) {
@@ -815,6 +821,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                   value={newAuditArea}
                   onChange={(event) => {
                     setNewAuditArea(event.target.value);
+                    setNewAuditSubArea("");
                     setNewAuditProcess("");
                     setNewAuditTemplateId("");
                   }}
@@ -822,6 +829,14 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                   <option value="">Selecciona</option>
                   {areaOptions.map((area) => <option key={area} value={area}>{area}</option>)}
                 </select>
+              </label>
+              <label className="app-modal-field">
+                <span>Subárea (opcional)</span>
+                <input
+                  value={newAuditSubArea}
+                  onChange={(event) => setNewAuditSubArea(event.target.value)}
+                  placeholder="Ej. TURNO MAÑANA"
+                />
               </label>
               <label className="app-modal-field">
                 <span>Proceso</span>
@@ -892,6 +907,10 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                   <article className="surface-card audit-mini-stat">
                     <p>Área</p>
                     <strong>{auditDraft.area}</strong>
+                  </article>
+                  <article className="surface-card audit-mini-stat">
+                    <p>Subárea</p>
+                    <strong>{auditDraft.subArea || "-"}</strong>
                   </article>
                   <article className="surface-card audit-mini-stat">
                     <p>Proceso</p>
@@ -1043,10 +1062,11 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                   <span className={audit.status === "closed" ? "chip success" : "chip warning"}>{audit.status === "closed" ? "Cerrada" : "Abierta"}</span>
                 </div>
                 <p className="subtle-line">Inicio: {formatDateTime(audit.startedAt)}</p>
+                <p className="subtle-line">Subárea: {audit.subArea || "-"}</p>
                 <p className="subtle-line">Duración: {formatDuration(getAuditDurationSeconds(audit))}</p>
                 <p className="subtle-line">Preguntas: {(audit.questions || []).length} · Evidencias: {(audit.evidences || []).length}</p>
                 <div className="audit-inline-actions">
-                  <button type="button" className="icon-button" onClick={() => { setSelectedAuditId(audit.id); setActiveTab("capture"); }}>Abrir</button>
+                  <button type="button" className="icon-button" onClick={() => setAuditViewerModal({ open: true, audit })}>Ver</button>
                   <button type="button" className="icon-button danger" onClick={() => openDeleteAuditModal(audit)} disabled={!canManageAudits}>Eliminar</button>
                 </div>
               </article>
@@ -1103,6 +1123,43 @@ export default function AuditoriasProcesosCompact({ contexto }) {
           </div>
         </article>
       ) : null}
+
+      <Modal
+        open={auditViewerModal.open}
+        title="Detalle de auditoría"
+        confirmLabel="Abrir en captura"
+        cancelLabel="Cerrar"
+        onClose={() => setAuditViewerModal({ open: false, audit: null })}
+        onConfirm={() => {
+          if (!auditViewerModal.audit?.id) return;
+          setSelectedAuditId(auditViewerModal.audit.id);
+          setActiveTab("capture");
+          setAuditViewerModal({ open: false, audit: null });
+        }}
+        confirmDisabled={!auditViewerModal.audit?.id}
+      >
+        {auditViewerModal.audit ? (
+          <div className="modal-form-grid">
+            <p><strong>{auditViewerModal.audit.area}</strong> · {auditViewerModal.audit.process}</p>
+            <p className="subtle-line">Subárea: {auditViewerModal.audit.subArea || "-"}</p>
+            <p className="subtle-line">Auditor: {auditViewerModal.audit.auditorName || "Sin auditor"}</p>
+            <p className="subtle-line">Inicio: {formatDateTime(auditViewerModal.audit.startedAt)}</p>
+            <p className="subtle-line">Duración: {formatDuration(getAuditDurationSeconds(auditViewerModal.audit))}</p>
+            <div className="saved-board-list permissions-preset-list">
+              {(auditViewerModal.audit.questions || []).map((question, index) => (
+                <article key={question.id || `${auditViewerModal.audit.id}-${index}`} className="surface-card audit-history-card">
+                  <strong>{index + 1}. {question.text}</strong>
+                  <p className="subtle-line">
+                    {question.type === "yesno"
+                      ? (question.answer === true ? "Respuesta: Sí" : question.answer === false ? "Respuesta: No" : "Respuesta: Sin responder")
+                      : `Respuesta: ${String(question.answer || "Sin respuesta")}`}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </Modal>
 
       <Modal
         open={templateManagerOpen}

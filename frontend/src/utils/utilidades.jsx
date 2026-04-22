@@ -2695,7 +2695,7 @@ export function getBoardAssignmentSummary(board, userMap) {
 }
 
 export function buildAreaCatalog(users = [], catalog = []) {
-  return Array.from(new Set(DEFAULT_AREA_OPTIONS.concat(catalog || []).concat((users || []).map((user) => normalizeAreaOption(getUserArea(user))))).values())
+  return Array.from(new Set((catalog || []).concat((users || []).map((user) => normalizeAreaOption(getUserArea(user))))).values())
     .filter(Boolean)
     .sort((a, b) => a.localeCompare(b));
 }
