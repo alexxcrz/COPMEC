@@ -8455,7 +8455,7 @@ tbody tr:hover {
 }
 
 .audit-form-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .audit-active-meta-grid {
@@ -8639,7 +8639,6 @@ tbody tr:hover {
     max-height: 92vh;
   }
 
-  .audit-form-grid,
   .audit-active-meta-grid,
   .audit-question-editor-grid {
     grid-template-columns: minmax(0, 1fr);

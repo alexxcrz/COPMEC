@@ -391,8 +391,8 @@ function App() { // NOSONAR
   const [inventoryActionsMenuOpen, setInventoryActionsMenuOpen] = useState(false);
   const [inventorySearch, setInventorySearch] = useState("");
   const [dashboardFilters, setDashboardFilters] = useState({ periodType: "week", periodKey: "all", responsibleId: "all", area: "all", source: "all", startDate: "", endDate: "" });
-  const [pauseState, setPauseState] = useState({ open: false, activityId: null, reason: "", error: "" });
-  const [boardPauseState, setBoardPauseState] = useState({ open: false, boardId: null, rowId: null, reason: "", error: "" });
+  const [pauseState, setPauseState] = useState({ open: false, activityId: null, reason: "", error: "", completed: false });
+  const [boardPauseState, setBoardPauseState] = useState({ open: false, boardId: null, rowId: null, reason: "", error: "", completed: false });
   const [pieceDeductionModal, setPieceDeductionModal] = useState({ open: false, boardId: null, rowId: null, items: [] });
   const [catalogModal, setCatalogModal] = useState({ open: false, mode: "create", id: null, name: "", limit: "", mandatory: "true", frequency: "weekly", category: "General" });
   const [editWeekId, setEditWeekId] = useState(null);
@@ -2282,6 +2282,11 @@ function App() { // NOSONAR
   }
 
   function handleConfirmPause() {
+    if (pauseState.completed) {
+      setPauseState({ open: false, activityId: null, reason: "", error: "", completed: false });
+      return;
+    }
+
     if (!pauseState.reason.trim()) {
       setPauseState((current) => ({ ...current, error: "El motivo es obligatorio para poder pausar." }));
       return;
@@ -2310,17 +2315,26 @@ function App() { // NOSONAR
       }),
     }));
 
-    setPauseState({ open: false, activityId: null, reason: "", error: "" });
+    setPauseState((current) => ({
+      ...current,
+      error: "",
+      completed: true,
+    }));
   }
 
   function openBoardPauseModal(boardId, rowId) {
     const board = (state.controlBoards || []).find((item) => item.id === boardId);
     const row = board?.rows?.find((item) => item.id === rowId);
     if (!board || !row || !canOperateBoardRowRecord(currentUser, board, row, normalizedPermissions) || row.status !== STATUS_RUNNING) return;
-    setBoardPauseState({ open: true, boardId, rowId, reason: "", error: "" });
+    setBoardPauseState({ open: true, boardId, rowId, reason: "", error: "", completed: false });
   }
 
   function handleConfirmBoardPause() {
+    if (boardPauseState.completed) {
+      setBoardPauseState({ open: false, boardId: null, rowId: null, reason: "", error: "", completed: false });
+      return;
+    }
+
     if (!boardPauseState.reason.trim()) {
       setBoardPauseState((current) => ({ ...current, error: "El motivo es obligatorio para poder pausar." }));
       return;
@@ -2334,7 +2348,11 @@ function App() { // NOSONAR
       }),
     }).then((remoteState) => {
       applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
-      setBoardPauseState({ open: false, boardId: null, rowId: null, reason: "", error: "" });
+      setBoardPauseState((current) => ({
+        ...current,
+        error: "",
+        completed: true,
+      }));
     }).catch((error) => {
       setBoardPauseState((current) => ({ ...current, error: error?.message || "No se pudo pausar la fila." }));
     });
@@ -5226,25 +5244,43 @@ function App() { // NOSONAR
         {page === PAGE_NOT_FOUND ? <PaginaNoEncontrada contexto={paginasContexto} /> : null}
       </section>
 
-      <Modal open={pauseState.open} title="Actividad en pausa" confirmLabel="Confirmar pausa" cancelLabel="Cancelar" onClose={() => setPauseState({ open: false, activityId: null, reason: "", error: "" })} onConfirm={handleConfirmPause}>
+      <Modal open={pauseState.open} title="Actividad en pausa" confirmLabel={pauseState.completed ? "Continuar" : "Confirmar pausa"} cancelLabel="Cancelar" hideCancel={pauseState.completed} onClose={() => setPauseState({ open: false, activityId: null, reason: "", error: "", completed: false })} onConfirm={handleConfirmPause}>
         <div className="modal-form-grid">
-          <label className="app-modal-field">
-            <span>Motivo de pausa</span>
-            <input value={pauseState.reason} onChange={(event) => setPauseState((current) => ({ ...current, reason: event.target.value, error: "" }))} placeholder="Describe por qué se detiene la actividad" />
-          </label>
-          {pauseState.error ? <p className="validation-text">{pauseState.error}</p> : null}
-          <p className="modal-footnote">El motivo es obligatorio para poder pausar.</p>
+          {pauseState.completed ? (
+            <>
+              <p className="validation-text success">Continuemos. La pausa de la actividad quedó registrada correctamente.</p>
+              <p className="modal-footnote">Cuando pulses continuar se cerrará este modal.</p>
+            </>
+          ) : (
+            <>
+              <label className="app-modal-field">
+                <span>Motivo de pausa</span>
+                <input value={pauseState.reason} onChange={(event) => setPauseState((current) => ({ ...current, reason: event.target.value, error: "" }))} placeholder="Describe por qué se detiene la actividad" />
+              </label>
+              {pauseState.error ? <p className="validation-text">{pauseState.error}</p> : null}
+              <p className="modal-footnote">El motivo es obligatorio para poder pausar.</p>
+            </>
+          )}
         </div>
       </Modal>
 
-      <Modal open={boardPauseState.open} title="Pausar fila" confirmLabel="Confirmar pausa" cancelLabel="Cancelar" onClose={() => setBoardPauseState({ open: false, boardId: null, rowId: null, reason: "", error: "" })} onConfirm={handleConfirmBoardPause}>
+      <Modal open={boardPauseState.open} title="Pausar fila" confirmLabel={boardPauseState.completed ? "Continuar" : "Confirmar pausa"} cancelLabel="Cancelar" hideCancel={boardPauseState.completed} onClose={() => setBoardPauseState({ open: false, boardId: null, rowId: null, reason: "", error: "", completed: false })} onConfirm={handleConfirmBoardPause}>
         <div className="modal-form-grid">
-          <label className="app-modal-field">
-            <span>Motivo de pausa</span>
-            <input value={boardPauseState.reason} onChange={(event) => setBoardPauseState((current) => ({ ...current, reason: event.target.value, error: "" }))} placeholder="Describe por qué se detiene la fila" />
-          </label>
-          {boardPauseState.error ? <p className="validation-text">{boardPauseState.error}</p> : null}
-          <p className="modal-footnote">La fila solo se pausa si capturas un motivo.</p>
+          {boardPauseState.completed ? (
+            <>
+              <p className="validation-text success">Continuemos. La fila quedó pausada y el motivo se guardó correctamente.</p>
+              <p className="modal-footnote">Pulsa continuar para cerrar este modal.</p>
+            </>
+          ) : (
+            <>
+              <label className="app-modal-field">
+                <span>Motivo de pausa</span>
+                <input value={boardPauseState.reason} onChange={(event) => setBoardPauseState((current) => ({ ...current, reason: event.target.value, error: "" }))} placeholder="Describe por qué se detiene la fila" />
+              </label>
+              {boardPauseState.error ? <p className="validation-text">{boardPauseState.error}</p> : null}
+              <p className="modal-footnote">La fila solo se pausa si capturas un motivo.</p>
+            </>
+          )}
         </div>
       </Modal>
 

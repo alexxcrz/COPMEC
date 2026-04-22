@@ -3399,10 +3399,10 @@ export function createWarehouseBoard(auth, draft) {
 
   const nextState = {
     ...currentState,
-    controlBoards: currentState.controlBoards.concat({
+    controlBoards: [{
       ...board,
       permissions: buildBoardPermissions(currentState.permissions, board),
-    }),
+    }, ...(currentState.controlBoards || [])],
     boardTemplates: [...(currentState.boardTemplates || []), autoTemplate],
   };
 
@@ -3575,10 +3575,10 @@ export function duplicateWarehouseBoard(auth, boardId, includeRows = false) {
 
   const nextState = {
     ...currentState,
-    controlBoards: currentState.controlBoards.concat({
+    controlBoards: [{
       ...duplicatedBoard,
       permissions: normalizeBoardPermissions(board.permissions, currentState.permissions, duplicatedBoard),
-    }),
+    }, ...(currentState.controlBoards || [])],
   };
 
   return { ok: true, state: replaceWarehouseState(nextState), boardId: duplicatedBoard.id, boardName: duplicatedBoard.name };

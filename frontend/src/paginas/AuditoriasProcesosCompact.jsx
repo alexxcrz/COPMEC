@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, Check, ClipboardList, Plus, Save, Settings, Trash2, Upload, X } from "lucide-react";
+import { BarChart3, Check, ClipboardList, Plus, Settings, Trash2, Upload, X } from "lucide-react";
 import { Modal } from "../components/Modal";
 import { uploadFileToCloudinary } from "../services/upload.service";
 
@@ -390,13 +390,6 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     [selectedAuditId, sortedAudits],
   );
 
-  const selectedTemplatePreview = useMemo(() => {
-    if (newAuditTemplateId) {
-      return resolvedTemplates.find((template) => template.id === newAuditTemplateId) || null;
-    }
-    return templateCandidates[0] || null;
-  }, [newAuditTemplateId, resolvedTemplates, templateCandidates]);
-
   const dashboardStats = useMemo(() => {
     const total = sortedAudits.length;
     const closed = sortedAudits.filter((entry) => entry.status === "closed").length;
@@ -527,7 +520,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
         process: newAuditProcess.trim(),
         templateId: template && !template.isFallback ? template.id : null,
         questions: template
-          ? normalizeQuestionsForSave(template.questions || []).map(({ answer, ...question }) => question)
+          ? normalizeQuestionsForSave(template.questions || []).map(({ answer: _answer, ...question }) => question)
           : [{ type: "yesno", text: "¿Cumple con el estándar definido?", required: true }],
       });
       if (createdAuditId) setSelectedAuditId(createdAuditId);
@@ -688,35 +681,6 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                 <Settings size={15} /> Editar plantillas
               </button>
             </div>
-          </article>
-
-          <article className="surface-card table-card audit-surface-compact">
-            <div className="card-header-row">
-              <div>
-                <h3>Plantilla activa</h3>
-                <p>Resumen rápido antes de capturar.</p>
-              </div>
-              <span className="chip success">{selectedTemplatePreview ? "Lista" : "Manual"}</span>
-            </div>
-            {selectedTemplatePreview ? (
-              <div className="audit-template-preview-stack">
-                <div className="audit-template-headline">
-                  <strong>{selectedTemplatePreview.area} · {selectedTemplatePreview.process}</strong>
-                  <span className="subtle-line">{selectedTemplatePreview.questions?.length || 0} preguntas</span>
-                </div>
-                <div className="audit-preview-question-list">
-                  {(selectedTemplatePreview.questions || []).slice(0, 4).map((question, index) => (
-                    <div key={question.id || `${question.text}-${index}`} className="audit-preview-question-row">
-                      <span className="chip">{question.type === "text" ? "Texto" : "Sí/No"}</span>
-                      <strong>{question.text}</strong>
-                    </div>
-                  ))}
-                  {(selectedTemplatePreview.questions || []).length > 4 ? <span className="subtle-line">+ {(selectedTemplatePreview.questions || []).length - 4} más</span> : null}
-                </div>
-              </div>
-            ) : (
-              <p className="subtle-line">Sin plantilla elegida. Puedes iniciar manual o abrir el editor.</p>
-            )}
           </article>
 
           <article className="surface-card table-card full-width audit-surface-compact">
