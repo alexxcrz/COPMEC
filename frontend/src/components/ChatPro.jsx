@@ -1709,6 +1709,9 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         });
       }
 
+      // Precargar stream para aceptación más rápida
+      asegurarLocalStream().catch(() => {});
+
       setCallIncoming({
         room: payload.room,
         fromNickname: payload.fromNickname || "Usuario",
@@ -1884,6 +1887,9 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
             requireInteraction: true,
           });
         }
+
+        // Precargar stream para aceptación más rápida
+        asegurarLocalStream().catch(() => {});
 
         setCallIncoming({
           room: payload.room,
@@ -4679,8 +4685,6 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       return;
     }
     try {
-      await asegurarLocalStream();
-      const connected = await esperarConexionSocket();
       const room = obtenerRoomLlamada();
       const userDisplayName = user?.nickname || user?.name || "usuario";
       const destinatarios = [];
@@ -4698,12 +4702,18 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         if (!n) return false;
         return normalizeCallNick(n) !== normalizeCallNick(userDisplayName);
       });
+      
       setCallActivo(true);
       callRoomRef.current = room;
 
+      // Paralelizar: obtener stream y conectar socket simultáneamente
+      const [, connected] = await Promise.all([
+        asegurarLocalStream().catch(() => null),
+        esperarConexionSocket(3000), // Reducir a 3s
+      ]);
+
       const emitirInvitacion = () => {
         socket.emit("set_in_call", { inCall: true });
-        console.log("📞 Emitiendo call_invite a:", unicos, "Room:", room, "Socket:", socket.connected ? "✅ conectado" : "⏳ conectando");
         socket.emit("call_invite", {
           room,
           fromNickname: userDisplayName,
@@ -4753,10 +4763,20 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     if (!callIncoming) return;
     try {
       playCallSound("accept");
-      await asegurarLocalStream();
-      const connected = await esperarConexionSocket();
       const userDisplayName = user?.nickname || user?.name || "usuario";
       const room = callIncoming.room;
+      
+      // Paralelizar: obtener stream y conectar socket simultáneamente
+      const [streamResult] = await Promise.all([
+        asegurarLocalStream().catch(() => null),
+        esperarConexionSocket(3000), // Reducir a 3s (antes 9s)
+      ]);
+      
+      if (!streamResult) {
+        showAlert("No se pudo acceder a cámara/micrófono.", "error");
+        return;
+      }
+      
       setCallActivo(true);
       callRoomRef.current = room;
 
@@ -4765,6 +4785,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         socket.emit("call_join", { room, nickname: userDisplayName });
       };
 
+      const connected = await esperarConexionSocket(2000);
       const preferSocket = pendingInviteTransportRef.current === "socket";
       if (preferSocket && connected && socket.connected && !isRestPeerId(callIncoming?.fromSocketId)) {
         callTransportRef.current = "socket";
