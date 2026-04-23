@@ -785,7 +785,6 @@ function TemplateQuestionEditor({
       <div className="card-header-row">
         <div>
           <h3>{title}</h3>
-          <p>{subtitle}</p>
         </div>
         <button
           type="button"

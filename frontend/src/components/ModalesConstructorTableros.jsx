@@ -1292,7 +1292,6 @@ export function BoardBuilderModal({
                 {(previewBoard.fields || []).map((field) => {
                   const typeOption = BOARD_FIELD_TYPES.find((t) => t.value === field.type);
                   const typeLabel = typeOption?.label || field.type || "Campo";
-                  const typeDesc = getBoardFieldTypeDescription(field.type);
                   const formulaLeftLabel = field.type === "formula" ? (previewBoard.fields || []).find((f) => f.id === field.formulaLeftFieldId)?.label : null;
                   const formulaRightLabel = field.type === "formula" ? (previewBoard.fields || []).find((f) => f.id === field.formulaRightFieldId)?.label : null;
                   const formulaOpSymbol = { add: "+", subtract: "−", multiply: "×", divide: "÷", average: "prom", min: "mín", max: "máx", percent: "%" }[field.formulaOperation] || field.formulaOperation;
@@ -1310,12 +1309,6 @@ export function BoardBuilderModal({
                           <button type="button" className="icon-button danger" onClick={() => onRemoveDraftColumn(field.id)}><Trash2 size={14} /> Quitar</button>
                         </span>
                       </div>
-                      {typeDesc ? (
-                        <p style={{ margin: 0, fontSize: "0.72rem", color: "#6b7280", lineHeight: 1.35, paddingLeft: "0.1rem" }}>{typeDesc}</p>
-                      ) : null}
-                      {field.helpText ? (
-                        <p style={{ margin: 0, fontSize: "0.7rem", color: "#9ca3af", lineHeight: 1.3, paddingLeft: "0.1rem", fontStyle: "italic" }}>{field.helpText}</p>
-                      ) : null}
                     </div>
                   );
                 })}

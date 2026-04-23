@@ -9527,6 +9527,26 @@ body {
 }
 
 /* =======================================================
+   GLOBAL: hide descriptive helper messages
+   ======================================================= */
+
+.eyebrow,
+.dashboard-header-subtitle,
+.dashboard-topbar > div > p,
+.dashboard-panel-subtitle,
+.dashboard-kpi-card small,
+.dashboard-section-summary-main span,
+.audit-active-subline,
+.audit-editor-shell .card-header-row p,
+.builder-help-text,
+.component-rule-hint p,
+.msg-link-preview-subtitle,
+.chat-profile-hero-subtitle,
+.chat-preview-link-subtitle {
+  display: none !important;
+}
+
+/* =======================================================
    BOARD + AUDITS: compact row alignment overrides
    ======================================================= */
 

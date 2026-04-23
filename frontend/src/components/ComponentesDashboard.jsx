@@ -70,7 +70,6 @@ export function DashboardKpiCard({ title, value, subtitle, tone, icon: Icon }) {
       </div>
       <span>{title}</span>
       <strong>{value}</strong>
-      <small>{subtitle}</small>
     </article>
   );
 }
@@ -166,7 +165,6 @@ export function DashboardSection({ title, subtitle, summary, icon: Icon, open = 
           </div>
           <div>
             <strong>{title}</strong>
-            <span>{subtitle}</span>
           </div>
         </div>
         <div className="dashboard-section-summary-side">

@@ -961,7 +961,6 @@ export default function PanelIndicadores({ contexto }) {
       <div className="dashboard-topbar">
         <div>
           <h3>Dashboard COPMEC</h3>
-          <p>Vista ejecutiva consolidada por semana, quincena o mes, con lectura por player y por área.</p>
         </div>
         <div className="dashboard-filter-panel">
           <div className="dashboard-action-row" role="group" aria-label="Acciones del dashboard">

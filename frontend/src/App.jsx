@@ -5719,7 +5719,6 @@ function App() { // NOSONAR
           <div>
             <p className="eyebrow">{headerEyebrow}</p>
             <h2>{page === PAGE_DASHBOARD ? "Dashboard" : pageTitle}</h2>
-            {page === PAGE_DASHBOARD ? <span className="dashboard-header-subtitle">Vista en tiempo real · {activeWeek?.name || "Semana actual"}</span> : null}
           </div>
           <div className="header-tools">
             <div ref={notificationCenterRef}>
