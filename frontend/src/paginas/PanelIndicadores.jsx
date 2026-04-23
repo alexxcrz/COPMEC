@@ -239,6 +239,7 @@ export default function PanelIndicadores({ contexto }) {
     formatPercent,
     getActivityFrequencyLabel,
     Download,
+    RotateCcw,
   } = contexto;
 
   const areAllSectionsOpen = Object.values(dashboardSectionsOpen).every(Boolean);
@@ -265,6 +266,25 @@ export default function PanelIndicadores({ contexto }) {
   }, [dashboardAreaRows, departmentOptions]);
 
   const activeAreaLabel = dashboardFilters.area === "all" ? "General" : dashboardFilters.area;
+
+  function resetMainDashboardView() {
+    setDashboardFilters({
+      periodType: "week",
+      periodKey: "all",
+      responsibleId: "all",
+      area: "all",
+      source: "all",
+      startDate: "",
+      endDate: "",
+    });
+    setDashboardSectionsOpen({
+      executive: true,
+      people: true,
+      trends: true,
+      causes: true,
+      alerts: true,
+    });
+  }
 
   async function exportDashboardToPdf() {
     if (isExportingPdf) return;
@@ -710,6 +730,15 @@ export default function PanelIndicadores({ contexto }) {
               </select>
             </label>
             <div className="dashboard-filter-actions" role="group" aria-label="Acciones del dashboard">
+              <button
+                type="button"
+                className="icon-button dashboard-filter-icon-button"
+                onClick={resetMainDashboardView}
+                title="Reiniciar vista del dashboard"
+                aria-label="Reiniciar vista del dashboard"
+              >
+                <RotateCcw size={16} />
+              </button>
               <button
                 type="button"
                 className="icon-button dashboard-filter-icon-button"

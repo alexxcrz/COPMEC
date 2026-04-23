@@ -480,9 +480,19 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     [processAudits],
   );
 
+  const openAudits = useMemo(
+    () => sortedAudits.filter((entry) => entry.status !== "closed"),
+    [sortedAudits],
+  );
+
+  const closedAudits = useMemo(
+    () => sortedAudits.filter((entry) => entry.status === "closed"),
+    [sortedAudits],
+  );
+
   const selectedAudit = useMemo(
-    () => sortedAudits.find((entry) => entry.id === selectedAuditId) || sortedAudits[0] || null,
-    [selectedAuditId, sortedAudits],
+    () => openAudits.find((entry) => entry.id === selectedAuditId) || openAudits[0] || null,
+    [openAudits, selectedAuditId],
   );
 
   const dashboardStats = useMemo(() => {
@@ -514,9 +524,9 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     return [
       buildQuickStat("Plantillas", resolvedTemplates.length),
       buildQuickStat("Procesos", newAuditArea ? (processOptionsForArea[newAuditArea] || []).length : Object.keys(processOptionsForArea).length),
-      buildQuickStat("Abiertas", sortedAudits.filter((entry) => entry.status !== "closed").length),
+      buildQuickStat("Abiertas", openAudits.length),
     ];
-  }, [newAuditArea, processOptionsForArea, resolvedTemplates.length, sortedAudits]);
+  }, [newAuditArea, openAudits.length, processOptionsForArea, resolvedTemplates.length]);
 
   useEffect(() => {
     if (!selectedAudit) {
@@ -1048,11 +1058,11 @@ export default function AuditoriasProcesosCompact({ contexto }) {
           <div className="card-header-row">
             <div>
               <h3>Historial</h3>
-              <p>Abre auditorías cerradas o en curso.</p>
+                <p>Solo auditorías cerradas.</p>
             </div>
           </div>
           <div className="saved-board-list permissions-preset-list">
-            {sortedAudits.map((audit) => (
+              {closedAudits.map((audit) => (
               <article key={audit.id} className="surface-card audit-history-card">
                 <div className="card-header-row">
                   <div>
@@ -1071,7 +1081,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                 </div>
               </article>
             ))}
-            {!sortedAudits.length ? <p className="subtle-line">Todavía no hay auditorías.</p> : null}
+            {!closedAudits.length ? <p className="subtle-line">Todavía no hay auditorías cerradas.</p> : null}
           </div>
         </article>
       ) : null}
@@ -1127,16 +1137,10 @@ export default function AuditoriasProcesosCompact({ contexto }) {
       <Modal
         open={auditViewerModal.open}
         title="Detalle de auditoría"
-        confirmLabel="Abrir en captura"
-        cancelLabel="Cerrar"
+        confirmLabel="Cerrar"
+        hideCancel
         onClose={() => setAuditViewerModal({ open: false, audit: null })}
-        onConfirm={() => {
-          if (!auditViewerModal.audit?.id) return;
-          setSelectedAuditId(auditViewerModal.audit.id);
-          setActiveTab("capture");
-          setAuditViewerModal({ open: false, audit: null });
-        }}
-        confirmDisabled={!auditViewerModal.audit?.id}
+        onConfirm={() => setAuditViewerModal({ open: false, audit: null })}
       >
         {auditViewerModal.audit ? (
           <div className="modal-form-grid">

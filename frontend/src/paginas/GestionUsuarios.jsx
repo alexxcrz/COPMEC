@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { Modal } from "../components/Modal.jsx";
 
 export default function GestionUsuarios({ contexto }) {
@@ -54,6 +55,36 @@ export default function GestionUsuarios({ contexto }) {
     splitAreaAndSubArea,
     ROLE_LEAD,
   } = contexto;
+
+  const [selectedCreatorId, setSelectedCreatorId] = useState("");
+  const [creatorUserViewer, setCreatorUserViewer] = useState(null);
+  const [creatorSearch, setCreatorSearch] = useState("");
+  const [creatorPage, setCreatorPage] = useState(1);
+  const [creatorPageSize, setCreatorPageSize] = useState(6);
+
+  const creatorGroups = Array.isArray(usersByCreatorGroups) ? usersByCreatorGroups : [];
+  const activeCreatorGroup = useMemo(() => {
+    if (!creatorGroups.length) return null;
+    return creatorGroups.find((group) => group.creatorId === selectedCreatorId) || creatorGroups[0];
+  }, [creatorGroups, selectedCreatorId]);
+
+  const creatorFilteredUsers = useMemo(() => {
+    if (!activeCreatorGroup) return [];
+    const term = creatorSearch.trim().toLowerCase();
+    if (!term) return activeCreatorGroup.users;
+
+    return activeCreatorGroup.users.filter((user) => {
+      const area = String(getUserArea(user) || "").toLowerCase();
+      const jobTitle = String(getUserJobTitle(user) || "").toLowerCase();
+      const name = String(user.name || "").toLowerCase();
+      const email = String(user.email || "").toLowerCase();
+      return name.includes(term) || email.includes(term) || area.includes(term) || jobTitle.includes(term);
+    });
+  }, [activeCreatorGroup, creatorSearch, getUserArea, getUserJobTitle]);
+
+  const creatorPageCount = Math.max(1, Math.ceil(creatorFilteredUsers.length / creatorPageSize));
+  const safeCreatorPage = Math.min(Math.max(1, creatorPage), creatorPageCount);
+  const paginatedCreatorUsers = creatorFilteredUsers.slice((safeCreatorPage - 1) * creatorPageSize, safeCreatorPage * creatorPageSize);
 
   return (
     <section className="users-page-layout">
@@ -212,35 +243,117 @@ export default function GestionUsuarios({ contexto }) {
 
           {usersViewTab === "creator" ? (
             <div className="saved-board-list permissions-preset-list">
-              {usersByCreatorGroups.map((group) => (
-                <article key={group.creatorId} className="surface-card" style={{ minWidth: "320px", flex: "1 1 360px" }}>
+              {!creatorGroups.length ? <p className="subtle-line">No hay creadores visibles en esta vista.</p> : null}
+
+              {creatorGroups.length ? (
+                <article className="surface-card" style={{ minWidth: "320px", flex: "1 1 100%" }}>
                   <div className="card-header-row">
                     <div>
-                      <h3>{group.creatorName}</h3>
-                      <p>{group.creatorArea} · {group.users.length} perfil(es) creados por este player.</p>
+                      <h3>Subpestañas por creador</h3>
+                      <p>Selecciona un creador para ver solo sus players.</p>
                     </div>
-                    <span className="chip primary">{group.users.filter((user) => user.isActive).length} activos</span>
                   </div>
-                  <div className="saved-board-list board-builder-launch-list">
-                    {group.users.map((user) => (
-                      <article key={user.id} className="surface-card">
-                        <div className="card-header-row">
-                          <div>
-                            <strong>{user.name}</strong>
-                            <p>{getUserArea(user) || "Sin área"} · {getUserJobTitle(user) || "Sin cargo"}</p>
+
+                  <div className="tab-strip" style={{ marginBottom: "0.75rem", overflowX: "auto", whiteSpace: "nowrap" }}>
+                    {creatorGroups.map((group) => {
+                      const isActive = (activeCreatorGroup?.creatorId || "") === group.creatorId;
+                      return (
+                        <button
+                          key={group.creatorId}
+                          type="button"
+                          className={isActive ? "tab active" : "tab"}
+                          onClick={() => {
+                            setSelectedCreatorId(group.creatorId);
+                            setCreatorPage(1);
+                            setCreatorSearch("");
+                          }}
+                        >
+                          {group.creatorName} ({group.users.length})
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {activeCreatorGroup ? (
+                    <>
+                      <div className="card-header-row" style={{ marginBottom: "0.75rem" }}>
+                        <div>
+                          <strong>{activeCreatorGroup.creatorName}</strong>
+                          <p>{activeCreatorGroup.creatorArea} · {activeCreatorGroup.users.length} perfil(es) creados.</p>
+                        </div>
+                        <span className="chip primary">{activeCreatorGroup.users.filter((user) => user.isActive).length} activos</span>
+                      </div>
+
+                      <div className="filter-bar inline-toolbar users-toolbar users-toolbar-inline" style={{ marginBottom: "0.75rem" }}>
+                        <label className="users-search-field">
+                          <span>Buscar en este creador</span>
+                          <div className="users-search-input-wrap">
+                            <Search size={16} />
+                            <input
+                              value={creatorSearch}
+                              onChange={(event) => {
+                                setCreatorSearch(event.target.value);
+                                setCreatorPage(1);
+                              }}
+                              placeholder="Nombre, área, cargo o player de acceso"
+                            />
                           </div>
-                          <span className={user.isActive ? "chip success" : "chip"}>{user.isActive ? "Activo" : "Inactivo"}</span>
+                        </label>
+                        <label>
+                          <span>Por página</span>
+                          <select
+                            value={String(creatorPageSize)}
+                            onChange={(event) => {
+                              setCreatorPageSize(Number(event.target.value));
+                              setCreatorPage(1);
+                            }}
+                          >
+                            <option value="6">6</option>
+                            <option value="12">12</option>
+                            <option value="24">24</option>
+                          </select>
+                        </label>
+                        <span className="chip primary">{creatorFilteredUsers.length} resultado(s)</span>
+                      </div>
+
+                      <div className="saved-board-list board-builder-launch-list">
+                        {paginatedCreatorUsers.map((user) => (
+                          <article key={user.id} className="surface-card">
+                            <div className="card-header-row">
+                              <div>
+                                <strong>{user.name}</strong>
+                                <p>{getUserArea(user) || "Sin área"} · {getUserJobTitle(user) || "Sin cargo"}</p>
+                              </div>
+                              <span className={user.isActive ? "chip success" : "chip"}>{user.isActive ? "Activo" : "Inactivo"}</span>
+                            </div>
+                            <div className="saved-board-list board-builder-launch-list">
+                              <span className={`user-role-badge ${getRoleBadgeClass(user.role)}`}>{user.role}</span>
+                              <span className="chip">Referencia · {userMap.get(user.managerId)?.name || "Sin asignar"}</span>
+                              <span className="chip">Tableros · {boardAssignmentsByUser.get(user.id) || 0}</span>
+                            </div>
+                            <div className="row-actions compact" style={{ marginTop: "0.75rem" }}>
+                              <button type="button" className="user-row-button" onClick={() => setCreatorUserViewer(user)}>Ver</button>
+                              <button type="button" className="user-row-button" onClick={() => openEditUser(user)} disabled={!actionPermissions.editUsers}><Pencil size={15} /> Editar</button>
+                            </div>
+                          </article>
+                        ))}
+
+                        {!paginatedCreatorUsers.length ? <p className="subtle-line">No hay players para este filtro.</p> : null}
+                      </div>
+
+                      {creatorFilteredUsers.length > creatorPageSize ? (
+                        <div className="users-table-footer" style={{ marginTop: "0.75rem" }}>
+                          <span>Página {safeCreatorPage} de {creatorPageCount}</span>
+                          <div className="row-actions compact">
+                            <button type="button" className="user-row-button" onClick={() => setCreatorPage((current) => Math.max(1, current - 1))} disabled={safeCreatorPage <= 1}>Anterior</button>
+                            <button type="button" className="user-row-button" onClick={() => setCreatorPage((current) => Math.min(creatorPageCount, current + 1))} disabled={safeCreatorPage >= creatorPageCount}>Siguiente</button>
+                          </div>
                         </div>
-                        <div className="saved-board-list board-builder-launch-list">
-                          <span className={`user-role-badge ${getRoleBadgeClass(user.role)}`}>{user.role}</span>
-                          <span className="chip">Referencia · {userMap.get(user.managerId)?.name || "Sin asignar"}</span>
-                          <span className="chip">Tableros · {boardAssignmentsByUser.get(user.id) || 0}</span>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
+                      ) : null}
+                    </>
+                  ) : null}
                 </article>
-              ))}
+              ) : null}
             </div>
           ) : null}
 
@@ -305,6 +418,27 @@ export default function GestionUsuarios({ contexto }) {
           </label>
           {roleModalError ? <p className="validation-text app-modal-field-full">{roleModalError}</p> : null}
         </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(creatorUserViewer)}
+        title="Detalle del player"
+        confirmLabel="Cerrar"
+        hideCancel
+        onClose={() => setCreatorUserViewer(null)}
+        onConfirm={() => setCreatorUserViewer(null)}
+      >
+        {creatorUserViewer ? (
+          <div className="modal-form-grid">
+            <p><strong>{creatorUserViewer.name}</strong></p>
+            <p className="subtle-line">Player de acceso · {creatorUserViewer.email}</p>
+            <p className="subtle-line">Área · {getUserArea(creatorUserViewer) || "Sin área"}</p>
+            <p className="subtle-line">Cargo · {getUserJobTitle(creatorUserViewer) || "Sin cargo"}</p>
+            <p className="subtle-line">Rol interno · {creatorUserViewer.role}</p>
+            <p className="subtle-line">Referencia · {userMap.get(creatorUserViewer.managerId)?.name || "Sin asignar"}</p>
+            <p className="subtle-line">Tableros · {boardAssignmentsByUser.get(creatorUserViewer.id) || 0}</p>
+          </div>
+        ) : null}
       </Modal>
     </section>
   );
