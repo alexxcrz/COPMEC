@@ -4889,6 +4889,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     setCallIncoming(null);
     setCallMuted(false);
     setCallVideoOff(false);
+    setCallFacingMode("user");
+    setSwitchingCamera(false);
     setSharingScreen(false);
     callRoomRef.current = null;
     callTransportRef.current = null;
@@ -5021,7 +5023,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       console.log('[STREAM] Solicitando acceso a cámara y micrófono...');
       const constraints = {
         video: {
-          facingMode: 'user',
+          facingMode: callFacingMode,
           width: { ideal: 1280 },
           height: { ideal: 720 }
         },
@@ -5037,8 +5039,6 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       const videoTrack = stream.getVideoTracks()[0];
       const audioTrack = stream.getAudioTracks()[0];
       console.log('[STREAM] Local stream obtenido - Video:', videoTrack?.label || 'N/A', 'Audio:', audioTrack?.label || 'N/A');
-      return stream;
-      setLocalStream(stream);
       return stream;
     } catch (err) {
       const name = String(err?.name || "");
@@ -5111,17 +5111,22 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         return normalizeCallNick(n) !== normalizeCallNick(userDisplayName);
       });
       
+      // Paralelizar: obtener stream y conectar socket simultáneamente
+      const [streamResult, connected] = await Promise.all([
+        asegurarLocalStream().catch(() => null),
+        esperarConexionSocket(3000), // Reducir a 3s
+      ]);
+
+      if (!streamResult) {
+        showAlert("No se pudo acceder a cámara/micrófono para iniciar la videollamada.", "error");
+        return;
+      }
+
       setCallActivo(true);
       setCallMainView("remote");
       setCallMainRemoteId(null);
       placePipBottomRight();
       callRoomRef.current = room;
-
-      // Paralelizar: obtener stream y conectar socket simultáneamente
-      const [, connected] = await Promise.all([
-        asegurarLocalStream().catch(() => null),
-        esperarConexionSocket(3000), // Reducir a 3s
-      ]);
 
       const emitirInvitacion = () => {
         socket.emit("set_in_call", { inCall: true });
@@ -5312,6 +5317,33 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     }
   };
 
+  const getCameraStreamForFacingMode = async (facingMode, releaseCurrent = false) => {
+    if (releaseCurrent) {
+      const currentVideo = localStreamRef.current?.getVideoTracks?.()[0];
+      if (currentVideo && localStreamRef.current) {
+        localStreamRef.current.removeTrack(currentVideo);
+        try { currentVideo.stop(); } catch {}
+      }
+    }
+
+    const common = {
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+    };
+
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        video: { ...common, facingMode: { exact: facingMode } },
+        audio: false,
+      });
+    } catch {
+      return await navigator.mediaDevices.getUserMedia({
+        video: { ...common, facingMode },
+        audio: false,
+      });
+    }
+  };
+
   const cambiarCamara = async () => {
     if (!callActivo || switchingCamera) return;
     if (sharingScreen) {
@@ -5326,25 +5358,28 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     const nextFacingMode = callFacingMode === "user" ? "environment" : "user";
     setSwitchingCamera(true);
     try {
+      try {
+        const currentVideo = localStreamRef.current?.getVideoTracks?.()[0];
+        if (currentVideo?.applyConstraints) {
+          await currentVideo.applyConstraints({ facingMode: nextFacingMode });
+          setCallFacingMode(nextFacingMode);
+          setCallVideoOff(!currentVideo.enabled);
+          return;
+        }
+      } catch {
+        // fallback below
+      }
+
       let camStream;
       try {
-        camStream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { exact: nextFacingMode },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
-          audio: false,
-        });
-      } catch {
-        camStream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: nextFacingMode,
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
-          audio: false,
-        });
+        camStream = await getCameraStreamForFacingMode(nextFacingMode, false);
+      } catch (firstErr) {
+        const firstName = String(firstErr?.name || "");
+        if (firstName === "NotReadableError" || firstName === "AbortError" || firstName === "TrackStartError") {
+          camStream = await getCameraStreamForFacingMode(nextFacingMode, true);
+        } else {
+          throw firstErr;
+        }
       }
 
       const newVideo = camStream.getVideoTracks()[0];

@@ -9526,6 +9526,80 @@ body {
   }
 }
 
+/* =======================================================
+   BOARD + AUDITS: compact row alignment overrides
+   ======================================================= */
+
+.board-header-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, max-content));
+  align-items: end;
+  justify-content: flex-start;
+  gap: 0.55rem;
+}
+
+.board-header-filters > * {
+  width: auto;
+}
+
+.board-top-select,
+.board-top-select.min-width,
+.min-width {
+  min-width: 170px;
+  max-width: 250px;
+}
+
+.board-top-select select,
+.board-inline-select,
+.week-select-wide select {
+  min-width: 0;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .board-header-filters {
+    grid-template-columns: repeat(2, minmax(138px, 1fr));
+    width: 100%;
+  }
+
+  .board-header-filters > * {
+    width: 100% !important;
+  }
+
+  .board-top-select,
+  .board-top-select.min-width,
+  .min-width {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
+  }
+}
+
+@media (min-width: 721px) and (max-width: 1180px) {
+  .audit-form-grid,
+  .audit-active-meta-grid,
+  .audit-question-editor-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .audit-form-grid,
+  .audit-active-meta-grid,
+  .audit-question-editor-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.75rem;
+  }
+
+  .audit-field-span-2 {
+    grid-column: span 2;
+  }
+
+  .audit-field-span-full {
+    grid-column: 1 / -1;
+  }
+}
+
 /* ── Input ───────────────────────────────────────────────────────────────── */
 
 .ep-input {

@@ -1205,6 +1205,7 @@ span.chat-item-menu-btn:active {
 .chat-body-pro {
   flex: 1;
   overflow-y: auto;
+  scroll-behavior: smooth;
   padding: 14px 16px;
   background: var(--cp-chat-bg);
   min-height: 0;
@@ -1568,7 +1569,7 @@ span.chat-item-menu-btn:active {
   margin: 0;
   border-radius: 0;
   box-shadow: none;
-  backdrop-filter: none;
+  backdrop-filter: blur(4px);
 }
 
 .chat-input-toolbar {
@@ -4681,6 +4682,7 @@ span.chat-item-menu-btn:active {
 
   .chat-input-pro {
     flex-shrink: 0;
+    padding: 8px 10px;
     margin: 0;
     border-radius: 0;
     border-left: none;
