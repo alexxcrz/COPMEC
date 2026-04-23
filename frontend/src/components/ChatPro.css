@@ -3272,12 +3272,12 @@ span.chat-item-menu-btn:active {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: rgba(2, 8, 20, 0.66);
+  background: rgba(3, 33, 33, 0.42);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 10px;
-  backdrop-filter: blur(3px);
+  backdrop-filter: blur(2px);
 }
 
 @keyframes slideUp {
@@ -3294,8 +3294,8 @@ span.chat-item-menu-btn:active {
 .call-window {
   width: min(1160px, 98vw);
   height: min(780px, 96vh);
-  background: #050914;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: radial-gradient(circle at 82% 12%, rgba(59, 130, 106, 0.32), transparent 42%), #032121;
+  border: 1px solid rgba(148, 210, 176, 0.34);
   border-radius: 26px;
   display: flex;
   flex-direction: column;
@@ -3311,18 +3311,25 @@ span.chat-item-menu-btn:active {
 }
 
 .call-header {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  z-index: 6;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 9px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(7, 12, 22, 0.95) 0%, rgba(7, 12, 22, 0.78) 100%);
+  padding: 8px 10px;
+  border: 1px solid rgba(204, 255, 227, 0.18);
+  border-radius: 999px;
+  background: rgba(3, 33, 33, 0.26);
+  backdrop-filter: blur(6px);
 }
 
 .call-title {
   font-weight: 700;
   font-size: 0.78rem;
-  color: #f6fbff;
+  color: #e4fff1;
 }
 
 .call-header-actions {
@@ -3332,12 +3339,12 @@ span.chat-item-menu-btn:active {
 }
 
 .call-close {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.26);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(226, 255, 241, 0.3);
   border-radius: 50%;
   width: 28px;
   height: 28px;
-  color: #e9f2ff;
+  color: #e8ffef;
   cursor: pointer;
   font-size: 0.78rem;
 }
@@ -3347,22 +3354,22 @@ span.chat-item-menu-btn:active {
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(circle at 20% 16%, rgba(37, 99, 235, 0.22), transparent 48%),
-    radial-gradient(circle at 84% 72%, rgba(14, 165, 233, 0.15), transparent 44%),
-    linear-gradient(180deg, #04070f 0%, #091021 100%);
+    radial-gradient(circle at 18% 14%, rgba(74, 222, 128, 0.17), transparent 46%),
+    radial-gradient(circle at 84% 74%, rgba(20, 184, 166, 0.2), transparent 44%),
+    linear-gradient(180deg, #032121 0%, #021616 100%);
 }
 
 .call-video-box {
   position: relative;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(187, 247, 208, 0.28);
   border-radius: 22px;
-  background: #0c1629;
+  background: #052a26;
   overflow: hidden;
   min-height: 120px;
 }
 
 .call-video-box.local {
-  border-color: rgba(56, 189, 248, 0.58);
+  border-color: rgba(110, 231, 183, 0.6);
 }
 
 .call-main-surface {
@@ -3536,15 +3543,15 @@ span.chat-item-menu-btn:active {
   bottom: 12px;
   z-index: 4;
   border-radius: 999px;
-  background: rgba(5, 12, 22, 0.76);
+  background: rgba(3, 33, 33, 0.22);
   backdrop-filter: blur(6px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(220, 252, 231, 0.18);
 }
 
 .call-control {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  color: #e8f2ff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(220, 252, 231, 0.28);
+  color: #f0fff8;
   border-radius: 999px;
   padding: 6px 12px;
   cursor: pointer;
@@ -3552,9 +3559,14 @@ span.chat-item-menu-btn:active {
   font-size: 0.72rem;
 }
 
+.call-control:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .call-control.active {
-  border-color: #22d3ee;
-  color: #22d3ee;
+  border-color: #86efac;
+  color: #86efac;
 }
 
 .call-control.hangup {
@@ -3564,8 +3576,8 @@ span.chat-item-menu-btn:active {
 }
 
 .call-incoming-card {
-  background: var(--chat-surface);
-  border: 2px solid var(--borde-visible);
+  background: linear-gradient(180deg, rgba(3, 33, 33, 0.96) 0%, rgba(7, 72, 60, 0.93) 100%);
+  border: 1px solid rgba(167, 243, 208, 0.42);
   border-radius: 20px;
   padding: 20px;
   width: min(320px, 92vw);
@@ -3575,6 +3587,11 @@ span.chat-item-menu-btn:active {
   gap: 12px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
   animation: slideUp 300ms ease-out;
+}
+
+.call-incoming-card .call-title,
+.call-incoming-card .call-user {
+  color: #eafff4;
 }
 
 .call-user {

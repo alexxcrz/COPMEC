@@ -7201,14 +7201,15 @@ tbody tr:hover {
   .dashboard-filter-row {
     display: flex;
     gap: 0.7rem;
-    align-items: end;
+    align-items: stretch;
+    flex-wrap: wrap;
     width: 100%;
     min-width: 0;
   }
 
   .dashboard-filter-field,
   .dashboard-filter-field-range {
-    flex: 1 1 0;
+    flex: 1 1 220px;
   }
 
   .dashboard-filter-field-range {
@@ -7999,25 +8000,32 @@ tbody tr:hover {
 
   .dashboard-filter-row {
     display: flex;
-    min-width: 760px;
+    min-width: 0;
+    width: 100%;
+    flex-wrap: wrap;
     gap: 0.55rem;
   }
 
   .dashboard-area-tabs {
-    min-width: 760px;
+    min-width: 0;
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
   }
 
   .dashboard-action-row {
-    min-width: 760px;
+    min-width: 0;
+    width: 100%;
+    flex-wrap: wrap;
   }
 
   .dashboard-filter-field,
   .dashboard-filter-field-range {
-    flex: 1 0 132px;
+    flex: 1 1 180px;
   }
 
   .dashboard-filter-field-range {
-    flex-basis: 210px;
+    flex-basis: 260px;
   }
 
   .dashboard-filter-field select,
@@ -8397,11 +8405,15 @@ tbody tr:hover {
   }
 
   .dashboard-filter-row {
-    min-width: 700px;
+    min-width: 0;
+    width: 100%;
+    flex-wrap: wrap;
   }
 
   .dashboard-action-row {
-    min-width: 700px;
+    min-width: 0;
+    width: 100%;
+    flex-wrap: wrap;
   }
 
   .admin-stat-strip,

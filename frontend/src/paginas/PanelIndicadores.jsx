@@ -1033,13 +1033,6 @@ export default function PanelIndicadores({ contexto }) {
               </select>
             </label>
             <label className="dashboard-filter-field">
-              <span>Área</span>
-              <select value={dashboardFilters.area} onChange={(event) => setDashboardFilters((current) => ({ ...current, area: event.target.value, responsibleId: "all" }))}>
-                <option value="all">Todas las áreas</option>
-                {dashboardAreaTabOptions.filter((item) => item.value !== "all").map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-              </select>
-            </label>
-            <label className="dashboard-filter-field">
               <span>Fuente</span>
               <select value={dashboardFilters.source} onChange={(event) => setDashboardFilters((current) => ({ ...current, source: event.target.value }))}>
                 <option value="all">Todo el flujo</option>

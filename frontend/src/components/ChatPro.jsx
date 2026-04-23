@@ -292,6 +292,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const [callInviteSelection, setCallInviteSelection] = useState({});
   const [callMuted, setCallMuted] = useState(false);
   const [callVideoOff, setCallVideoOff] = useState(false);
+  const [callFacingMode, setCallFacingMode] = useState("user");
+  const [switchingCamera, setSwitchingCamera] = useState(false);
   const [sharingScreen, setSharingScreen] = useState(false);
   const [rtcConfig, setRtcConfig] = useState({ iceServers: [] });
   const [reuniones, setReuniones] = useState([]);
@@ -325,6 +327,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const screenStreamRef = useRef(null);
   const peerConnectionsRef = useRef({});
   const remoteStreamsRef = useRef({});
+  const peerDisconnectTimersRef = useRef({});
   const pendingCandidatesRef = useRef({});
   const callRoomRef = useRef(null);
   const outgoingCallTimeoutRef = useRef(null);
@@ -4839,10 +4842,16 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   };
 
   const limpiarPeer = (socketId) => {
+    if (peerDisconnectTimersRef.current[socketId]) {
+      clearTimeout(peerDisconnectTimersRef.current[socketId]);
+      delete peerDisconnectTimersRef.current[socketId];
+    }
     const pc = peerConnectionsRef.current[socketId]?.pc;
     if (pc) {
       pc.ontrack = null;
       pc.onicecandidate = null;
+      pc.onconnectionstatechange = null;
+      pc.oniceconnectionstatechange = null;
       pc.close();
     }
     delete peerConnectionsRef.current[socketId];
@@ -4934,9 +4943,56 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       });
       actualizarRemoteStreams();
     };
+
+    const scheduleDisconnectCleanup = () => {
+      if (peerDisconnectTimersRef.current[socketId]) return;
+      peerDisconnectTimersRef.current[socketId] = setTimeout(() => {
+        delete peerDisconnectTimersRef.current[socketId];
+        const currentPc = peerConnectionsRef.current[socketId]?.pc;
+        if (!currentPc) return;
+        const connectionState = currentPc.connectionState;
+        const iceState = currentPc.iceConnectionState;
+        const stillDisconnected =
+          ["disconnected", "failed", "closed"].includes(connectionState) ||
+          ["disconnected", "failed", "closed"].includes(iceState);
+        if (stillDisconnected) {
+          console.log("[PC] Limpieza por desconexion sostenida:", socketId, connectionState, iceState);
+          limpiarPeer(socketId);
+        }
+      }, 8000);
+    };
+
+    const clearDisconnectCleanup = () => {
+      if (!peerDisconnectTimersRef.current[socketId]) return;
+      clearTimeout(peerDisconnectTimersRef.current[socketId]);
+      delete peerDisconnectTimersRef.current[socketId];
+    };
+
     pc.onconnectionstatechange = () => {
-      if (["failed", "closed", "disconnected"].includes(pc.connectionState)) {
+      if (["connected"].includes(pc.connectionState)) {
+        clearDisconnectCleanup();
+        return;
+      }
+      if (["failed", "closed"].includes(pc.connectionState)) {
         limpiarPeer(socketId);
+        return;
+      }
+      if (pc.connectionState === "disconnected") {
+        scheduleDisconnectCleanup();
+      }
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      if (["connected", "completed"].includes(pc.iceConnectionState)) {
+        clearDisconnectCleanup();
+        return;
+      }
+      if (["failed", "closed"].includes(pc.iceConnectionState)) {
+        limpiarPeer(socketId);
+        return;
+      }
+      if (pc.iceConnectionState === "disconnected") {
+        scheduleDisconnectCleanup();
       }
     };
     peerConnectionsRef.current[socketId] = { pc, nickname };
@@ -5232,35 +5288,108 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     setCallVideoOff(stream.getVideoTracks().some((t) => !t.enabled));
   };
 
+  const replaceLocalVideoTrack = async (videoTrack, streamContainer, stopPreviousTrack = true) => {
+    if (!videoTrack) return;
+    Object.values(peerConnectionsRef.current).forEach(({ pc }) => {
+      const sender = pc?.getSenders().find((s) => s.track?.kind === "video");
+      if (sender) sender.replaceTrack(videoTrack);
+    });
+
+    if (localStreamRef.current) {
+      const previousVideo = localStreamRef.current.getVideoTracks()[0];
+      if (previousVideo) {
+        localStreamRef.current.removeTrack(previousVideo);
+        if (stopPreviousTrack) previousVideo.stop();
+      }
+      localStreamRef.current.addTrack(videoTrack);
+    } else {
+      localStreamRef.current = streamContainer;
+    }
+
+    setLocalStream(localStreamRef.current);
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = localStreamRef.current;
+    }
+  };
+
+  const cambiarCamara = async () => {
+    if (!callActivo || switchingCamera) return;
+    if (sharingScreen) {
+      showAlert("Desactiva compartir pantalla antes de cambiar de cámara.", "warning");
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      showAlert("Este dispositivo no permite cambiar la cámara.", "warning");
+      return;
+    }
+
+    const nextFacingMode = callFacingMode === "user" ? "environment" : "user";
+    setSwitchingCamera(true);
+    try {
+      let camStream;
+      try {
+        camStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { exact: nextFacingMode },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        });
+      } catch {
+        camStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: nextFacingMode,
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        });
+      }
+
+      const newVideo = camStream.getVideoTracks()[0];
+      if (!newVideo) {
+        throw new Error("No se pudo obtener video de la cámara seleccionada.");
+      }
+      await replaceLocalVideoTrack(newVideo, camStream, true);
+      setCallFacingMode(nextFacingMode);
+    } catch (err) {
+      showAlert(err?.message || "No se pudo cambiar la cámara en este dispositivo.", "warning");
+    } finally {
+      setSwitchingCamera(false);
+    }
+  };
+
   const stopScreenShare = async () => {
     if (screenStreamRef.current) {
       screenStreamRef.current.getTracks().forEach((t) => t.stop());
       screenStreamRef.current = null;
     }
     try {
-      const camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      const camTrack = camStream.getVideoTracks()[0];
-      Object.values(peerConnectionsRef.current).forEach(({ pc }) => {
-        const sender = pc?.getSenders().find((s) => s.track?.kind === "video");
-        if (sender) sender.replaceTrack(camTrack);
+      const camStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: callFacingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
       });
-      if (localStreamRef.current) {
-        const oldVideo = localStreamRef.current.getVideoTracks()[0];
-        if (oldVideo) {
-          localStreamRef.current.removeTrack(oldVideo);
-          oldVideo.stop();
-        }
-        localStreamRef.current.addTrack(camTrack);
-      } else {
-        localStreamRef.current = camStream;
-      }
-      if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
+      const camTrack = camStream.getVideoTracks()[0];
+      await replaceLocalVideoTrack(camTrack, camStream, true);
     } catch {}
     setSharingScreen(false);
   };
 
   const toggleScreenShare = async () => {
     if (!callActivo) return;
+    const userAgent = String(navigator?.userAgent || "").toLowerCase();
+    const isMobileDevice =
+      /android|iphone|ipad|ipod|mobile/.test(userAgent) ||
+      Boolean(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+    if (isMobileDevice) {
+      showAlert("Compartir pantalla se oculta en móviles para evitar fallos de compatibilidad.", "warning");
+      return;
+    }
     if (sharingScreen) {
       await stopScreenShare();
       return;
@@ -5274,23 +5403,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
       screenStreamRef.current = screenStream;
       const screenTrack = screenStream.getVideoTracks()[0];
-      Object.values(peerConnectionsRef.current).forEach(({ pc }) => {
-        const sender = pc?.getSenders().find((s) => s.track?.kind === "video");
-        if (sender) sender.replaceTrack(screenTrack);
-      });
-      if (localStreamRef.current) {
-        const oldVideo = localStreamRef.current.getVideoTracks()[0];
-        if (oldVideo) {
-          localStreamRef.current.removeTrack(oldVideo);
-          oldVideo.stop();
-        }
-        localStreamRef.current.addTrack(screenTrack);
-      } else {
-        localStreamRef.current = screenStream;
-      }
-      if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
+      await replaceLocalVideoTrack(screenTrack, screenStream, true);
       setSharingScreen(true);
-      setLocalStream(localStreamRef.current); // Trigger reactivity
       screenTrack.addEventListener("ended", () => stopScreenShare(), { once: true });
     } catch (err) {
       console.log('[SCREEN] Screen share denied or unavailable:', err.message);
@@ -5308,15 +5422,19 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const mainRemoteStream = remoteStreams.find((item) => item.id === callMainRemoteId) || remoteStreams[0] || null;
   const remoteThumbnails = remoteStreams.filter((item) => !mainRemoteStream || item.id !== mainRemoteStream.id);
   const callInviteCandidates = getCallCandidates();
+  const callIsMobile = /android|iphone|ipad|ipod|mobile/i.test(String(navigator?.userAgent || ""));
+  const canShowScreenShare = !callIsMobile;
 
   useEffect(() => {
     if (!callActivo) return;
     if (!remoteStreams.length) {
       setCallMainRemoteId(null);
+      setCallMainView("local");
       return;
     }
     if (!callMainRemoteId || !remoteStreams.some((item) => item.id === callMainRemoteId)) {
       setCallMainRemoteId(remoteStreams[0].id);
+      setCallMainView("remote");
     }
   }, [callActivo, callMainRemoteId, remoteStreams]);
 
@@ -9649,12 +9767,22 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                   {callVideoOff ? "📷✖" : "📷"}
                 </button>
                 <button
-                  className={`call-control ${sharingScreen ? "active" : ""}`}
-                  onClick={toggleScreenShare}
-                  title={sharingScreen ? "Dejar de compartir pantalla" : "Compartir pantalla"}
+                  className={`call-control ${switchingCamera ? "active" : ""}`}
+                  onClick={cambiarCamara}
+                  title="Cambiar cámara"
+                  disabled={switchingCamera}
                 >
-                  {sharingScreen ? "💻✖" : "💻"}
+                  {switchingCamera ? "⏳" : "🔄"}
                 </button>
+                {canShowScreenShare ? (
+                  <button
+                    className={`call-control ${sharingScreen ? "active" : ""}`}
+                    onClick={toggleScreenShare}
+                    title={sharingScreen ? "Dejar de compartir pantalla" : "Compartir pantalla"}
+                  >
+                    {sharingScreen ? "💻✖" : "💻"}
+                  </button>
+                ) : null}
                 <button
                   className={`call-control ${callInvitePickerOpen ? "active" : ""}`}
                   onClick={() => setCallInvitePickerOpen((current) => !current)}
