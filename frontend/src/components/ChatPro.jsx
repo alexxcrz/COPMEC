@@ -284,6 +284,12 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const [callIncoming, setCallIncoming] = useState(null);
   const [localStream, setLocalStream] = useState(null);
   const [remoteStreams, setRemoteStreams] = useState([]);
+  const [callExpanded, setCallExpanded] = useState(false);
+  const [callMainView, setCallMainView] = useState("remote"); // remote | local
+  const [callMainRemoteId, setCallMainRemoteId] = useState(null);
+  const [callPipPosition, setCallPipPosition] = useState({ x: 0, y: 0 });
+  const [callInvitePickerOpen, setCallInvitePickerOpen] = useState(false);
+  const [callInviteSelection, setCallInviteSelection] = useState({});
   const [callMuted, setCallMuted] = useState(false);
   const [callVideoOff, setCallVideoOff] = useState(false);
   const [sharingScreen, setSharingScreen] = useState(false);
@@ -314,6 +320,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const touchMovedRef = useRef(false);
   const localStreamRef = useRef(null);
   const localVideoRef = useRef(null);
+  const callWindowRef = useRef(null);
+  const pipDragRef = useRef({ dragging: false, moved: false, startX: 0, startY: 0, originX: 0, originY: 0 });
   const screenStreamRef = useRef(null);
   const peerConnectionsRef = useRef({});
   const remoteStreamsRef = useRef({});
@@ -360,6 +368,158 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         .filter((nickname) => !isSameNickname(nickname, user?.nickname || user?.name || "")),
     ),
   );
+
+  const getCallCandidates = () => {
+    const userDisplayName = user?.nickname || user?.name || "";
+    const currentUserNorm = normalizeCallNick(userDisplayName);
+
+    let baseNicknames = [];
+    if (tipoChat === "grupal") {
+      const grupo = Array.isArray(grupos)
+        ? grupos.find((g) => String(g.id) === String(chatActual))
+        : null;
+      baseNicknames = Array.isArray(grupo?.miembros) ? grupo.miembros : [];
+    } else if (tipoChat === "privado") {
+      baseNicknames = Array.isArray(usuariosCOPMEC)
+        ? usuariosCOPMEC.map((u) => u.nickname || u.name).filter(Boolean)
+        : [];
+    }
+
+    const inCallNicknames = new Set(
+      Object.values(peerConnectionsRef.current)
+        .map((entry) => normalizeCallNick(entry?.nickname))
+        .filter(Boolean),
+    );
+
+    return Array.from(new Set(baseNicknames.map((n) => String(n || "").trim()).filter(Boolean)))
+      .filter((nickname) => {
+        const normalized = normalizeCallNick(nickname);
+        if (!normalized || normalized === currentUserNorm) return false;
+        if (inCallNicknames.has(normalized)) return false;
+        return true;
+      })
+      .sort((a, b) => a.localeCompare(b, "es-MX"));
+  };
+
+  const placePipBottomRight = () => {
+    const viewportWidth = window.innerWidth || 1280;
+    const viewportHeight = window.innerHeight || 720;
+    const pipWidth = 190;
+    const pipHeight = 130;
+    setCallPipPosition({
+      x: Math.max(12, viewportWidth - pipWidth - 20),
+      y: Math.max(12, viewportHeight - pipHeight - 106),
+    });
+  };
+
+  const clampPipPosition = (x, y) => {
+    const viewportWidth = window.innerWidth || 1280;
+    const viewportHeight = window.innerHeight || 720;
+    const pipWidth = 190;
+    const pipHeight = 130;
+    return {
+      x: Math.min(Math.max(8, x), Math.max(8, viewportWidth - pipWidth - 8)),
+      y: Math.min(Math.max(8, y), Math.max(8, viewportHeight - pipHeight - 86)),
+    };
+  };
+
+  const handlePipPointerDown = (event) => {
+    if (callMainView === "local") return;
+    const origin = callPipPosition || { x: 0, y: 0 };
+    pipDragRef.current = {
+      dragging: true,
+      moved: false,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: origin.x,
+      originY: origin.y,
+    };
+
+    const onMove = (moveEvent) => {
+      if (!pipDragRef.current.dragging) return;
+      const dx = moveEvent.clientX - pipDragRef.current.startX;
+      const dy = moveEvent.clientY - pipDragRef.current.startY;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        pipDragRef.current.moved = true;
+      }
+      const next = clampPipPosition(pipDragRef.current.originX + dx, pipDragRef.current.originY + dy);
+      setCallPipPosition(next);
+    };
+
+    const onUp = () => {
+      const moved = pipDragRef.current.moved;
+      pipDragRef.current.dragging = false;
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      if (!moved) {
+        setCallMainView("local");
+      }
+    };
+
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+  };
+
+  const toggleCallExpanded = async () => {
+    const next = !callExpanded;
+    setCallExpanded(next);
+    if (next) {
+      placePipBottomRight();
+      if (callWindowRef.current?.requestFullscreen) {
+        try {
+          await callWindowRef.current.requestFullscreen();
+        } catch {}
+      }
+      return;
+    }
+    if (document.fullscreenElement && document.exitFullscreen) {
+      try {
+        await document.exitFullscreen();
+      } catch {}
+    }
+  };
+
+  const invitarParticipantesEnLlamada = async () => {
+    const room = callRoomRef.current;
+    if (!room || !callActivo) return;
+    const userDisplayName = user?.nickname || user?.name || "usuario";
+    const seleccionados = Object.entries(callInviteSelection)
+      .filter(([, enabled]) => Boolean(enabled))
+      .map(([nickname]) => nickname);
+
+    if (!seleccionados.length) {
+      showAlert("Selecciona al menos un player para invitar.", "warning");
+      return;
+    }
+
+    if (socket?.connected) {
+      socket.emit("call_invite", {
+        room,
+        fromNickname: userDisplayName,
+        toNicknames: seleccionados,
+        tipo: "extendida",
+      });
+      showAlert(`Invitacion enviada a ${seleccionados.length} participante(s).`, "success");
+      setCallInvitePickerOpen(false);
+      setCallInviteSelection({});
+      return;
+    }
+
+    try {
+      await sendCallSignalFallback({
+        type: "invite",
+        room,
+        toNicknames: seleccionados,
+        nickname: userDisplayName,
+        fromPeerId: buildRestPeerId(userDisplayName),
+      });
+      showAlert(`Invitacion enviada por canal alterno a ${seleccionados.length} participante(s).`, "success");
+      setCallInvitePickerOpen(false);
+      setCallInviteSelection({});
+    } catch {
+      showAlert("No se pudieron enviar las invitaciones adicionales.", "error");
+    }
+  };
 
   const isDuplicateInvite = (room) => {
     const now = Date.now();
@@ -2167,7 +2327,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         localVideoRef.current.srcObject = localStreamRef.current;
       }
     }
-  }, [callActivo, localStream]);
+  }, [callActivo, localStream, callMainView, callExpanded]);
 
   // ── Pre-calentar AudioContext en primer gesto de usuario ──────────────────
   useEffect(() => {
@@ -4712,6 +4872,11 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     localStreamRef.current = null;
     setLocalStream(null);
     setCallActivo(false);
+    setCallExpanded(false);
+    setCallMainView("remote");
+    setCallMainRemoteId(null);
+    setCallInvitePickerOpen(false);
+    setCallInviteSelection({});
     setCallIncoming(null);
     setCallMuted(false);
     setCallVideoOff(false);
@@ -4891,6 +5056,9 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       });
       
       setCallActivo(true);
+      setCallMainView("remote");
+      setCallMainRemoteId(null);
+      placePipBottomRight();
       callRoomRef.current = room;
 
       // Paralelizar: obtener stream y conectar socket simultáneamente
@@ -4965,6 +5133,9 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       }
       
       setCallActivo(true);
+      setCallMainView("remote");
+      setCallMainRemoteId(null);
+      placePipBottomRight();
       callRoomRef.current = room;
 
       const unirLlamada = () => {
@@ -5133,6 +5304,27 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const abrirVideollamada = async () => {
     await iniciarLlamada();
   };
+
+  const mainRemoteStream = remoteStreams.find((item) => item.id === callMainRemoteId) || remoteStreams[0] || null;
+  const remoteThumbnails = remoteStreams.filter((item) => !mainRemoteStream || item.id !== mainRemoteStream.id);
+  const callInviteCandidates = getCallCandidates();
+
+  useEffect(() => {
+    if (!callActivo) return;
+    if (!remoteStreams.length) {
+      setCallMainRemoteId(null);
+      return;
+    }
+    if (!callMainRemoteId || !remoteStreams.some((item) => item.id === callMainRemoteId)) {
+      setCallMainRemoteId(remoteStreams[0].id);
+    }
+  }, [callActivo, callMainRemoteId, remoteStreams]);
+
+  useEffect(() => {
+    if (!callActivo) return;
+    placePipBottomRight();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [callActivo, callExpanded]);
 
   // blobToBase64 removida (no usada en web-only)
   // solicitarPermisoAlmacenamiento removida (no usada en web-only)
@@ -9317,58 +9509,163 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
       {callActivo && (
         <div className="call-overlay">
-          <div className="call-window">
+          <div ref={callWindowRef} className={`call-window ${callExpanded ? "call-window-expanded" : ""}`}>
             <div className="call-header">
               <div className="call-title">
                 Videollamada {tipoChat === "grupal" ? "Grupal" : "Privada"}
               </div>
-              <button className="call-close" onClick={colgarLlamada}>
-                ✕
-              </button>
-            </div>
-            <div className="call-videos">
-              <div className="call-video-box local">
-                <video
-                  className="call-video"
-                  muted
-                  autoPlay
-                  playsInline
-                  ref={localVideoRef}
-                />
-                <span className="call-label">{sharingScreen ? "💻 Pantalla" : "Tú"}</span>
+              <div className="call-header-actions">
+                <button className="call-close" onClick={toggleCallExpanded} title={callExpanded ? "Salir de pantalla completa" : "Pantalla completa"}>
+                  {callExpanded ? "🗗" : "🗖"}
+                </button>
+                <button className="call-close" onClick={colgarLlamada} title="Colgar llamada">
+                  ✕
+                </button>
               </div>
-              {remoteStreams.length === 0 && (
-                <div className="call-empty">Esperando participantes...</div>
-              )}
-              {remoteStreams.map((item) => (
-                <VideoTile key={item.id} stream={item.stream} nickname={item.nickname} />
-              ))}
             </div>
-            <div className="call-controls">
-              <button
-                className={`call-control ${callMuted ? "active" : ""}`}
-                onClick={toggleMute}
-                title={callMuted ? "Activar micro" : "Silenciar"}
-              >
-                {callMuted ? "🔇" : "🎤"}
-              </button>
-              <button
-                className={`call-control ${callVideoOff ? "active" : ""}`}
-                onClick={toggleVideo}
-                title={callVideoOff ? "Activar cámara" : "Desactivar cámara"}
-              >
-                {callVideoOff ? "📷✖" : "📷"}
-              </button>
-              <button
-                className={`call-control ${sharingScreen ? "active" : ""}`}
-                onClick={toggleScreenShare}
-                title={sharingScreen ? "Dejar de compartir pantalla" : "Compartir pantalla"}
-              >
-                {sharingScreen ? "💻✖" : "💻"}
-              </button>
-              <button className="call-control hangup" onClick={colgarLlamada}>
-                Colgar
-              </button>
+            <div className="call-stage">
+              <div className="call-main-surface">
+                {callMainView === "local" || !mainRemoteStream ? (
+                  <div className="call-video-box call-video-main local-main">
+                    <video
+                      className="call-video"
+                      muted
+                      autoPlay
+                      playsInline
+                      ref={localVideoRef}
+                    />
+                    <span className="call-label">{sharingScreen ? "Tu pantalla" : "Tu cámara"}</span>
+                  </div>
+                ) : (
+                  <VideoTile stream={mainRemoteStream.stream} nickname={mainRemoteStream.nickname} />
+                )}
+                {!mainRemoteStream && callMainView !== "local" && (
+                  <div className="call-empty">Esperando participantes...</div>
+                )}
+              </div>
+
+              {callMainView === "remote" && mainRemoteStream ? (
+                <div
+                  className="call-video-box local call-pip"
+                  style={{ left: `${callPipPosition.x}px`, top: `${callPipPosition.y}px` }}
+                  onPointerDown={handlePipPointerDown}
+                  title="Arrastra para mover. Toca para poner tu cámara en principal"
+                >
+                  <video
+                    className="call-video"
+                    muted
+                    autoPlay
+                    playsInline
+                    ref={localVideoRef}
+                  />
+                  <span className="call-label">{sharingScreen ? "Tu pantalla" : "Tú"}</span>
+                </div>
+              ) : mainRemoteStream ? (
+                <div
+                  className="call-video-box call-pip"
+                  style={{ left: `${callPipPosition.x}px`, top: `${callPipPosition.y}px` }}
+                  onClick={() => setCallMainView("remote")}
+                  title="Toca para volver al receptor en principal"
+                >
+                  <video
+                    className="call-video"
+                    autoPlay
+                    playsInline
+                    ref={(node) => {
+                      if (node) node.srcObject = mainRemoteStream.stream || null;
+                    }}
+                  />
+                  <span className="call-label">{mainRemoteStream.nickname || "Receptor"}</span>
+                </div>
+              ) : null}
+
+              {remoteThumbnails.length > 0 && (
+                <div className="call-thumbnails-strip">
+                  {remoteThumbnails.map((item) => (
+                    <button
+                      type="button"
+                      key={item.id}
+                      className="call-thumb-btn"
+                      onClick={() => {
+                        setCallMainRemoteId(item.id);
+                        setCallMainView("remote");
+                      }}
+                      title={`Ver a ${item.nickname || "Usuario"} en principal`}
+                    >
+                      <video
+                        className="call-thumb-video"
+                        autoPlay
+                        playsInline
+                        ref={(node) => {
+                          if (node) node.srcObject = item.stream || null;
+                        }}
+                      />
+                      <span className="call-thumb-label">{item.nickname || "Usuario"}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {callInvitePickerOpen ? (
+                <div className="call-invite-panel">
+                  <div className="call-invite-title">Agregar participantes</div>
+                  <div className="call-invite-list">
+                    {callInviteCandidates.length ? callInviteCandidates.map((nickname) => (
+                      <label key={nickname} className="call-invite-item">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(callInviteSelection[nickname])}
+                          onChange={(event) => {
+                            setCallInviteSelection((current) => ({
+                              ...current,
+                              [nickname]: event.target.checked,
+                            }));
+                          }}
+                        />
+                        <span>{nickname}</span>
+                      </label>
+                    )) : <div className="call-invite-empty">No hay players disponibles para invitar.</div>}
+                  </div>
+                  <div className="call-invite-actions">
+                    <button type="button" className="call-control" onClick={() => setCallInvitePickerOpen(false)}>Cancelar</button>
+                    <button type="button" className="call-control" onClick={invitarParticipantesEnLlamada}>Invitar</button>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="call-controls call-controls-floating">
+                <button
+                  className={`call-control ${callMuted ? "active" : ""}`}
+                  onClick={toggleMute}
+                  title={callMuted ? "Activar micro" : "Silenciar"}
+                >
+                  {callMuted ? "🔇" : "🎤"}
+                </button>
+                <button
+                  className={`call-control ${callVideoOff ? "active" : ""}`}
+                  onClick={toggleVideo}
+                  title={callVideoOff ? "Activar cámara" : "Desactivar cámara"}
+                >
+                  {callVideoOff ? "📷✖" : "📷"}
+                </button>
+                <button
+                  className={`call-control ${sharingScreen ? "active" : ""}`}
+                  onClick={toggleScreenShare}
+                  title={sharingScreen ? "Dejar de compartir pantalla" : "Compartir pantalla"}
+                >
+                  {sharingScreen ? "💻✖" : "💻"}
+                </button>
+                <button
+                  className={`call-control ${callInvitePickerOpen ? "active" : ""}`}
+                  onClick={() => setCallInvitePickerOpen((current) => !current)}
+                  title="Agregar participantes"
+                >
+                  ➕
+                </button>
+                <button className="call-control hangup" onClick={colgarLlamada}>
+                  Colgar
+                </button>
+              </div>
             </div>
           </div>
         </div>
