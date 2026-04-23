@@ -1,3 +1,6 @@
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+
 export default function HistorialSemanas({ contexto }) {
   const {
     state,
@@ -18,7 +21,49 @@ export default function HistorialSemanas({ contexto }) {
     formatTime,
     formatDurationClock,
     setHistoryPauseActivityId,
+    actionPermissions,
+    deleteWeek,
+    pushAppToast,
+    Trash2,
   } = contexto;
+
+  const [deleteWeekModal, setDeleteWeekModal] = useState({ open: false, weekId: "", weekName: "", isSubmitting: false });
+
+  useEffect(() => {
+    if (!deleteWeekModal.open) return undefined;
+
+    function handleDeleteWeekHotkeys(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (!deleteWeekModal.isSubmitting) {
+          setDeleteWeekModal({ open: false, weekId: "", weekName: "", isSubmitting: false });
+        }
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        if (!deleteWeekModal.isSubmitting) {
+          void confirmDeleteWeek();
+        }
+      }
+    }
+
+    globalThis.addEventListener("keydown", handleDeleteWeekHotkeys);
+    return () => globalThis.removeEventListener("keydown", handleDeleteWeekHotkeys);
+  }, [deleteWeekModal.open, deleteWeekModal.isSubmitting, deleteWeekModal.weekId]);
+
+  async function confirmDeleteWeek() {
+    if (!deleteWeekModal.weekId || deleteWeekModal.isSubmitting) return;
+    setDeleteWeekModal((current) => ({ ...current, isSubmitting: true }));
+    try {
+      await deleteWeek(deleteWeekModal.weekId);
+      pushAppToast(`Semana ${deleteWeekModal.weekName} eliminada correctamente.`, "success");
+      setDeleteWeekModal({ open: false, weekId: "", weekName: "", isSubmitting: false });
+    } catch (error) {
+      pushAppToast(error?.message || "No se pudo eliminar la semana.", "danger");
+      setDeleteWeekModal((current) => ({ ...current, isSubmitting: false }));
+    }
+  }
 
   return (
     <section className="history-page-layout">
@@ -68,7 +113,20 @@ export default function HistorialSemanas({ contexto }) {
                       <td>{weekRows.length}</td>
                       <td>{completed}</td>
                       <td><span className={week.isActive ? "chip success" : "chip"}>{week.isActive ? "Activa" : "Histórica"}</span></td>
-                      <td><button type="button" className="icon-button" onClick={() => setSelectedHistoryWeekId(week.id)}><Search size={15} /> Ver detalle</button></td>
+                      <td>
+                        <div className="history-week-actions">
+                          <button type="button" className="icon-button" onClick={() => setSelectedHistoryWeekId(week.id)}><Search size={15} /> Ver detalle</button>
+                          {actionPermissions.deleteWeek ? (
+                            <button
+                              type="button"
+                              className="icon-button danger"
+                              onClick={() => setDeleteWeekModal({ open: true, weekId: week.id, weekName: week.name, isSubmitting: false })}
+                            >
+                              <Trash2 size={15} /> Borrar
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
@@ -128,6 +186,36 @@ export default function HistorialSemanas({ contexto }) {
           ) : null}
         </article>
       </section>
+
+      {deleteWeekModal.open ? createPortal(
+        <div role="dialog" aria-modal="true" aria-labelledby="delete-week-title" style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", padding: "1rem" }}>
+          <div style={{ background: "#fff", borderRadius: "1.25rem", padding: "1.5rem", maxWidth: 460, width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
+            <h3 id="delete-week-title" style={{ margin: "0 0 0.5rem", fontSize: "1.1rem", color: "#032121" }}>¿Borrar semana completa?</h3>
+            <p style={{ margin: "0 0 1.2rem", color: "#555", fontSize: "0.92rem", lineHeight: 1.5 }}>
+              Se eliminará {deleteWeekModal.weekName || "esta semana"} junto con todas sus actividades y pausas asociadas.
+            </p>
+            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                style={{ padding: "0.5rem 1rem", borderRadius: "0.75rem", border: "1px solid #ddd", background: "#f3f4f6", cursor: "pointer" }}
+                onClick={() => setDeleteWeekModal({ open: false, weekId: "", weekName: "", isSubmitting: false })}
+                disabled={deleteWeekModal.isSubmitting}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                style={{ padding: "0.5rem 1rem", borderRadius: "0.75rem", border: "none", background: "#7f1d1d", color: "#fff", cursor: "pointer" }}
+                onClick={() => { void confirmDeleteWeek(); }}
+                disabled={deleteWeekModal.isSubmitting}
+              >
+                {deleteWeekModal.isSubmitting ? "Borrando..." : "Sí, borrar"}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      ) : null}
     </section>
   );
 }

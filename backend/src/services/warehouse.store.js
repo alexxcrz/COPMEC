@@ -43,6 +43,7 @@ const PAGE_PERMISSIONS = {
 
 const ACTION_PERMISSIONS = {
   createWeek:              [ROLE_LEAD, ROLE_SR],
+  deleteWeek:              [ROLE_LEAD, ROLE_SR],
   createCatalog:           [ROLE_LEAD, ROLE_SR],
   editCatalog:             [ROLE_LEAD, ROLE_SR],
   deleteCatalog:           [ROLE_LEAD, ROLE_SR],
@@ -1553,6 +1554,58 @@ export function createWarehouseWeekFromCatalog() {
     weeks: current.weeks.map((item) => ({ ...item, isActive: false })).concat(week),
     activities: current.activities.concat(newActivities),
   });
+}
+
+export function deleteWarehouseWeek(auth, weekId) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const current = getRawWarehouseState();
+  const targetWeek = (current.weeks || []).find((item) => item.id === weekId);
+  if (!targetWeek) return { ok: false, reason: "week_not_found" };
+  if (!canUserDoWarehouseAction(currentUser, "deleteWeek", current.permissions)) return { ok: false, reason: "forbidden" };
+
+  const removedActivityIds = new Set((current.activities || [])
+    .filter((activity) => activity.weekId === weekId)
+    .map((activity) => activity.id));
+  const nextWeeks = (current.weeks || []).filter((item) => item.id !== weekId);
+
+  const hasActiveWeek = nextWeeks.some((item) => item.isActive);
+  const normalizedWeeks = hasActiveWeek
+    ? nextWeeks
+    : nextWeeks.length > 0
+      ? nextWeeks.map((item, index) => ({ ...item, isActive: index === 0 }))
+      : [];
+
+  const nextState = replaceWarehouseState({
+    ...current,
+    weeks: normalizedWeeks,
+    activities: (current.activities || []).filter((activity) => activity.weekId !== weekId),
+    pauseLogs: (current.pauseLogs || []).filter((log) => !removedActivityIds.has(log.weekActivityId)),
+  });
+
+  return { ok: true, weekId, weekName: targetWeek.name, state: nextState };
+}
+
+export function resetWarehouseDashboardData(auth) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+  if (normalizeRole(currentUser.role) !== ROLE_LEAD) return { ok: false, reason: "forbidden" };
+
+  const current = getRawWarehouseState();
+  const nextState = replaceWarehouseState({
+    ...current,
+    weeks: [],
+    activities: [],
+    pauseLogs: [],
+    boardWeekHistory: [],
+    controlBoards: (current.controlBoards || []).map((board) => ({
+      ...board,
+      rows: [],
+    })),
+  });
+
+  return { ok: true, state: nextState };
 }
 
 export function subscribeWarehouseState(listener) {

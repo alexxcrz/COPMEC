@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BarChart3, Bold, Check, ClipboardList, Italic, List, Plus, RotateCcw, Settings, Trash2, Upload, X } from "lucide-react";
+import { createPortal } from "react-dom";
+import { BarChart3, Camera, Check, ChevronLeft, ChevronRight, ClipboardList, ExternalLink, Image as ImageIcon, Plus, RotateCcw, Settings, Trash2, Upload, X } from "lucide-react";
 import { Modal } from "../components/Modal";
 import { uploadFileToCloudinary } from "../services/upload.service";
 
@@ -197,6 +198,26 @@ function buildQuickStat(label, value) {
   return { label, value };
 }
 
+function cloneAuditRecord(audit = null) {
+  if (!audit) return null;
+  return {
+    ...audit,
+    questions: (audit.questions || []).map((question) => ({ ...question })),
+    evidences: [...(audit.evidences || [])],
+  };
+}
+
+function buildRichEditorState(audit = null) {
+  return {
+    notes: !String(audit?.notes || "").trim(),
+    ...Object.fromEntries(
+      (audit?.questions || [])
+        .filter((question) => question.type === "text")
+        .map((question) => [question.id, !String(question.answer || "").trim()]),
+    ),
+  };
+}
+
 function wrapAnswerSelection(value, selectionStart, selectionEnd, prefix, suffix = prefix) {
   const safeValue = String(value || "");
   const start = Math.max(0, Number(selectionStart ?? 0));
@@ -234,32 +255,138 @@ function prefixAnswerLines(value, selectionStart, selectionEnd, prefix = "- ") {
   };
 }
 
-function renderRichInline(text, keyPrefix) {
-  const tokens = String(text || "").split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).filter(Boolean);
-  return tokens.map((token, index) => {
-    if (token.startsWith("**") && token.endsWith("**")) {
-      return <strong key={`${keyPrefix}-strong-${index}`}>{token.slice(2, -2)}</strong>;
-    }
-    if (token.startsWith("*") && token.endsWith("*")) {
-      return <em key={`${keyPrefix}-em-${index}`}>{token.slice(1, -1)}</em>;
-    }
-    return <span key={`${keyPrefix}-text-${index}`}>{token}</span>;
-  });
+function insertAnswerText(value, selectionStart, selectionEnd, text) {
+  const safeValue = String(value || "");
+  const start = Math.max(0, Number(selectionStart ?? 0));
+  const end = Math.max(start, Number(selectionEnd ?? start));
+  const nextValue = `${safeValue.slice(0, start)}${text}${safeValue.slice(end)}`;
+  const cursor = start + text.length;
+
+  return {
+    value: nextValue,
+    selectionStart: cursor,
+    selectionEnd: cursor,
+  };
 }
 
-function renderRichAnswerPreview(value) {
+function getCurrentAnswerLineMeta(value, cursorPosition) {
+  const safeValue = String(value || "");
+  const cursor = Math.max(0, Number(cursorPosition ?? 0));
+  const lineStart = safeValue.lastIndexOf("\n", Math.max(0, cursor - 1)) + 1;
+  const nextBreak = safeValue.indexOf("\n", cursor);
+  const lineEnd = nextBreak >= 0 ? nextBreak : safeValue.length;
+  const line = safeValue.slice(lineStart, lineEnd);
+
+  return { line, lineStart, lineEnd, cursor };
+}
+
+function continueAnswerStructuredLine(value, cursorPosition) {
+  const { line, lineStart, lineEnd, cursor } = getCurrentAnswerLineMeta(value, cursorPosition);
+  const unorderedMatch = line.match(/^(\s*-\s)(.*)$/);
+  if (unorderedMatch) {
+    const prefix = unorderedMatch[1];
+    const content = unorderedMatch[2] || "";
+    if (!content.trim()) {
+      const nextValue = `${value.slice(0, lineStart)}${value.slice(lineEnd)}`;
+      return { value: nextValue, selectionStart: lineStart, selectionEnd: lineStart };
+    }
+    return insertAnswerText(value, cursor, cursor, `\n${prefix}`);
+  }
+
+  const orderedMatch = line.match(/^(\s*)(\d+)\.\s(.*)$/);
+  if (orderedMatch) {
+    const indentation = orderedMatch[1] || "";
+    const currentNumber = Number(orderedMatch[2] || "1");
+    const content = orderedMatch[3] || "";
+    if (!content.trim()) {
+      const nextValue = `${value.slice(0, lineStart)}${value.slice(lineEnd)}`;
+      return { value: nextValue, selectionStart: lineStart, selectionEnd: lineStart };
+    }
+    return insertAnswerText(value, cursor, cursor, `\n${indentation}${currentNumber + 1}. `);
+  }
+
+  const quoteMatch = line.match(/^(\s*>\s?)(.*)$/);
+  if (quoteMatch) {
+    const prefix = quoteMatch[1];
+    const content = quoteMatch[2] || "";
+    if (!content.trim()) {
+      const nextValue = `${value.slice(0, lineStart)}${value.slice(lineEnd)}`;
+      return { value: nextValue, selectionStart: lineStart, selectionEnd: lineStart };
+    }
+    return insertAnswerText(value, cursor, cursor, `\n${prefix}`);
+  }
+
+  return null;
+}
+
+function prefixOrderedAnswerLines(value, selectionStart, selectionEnd) {
+  const safeValue = String(value || "");
+  const start = Math.max(0, Number(selectionStart ?? 0));
+  const end = Math.max(start, Number(selectionEnd ?? start));
+  const blockStart = safeValue.lastIndexOf("\n", Math.max(0, start - 1)) + 1;
+  const lineBreakIndex = safeValue.indexOf("\n", end);
+  const blockEnd = lineBreakIndex >= 0 ? lineBreakIndex : safeValue.length;
+  const block = safeValue.slice(blockStart, blockEnd) || "";
+  const nextBlock = block
+    .split("\n")
+    .map((line, index) => {
+      const content = line.replace(/^\d+\.\s+/, "").trim();
+      return `${index + 1}. ${content}`;
+    })
+    .join("\n");
+  const nextValue = `${safeValue.slice(0, blockStart)}${nextBlock}${safeValue.slice(blockEnd)}`;
+
+  return {
+    value: nextValue,
+    selectionStart: blockStart,
+    selectionEnd: blockStart + nextBlock.length,
+  };
+}
+
+function insertAnswerLink(value, selectionStart, selectionEnd) {
+  const safeValue = String(value || "");
+  const start = Math.max(0, Number(selectionStart ?? 0));
+  const end = Math.max(start, Number(selectionEnd ?? start));
+  const selectedText = safeValue.slice(start, end).trim() || "enlace";
+  const insertion = `[${selectedText}](https://)`;
+  const nextValue = `${safeValue.slice(0, start)}${insertion}${safeValue.slice(end)}`;
+  const urlStart = start + selectedText.length + 3;
+  const urlEnd = urlStart + "https://".length;
+
+  return {
+    value: nextValue,
+    selectionStart: urlStart,
+    selectionEnd: urlEnd,
+  };
+}
+
+function escapeRichTextHtml(text = "") {
+  return String(text)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function applyInlineRichFormats(text = "") {
+  let html = escapeRichTextHtml(text);
+  html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
+  html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+  html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/__([^_]+)__/g, "<u>$1</u>");
+  html = html.replace(/~~([^~]+)~~/g, "<s>$1</s>");
+  html = html.replace(/(^|[^*])\*([^*]+)\*(?!\*)/g, "$1<em>$2</em>");
+  return html;
+}
+
+function formatRichTextToHtml(value) {
   const lines = String(value || "").split(/\r?\n/);
   const blocks = [];
-  let listItems = [];
+  let listState = null;
 
   const flushList = () => {
-    if (!listItems.length) return;
-    blocks.push(
-      <ul key={`list-${blocks.length}`} className="audit-rich-preview-list">
-        {listItems.map((item, index) => <li key={`item-${blocks.length}-${index}`}>{renderRichInline(item, `list-${blocks.length}-${index}`)}</li>)}
-      </ul>,
-    );
-    listItems = [];
+    if (!listState?.items?.length) return;
+    blocks.push(`<${listState.type} class="audit-rich-response-list">${listState.items.map((item) => `<li>${item}</li>`).join("")}</${listState.type}>`);
+    listState = null;
   };
 
   lines.forEach((line) => {
@@ -268,20 +395,381 @@ function renderRichAnswerPreview(value) {
       flushList();
       return;
     }
-    if (trimmed.startsWith("- ")) {
-      listItems.push(trimmed.slice(2));
+
+    if (trimmed.startsWith("> ")) {
+      flushList();
+      blocks.push(`<blockquote class="audit-rich-response-quote">${applyInlineRichFormats(trimmed.slice(2))}</blockquote>`);
       return;
     }
+
+    if (/^\d+\.\s+/.test(trimmed)) {
+      const content = applyInlineRichFormats(trimmed.replace(/^\d+\.\s+/, ""));
+      if (!listState || listState.type !== "ol") {
+        flushList();
+        listState = { type: "ol", items: [] };
+      }
+      listState.items.push(content);
+      return;
+    }
+
+    if (trimmed.startsWith("- ")) {
+      const content = applyInlineRichFormats(trimmed.slice(2));
+      if (!listState || listState.type !== "ul") {
+        flushList();
+        listState = { type: "ul", items: [] };
+      }
+      listState.items.push(content);
+      return;
+    }
+
     flushList();
-    blocks.push(
-      <p key={`paragraph-${blocks.length}`} className="audit-rich-preview-paragraph">
-        {renderRichInline(trimmed, `paragraph-${blocks.length}`)}
-      </p>,
-    );
+    blocks.push(`<p class="audit-rich-response-paragraph">${applyInlineRichFormats(trimmed)}</p>`);
   });
 
   flushList();
-  return blocks;
+  return blocks.join("") || '<p class="audit-rich-response-empty">Sin respuesta.</p>';
+}
+
+function isImageEvidence(evidence = {}) {
+  return String(evidence.mimeType || "").startsWith("image/") || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(String(evidence.name || evidence.url || ""));
+}
+
+function isVideoEvidence(evidence = {}) {
+  return String(evidence.mimeType || "").startsWith("video/") || /\.(mp4|mov|webm|ogg)$/i.test(String(evidence.name || evidence.url || ""));
+}
+
+function EvidenceLightbox({ evidences, startIndex, onClose }) {
+  const [currentIndex, setCurrentIndex] = useState(startIndex);
+  const total = evidences.length;
+  const current = evidences[currentIndex] || null;
+
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === "Escape") onClose();
+      if (event.key === "ArrowRight") setCurrentIndex((index) => (index + 1) % total);
+      if (event.key === "ArrowLeft") setCurrentIndex((index) => (index - 1 + total) % total);
+    }
+    globalThis.addEventListener("keydown", handleKeyDown);
+    return () => globalThis.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, total]);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  if (!current) return null;
+
+  return createPortal(
+    <div
+      className="audit-lightbox-backdrop"
+      onClick={onClose}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClose();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+    >
+      <div className="audit-lightbox-shell" onClick={(event) => event.stopPropagation()}>
+        <button type="button" className="audit-lightbox-close" onClick={onClose} aria-label="Cerrar vista previa">
+          <X size={18} />
+        </button>
+        {total > 1 ? (
+          <button type="button" className="audit-lightbox-nav prev" onClick={() => setCurrentIndex((index) => (index - 1 + total) % total)} aria-label="Evidencia anterior">
+            <ChevronLeft size={22} />
+          </button>
+        ) : null}
+        <img src={current.url} alt={current.name || "Evidencia"} className="audit-lightbox-image" />
+        {total > 1 ? (
+          <button type="button" className="audit-lightbox-nav next" onClick={() => setCurrentIndex((index) => (index + 1) % total)} aria-label="Siguiente evidencia">
+            <ChevronRight size={22} />
+          </button>
+        ) : null}
+        <div className="audit-lightbox-caption">
+          <span>{current.name || "Evidencia"}</span>
+          {total > 1 ? <small>{currentIndex + 1} / {total}</small> : null}
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function CameraCaptureModal({ open, onClose, onCapture, disabled }) {
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+  const [cameraError, setCameraError] = useState("");
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    let disposed = false;
+    async function startCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setCameraError("La cámara no está disponible en este navegador.");
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false,
+        });
+        if (disposed) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        streamRef.current = stream;
+        setCameraError("");
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play().catch(() => {});
+        }
+      } catch (error) {
+        setCameraError(error?.message || "No se pudo abrir la cámara.");
+      }
+    }
+
+    startCamera();
+    return () => {
+      disposed = true;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+    };
+  }, [open]);
+
+  async function handleCapture() {
+    if (disabled || !videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const width = video.videoWidth || 1280;
+    const height = video.videoHeight || 720;
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, width, height);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+    if (!blob) return;
+    const file = new File([blob], `auditoria-${Date.now()}.jpg`, { type: "image/jpeg" });
+    await onCapture(file);
+  }
+
+  return (
+    <Modal
+      open={open}
+      title="Capturar evidencia"
+      confirmLabel={disabled ? "Subiendo..." : "Tomar foto"}
+      cancelLabel="Cerrar"
+      onClose={onClose}
+      onConfirm={handleCapture}
+      confirmDisabled={disabled || Boolean(cameraError)}
+    >
+      <div className="audit-camera-shell">
+        {cameraError ? <p className="validation-text">{cameraError}</p> : null}
+        <div className="audit-camera-preview">
+          <video ref={videoRef} autoPlay playsInline muted className="audit-camera-video" />
+          <canvas ref={canvasRef} style={{ display: "none" }} />
+        </div>
+        <p className="modal-footnote">La imagen se sube inmediatamente a la auditoría activa cuando confirmas.</p>
+      </div>
+    </Modal>
+  );
+}
+
+function AuditEvidenceGrid({ evidences, canEdit, canUpload, uploading, onOpenGallery, onOpenCamera, onDelete }) {
+  const [lightbox, setLightbox] = useState(null);
+  const imageEvidences = useMemo(() => evidences.filter((evidence) => isImageEvidence(evidence)), [evidences]);
+
+  function openLightbox(evidence) {
+    const index = imageEvidences.findIndex((item) => item.id === evidence.id);
+    setLightbox({ evidences: imageEvidences, startIndex: index >= 0 ? index : 0 });
+  }
+
+  return (
+    <div className="audit-evidence-section">
+      {canUpload ? (
+        <div className="audit-inline-actions audit-evidence-actions">
+          <button type="button" className="icon-button" onClick={onOpenGallery} disabled={uploading || !canEdit}>
+            <Upload size={15} /> {uploading ? "Subiendo..." : "Galería"}
+          </button>
+          <button type="button" className="icon-button" onClick={onOpenCamera} disabled={uploading || !canEdit}>
+            <Camera size={15} /> Cámara
+          </button>
+        </div>
+      ) : null}
+
+      {!evidences.length ? <p className="subtle-line">No hay evidencias adjuntas.</p> : null}
+
+      <div className="audit-evidence-grid">
+        {evidences.map((evidence) => (
+          <article key={evidence.id} className="surface-card audit-evidence-card audit-evidence-card-rich">
+            <div className="audit-evidence-preview-shell">
+              {isImageEvidence(evidence) ? (
+                <button type="button" className="audit-evidence-preview-button" onClick={() => openLightbox(evidence)}>
+                  <img src={evidence.thumbnailUrl || evidence.url} alt={evidence.name || "Evidencia"} className="audit-evidence-preview-image" />
+                </button>
+              ) : isVideoEvidence(evidence) ? (
+                <a href={evidence.url} target="_blank" rel="noreferrer" className="audit-evidence-preview-button audit-evidence-preview-video-link">
+                  <video src={evidence.url} className="audit-evidence-preview-video" muted playsInline preload="metadata" />
+                </a>
+              ) : (
+                <a href={evidence.url} target="_blank" rel="noreferrer" className="audit-evidence-preview-file">
+                  <ImageIcon size={28} />
+                </a>
+              )}
+              {evidence.isPending ? <span className="chip warning audit-evidence-pending-chip">Subiendo</span> : null}
+            </div>
+            <div className="card-header-row">
+              <div>
+                <strong>{evidence.name || "Evidencia"}</strong>
+                <p className="subtle-line">{formatDateTime(evidence.createdAt)}</p>
+                {evidence.uploadedByName ? <p className="subtle-line">Por {evidence.uploadedByName}</p> : null}
+              </div>
+              <div className="audit-inline-actions">
+                <a href={evidence.url} target="_blank" rel="noreferrer" className="icon-button" title="Abrir evidencia">
+                  <ExternalLink size={14} />
+                </a>
+                {canEdit && !evidence.isPending ? (
+                  <button type="button" className="icon-button danger" onClick={() => onDelete(evidence.id)}>
+                    <Trash2 size={14} />
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      {lightbox ? <EvidenceLightbox evidences={lightbox.evidences} startIndex={lightbox.startIndex} onClose={() => setLightbox(null)} /> : null}
+    </div>
+  );
+}
+
+function RichTextResponseField({
+  label,
+  value,
+  placeholder,
+  canEdit,
+  isEditing,
+  onChange,
+  onEdit,
+  onSave,
+  saveLabel = "Guardar respuesta",
+  editLabel = "Editar respuesta",
+}) {
+  const textareaRef = useRef(null);
+
+  function applySelectionTransform(transformer) {
+    const textarea = textareaRef.current;
+    if (!textarea || !canEdit) return;
+    const next = transformer(
+      value,
+      textarea.selectionStart ?? String(value || "").length,
+      textarea.selectionEnd ?? String(value || "").length,
+    );
+    onChange(next.value);
+    requestAnimationFrame(() => {
+      const nextTextarea = textareaRef.current;
+      if (!nextTextarea) return;
+      nextTextarea.focus();
+      nextTextarea.setSelectionRange(next.selectionStart, next.selectionEnd);
+    });
+  }
+
+  function handleTextareaKeyDown(event) {
+    if (event.key !== "Enter" || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return;
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const next = continueAnswerStructuredLine(value, textarea.selectionStart ?? String(value || "").length);
+    if (!next) return;
+    event.preventDefault();
+    onChange(next.value);
+    requestAnimationFrame(() => {
+      const nextTextarea = textareaRef.current;
+      if (!nextTextarea) return;
+      nextTextarea.focus();
+      nextTextarea.setSelectionRange(next.selectionStart, next.selectionEnd);
+    });
+  }
+
+  return (
+    <div className="audit-rich-response-shell">
+      <div className="audit-rich-response-head">
+        <span>{label}</span>
+        {canEdit ? (
+          isEditing ? (
+            <button type="button" className="primary-button" onClick={onSave}>
+              {saveLabel}
+            </button>
+          ) : (
+            <button type="button" className="icon-button" onClick={onEdit}>
+              {editLabel}
+            </button>
+          )
+        ) : null}
+      </div>
+
+      {isEditing ? (
+        <div className="audit-text-answer-shell">
+          <div className="chat-input-toolbar audit-rich-toolbar" role="toolbar" aria-label={`Formato para ${label}`}>
+            <div className="chat-toolbar-left">
+              <button type="button" className="chat-btn-tool" title="Negrita" onClick={() => applySelectionTransform((current, start, end) => wrapAnswerSelection(current, start, end, "**"))}>
+                <strong>B</strong>
+              </button>
+              <button type="button" className="chat-btn-tool" title="Itálica" onClick={() => applySelectionTransform((current, start, end) => wrapAnswerSelection(current, start, end, "*"))}>
+                <em>I</em>
+              </button>
+              <button type="button" className="chat-btn-tool" title="Subrayado" onClick={() => applySelectionTransform((current, start, end) => wrapAnswerSelection(current, start, end, "__"))}>
+                <u>U</u>
+              </button>
+              <button type="button" className="chat-btn-tool" title="Tachado" onClick={() => applySelectionTransform((current, start, end) => wrapAnswerSelection(current, start, end, "~~"))}>
+                <s>S</s>
+              </button>
+              <button type="button" className="chat-btn-tool" title="Código" onClick={() => applySelectionTransform((current, start, end) => wrapAnswerSelection(current, start, end, "`"))}>
+                {"</>"}
+              </button>
+              <button type="button" className="chat-btn-tool" title="Link" onClick={() => applySelectionTransform((current, start, end) => insertAnswerLink(current, start, end))}>
+                🔗
+              </button>
+              <button type="button" className="chat-btn-tool" title="Lista" onClick={() => applySelectionTransform((current, start, end) => prefixAnswerLines(current, start, end, "- "))}>
+                •
+              </button>
+              <button type="button" className="chat-btn-tool" title="Lista numerada" onClick={() => applySelectionTransform((current, start, end) => prefixOrderedAnswerLines(current, start, end))}>
+                1.
+              </button>
+              <button type="button" className="chat-btn-tool" title="Cita" onClick={() => applySelectionTransform((current, start, end) => prefixAnswerLines(current, start, end, "> "))}>
+                ""
+              </button>
+            </div>
+          </div>
+
+          <label className="app-modal-field">
+            <span>{label}</span>
+            <textarea
+              ref={textareaRef}
+              value={String(value || "")}
+              onChange={(event) => onChange(event.target.value)}
+              onKeyDown={handleTextareaKeyDown}
+              placeholder={placeholder || "Escribe aquí"}
+              rows={6}
+              className="audit-rich-textarea"
+            />
+          </label>
+        </div>
+      ) : (
+        <div className="audit-rich-response-display" dangerouslySetInnerHTML={{ __html: formatRichTextToHtml(value) }} />
+      )}
+    </div>
+  );
 }
 
 function TemplateQuestionEditor({
@@ -421,6 +909,8 @@ export default function AuditoriasProcesosCompact({ contexto }) {
   const [auditQuestionsDraft, setAuditQuestionsDraft] = useState(null);
   const [isAuditDirty, setIsAuditDirty] = useState(false);
   const [uploadingEvidence, setUploadingEvidence] = useState(false);
+  const [cameraModalOpen, setCameraModalOpen] = useState(false);
+  const [pendingEvidences, setPendingEvidences] = useState([]);
   const [templateManagerOpen, setTemplateManagerOpen] = useState(false);
   const [templateManagerTab, setTemplateManagerTab] = useState("library");
   const [auditEditorOpen, setAuditEditorOpen] = useState(false);
@@ -435,7 +925,13 @@ export default function AuditoriasProcesosCompact({ contexto }) {
   });
   const [resetStatsModal, setResetStatsModal] = useState({ open: false, submitting: false });
   const [auditViewerModal, setAuditViewerModal] = useState({ open: false, audit: null });
-  const textAnswerRefs = useRef(new Map());
+  const [auditRichEditorState, setAuditRichEditorState] = useState({});
+  const [auditViewerDraft, setAuditViewerDraft] = useState(null);
+  const [auditViewerDirty, setAuditViewerDirty] = useState(false);
+  const [auditViewerSaving, setAuditViewerSaving] = useState(false);
+  const [auditViewerRichEditorState, setAuditViewerRichEditorState] = useState({});
+  const galleryEvidenceInputRef = useRef(null);
+  const mobileCameraInputRef = useRef(null);
 
   const resolvedTemplates = useMemo(() => {
     return (Array.isArray(processAuditTemplates) ? processAuditTemplates : []).map((template) => ({
@@ -463,9 +959,11 @@ export default function AuditoriasProcesosCompact({ contexto }) {
   }, [resolvedTemplates]);
 
   const templateCandidates = useMemo(() => {
-    if (!newAuditArea) return [];
-    return resolvedTemplates.filter((entry) => entry.area === newAuditArea && (!newAuditProcess || entry.process === newAuditProcess));
-  }, [newAuditArea, newAuditProcess, resolvedTemplates]);
+    return resolvedTemplates.filter((entry) => {
+      if (!newAuditProcess) return true;
+      return entry.process.toLowerCase().includes(newAuditProcess.toLowerCase());
+    });
+  }, [newAuditProcess, resolvedTemplates]);
 
   const filteredTemplateLibrary = useMemo(() => {
     return resolvedTemplates.filter((template) => {
@@ -494,6 +992,12 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     () => openAudits.find((entry) => entry.id === selectedAuditId) || openAudits[0] || null,
     [openAudits, selectedAuditId],
   );
+
+  const visibleAuditEvidences = useMemo(() => {
+    if (!auditDraft) return [];
+    const localPending = pendingEvidences.filter((item) => item.auditId === auditDraft.id);
+    return localPending.concat(auditDraft.evidences || []);
+  }, [auditDraft, pendingEvidences]);
 
   const dashboardStats = useMemo(() => {
     const total = sortedAudits.length;
@@ -536,21 +1040,61 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     }
 
     setSelectedAuditId(selectedAudit.id);
-    setAuditDraft({
-      ...selectedAudit,
-      questions: (selectedAudit.questions || []).map((question) => ({ ...question })),
-      evidences: [...(selectedAudit.evidences || [])],
+    setAuditDraft((current) => {
+      if (current?.id === selectedAudit.id) {
+        return {
+          ...current,
+          status: selectedAudit.status,
+          closedAt: selectedAudit.closedAt,
+          updatedAt: selectedAudit.updatedAt,
+          evidences: [...(selectedAudit.evidences || [])],
+          notes: current.notes,
+          questions: current.questions,
+        };
+      }
+      return {
+        ...selectedAudit,
+        questions: (selectedAudit.questions || []).map((question) => ({ ...question })),
+        evidences: [...(selectedAudit.evidences || [])],
+      };
     });
-    setAuditQuestionsDraft({
-      questions: (selectedAudit.questions || []).map((question) => buildQuestionDraft(question)),
+    setAuditQuestionsDraft((current) => {
+      if (current && auditDraft?.id === selectedAudit.id) return current;
+      return {
+        questions: (selectedAudit.questions || []).map((question) => buildQuestionDraft(question)),
+      };
     });
-    setIsAuditDirty(false);
-  }, [selectedAudit?.id]);
+    if (auditDraft?.id !== selectedAudit.id) {
+      setIsAuditDirty(false);
+      setAuditRichEditorState(buildRichEditorState(selectedAudit));
+    }
+  }, [selectedAudit?.id, selectedAudit?.updatedAt, selectedAudit?.status, selectedAudit?.evidences?.length]);
 
   useEffect(() => {
-    if (!newAuditArea || newAuditTemplateId || !templateCandidates.length) return;
+    if (!auditViewerModal.open || !auditViewerModal.audit?.id) return;
+    const nextAudit = sortedAudits.find((entry) => entry.id === auditViewerModal.audit.id) || null;
+    if (nextAudit) {
+      setAuditViewerModal((current) => ({ ...current, audit: nextAudit }));
+    }
+  }, [auditViewerModal.audit?.id, auditViewerModal.open, sortedAudits]);
+
+  useEffect(() => {
+    if (!auditViewerModal.open || !auditViewerModal.audit?.id) {
+      setAuditViewerDraft(null);
+      setAuditViewerDirty(false);
+      setAuditViewerRichEditorState({});
+      return;
+    }
+    if (auditViewerDirty && auditViewerDraft?.id === auditViewerModal.audit.id) return;
+    setAuditViewerDraft(cloneAuditRecord(auditViewerModal.audit));
+    setAuditViewerRichEditorState(buildRichEditorState(auditViewerModal.audit));
+    setAuditViewerDirty(false);
+  }, [auditViewerDirty, auditViewerDraft?.id, auditViewerModal.audit, auditViewerModal.open]);
+
+  useEffect(() => {
+    if (newAuditTemplateId || !templateCandidates.length) return;
     setNewAuditTemplateId(templateCandidates[0].id);
-  }, [newAuditArea, newAuditTemplateId, templateCandidates]);
+  }, [newAuditTemplateId, templateCandidates]);
 
   useEffect(() => {
     if (!auditDraft || !isAuditDirty || !canManageAudits) return undefined;
@@ -582,27 +1126,84 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     setIsAuditDirty(true);
   }
 
-  function applyTextAnswerFormat(questionId, formatType) {
-    const textarea = textAnswerRefs.current.get(questionId);
-    const question = (auditDraft?.questions || []).find((item) => item.id === questionId);
-    if (!textarea || !question) return;
+  function updateAuditNotes(nextNotes) {
+    setAuditDraft((current) => ({ ...current, notes: nextNotes }));
+    setIsAuditDirty(true);
+  }
 
-    const currentValue = String(question.answer || "");
-    const selectionStart = textarea.selectionStart ?? currentValue.length;
-    const selectionEnd = textarea.selectionEnd ?? currentValue.length;
-    const formatter = formatType === "bold"
-      ? wrapAnswerSelection(currentValue, selectionStart, selectionEnd, "**")
-      : formatType === "italic"
-        ? wrapAnswerSelection(currentValue, selectionStart, selectionEnd, "*")
-        : prefixAnswerLines(currentValue, selectionStart, selectionEnd);
-
-    updateAuditAnswer(questionId, formatter.value);
-    requestAnimationFrame(() => {
-      const nextTextarea = textAnswerRefs.current.get(questionId);
-      if (!nextTextarea) return;
-      nextTextarea.focus();
-      nextTextarea.setSelectionRange(formatter.selectionStart, formatter.selectionEnd);
+  function updateViewerAnswer(questionId, nextAnswer) {
+    setAuditViewerDraft((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        questions: current.questions.map((item) => (item.id === questionId ? { ...item, answer: nextAnswer } : item)),
+      };
     });
+    setAuditViewerDirty(true);
+  }
+
+  function updateViewerNotes(nextNotes) {
+    setAuditViewerDraft((current) => (current ? { ...current, notes: nextNotes } : current));
+    setAuditViewerDirty(true);
+  }
+
+  async function persistAuditChanges(targetAudit, successMessage) {
+    if (!targetAudit || !canManageAudits) return false;
+    await updateProcessAudit(targetAudit.id, {
+      area: targetAudit.area,
+      subArea: targetAudit.subArea || "",
+      process: targetAudit.process,
+      notes: targetAudit.notes || "",
+      status: targetAudit.status,
+      questions: normalizeQuestionsForSave(targetAudit.questions || []),
+    });
+    if (successMessage) pushAppToast(successMessage, "success");
+    return true;
+  }
+
+  async function handleSaveActiveTextField(fieldKey, successMessage) {
+    if (!auditDraft) return;
+    try {
+      await persistAuditChanges(auditDraft, successMessage);
+      setIsAuditDirty(false);
+      setAuditRichEditorState((current) => ({ ...current, [fieldKey]: false }));
+    } catch (error) {
+      pushAppToast(error?.message || "No se pudo guardar la respuesta.", "danger");
+    }
+  }
+
+  async function handleSaveViewerTextField(fieldKey, successMessage) {
+    if (!auditViewerDraft) return;
+    setAuditViewerSaving(true);
+    try {
+      const saved = await persistAuditChanges(auditViewerDraft, successMessage);
+      if (!saved) return;
+      setAuditViewerDirty(false);
+      setAuditViewerRichEditorState((current) => ({ ...current, [fieldKey]: false }));
+    } catch (error) {
+      pushAppToast(error?.message || "No se pudo guardar la respuesta.", "danger");
+    } finally {
+      setAuditViewerSaving(false);
+    }
+  }
+
+  async function handleSaveViewerBinaryAnswer(questionId, nextAnswer) {
+    if (!auditViewerDraft) return;
+    const nextDraft = {
+      ...auditViewerDraft,
+      questions: auditViewerDraft.questions.map((item) => (item.id === questionId ? { ...item, answer: nextAnswer } : item)),
+    };
+    setAuditViewerDraft(nextDraft);
+    setAuditViewerDirty(true);
+    setAuditViewerSaving(true);
+    try {
+      const saved = await persistAuditChanges(nextDraft, "Respuesta guardada.");
+      if (saved) setAuditViewerDirty(false);
+    } catch (error) {
+      pushAppToast(error?.message || "No se pudo guardar la respuesta.", "danger");
+    } finally {
+      setAuditViewerSaving(false);
+    }
   }
 
   function openDeleteAuditModal(audit) {
@@ -671,6 +1272,18 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     }
   }
 
+  function pullTemplateToArea(template, targetArea) {
+    const resolvedArea = String(targetArea || "").trim() || String(template?.area || "").trim();
+    if (!template || !resolvedArea) return;
+    setTemplateDraft({
+      ...cloneTemplateIntoDraft(template, resolvedArea, template.process),
+      id: "",
+      area: resolvedArea,
+      isFallback: false,
+    });
+    setTemplateManagerTab("editor");
+  }
+
   async function handleDeleteTemplate(template) {
     if (!canManageTemplates || !template?.id || template.isFallback) return;
     try {
@@ -733,25 +1346,75 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     }
   }
 
-  async function handleUploadEvidence(event) {
-    const file = event.target.files?.[0];
-    if (!file || !auditDraft || !canManageAudits) return;
+  async function uploadEvidenceFiles(files = []) {
+    const normalizedFiles = Array.from(files).filter(Boolean);
+    if (!normalizedFiles.length || !auditDraft || !canManageAudits) return;
     setUploadingEvidence(true);
 
     try {
-      const uploaded = await uploadFileToCloudinary(file);
-      await addProcessAuditEvidence(auditDraft.id, {
-        url: uploaded.url,
-        thumbnailUrl: uploaded.thumbnailUrl,
-        name: uploaded.originalName || file.name,
-        mimeType: uploaded.fileMimeType || file.type,
-      });
-      pushAppToast("Evidencia agregada.", "success");
+      for (const file of normalizedFiles) {
+        const previewId = `pending-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        const previewUrl = URL.createObjectURL(file);
+        setPendingEvidences((current) => [{
+          id: previewId,
+          auditId: auditDraft.id,
+          url: previewUrl,
+          thumbnailUrl: previewUrl,
+          name: file.name,
+          mimeType: file.type,
+          createdAt: new Date().toISOString(),
+          uploadedByName: currentUser?.name || "",
+          isPending: true,
+        }, ...current]);
+
+        try {
+          const uploaded = await uploadFileToCloudinary(file);
+          await addProcessAuditEvidence(auditDraft.id, {
+            url: uploaded.url,
+            thumbnailUrl: uploaded.thumbnailUrl,
+            name: uploaded.originalName || file.name,
+            mimeType: uploaded.fileMimeType || file.type,
+          });
+          pushAppToast("Evidencia agregada.", "success");
+        } finally {
+          URL.revokeObjectURL(previewUrl);
+          setPendingEvidences((current) => current.filter((item) => item.id !== previewId));
+        }
+      }
     } catch (error) {
       pushAppToast(error?.message || "No se pudo subir la evidencia.", "danger");
     } finally {
       setUploadingEvidence(false);
-      event.target.value = "";
+    }
+  }
+
+  async function handleUploadEvidence(event) {
+    const files = Array.from(event.target.files || []);
+    await uploadEvidenceFiles(files);
+    event.target.value = "";
+  }
+
+  async function handleCaptureEvidence(file) {
+    await uploadEvidenceFiles([file]);
+    setCameraModalOpen(false);
+  }
+
+  function openCameraCapture() {
+    if (!auditDraft || !canManageAudits || auditDraft.status === "closed") return;
+    if (navigator.mediaDevices?.getUserMedia) {
+      setCameraModalOpen(true);
+      return;
+    }
+    mobileCameraInputRef.current?.click();
+  }
+
+  async function handleDeleteEvidence(evidenceId) {
+    if (!auditDraft?.id || !evidenceId || !canManageAudits || auditDraft.status === "closed") return;
+    try {
+      await removeProcessAuditEvidence(auditDraft.id, evidenceId);
+      pushAppToast("Evidencia eliminada.", "success");
+    } catch (error) {
+      pushAppToast(error?.message || "No se pudo eliminar la evidencia.", "danger");
     }
   }
 
@@ -868,7 +1531,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                 <select value={newAuditTemplateId} onChange={(event) => setNewAuditTemplateId(event.target.value)}>
                   <option value="">Manual</option>
                   {templateCandidates.map((template) => (
-                    <option key={template.id} value={template.id}>{template.process} · {template.questions?.length || 0} preg.</option>
+                    <option key={template.id} value={template.id}>{template.area} · {template.process} · {template.questions?.length || 0} preg.</option>
                   ))}
                 </select>
               </label>
@@ -913,6 +1576,20 @@ export default function AuditoriasProcesosCompact({ contexto }) {
               <p className="subtle-line">No hay auditorías registradas todavía.</p>
             ) : (
               <>
+                <div className="audit-active-tabs" role="tablist" aria-label="Auditorías activas">
+                  {openAudits.map((audit) => (
+                    <button
+                      key={audit.id}
+                      type="button"
+                      className={audit.id === auditDraft.id ? "audit-active-tab active" : "audit-active-tab"}
+                      onClick={() => setSelectedAuditId(audit.id)}
+                    >
+                      <span>{audit.area} · {audit.process}</span>
+                      <small>{(audit.evidences || []).length} ev.</small>
+                    </button>
+                  ))}
+                </div>
+
                 <div className="audit-active-meta-grid">
                   <article className="surface-card audit-mini-stat">
                     <p>Área</p>
@@ -942,18 +1619,18 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                   <span>Duración: {formatDuration(getAuditDurationSeconds(auditDraft))}</span>
                 </div>
 
-                <label className="app-modal-field audit-field-span-full">
-                  <span>Notas</span>
-                  <input
-                    value={auditDraft.notes || ""}
-                    onChange={(event) => {
-                      setAuditDraft((current) => ({ ...current, notes: event.target.value }));
-                      setIsAuditDirty(true);
-                    }}
-                    placeholder="Observación general"
-                    disabled={!canManageAudits || auditDraft.status === "closed"}
-                  />
-                </label>
+                <RichTextResponseField
+                  label="Notas"
+                  value={auditDraft.notes || ""}
+                  placeholder="Observación general"
+                  canEdit={canManageAudits}
+                  isEditing={Boolean(auditRichEditorState.notes)}
+                  onChange={updateAuditNotes}
+                  onEdit={() => setAuditRichEditorState((current) => ({ ...current, notes: true }))}
+                  onSave={() => handleSaveActiveTextField("notes", "Notas guardadas.")}
+                  saveLabel="Guardar notas"
+                  editLabel="Editar notas"
+                />
 
                 <div className="audit-response-grid">
                   {(auditDraft.questions || []).map((question, index) => (
@@ -971,7 +1648,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                             type="button"
                             className={question.answer === true ? "primary-button" : "icon-button"}
                             onClick={() => updateAuditAnswer(question.id, true)}
-                            disabled={!canManageAudits || auditDraft.status === "closed"}
+                            disabled={!canManageAudits}
                           >
                             <Check size={15} /> Sí
                           </button>
@@ -979,74 +1656,44 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                             type="button"
                             className={question.answer === false ? "primary-button" : "icon-button"}
                             onClick={() => updateAuditAnswer(question.id, false)}
-                            disabled={!canManageAudits || auditDraft.status === "closed"}
+                            disabled={!canManageAudits}
                           >
                             <X size={15} /> No
                           </button>
                         </div>
                       ) : (
-                        <div className="audit-text-answer-shell">
-                          <div className="audit-text-toolbar" role="toolbar" aria-label={`Formato para ${question.text}`}>
-                            <button type="button" className="icon-button" onClick={() => applyTextAnswerFormat(question.id, "bold")} disabled={!canManageAudits || auditDraft.status === "closed"}>
-                              <Bold size={14} /> Negrita
-                            </button>
-                            <button type="button" className="icon-button" onClick={() => applyTextAnswerFormat(question.id, "italic")} disabled={!canManageAudits || auditDraft.status === "closed"}>
-                              <Italic size={14} /> Itálica
-                            </button>
-                            <button type="button" className="icon-button" onClick={() => applyTextAnswerFormat(question.id, "list")} disabled={!canManageAudits || auditDraft.status === "closed"}>
-                              <List size={14} /> Lista
-                            </button>
-                          </div>
-                          <label className="app-modal-field">
-                            <span>Respuesta</span>
-                            <textarea
-                              ref={(node) => {
-                                if (node) textAnswerRefs.current.set(question.id, node);
-                                else textAnswerRefs.current.delete(question.id);
-                              }}
-                              value={String(question.answer || "")}
-                              onChange={(event) => updateAuditAnswer(question.id, event.target.value)}
-                              placeholder={question.placeholder || "Escribe aquí"}
-                              rows={5}
-                              disabled={!canManageAudits || auditDraft.status === "closed"}
-                            />
-                          </label>
-                          {String(question.answer || "").trim() ? (
-                            <div className="audit-rich-preview">
-                              <span>Vista previa</span>
-                              <div className="audit-rich-preview-body">
-                                {renderRichAnswerPreview(question.answer)}
-                              </div>
-                            </div>
-                          ) : null}
-                        </div>
+                        <RichTextResponseField
+                          label="Respuesta"
+                          value={String(question.answer || "")}
+                          placeholder={question.placeholder || "Escribe aquí"}
+                          canEdit={canManageAudits}
+                          isEditing={Boolean(auditRichEditorState[question.id])}
+                          onChange={(nextValue) => updateAuditAnswer(question.id, nextValue)}
+                          onEdit={() => setAuditRichEditorState((current) => ({ ...current, [question.id]: true }))}
+                          onSave={() => handleSaveActiveTextField(question.id, "Respuesta guardada.")}
+                        />
                       )}
                     </article>
                   ))}
                 </div>
 
                 <div className="audit-inline-actions">
-                  <label className="icon-button" style={{ cursor: uploadingEvidence ? "not-allowed" : "pointer", opacity: uploadingEvidence ? 0.6 : 1 }}>
-                    <Upload size={15} /> {uploadingEvidence ? "Subiendo..." : "Evidencia"}
-                    <input type="file" accept="image/*,video/*" style={{ display: "none" }} onChange={handleUploadEvidence} disabled={uploadingEvidence || !canManageAudits || auditDraft.status === "closed"} />
-                  </label>
                   <button type="button" className="icon-button danger" onClick={() => openDeleteAuditModal(auditDraft)} disabled={!canManageAudits}>Eliminar</button>
                   <button type="button" className="primary-button" onClick={handleCloseAudit} disabled={!canManageAudits || auditDraft.status === "closed"}>Cerrar</button>
                 </div>
 
-                <div className="saved-board-list permissions-preset-list">
-                  {(auditDraft.evidences || []).map((evidence) => (
-                    <article key={evidence.id} className="surface-card audit-evidence-card">
-                      <div className="card-header-row">
-                        <a href={evidence.url} target="_blank" rel="noreferrer">{evidence.name || "Evidencia"}</a>
-                        <button type="button" className="icon-button danger" onClick={() => removeProcessAuditEvidence(auditDraft.id, evidence.id)} disabled={!canManageAudits}>
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                      <p className="subtle-line">{formatDateTime(evidence.createdAt)}</p>
-                    </article>
-                  ))}
-                </div>
+                <input ref={galleryEvidenceInputRef} type="file" accept="image/*,video/*" multiple style={{ display: "none" }} onChange={handleUploadEvidence} disabled={uploadingEvidence || !canManageAudits || auditDraft.status === "closed"} />
+                <input ref={mobileCameraInputRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={handleUploadEvidence} disabled={uploadingEvidence || !canManageAudits || auditDraft.status === "closed"} />
+
+                <AuditEvidenceGrid
+                  evidences={visibleAuditEvidences}
+                  canEdit={canManageAudits && auditDraft.status !== "closed"}
+                  canUpload
+                  uploading={uploadingEvidence}
+                  onOpenGallery={() => galleryEvidenceInputRef.current?.click()}
+                  onOpenCamera={openCameraCapture}
+                  onDelete={handleDeleteEvidence}
+                />
               </>
             )}
           </article>
@@ -1142,28 +1789,87 @@ export default function AuditoriasProcesosCompact({ contexto }) {
         onClose={() => setAuditViewerModal({ open: false, audit: null })}
         onConfirm={() => setAuditViewerModal({ open: false, audit: null })}
       >
-        {auditViewerModal.audit ? (
+        {auditViewerDraft ? (
           <div className="modal-form-grid">
-            <p><strong>{auditViewerModal.audit.area}</strong> · {auditViewerModal.audit.process}</p>
-            <p className="subtle-line">Subárea: {auditViewerModal.audit.subArea || "-"}</p>
-            <p className="subtle-line">Auditor: {auditViewerModal.audit.auditorName || "Sin auditor"}</p>
-            <p className="subtle-line">Inicio: {formatDateTime(auditViewerModal.audit.startedAt)}</p>
-            <p className="subtle-line">Duración: {formatDuration(getAuditDurationSeconds(auditViewerModal.audit))}</p>
+            <p><strong>{auditViewerDraft.area}</strong> · {auditViewerDraft.process}</p>
+            <p className="subtle-line">Subárea: {auditViewerDraft.subArea || "-"}</p>
+            <p className="subtle-line">Auditor: {auditViewerDraft.auditorName || "Sin auditor"}</p>
+            <p className="subtle-line">Inicio: {formatDateTime(auditViewerDraft.startedAt)}</p>
+            <p className="subtle-line">Duración: {formatDuration(getAuditDurationSeconds(auditViewerDraft))}</p>
+
+            <RichTextResponseField
+              label="Notas"
+              value={auditViewerDraft.notes || ""}
+              placeholder="Observación general"
+              canEdit={canManageAudits && !auditViewerSaving}
+              isEditing={Boolean(auditViewerRichEditorState.notes)}
+              onChange={updateViewerNotes}
+              onEdit={() => setAuditViewerRichEditorState((current) => ({ ...current, notes: true }))}
+              onSave={() => handleSaveViewerTextField("notes", "Notas guardadas.")}
+              saveLabel="Guardar notas"
+              editLabel="Editar notas"
+            />
+
             <div className="saved-board-list permissions-preset-list">
-              {(auditViewerModal.audit.questions || []).map((question, index) => (
-                <article key={question.id || `${auditViewerModal.audit.id}-${index}`} className="surface-card audit-history-card">
+              {(auditViewerDraft.questions || []).map((question, index) => (
+                <article key={question.id || `${auditViewerDraft.id}-${index}`} className="surface-card audit-history-card">
                   <strong>{index + 1}. {question.text}</strong>
-                  <p className="subtle-line">
-                    {question.type === "yesno"
-                      ? (question.answer === true ? "Respuesta: Sí" : question.answer === false ? "Respuesta: No" : "Respuesta: Sin responder")
-                      : `Respuesta: ${String(question.answer || "Sin respuesta")}`}
-                  </p>
+                  {question.type === "yesno" ? (
+                    <div className="audit-answer-toggle-row">
+                      <button
+                        type="button"
+                        className={question.answer === true ? "primary-button" : "icon-button"}
+                        onClick={() => handleSaveViewerBinaryAnswer(question.id, true)}
+                        disabled={!canManageAudits || auditViewerSaving}
+                      >
+                        <Check size={15} /> Sí
+                      </button>
+                      <button
+                        type="button"
+                        className={question.answer === false ? "primary-button" : "icon-button"}
+                        onClick={() => handleSaveViewerBinaryAnswer(question.id, false)}
+                        disabled={!canManageAudits || auditViewerSaving}
+                      >
+                        <X size={15} /> No
+                      </button>
+                    </div>
+                  ) : (
+                    <RichTextResponseField
+                      label="Respuesta"
+                      value={String(question.answer || "")}
+                      placeholder={question.placeholder || "Escribe aquí"}
+                      canEdit={canManageAudits && !auditViewerSaving}
+                      isEditing={Boolean(auditViewerRichEditorState[question.id])}
+                      onChange={(nextValue) => updateViewerAnswer(question.id, nextValue)}
+                      onEdit={() => setAuditViewerRichEditorState((current) => ({ ...current, [question.id]: true }))}
+                      onSave={() => handleSaveViewerTextField(question.id, "Respuesta guardada.")}
+                    />
+                  )}
                 </article>
               ))}
+            </div>
+            <div className="audit-viewer-evidence-block">
+              <h3>Evidencias</h3>
+              <AuditEvidenceGrid
+                evidences={auditViewerDraft.evidences || []}
+                canEdit={false}
+                canUpload={false}
+                uploading={false}
+                onOpenGallery={() => {}}
+                onOpenCamera={() => {}}
+                onDelete={() => {}}
+              />
             </div>
           </div>
         ) : null}
       </Modal>
+
+      <CameraCaptureModal
+        open={cameraModalOpen}
+        onClose={() => setCameraModalOpen(false)}
+        onCapture={handleCaptureEvidence}
+        disabled={uploadingEvidence}
+      />
 
       <Modal
         open={templateManagerOpen}
@@ -1232,6 +1938,15 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                       <button type="button" className="icon-button" onClick={() => setTemplateDraft(cloneTemplateIntoDraft(template))} disabled={!canManageTemplates}>
                         <Check size={14} />
                       </button>
+                      <button
+                        type="button"
+                        className="icon-button"
+                        onClick={() => pullTemplateToArea(template, newAuditArea || templateFilterArea || template.area)}
+                        disabled={!canManageTemplates}
+                        title={newAuditArea || templateFilterArea ? `Jalar a ${newAuditArea || templateFilterArea}` : "Jalar a otra área"}
+                      >
+                        <Plus size={14} />
+                      </button>
                       {!template.isFallback ? (
                         <button type="button" className="icon-button danger" onClick={() => handleDeleteTemplate(template)} disabled={!canManageTemplates}>
                           <Trash2 size={14} />
@@ -1256,6 +1971,9 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                 <input value={templateDraft.process} onChange={(event) => setTemplateDraft((current) => ({ ...current, process: event.target.value }))} placeholder="Ej. Revisión" disabled={!canManageTemplates} />
               </label>
             </div>
+            <p className="subtle-line">
+              Las plantillas ya se pueden usar en cualquier área. Si quieres copiar una a otra área, usa el botón + de la biblioteca y luego guárdala.
+            </p>
             <TemplateQuestionEditor
               draft={templateDraft}
               setDraft={setTemplateDraft}

@@ -21,6 +21,8 @@ import {
   deleteWarehouseTemplate,
   deleteWarehouseUser,
   createWarehouseWeekFromCatalog,
+  deleteWarehouseWeek,
+  resetWarehouseDashboardData,
   duplicateWarehouseBoard,
   getWarehouseState,
   importWarehouseInventoryItems,
@@ -85,6 +87,36 @@ warehouseRouter.post("/weeks", requireWarehouseAction("createWeek"), (_req, res)
     totalWeeks: Array.isArray(nextState?.weeks) ? nextState.weeks.length : 0,
   });
   res.status(201).json(nextState);
+});
+
+warehouseRouter.delete("/weeks/:weekId", requireWarehouseAction("deleteWeek"), (req, res) => {
+  const result = deleteWarehouseWeek(req.auth, req.params.weekId);
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "week_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
+    res.status(status).json({ ok: false, message: "No fue posible eliminar la semana." });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_week_deleted", req, {
+    weekId: result.weekId,
+    weekName: result.weekName,
+    revision: result.state?.revision,
+  });
+  res.json({ ok: true, data: { state: result.state, weekId: result.weekId, weekName: result.weekName } });
+});
+
+warehouseRouter.post("/dashboard/reset-data", requireWarehouseAction("manageWeeks"), (req, res) => {
+  const result = resetWarehouseDashboardData(req.auth);
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "forbidden" ? 403 : 400;
+    res.status(status).json({ ok: false, message: "No fue posible reiniciar los datos del dashboard." });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_dashboard_data_reset", req, {
+    revision: result.state?.revision,
+  });
+  res.json({ ok: true, data: { state: result.state } });
 });
 
 warehouseRouter.post("/boards", requireWarehouseAction("saveBoard"), (req, res) => {

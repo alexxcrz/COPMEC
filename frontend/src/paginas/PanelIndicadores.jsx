@@ -241,9 +241,11 @@ export default function PanelIndicadores({ contexto }) {
     Download,
     RotateCcw,
     hardResetDashboard,
-    restoreHistoricalDashboard,
-    dashboardResetAt,
     isRootLead,
+    isDemoMode,
+    activateDemoMode,
+    deactivateDemoMode,
+    pushAppToast,
   } = contexto;
 
   const areAllSectionsOpen = Object.values(dashboardSectionsOpen).every(Boolean);
@@ -256,6 +258,28 @@ export default function PanelIndicadores({ contexto }) {
   const [catalogFreqChartType, setCatalogFreqChartType] = useState("bar");
   const [distributionChartType, setDistributionChartType] = useState("pie");
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+  const [isResetSubmitting, setIsResetSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!confirmResetOpen) return undefined;
+
+    function handleConfirmResetHotkeys(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (!isResetSubmitting) setConfirmResetOpen(false);
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        if (!isResetSubmitting) {
+          void confirmHardReset();
+        }
+      }
+    }
+
+    globalThis.addEventListener("keydown", handleConfirmResetHotkeys);
+    return () => globalThis.removeEventListener("keydown", handleConfirmResetHotkeys);
+  }, [confirmResetOpen, isResetSubmitting]);
 
   const dashboardAreaTabOptions = useMemo(() => {
     const uniqueAreas = Array.from(new Set(
@@ -290,6 +314,20 @@ export default function PanelIndicadores({ contexto }) {
       alerts: true,
     });
   }
+
+  async function confirmHardReset() {
+    if (isResetSubmitting) return;
+    try {
+      setIsResetSubmitting(true);
+      await hardResetDashboard();
+      setConfirmResetOpen(false);
+    } catch (error) {
+      pushAppToast(error?.message || "No fue posible reiniciar el dashboard.", "danger");
+    } finally {
+      setIsResetSubmitting(false);
+    }
+  }
+
   async function exportDashboardToPdf() {
     if (isExportingPdf) return;
 
@@ -702,6 +740,58 @@ export default function PanelIndicadores({ contexto }) {
           <p>Vista ejecutiva consolidada por semana, quincena o mes, con lectura por player y por área.</p>
         </div>
         <div className="dashboard-filter-panel">
+          <div className="dashboard-action-row" role="group" aria-label="Acciones del dashboard">
+            {isRootLead ? (
+              <button
+                type="button"
+                className="icon-button dashboard-filter-icon-button"
+                onClick={() => setConfirmResetOpen(true)}
+                title="Reiniciar datos reales del dashboard"
+                aria-label="Reiniciar datos reales del dashboard"
+              >
+                <RotateCcw size={16} />
+              </button>
+            ) : null}
+            {isRootLead ? (
+              <button
+                type="button"
+                className="icon-button dashboard-filter-icon-button"
+                onClick={isDemoMode ? deactivateDemoMode : activateDemoMode}
+                title={isDemoMode ? "Desactivar demo" : "Activar demo"}
+                aria-label={isDemoMode ? "Desactivar demo" : "Activar demo"}
+                aria-pressed={isDemoMode}
+                style={isDemoMode ? { color: "#f59e0b" } : undefined}
+              >
+                <Zap size={16} />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="icon-button dashboard-filter-icon-button"
+              onClick={exportDashboardToPdf}
+              disabled={isExportingPdf}
+              title={isExportingPdf ? "Exportando PDF de datos" : "Exportar PDF"}
+              aria-label={isExportingPdf ? "Exportando PDF de datos" : "Exportar PDF"}
+            >
+              <Download size={16} />
+            </button>
+            <button
+              type="button"
+              className="icon-button dashboard-filter-icon-button"
+              onClick={() => setDashboardSectionsOpen({
+                executive: !areAllSectionsOpen,
+                people: !areAllSectionsOpen,
+                trends: !areAllSectionsOpen,
+                causes: !areAllSectionsOpen,
+                alerts: !areAllSectionsOpen,
+              })}
+              title={areAllSectionsOpen ? "Contraer todo" : "Expandir todo"}
+              aria-label={areAllSectionsOpen ? "Contraer todo" : "Expandir todo"}
+              aria-pressed={areAllSectionsOpen}
+            >
+              {areAllSectionsOpen ? <PauseCircle size={16} /> : <Play size={16} />}
+            </button>
+          </div>
           <div className="dashboard-filter-row">
             <label className="dashboard-filter-field dashboard-filter-field-range">
               <span>Rango de fechas</span>
@@ -733,57 +823,6 @@ export default function PanelIndicadores({ contexto }) {
                 <option value="board">Tableros operativos</option>
               </select>
             </label>
-            <div className="dashboard-filter-actions" role="group" aria-label="Acciones del dashboard">
-              {isRootLead ? (
-                <button
-                  type="button"
-                  className="icon-button dashboard-filter-icon-button"
-                  onClick={() => setConfirmResetOpen(true)}
-                  title="Reiniciar datos del dashboard desde ahora"
-                  aria-label="Reiniciar datos del dashboard"
-                >
-                  <RotateCcw size={16} />
-                </button>
-              ) : null}
-              {isRootLead && dashboardResetAt ? (
-                <button
-                  type="button"
-                  className="icon-button dashboard-filter-icon-button"
-                  onClick={restoreHistoricalDashboard}
-                  title="Restaurar datos históricos (quitar corte)"
-                  aria-label="Restaurar datos históricos"
-                  style={{ color: "#f59e0b" }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                </button>
-              ) : null}
-              <button
-                type="button"
-                className="icon-button dashboard-filter-icon-button"
-                onClick={exportDashboardToPdf}
-                disabled={isExportingPdf}
-                title={isExportingPdf ? "Exportando PDF de datos" : "Exportar PDF"}
-                aria-label={isExportingPdf ? "Exportando PDF de datos" : "Exportar PDF"}
-              >
-                <Download size={16} />
-              </button>
-              <button
-                type="button"
-                className="icon-button dashboard-filter-icon-button"
-                onClick={() => setDashboardSectionsOpen({
-                  executive: !areAllSectionsOpen,
-                  people: !areAllSectionsOpen,
-                  trends: !areAllSectionsOpen,
-                  causes: !areAllSectionsOpen,
-                  alerts: !areAllSectionsOpen,
-                })}
-                title={areAllSectionsOpen ? "Contraer todo" : "Expandir todo"}
-                aria-label={areAllSectionsOpen ? "Contraer todo" : "Expandir todo"}
-                aria-pressed={areAllSectionsOpen}
-              >
-                {areAllSectionsOpen ? <PauseCircle size={16} /> : <Play size={16} />}
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -1346,22 +1385,24 @@ export default function PanelIndicadores({ contexto }) {
           <div style={{ background: "#fff", borderRadius: "1.25rem", padding: "2rem", maxWidth: 420, width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
             <h3 id="reset-confirm-title" style={{ margin: "0 0 0.5rem", fontSize: "1.1rem", color: "#032121" }}>¿Reiniciar datos del dashboard?</h3>
             <p style={{ margin: "0 0 1.5rem", color: "#555", fontSize: "0.9rem", lineHeight: 1.5 }}>
-              Se establecerá un corte en la fecha actual. Los datos anteriores al corte ya no aparecerán en las métricas ni en las gráficas. Puedes restaurar el histórico en cualquier momento.
+              Este reinicio es global y permanente. Se eliminarán semanas, actividades, pausas y filas operativas del dashboard para todos los usuarios.
             </p>
             <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
               <button
                 type="button"
                 style={{ padding: "0.5rem 1.25rem", borderRadius: "0.75rem", border: "1px solid #ddd", background: "#f3f4f6", cursor: "pointer" }}
                 onClick={() => setConfirmResetOpen(false)}
+                disabled={isResetSubmitting}
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 style={{ padding: "0.5rem 1.25rem", borderRadius: "0.75rem", border: "none", background: "#032121", color: "#fff", cursor: "pointer" }}
-                onClick={() => { hardResetDashboard(); setConfirmResetOpen(false); }}
+                onClick={() => { void confirmHardReset(); }}
+                disabled={isResetSubmitting}
               >
-                Sí, reiniciar
+                {isResetSubmitting ? "Reiniciando..." : "Sí, reiniciar"}
               </button>
             </div>
           </div>

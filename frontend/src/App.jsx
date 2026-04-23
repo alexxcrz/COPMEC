@@ -459,7 +459,6 @@ function App() { // NOSONAR
   const [syncStatus, setSyncStatus] = useState("Conectando");
   const [securityEvents, setSecurityEvents] = useState([]);
   const [securityEventsStatus, setSecurityEventsStatus] = useState("idle");
-  const [dashboardResetAt, setDashboardResetAt] = useState(() => { try { return localStorage.getItem("copmec_dashboard_reset_at") || ""; } catch { return ""; } });
   const [isDemoMode, setIsDemoMode] = useState(false);
   const preDemoStateRef = useRef(null);
   const isHydratedRef = useRef(false);
@@ -1001,14 +1000,12 @@ function App() { // NOSONAR
   const dateFilteredDashboardRecords = useMemo(() => {
     const startDate = getDashboardFilterStartDate(dashboardFilters.startDate);
     const endDate = getDashboardFilterEndDate(dashboardFilters.endDate);
-    const resetCutoff = dashboardResetAt ? new Date(dashboardResetAt) : null;
     return dashboardRecords.filter((record) => {
       const occurredAt = new Date(record.occurredAt);
       if (Number.isNaN(occurredAt.getTime())) return false;
       const startOk = !startDate || occurredAt >= startDate;
       const endOk = !endDate || occurredAt <= endDate;
-      const resetOk = !resetCutoff || occurredAt > resetCutoff;
-      return startOk && endOk && resetOk;
+      return startOk && endOk;
     });
   }, [dashboardFilters.endDate, dashboardFilters.startDate, dashboardRecords]);
 
@@ -1766,19 +1763,13 @@ function App() { // NOSONAR
   }
 
   // ── Dashboard hard-reset (solo root Lead) ────────────────────────────────
-  function hardResetDashboard() {
+  async function hardResetDashboard() {
     if (!isRootLead) return;
-    const nowTs = new Date().toISOString();
-    try { localStorage.setItem("copmec_dashboard_reset_at", nowTs); } catch {}
-    setDashboardResetAt(nowTs);
+    const result = await requestJson("/warehouse/dashboard/reset-data", { method: "POST" });
+    applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
     setDashboardFilters({ periodType: "week", periodKey: "all", responsibleId: "all", area: "all", source: "all", startDate: "", endDate: "" });
     setDashboardSectionsOpen({ executive: true, people: true, trends: true, causes: true, alerts: true });
-  }
-
-  function restoreHistoricalDashboard() {
-    if (!isRootLead) return;
-    try { localStorage.removeItem("copmec_dashboard_reset_at"); } catch {}
-    setDashboardResetAt("");
+    pushAppToast("Dashboard reiniciado en todo el sistema.", "success");
   }
 
   // ── Demo Mode (solo root Lead) ────────────────────────────────────────────
@@ -5036,6 +5027,11 @@ function App() { // NOSONAR
         pushAppToast(error?.message || "No se pudo eliminar el área.", "danger");
       }
     },
+    deleteWeek: async (weekId) => {
+      const result = await requestJson(`/warehouse/weeks/${weekId}`, { method: "DELETE" });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      return result.data.weekId;
+    },
     handleAddAreaOption,
     rootAreaOptions,
     splitAreaAndSubArea,
@@ -5174,8 +5170,6 @@ function App() { // NOSONAR
     Play,
     Plus,
     hardResetDashboard,
-    restoreHistoricalDashboard,
-    dashboardResetAt,
     isRootLead,
     isDemoMode,
     activateDemoMode,

@@ -732,6 +732,7 @@ export const NAV_ITEMS = [
 
 export const ACTION_DEFINITIONS = [
   { id: "createWeek",              label: "Crear nueva semana",                     category: "Operación semanal",     defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "deleteWeek",              label: "Borrar semanas",                          category: "Operación semanal",     defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "createCatalog",          label: "Crear elementos de catálogo",             category: "Catálogo",              defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "editCatalog",            label: "Editar elementos de catálogo",            category: "Catálogo",              defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "deleteCatalog",          label: "Eliminar elementos de catálogo",          category: "Catálogo",              defaultRoles: [ROLE_LEAD, ROLE_SR] },
