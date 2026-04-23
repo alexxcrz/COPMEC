@@ -9389,11 +9389,12 @@ tbody tr:hover {
    ======================================================= */
 
 html {
-  font-size: 14px;
+  font-size: 13.6px;
 }
 
 body {
-  font-size: 0.94rem;
+  font-size: 0.9rem;
+  line-height: 1.35;
 }
 
 /* Formularios: evitar campos a todo lo ancho y distribuir en 2-3 columnas */
@@ -9431,10 +9432,16 @@ body {
 .app-modal-field > input,
 .app-modal-field > select,
 .app-modal-field > textarea {
-  font-size: 0.9rem;
+  min-height: 2.18rem;
+  font-size: 0.84rem;
+  padding-inline: 0.58rem;
 }
 
 @media (max-width: 1024px) {
+  html {
+    font-size: 13.2px;
+  }
+
   .filter-bar,
   .builder-grid,
   .modal-form-grid,
@@ -9444,12 +9451,13 @@ body {
   .component-studio-section.three-columns,
   .component-studio-section.component-studio-config-grid {
     grid-template-columns: repeat(3, minmax(150px, 1fr)) !important;
+    gap: 0.68rem;
   }
 }
 
 @media (max-width: 768px) {
   html {
-    font-size: 13.5px;
+    font-size: 12.8px;
   }
 
   .filter-bar,
@@ -9461,6 +9469,60 @@ body {
   .component-studio-section.three-columns,
   .component-studio-section.component-studio-config-grid {
     grid-template-columns: repeat(2, minmax(130px, 1fr)) !important;
+    gap: 0.6rem;
+  }
+
+  .sidebar-user-select select,
+  .filter-bar input,
+  .filter-bar select,
+  .field-inline input,
+  .field-inline select,
+  .builder-grid input,
+  .builder-grid select,
+  .table-wrap input,
+  .table-wrap select,
+  .form-card input,
+  .app-modal-field > input,
+  .app-modal-field > select,
+  .app-modal-field > textarea {
+    min-height: 2.08rem;
+    font-size: 0.82rem;
+  }
+}
+
+@media (max-width: 430px) {
+  html {
+    font-size: 12.4px;
+  }
+
+  .filter-bar,
+  .builder-grid,
+  .modal-form-grid,
+  .permissions-board-toolbar,
+  .permissions-audit-toolbar,
+  .component-studio-section.two-columns,
+  .component-studio-section.three-columns,
+  .component-studio-section.component-studio-config-grid {
+    grid-template-columns: repeat(2, minmax(118px, 1fr)) !important;
+    gap: 0.52rem;
+  }
+}
+
+@media (max-width: 374px) {
+  html {
+    font-size: 12px;
+  }
+
+  .filter-bar,
+  .builder-grid,
+  .modal-form-grid,
+  .permissions-board-toolbar,
+  .permissions-audit-toolbar,
+  .component-studio-section.two-columns,
+  .component-studio-section.three-columns,
+  .component-studio-section.component-studio-config-grid {
+    grid-template-columns: repeat(2, minmax(106px, 1fr)) !important;
+    gap: 0.46rem;
   }
 }
 
