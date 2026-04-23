@@ -9384,6 +9384,86 @@ tbody tr:hover {
   font-style: italic;
 }
 
+/* =======================================================
+   GLOBAL COMPACT MODE (system-wide readability tuning)
+   ======================================================= */
+
+html {
+  font-size: 14px;
+}
+
+body {
+  font-size: 0.94rem;
+}
+
+/* Formularios: evitar campos a todo lo ancho y distribuir en 2-3 columnas */
+.filter-bar,
+.builder-grid,
+.modal-form-grid,
+.permissions-board-toolbar,
+.permissions-audit-toolbar,
+.component-studio-section.two-columns,
+.component-studio-section.three-columns,
+.component-studio-section.component-studio-config-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr)) !important;
+  gap: 0.75rem;
+}
+
+.app-modal-field,
+.field-inline,
+.builder-grid label,
+.filter-bar label,
+.form-card label {
+  min-width: 0;
+}
+
+.sidebar-user-select select,
+.filter-bar input,
+.filter-bar select,
+.field-inline input,
+.field-inline select,
+.builder-grid input,
+.builder-grid select,
+.table-wrap input,
+.table-wrap select,
+.form-card input,
+.app-modal-field > input,
+.app-modal-field > select,
+.app-modal-field > textarea {
+  font-size: 0.9rem;
+}
+
+@media (max-width: 1024px) {
+  .filter-bar,
+  .builder-grid,
+  .modal-form-grid,
+  .permissions-board-toolbar,
+  .permissions-audit-toolbar,
+  .component-studio-section.two-columns,
+  .component-studio-section.three-columns,
+  .component-studio-section.component-studio-config-grid {
+    grid-template-columns: repeat(3, minmax(150px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  html {
+    font-size: 13.5px;
+  }
+
+  .filter-bar,
+  .builder-grid,
+  .modal-form-grid,
+  .permissions-board-toolbar,
+  .permissions-audit-toolbar,
+  .component-studio-section.two-columns,
+  .component-studio-section.three-columns,
+  .component-studio-section.component-studio-config-grid {
+    grid-template-columns: repeat(2, minmax(130px, 1fr)) !important;
+  }
+}
+
 /* ── Input ───────────────────────────────────────────────────────────────── */
 
 .ep-input {
