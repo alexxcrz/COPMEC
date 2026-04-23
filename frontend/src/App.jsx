@@ -459,6 +459,9 @@ function App() { // NOSONAR
   const [syncStatus, setSyncStatus] = useState("Conectando");
   const [securityEvents, setSecurityEvents] = useState([]);
   const [securityEventsStatus, setSecurityEventsStatus] = useState("idle");
+  const [dashboardResetAt, setDashboardResetAt] = useState(() => { try { return localStorage.getItem("copmec_dashboard_reset_at") || ""; } catch { return ""; } });
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const preDemoStateRef = useRef(null);
   const isHydratedRef = useRef(false);
   const skipNextSyncRef = useRef(false);
   const contentShellRef = useRef(null);
@@ -850,6 +853,13 @@ function App() { // NOSONAR
     () => state.users.find((user) => user.id === sessionUserId) || null,
     [sessionUserId, state.users],
   );
+  const rootLeadId = useMemo(() => {
+    const leads = state.users
+      .filter((u) => u.role === ROLE_LEAD && u.createdById === BOOTSTRAP_MASTER_ID)
+      .sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+    return leads[0]?.id || null;
+  }, [state.users]);
+  const isRootLead = Boolean(currentUser?.id && currentUser.id === rootLeadId);
   const managedUserIds = useMemo(
     () => (currentUser ? getManagedUserIds(state.users, currentUser.id) : new Set()),
     [currentUser, state.users],
@@ -991,12 +1001,14 @@ function App() { // NOSONAR
   const dateFilteredDashboardRecords = useMemo(() => {
     const startDate = getDashboardFilterStartDate(dashboardFilters.startDate);
     const endDate = getDashboardFilterEndDate(dashboardFilters.endDate);
+    const resetCutoff = dashboardResetAt ? new Date(dashboardResetAt) : null;
     return dashboardRecords.filter((record) => {
       const occurredAt = new Date(record.occurredAt);
       if (Number.isNaN(occurredAt.getTime())) return false;
       const startOk = !startDate || occurredAt >= startDate;
       const endOk = !endDate || occurredAt <= endDate;
-      return startOk && endOk;
+      const resetOk = !resetCutoff || occurredAt > resetCutoff;
+      return startOk && endOk && resetOk;
     });
   }, [dashboardFilters.endDate, dashboardFilters.startDate, dashboardRecords]);
 
@@ -1751,6 +1763,47 @@ function App() { // NOSONAR
   function openDeleteAreaModal(areaName, label = "") {
     if (!areaName || currentUser?.role !== ROLE_LEAD) return;
     setAreaDeleteModal({ open: true, areaName, label: label || areaName, error: "", submitting: false });
+  }
+
+  // ── Dashboard hard-reset (solo root Lead) ────────────────────────────────
+  function hardResetDashboard() {
+    if (!isRootLead) return;
+    const nowTs = new Date().toISOString();
+    try { localStorage.setItem("copmec_dashboard_reset_at", nowTs); } catch {}
+    setDashboardResetAt(nowTs);
+    setDashboardFilters({ periodType: "week", periodKey: "all", responsibleId: "all", area: "all", source: "all", startDate: "", endDate: "" });
+    setDashboardSectionsOpen({ executive: true, people: true, trends: true, causes: true, alerts: true });
+  }
+
+  function restoreHistoricalDashboard() {
+    if (!isRootLead) return;
+    try { localStorage.removeItem("copmec_dashboard_reset_at"); } catch {}
+    setDashboardResetAt("");
+  }
+
+  // ── Demo Mode (solo root Lead) ────────────────────────────────────────────
+  function activateDemoMode() {
+    if (!isRootLead || isDemoMode) return;
+    preDemoStateRef.current = JSON.parse(JSON.stringify(state));
+    setIsDemoMode(true);
+  }
+
+  async function deactivateDemoMode() {
+    if (!isRootLead || !isDemoMode) return;
+    const snapshot = preDemoStateRef.current;
+    preDemoStateRef.current = null;
+    setIsDemoMode(false);
+    if (!snapshot) return;
+    try {
+      skipNextSyncRef.current = true;
+      const normalizedSnapshot = normalizeWarehouseState(snapshot);
+      setState(normalizedSnapshot);
+      setLoginDirectory(buildLoginDirectoryFromState(normalizedSnapshot));
+      await requestJson("/warehouse/state", { method: "PUT", body: JSON.stringify(normalizedSnapshot) });
+      setSyncStatus("Sincronizado");
+    } catch {
+      setSyncStatus("Modo local");
+    }
   }
 
   async function confirmDeleteArea() {
@@ -5120,6 +5173,13 @@ function App() { // NOSONAR
     PieChart,
     Play,
     Plus,
+    hardResetDashboard,
+    restoreHistoricalDashboard,
+    dashboardResetAt,
+    isRootLead,
+    isDemoMode,
+    activateDemoMode,
+    deactivateDemoMode,
     pushAppToast,
     requestJson,
     ROLE_LEAD,
@@ -5300,6 +5360,12 @@ function App() { // NOSONAR
       />
 
       <section ref={contentShellRef} className="content-shell">
+        {isDemoMode ? (
+          <div className="demo-mode-banner" role="alert">
+            <span>⚙ <strong>Modo Demo activo</strong> — Los cambios realizados serán descartados al desactivarlo.</span>
+            <button type="button" className="demo-mode-banner-exit" onClick={deactivateDemoMode}>Desactivar y revertir</button>
+          </div>
+        ) : null}
         <header className={`content-header ${page === PAGE_DASHBOARD ? "dashboard-header-shell" : ""}`}>
           <button type="button" className="mobile-nav-toggle" onClick={() => setIsSidebarOpen(true)} aria-label="Abrir menú">
             <Menu size={18} />
@@ -5703,6 +5769,29 @@ function App() { // NOSONAR
                 <RotateCcw size={15} /> Restablecer clave
               </button>
             </div>
+          ) : null}
+
+          {isRootLead && userModal.mode === "edit" && userModal.id === currentUser?.id ? (
+            <section className="user-modal-demo-section">
+              <div className="builder-section-head">
+                <div>
+                  <h4>Modo Demo del sistema</h4>
+                  <p>Activa el modo demo para hacer demostraciones o pruebas. Cuando lo desactives, todos los cambios realizados durante la demo se revertirán automáticamente.</p>
+                </div>
+                {isDemoMode ? <span className="chip" style={{ background: "#fef3c7", color: "#92400e" }}>Activo</span> : <span className="chip">Inactivo</span>}
+              </div>
+              <div className="user-modal-demo-actions">
+                {isDemoMode ? (
+                  <button type="button" className="user-row-button danger" onClick={deactivateDemoMode}>
+                    <RotateCcw size={15} /> Desactivar y revertir cambios
+                  </button>
+                ) : (
+                  <button type="button" className="user-row-button" onClick={activateDemoMode}>
+                    ⚙ Activar Modo Demo
+                  </button>
+                )}
+              </div>
+            </section>
           ) : null}
 
           {shouldShowUserPermissionNote && (

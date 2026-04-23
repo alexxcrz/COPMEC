@@ -240,6 +240,10 @@ export default function PanelIndicadores({ contexto }) {
     getActivityFrequencyLabel,
     Download,
     RotateCcw,
+    hardResetDashboard,
+    restoreHistoricalDashboard,
+    dashboardResetAt,
+    isRootLead,
   } = contexto;
 
   const areAllSectionsOpen = Object.values(dashboardSectionsOpen).every(Boolean);
@@ -251,6 +255,7 @@ export default function PanelIndicadores({ contexto }) {
   const [catalogTypeChartType, setCatalogTypeChartType] = useState("bar");
   const [catalogFreqChartType, setCatalogFreqChartType] = useState("bar");
   const [distributionChartType, setDistributionChartType] = useState("pie");
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
 
   const dashboardAreaTabOptions = useMemo(() => {
     const uniqueAreas = Array.from(new Set(
@@ -285,7 +290,6 @@ export default function PanelIndicadores({ contexto }) {
       alerts: true,
     });
   }
-
   async function exportDashboardToPdf() {
     if (isExportingPdf) return;
 
@@ -730,15 +734,29 @@ export default function PanelIndicadores({ contexto }) {
               </select>
             </label>
             <div className="dashboard-filter-actions" role="group" aria-label="Acciones del dashboard">
-              <button
-                type="button"
-                className="icon-button dashboard-filter-icon-button"
-                onClick={resetMainDashboardView}
-                title="Reiniciar vista del dashboard"
-                aria-label="Reiniciar vista del dashboard"
-              >
-                <RotateCcw size={16} />
-              </button>
+              {isRootLead ? (
+                <button
+                  type="button"
+                  className="icon-button dashboard-filter-icon-button"
+                  onClick={() => setConfirmResetOpen(true)}
+                  title="Reiniciar datos del dashboard desde ahora"
+                  aria-label="Reiniciar datos del dashboard"
+                >
+                  <RotateCcw size={16} />
+                </button>
+              ) : null}
+              {isRootLead && dashboardResetAt ? (
+                <button
+                  type="button"
+                  className="icon-button dashboard-filter-icon-button"
+                  onClick={restoreHistoricalDashboard}
+                  title="Restaurar datos históricos (quitar corte)"
+                  aria-label="Restaurar datos históricos"
+                  style={{ color: "#f59e0b" }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="icon-button dashboard-filter-icon-button"
@@ -1322,6 +1340,34 @@ export default function PanelIndicadores({ contexto }) {
           </div>
         </article>
       </DashboardSection>
+
+      {confirmResetOpen ? createPortal(
+        <div role="dialog" aria-modal="true" aria-labelledby="reset-confirm-title" style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", padding: "1rem" }}>
+          <div style={{ background: "#fff", borderRadius: "1.25rem", padding: "2rem", maxWidth: 420, width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
+            <h3 id="reset-confirm-title" style={{ margin: "0 0 0.5rem", fontSize: "1.1rem", color: "#032121" }}>¿Reiniciar datos del dashboard?</h3>
+            <p style={{ margin: "0 0 1.5rem", color: "#555", fontSize: "0.9rem", lineHeight: 1.5 }}>
+              Se establecerá un corte en la fecha actual. Los datos anteriores al corte ya no aparecerán en las métricas ni en las gráficas. Puedes restaurar el histórico en cualquier momento.
+            </p>
+            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                style={{ padding: "0.5rem 1.25rem", borderRadius: "0.75rem", border: "1px solid #ddd", background: "#f3f4f6", cursor: "pointer" }}
+                onClick={() => setConfirmResetOpen(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                style={{ padding: "0.5rem 1.25rem", borderRadius: "0.75rem", border: "none", background: "#032121", color: "#fff", cursor: "pointer" }}
+                onClick={() => { hardResetDashboard(); setConfirmResetOpen(false); }}
+              >
+                Sí, reiniciar
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      ) : null}
     </section>
   );
 }

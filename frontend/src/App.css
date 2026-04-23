@@ -5034,6 +5034,62 @@ tbody tr:hover {
 }
 
 .user-modal-inline-actions {
+  .user-modal-demo-section {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(3, 33, 33, 0.15);
+    background: rgba(3, 33, 33, 0.03);
+  }
+
+  .user-modal-demo-section h4 {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #032121;
+  }
+
+  .user-modal-demo-section p {
+    margin: 0.25rem 0 0;
+    font-size: 0.8rem;
+    color: #555;
+    line-height: 1.5;
+  }
+
+  .user-modal-demo-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .demo-mode-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.6rem 1.25rem;
+    background: #fef3c7;
+    border-bottom: 1px solid #fcd34d;
+    color: #92400e;
+    font-size: 0.85rem;
+    flex-wrap: wrap;
+  }
+
+  .demo-mode-banner-exit {
+    padding: 0.3rem 0.9rem;
+    border-radius: 0.75rem;
+    border: 1px solid #f59e0b;
+    background: #fffbeb;
+    color: #92400e;
+    cursor: pointer;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .demo-mode-banner-exit:hover {
+    background: #fef3c7;
+  }
+
   display: flex;
   justify-content: flex-start;
 }
