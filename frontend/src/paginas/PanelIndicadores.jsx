@@ -1024,21 +1024,23 @@ export default function PanelIndicadores({ contexto }) {
                 onChange={({ startDate, endDate }) => setDashboardFilters((current) => ({ ...current, startDate, endDate }))}
               />
             </label>
-            <label className="dashboard-filter-field">
-              <span>Player</span>
-              <select value={dashboardFilters.responsibleId} onChange={(event) => setDashboardFilters((current) => ({ ...current, responsibleId: event.target.value }))}>
-                <option value="all">Todos los players</option>
-                {visibleUsers.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
-              </select>
-            </label>
-            <label className="dashboard-filter-field">
-              <span>Fuente</span>
-              <select value={dashboardFilters.source} onChange={(event) => setDashboardFilters((current) => ({ ...current, source: event.target.value }))}>
-                <option value="all">Todo el flujo</option>
-                <option value="activity">Actividades semanales</option>
-                <option value="board">Tableros operativos</option>
-              </select>
-            </label>
+            <div className="dashboard-player-source-row">
+              <label className="dashboard-filter-field">
+                <span>Player</span>
+                <select value={dashboardFilters.responsibleId} onChange={(event) => setDashboardFilters((current) => ({ ...current, responsibleId: event.target.value }))}>
+                  <option value="all">Todos los players</option>
+                  {visibleUsers.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
+                </select>
+              </label>
+              <label className="dashboard-filter-field">
+                <span>Fuente</span>
+                <select value={dashboardFilters.source} onChange={(event) => setDashboardFilters((current) => ({ ...current, source: event.target.value }))}>
+                  <option value="all">Todo el flujo</option>
+                  <option value="activity">Actividades semanales</option>
+                  <option value="board">Tableros operativos</option>
+                </select>
+              </label>
+            </div>
           </div>
         </div>
       </div>

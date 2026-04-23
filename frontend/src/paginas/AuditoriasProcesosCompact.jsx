@@ -1478,7 +1478,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
 
       {activeTab === "capture" ? (
         <>
-          <article className="surface-card table-card audit-surface-compact">
+          <article className="surface-card table-card full-width audit-surface-compact audit-capture-card">
             <div className="card-header-row">
               <div>
                 <h3>Nueva auditoría</h3>
@@ -1486,7 +1486,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
               </div>
               <ClipboardList size={18} />
             </div>
-            <div className="audit-form-grid">
+            <div className="audit-form-grid audit-form-grid-capture">
               <label className="app-modal-field">
                 <span>Área</span>
                 <select

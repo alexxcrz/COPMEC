@@ -2839,6 +2839,18 @@ html {
   gap: 0.6rem;
 }
 
+.board-context-inline-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(170px, 1fr));
+  gap: 0.55rem;
+  min-width: min(440px, 100%);
+  flex: 0 1 auto;
+}
+
+.board-context-inline-filters .board-top-select {
+  width: 100%;
+}
+
 .custom-board-actions-menu-shell {
   position: relative;
   display: inline-flex;
@@ -6063,6 +6075,18 @@ tbody tr:hover {
   min-width: 0;
 }
 
+.dashboard-player-source-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(170px, 1fr));
+  gap: 0.7rem;
+  flex: 0.95 1 0;
+  min-width: 0;
+}
+
+.dashboard-player-source-row .dashboard-filter-field {
+  min-width: 0;
+}
+
 .dashboard-filter-field-range {
   min-width: 0;
   flex: 1.15 1 0;
@@ -7212,6 +7236,12 @@ tbody tr:hover {
     flex: 1 1 220px;
   }
 
+  .dashboard-player-source-row {
+    width: 100%;
+    flex: 1 1 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .dashboard-filter-field-range {
     flex-grow: 1.1;
   }
@@ -8024,6 +8054,26 @@ tbody tr:hover {
     flex: 1 1 180px;
   }
 
+  .board-context-inline-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-width: 0;
+    width: 100%;
+  }
+
+  .dashboard-player-source-row {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .audit-capture-card {
+    padding: 0.8rem 0.86rem;
+  }
+
+  .audit-form-grid-capture {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.58rem;
+  }
+
   .dashboard-filter-field-range {
     flex-basis: 260px;
   }
@@ -8124,6 +8174,10 @@ tbody tr:hover {
     width: 100%;
   }
 
+  .board-context-inline-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .board-top-select select {
     width: 100%;
     min-height: 2.8rem;
@@ -8145,6 +8199,14 @@ tbody tr:hover {
     flex-direction: column;
     gap: 0.5rem;
     width: 100%;
+  }
+
+  .dashboard-player-source-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .audit-form-grid-capture {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .custom-board-menu-trigger,
@@ -8613,6 +8675,10 @@ tbody tr:hover {
   gap: 1.15rem;
 }
 
+.audit-capture-card {
+  padding: 0.88rem 1rem;
+}
+
 .audit-topbar-actions,
 .audit-inline-actions,
 .audit-response-head,
@@ -8638,6 +8704,11 @@ tbody tr:hover {
 
 .audit-form-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.audit-form-grid-capture {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.78rem;
 }
 
 .audit-active-meta-grid {

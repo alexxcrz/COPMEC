@@ -177,6 +177,11 @@ export default function MisTableros({ contexto }) {
       ? boardView.settings.operationalContextOptions.map((option) => String(option || "").trim()).filter(Boolean)
       : [];
   const boardOperationalContextValue = String(boardView?.settings?.operationalContextValue || "").trim();
+  const boardNameText = String(boardView?.name || "").toLowerCase();
+  const boardCategoryText = String(boardView?.category || "").toLowerCase();
+  const boardDescriptionText = String(boardView?.description || "").toLowerCase();
+  const boardLooksCleaning = [boardNameText, boardCategoryText, boardDescriptionText].some((text) => text.includes("limp"));
+  const isCleaningRelatedBoard = boardOperationalContextType === "cleaningSite" || boardLooksCleaning;
 
   // Compute available cleaning naves from inventory items that have activity consumptions
   const cleaningNaveOptions = (() => {
@@ -186,12 +191,7 @@ export default function MisTableros({ contexto }) {
     return [...new Set(cleaningItems.map((item) => item.cleaningSite).filter(Boolean))].sort();
   })();
 
-  // Auto-detect: board has an activity list field (catalogByCategory) + cleaning inventory exists
-  const boardHasActivityListField = (boardView?.fields || []).some(
-    (f) => f.type === "select" && f.optionSource === "catalogByCategory"
-  );
-  const showCleaningNaveSelector = boardOperationalContextType === "cleaningSite"
-    || (boardHasActivityListField && cleaningNaveOptions.length > 0);
+  const showCleaningNaveSelector = isCleaningRelatedBoard;
   const effectiveCleaningNaves = (cleaningNaveOptions.length > 0)
     ? cleaningNaveOptions
     : ["C1", "C2", "C3"];
@@ -228,27 +228,30 @@ export default function MisTableros({ contexto }) {
                     </select>
                   </label>
                 ) : null}
-                <label className="board-top-select min-width">
-                  <span>Semana</span>
-                  <select value={selectedCustomBoardViewId} onChange={(event) => setSelectedCustomBoardViewId(event.target.value)}>
-                    <option value="current">Semana actual</option>
-                    {selectedCustomBoardHistoryOptions.map((snapshot) => (
-                      <option key={snapshot.id} value={snapshot.id}>{snapshot.weekName}</option>
-                    ))}
-                  </select>
-                </label>
-                {showCleaningNaveSelector ? (
-                  <label className="board-top-select min-width">
-                    <span>Nave de limpieza</span>
-                    <select
-                      value={cleaningNaveValue}
-                      onChange={(event) => updateBoardOperationalContext(selectedCustomBoard.id, event.target.value)}
-                      disabled={isHistoricalCustomBoardView || !canChangeSelectedBoardOperationalContext}
-                    >
-                      {effectiveCleaningNaves.map((nave) => <option key={nave} value={nave}>{nave}</option>)}
+                <div className="board-context-inline-filters">
+                  <label className="board-top-select min-width board-week-select-inline">
+                    <span>Semana</span>
+                    <select value={selectedCustomBoardViewId} onChange={(event) => setSelectedCustomBoardViewId(event.target.value)}>
+                      <option value="current">Semana actual</option>
+                      {selectedCustomBoardHistoryOptions.map((snapshot) => (
+                        <option key={snapshot.id} value={snapshot.id}>{snapshot.weekName}</option>
+                      ))}
                     </select>
                   </label>
-                ) : boardOperationalContextType !== "none" ? (
+                  {showCleaningNaveSelector ? (
+                    <label className="board-top-select min-width board-cleaning-site-select-inline">
+                      <span>Nave de limpieza</span>
+                      <select
+                        value={cleaningNaveValue}
+                        onChange={(event) => updateBoardOperationalContext(selectedCustomBoard.id, event.target.value)}
+                        disabled={isHistoricalCustomBoardView || !canChangeSelectedBoardOperationalContext}
+                      >
+                        {effectiveCleaningNaves.map((nave) => <option key={nave} value={nave}>{nave}</option>)}
+                      </select>
+                    </label>
+                  ) : null}
+                </div>
+                {!showCleaningNaveSelector && boardOperationalContextType !== "none" ? (
                   <label className="board-top-select min-width">
                     <span>{boardOperationalContextLabel}</span>
                     <select
