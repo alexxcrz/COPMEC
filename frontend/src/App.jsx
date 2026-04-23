@@ -946,6 +946,7 @@ function App() { // NOSONAR
       return {
         id: `board-${board.id}-${row.id}`,
         rawId: row.id,
+        boardId: board.id,
         source: "board",
         sourceLabel: "Tablero operativo",
         label: board.name,
@@ -1159,24 +1160,366 @@ function App() { // NOSONAR
   }, [filteredDashboardActivities]);
 
   const pauseAnalysis = useMemo(() => {
-    const totalActivitySeconds = filteredDashboardActivities.reduce((sum, record) => sum + (record.durationSeconds || 0), 0);
     const groups = new Map();
-    dashboardPauseLogs.forEach((log) => {
-      if (!groups.has(log.pauseReason)) {
-        groups.set(log.pauseReason, { reason: log.pauseReason, count: 0, totalSeconds: 0 });
+
+    function registerPause(reason, seconds) {
+      const normalizedReason = String(reason || "").trim() || "Pausa sin motivo";
+      if (!groups.has(normalizedReason)) {
+        groups.set(normalizedReason, { reason: normalizedReason, count: 0, totalSeconds: 0 });
       }
-      const item = groups.get(log.pauseReason);
+      const item = groups.get(normalizedReason);
       item.count += 1;
-      item.totalSeconds += log.pauseDurationSeconds || 0;
+      item.totalSeconds += Math.max(0, Number(seconds || 0));
+    }
+
+    dashboardPauseLogs.forEach((log) => {
+      registerPause(log.pauseReason, log.pauseDurationSeconds || 0);
     });
+
+    filteredDashboardRecords
+      .filter((record) => record.source === "board" && Number(record.pauseSeconds || 0) > 0)
+      .forEach((record) => {
+        const reasons = Array.isArray(record.pauseReasons) ? record.pauseReasons.filter(Boolean) : [];
+        const normalizedReasons = reasons.length ? reasons : ["Pausa de tablero sin motivo"];
+        const splitSeconds = Number(record.pauseSeconds || 0) / normalizedReasons.length;
+        normalizedReasons.forEach((reason) => registerPause(reason, splitSeconds));
+      });
+
+    const totalPauseSeconds = Array.from(groups.values()).reduce((sum, item) => sum + item.totalSeconds, 0);
 
     return Array.from(groups.values())
       .map((item) => ({
         ...item,
-        percent: totalActivitySeconds ? (item.totalSeconds / totalActivitySeconds) * 100 : 0,
+        percent: totalPauseSeconds ? (item.totalSeconds / totalPauseSeconds) * 100 : 0,
       }))
       .sort((a, b) => b.totalSeconds - a.totalSeconds);
-  }, [dashboardPauseLogs, filteredDashboardActivities]);
+  }, [dashboardPauseLogs, filteredDashboardRecords]);
+
+  const dashboardDynamicMetricRows = useMemo(() => {
+    const boardRecords = filteredDashboardRecords.filter((record) => record.source === "board");
+    if (!boardRecords.length) return [];
+
+    const boardMap = new Map((dashboardVisibleControlBoards || []).map((board) => [board.id, board]));
+    const measurableTypes = new Set(["number", "currency", "percentage", "progress", "counter", "rating", "time", "formula"]);
+    const metricMap = new Map();
+
+    function parseMetricValue(rawValue, fieldType) {
+      if (fieldType === "time") {
+        const normalized = String(rawValue || "").trim();
+        const match = normalized.match(/^(\d{1,2}):(\d{2})$/);
+        if (!match) return null;
+        const hours = Number(match[1]);
+        const minutes = Number(match[2]);
+        if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+        return hours * 60 + minutes;
+      }
+
+      const parsed = Number(rawValue);
+      if (!Number.isFinite(parsed)) return null;
+      return parsed;
+    }
+
+    boardRecords.forEach((record) => {
+      const board = boardMap.get(record.boardId);
+      if (!board) return;
+      const row = (board.rows || []).find((entry) => entry.id === record.rawId);
+      if (!row) return;
+
+      (board.fields || []).forEach((field) => {
+        const fieldType = String(field?.type || "").trim();
+        if (!measurableTypes.has(fieldType)) return;
+        const numericValue = parseMetricValue(row.values?.[field.id], fieldType);
+        if (!Number.isFinite(numericValue)) return;
+
+        const key = `${record.area}::${board.id}::${field.id}`;
+        if (!metricMap.has(key)) {
+          metricMap.set(key, {
+            key,
+            area: record.area || "Sin área",
+            boardId: board.id,
+            boardName: board.name || record.boardName || "Tablero",
+            fieldId: field.id,
+            fieldLabel: String(field.label || "Métrica"),
+            fieldType,
+            unit: fieldType === "time" ? "min" : fieldType === "percentage" || fieldType === "progress" ? "%" : fieldType === "currency" ? "$" : "",
+            count: 0,
+            sum: 0,
+            min: Number.POSITIVE_INFINITY,
+            max: Number.NEGATIVE_INFINITY,
+          });
+        }
+
+        const metric = metricMap.get(key);
+        metric.count += 1;
+        metric.sum += numericValue;
+        metric.min = Math.min(metric.min, numericValue);
+        metric.max = Math.max(metric.max, numericValue);
+      });
+    });
+
+    return Array.from(metricMap.values())
+      .map((item) => ({
+        ...item,
+        average: item.count ? item.sum / item.count : 0,
+      }))
+      .sort((left, right) => {
+        if (left.area !== right.area) return left.area.localeCompare(right.area, "es-MX");
+        if (left.boardName !== right.boardName) return left.boardName.localeCompare(right.boardName, "es-MX");
+        return left.fieldLabel.localeCompare(right.fieldLabel, "es-MX");
+      });
+  }, [dashboardVisibleControlBoards, filteredDashboardRecords]);
+
+  const dashboardInventoryProductTimeRows = useMemo(() => {
+    const inventoryRecords = filteredDashboardRecords.filter(
+      (record) => record.source === "board" && String(record.area || "").toLowerCase().includes("inventario"),
+    );
+    if (!inventoryRecords.length) return [];
+
+    const boardMap = new Map((dashboardVisibleControlBoards || []).map((board) => [board.id, board]));
+    const productKeywords = ["producto", "sku", "articulo", "item", "codigo", "clave", "material", "modelo"];
+    const timeKeywords = ["tiempo", "duracion", "duracion", "min", "hora", "revision", "ciclo", "proceso"];
+    const aggregated = new Map();
+
+    function normalizeToken(value) {
+      return String(value || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+    }
+
+    function parseTimeToMinutes(rawValue, fieldType, fieldLabel) {
+      const normalizedType = String(fieldType || "").trim();
+      const normalizedLabel = normalizeToken(fieldLabel);
+
+      if (normalizedType === "time") {
+        const match = String(rawValue || "").trim().match(/^(\d{1,2}):(\d{2})$/);
+        if (!match) return null;
+        const hours = Number(match[1]);
+        const minutes = Number(match[2]);
+        if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+        return hours * 60 + minutes;
+      }
+
+      const numeric = Number(rawValue);
+      if (!Number.isFinite(numeric)) return null;
+
+      if (normalizedLabel.includes("hora")) return numeric * 60;
+      return numeric;
+    }
+
+    inventoryRecords.forEach((record) => {
+      const board = boardMap.get(record.boardId);
+      if (!board) return;
+      const row = (board.rows || []).find((entry) => entry.id === record.rawId);
+      if (!row) return;
+
+      let productValue = "";
+      let timeMinutes = null;
+
+      (board.fields || []).forEach((field) => {
+        const fieldLabel = String(field?.label || "").trim();
+        const normalizedLabel = normalizeToken(fieldLabel);
+        const rawValue = row.values?.[field.id];
+
+        if (!productValue && productKeywords.some((token) => normalizedLabel.includes(token))) {
+          const candidate = String(rawValue || "").trim();
+          if (candidate) productValue = candidate;
+        }
+
+        if (timeMinutes === null && (String(field?.type || "") === "time" || timeKeywords.some((token) => normalizedLabel.includes(token)))) {
+          const parsed = parseTimeToMinutes(rawValue, field?.type, fieldLabel);
+          if (Number.isFinite(parsed) && parsed >= 0) timeMinutes = parsed;
+        }
+      });
+
+      if (!productValue || !Number.isFinite(timeMinutes)) return;
+
+      const normalizedProduct = productValue.toLowerCase();
+      const key = `${record.area}::${board.id}::${normalizedProduct}`;
+      if (!aggregated.has(key)) {
+        aggregated.set(key, {
+          key,
+          area: record.area || "Sin área",
+          boardId: board.id,
+          boardName: board.name || record.boardName || "Tablero",
+          product: productValue,
+          count: 0,
+          totalMinutes: 0,
+          minMinutes: Number.POSITIVE_INFINITY,
+          maxMinutes: Number.NEGATIVE_INFINITY,
+        });
+      }
+
+      const item = aggregated.get(key);
+      item.count += 1;
+      item.totalMinutes += timeMinutes;
+      item.minMinutes = Math.min(item.minMinutes, timeMinutes);
+      item.maxMinutes = Math.max(item.maxMinutes, timeMinutes);
+    });
+
+    return Array.from(aggregated.values())
+      .map((item) => ({
+        ...item,
+        averageMinutes: item.count ? item.totalMinutes / item.count : 0,
+      }))
+      .sort((left, right) => {
+        if (right.totalMinutes !== left.totalMinutes) return right.totalMinutes - left.totalMinutes;
+        if (right.averageMinutes !== left.averageMinutes) return right.averageMinutes - left.averageMinutes;
+        return left.product.localeCompare(right.product, "es-MX");
+      });
+  }, [dashboardVisibleControlBoards, filteredDashboardRecords]);
+
+  const dashboardAreaBoardDetailedRows = useMemo(() => {
+    const areaMap = new Map();
+
+    const metricsByAreaBoardKey = new Map();
+    dashboardDynamicMetricRows.forEach((metric) => {
+      const boardToken = metric.boardId ? `id:${metric.boardId}` : `name:${metric.boardName || "Tablero"}`;
+      const key = `${metric.area || "Sin área"}::${boardToken}`;
+      if (!metricsByAreaBoardKey.has(key)) metricsByAreaBoardKey.set(key, []);
+      metricsByAreaBoardKey.get(key).push(metric);
+    });
+
+    const inventoryByAreaBoardKey = new Map();
+    dashboardInventoryProductTimeRows.forEach((item) => {
+      const boardToken = item.boardId ? `id:${item.boardId}` : `name:${item.boardName || "Tablero"}`;
+      const key = `${item.area || "Sin área"}::${boardToken}`;
+      if (!inventoryByAreaBoardKey.has(key)) inventoryByAreaBoardKey.set(key, []);
+      inventoryByAreaBoardKey.get(key).push(item);
+    });
+
+    filteredDashboardRecords.forEach((record) => {
+      const areaName = record.area || "Sin área";
+      const boardName = record.boardName || "Tablero";
+      const boardToken = record.boardId ? `id:${record.boardId}` : `name:${boardName}`;
+
+      if (!areaMap.has(areaName)) {
+        areaMap.set(areaName, {
+          area: areaName,
+          totalRecords: 0,
+          completed: 0,
+          running: 0,
+          paused: 0,
+          totalSeconds: 0,
+          pauseSeconds: 0,
+          boardsMap: new Map(),
+        });
+      }
+
+      const area = areaMap.get(areaName);
+      area.totalRecords += 1;
+      area.totalSeconds += Number(record.durationSeconds || 0);
+      area.pauseSeconds += Number(record.pauseSeconds || 0);
+      if (record.status === STATUS_FINISHED) area.completed += 1;
+      if (record.status === STATUS_RUNNING) area.running += 1;
+      if (record.status === STATUS_PAUSED) area.paused += 1;
+
+      if (!area.boardsMap.has(boardToken)) {
+        area.boardsMap.set(boardToken, {
+          boardToken,
+          boardId: record.boardId || "",
+          boardName,
+          sourceLabel: record.sourceLabel || "Operación",
+          totalRecords: 0,
+          completed: 0,
+          running: 0,
+          paused: 0,
+          totalSeconds: 0,
+          elapsedSeconds: 0,
+          pauseSeconds: 0,
+          responsibleSet: new Set(),
+          pauseReasonMap: new Map(),
+          latestOccurredAt: null,
+        });
+      }
+
+      const board = area.boardsMap.get(boardToken);
+      board.totalRecords += 1;
+      board.totalSeconds += Number(record.durationSeconds || 0);
+      board.elapsedSeconds += Number(record.totalElapsedSeconds || record.durationSeconds || 0);
+      board.pauseSeconds += Number(record.pauseSeconds || 0);
+      if (record.status === STATUS_FINISHED) board.completed += 1;
+      if (record.status === STATUS_RUNNING) board.running += 1;
+      if (record.status === STATUS_PAUSED) board.paused += 1;
+      if (record.responsibleId) board.responsibleSet.add(record.responsibleId);
+
+      const recordTime = new Date(record.occurredAt).getTime();
+      if (Number.isFinite(recordTime) && (!board.latestOccurredAt || recordTime > board.latestOccurredAt)) {
+        board.latestOccurredAt = recordTime;
+      }
+
+      const normalizedReasons = Array.isArray(record.pauseReasons)
+        ? record.pauseReasons.map((reason) => String(reason || "").trim()).filter(Boolean)
+        : [];
+      const pauseReasonList = normalizedReasons.length ? normalizedReasons : (Number(record.pauseSeconds || 0) > 0 ? ["Pausa sin motivo"] : []);
+      const splitSeconds = pauseReasonList.length > 0 ? Number(record.pauseSeconds || 0) / pauseReasonList.length : 0;
+      pauseReasonList.forEach((reason) => {
+        if (!board.pauseReasonMap.has(reason)) {
+          board.pauseReasonMap.set(reason, { reason, count: 0, seconds: 0 });
+        }
+        const reasonEntry = board.pauseReasonMap.get(reason);
+        reasonEntry.count += 1;
+        reasonEntry.seconds += splitSeconds;
+      });
+    });
+
+    return Array.from(areaMap.values())
+      .map((area) => {
+        const boards = Array.from(area.boardsMap.values())
+          .map((board) => {
+            const mapKey = `${area.area}::${board.boardToken}`;
+            const dynamicMetrics = (metricsByAreaBoardKey.get(mapKey) || [])
+              .slice()
+              .sort((left, right) => right.count - left.count || right.average - left.average);
+            const inventoryProducts = (inventoryByAreaBoardKey.get(mapKey) || [])
+              .slice()
+              .sort((left, right) => right.totalMinutes - left.totalMinutes || right.averageMinutes - left.averageMinutes)
+              .slice(0, 6);
+            const completionPercent = board.totalRecords ? (board.completed / board.totalRecords) * 100 : 0;
+            const averageCycleMinutes = board.completed ? board.totalSeconds / board.completed / 60 : 0;
+            const efficiencyPercent = board.elapsedSeconds > 0 ? (board.totalSeconds / board.elapsedSeconds) * 100 : 100;
+
+            return {
+              boardToken: board.boardToken,
+              boardId: board.boardId,
+              boardName: board.boardName,
+              sourceLabel: board.sourceLabel,
+              totalRecords: board.totalRecords,
+              completed: board.completed,
+              running: board.running,
+              paused: board.paused,
+              completionPercent,
+              averageCycleMinutes,
+              totalHours: board.totalSeconds / 3600,
+              productionHours: board.totalSeconds / 3600,
+              pauseHours: board.pauseSeconds / 3600,
+              efficiencyPercent,
+              responsibleCount: board.responsibleSet.size,
+              latestOccurredAt: board.latestOccurredAt,
+              topPauseReasons: Array.from(board.pauseReasonMap.values())
+                .sort((left, right) => right.seconds - left.seconds || right.count - left.count)
+                .slice(0, 4),
+              dynamicMetrics,
+              inventoryProducts,
+            };
+          })
+          .sort((left, right) => right.totalRecords - left.totalRecords || left.boardName.localeCompare(right.boardName, "es-MX"));
+
+        return {
+          area: area.area,
+          totalRecords: area.totalRecords,
+          completed: area.completed,
+          running: area.running,
+          paused: area.paused,
+          completionPercent: area.totalRecords ? (area.completed / area.totalRecords) * 100 : 0,
+          totalHours: area.totalSeconds / 3600,
+          pauseHours: area.pauseSeconds / 3600,
+          boardCount: boards.length,
+          boards,
+        };
+      })
+      .sort((left, right) => right.totalRecords - left.totalRecords || left.area.localeCompare(right.area, "es-MX"));
+  }, [dashboardDynamicMetricRows, dashboardInventoryProductTimeRows, filteredDashboardRecords]);
 
   const dashboardAreaRows = useMemo(() => {
     const groups = new Map();
@@ -1790,9 +2133,14 @@ function App() { // NOSONAR
       const normalizedSnapshot = normalizeWarehouseState(snapshot);
       setState(normalizedSnapshot);
       setLoginDirectory(buildLoginDirectoryFromState(normalizedSnapshot));
-      await requestJson("/warehouse/state", { method: "PUT", body: JSON.stringify(normalizedSnapshot) });
+      const result = await requestJson("/warehouse/state/restore-demo", {
+        method: "POST",
+        body: JSON.stringify({ snapshot: normalizedSnapshot }),
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
       setSyncStatus("Sincronizado");
-    } catch {
+    } catch (error) {
+      pushAppToast(error?.message || "No se pudo restaurar el estado demo.", "danger");
       setSyncStatus("Modo local");
     }
   }
@@ -4908,6 +5256,9 @@ function App() { // NOSONAR
     dashboardAreaRows,
     dashboardCatalogFrequencyRows,
     dashboardCatalogTypeRows,
+    dashboardDynamicMetricRows,
+    dashboardAreaBoardDetailedRows,
+    dashboardInventoryProductTimeRows,
     dashboardDistributionRows,
     dashboardFilters,
     dashboardIshikawaRows,

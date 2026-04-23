@@ -62,6 +62,7 @@ import {
   resetProcessAuditStats,
   addProcessAuditEvidence,
   removeProcessAuditEvidence,
+  restoreWarehouseStateForDemo,
 } from "../services/warehouse.store.js";
 
 export const warehouseRouter = Router();
@@ -78,6 +79,20 @@ warehouseRouter.put("/state", requireWarehouseStateWriteAccess, (req, res) => {
     boards: Array.isArray(nextState?.controlBoards) ? nextState.controlBoards.length : 0,
   });
   res.json(nextState);
+});
+
+warehouseRouter.post("/state/restore-demo", requireAuth, (req, res) => {
+  const result = restoreWarehouseStateForDemo(req.auth, req.body?.snapshot || {});
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "forbidden" ? 403 : 400;
+    res.status(status).json({ ok: false, message: "No fue posible restaurar el estado demo." });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_demo_state_restored", req, {
+    revision: result.state?.revision,
+  });
+  res.json({ ok: true, data: { state: result.state } });
 });
 
 warehouseRouter.post("/weeks", requireWarehouseAction("createWeek"), (_req, res) => {

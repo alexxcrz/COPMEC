@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 const DASHBOARD_WEEKDAY_LABELS = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sa", "Do"];
+const DASHBOARD_DETAIL_VIEW_PREFS_KEY = "copmec-dashboard-detail-view-prefs";
 
 function parseDashboardDate(value) {
   if (!value) return null;
@@ -218,6 +219,9 @@ export default function PanelIndicadores({ contexto }) {
     dashboardActivityRows,
     dashboardCatalogFrequencyRows,
     dashboardCatalogTypeRows,
+    dashboardDynamicMetricRows,
+    dashboardAreaBoardDetailedRows,
+    dashboardInventoryProductTimeRows,
     DashboardProgressMetric,
     PieChart,
     dashboardDistributionRows,
@@ -250,6 +254,7 @@ export default function PanelIndicadores({ contexto }) {
 
   const areAllSectionsOpen = Object.values(dashboardSectionsOpen).every(Boolean);
   const dashboardExportRef = useRef(null);
+  const detailPrefsRef = useRef(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [trendChartType, setTrendChartType] = useState("bar");
   const [peopleChartType, setPeopleChartType] = useState("bar");
@@ -257,6 +262,38 @@ export default function PanelIndicadores({ contexto }) {
   const [catalogTypeChartType, setCatalogTypeChartType] = useState("bar");
   const [catalogFreqChartType, setCatalogFreqChartType] = useState("bar");
   const [distributionChartType, setDistributionChartType] = useState("pie");
+  const [detailBoardFilter, setDetailBoardFilter] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(DASHBOARD_DETAIL_VIEW_PREFS_KEY) || "null");
+      return String(stored?.boardFilter || "all");
+    } catch {
+      return "all";
+    }
+  });
+  const [detailStatusFilter, setDetailStatusFilter] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(DASHBOARD_DETAIL_VIEW_PREFS_KEY) || "null");
+      return String(stored?.statusFilter || "all");
+    } catch {
+      return "all";
+    }
+  });
+  const [detailSortBy, setDetailSortBy] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(DASHBOARD_DETAIL_VIEW_PREFS_KEY) || "null");
+      return String(stored?.sortBy || "volume");
+    } catch {
+      return "volume";
+    }
+  });
+  const [detailSearchText, setDetailSearchText] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(DASHBOARD_DETAIL_VIEW_PREFS_KEY) || "null");
+      return String(stored?.searchText || "");
+    } catch {
+      return "";
+    }
+  });
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
   const [isResetSubmitting, setIsResetSubmitting] = useState(false);
 
@@ -281,6 +318,20 @@ export default function PanelIndicadores({ contexto }) {
     return () => globalThis.removeEventListener("keydown", handleConfirmResetHotkeys);
   }, [confirmResetOpen, isResetSubmitting]);
 
+  useEffect(() => {
+    detailPrefsRef.current = {
+      boardFilter: detailBoardFilter,
+      statusFilter: detailStatusFilter,
+      sortBy: detailSortBy,
+      searchText: detailSearchText,
+    };
+  }, [detailBoardFilter, detailSearchText, detailSortBy, detailStatusFilter]);
+
+  useEffect(() => {
+    if (!detailPrefsRef.current) return;
+    localStorage.setItem(DASHBOARD_DETAIL_VIEW_PREFS_KEY, JSON.stringify(detailPrefsRef.current));
+  }, [detailBoardFilter, detailSearchText, detailSortBy, detailStatusFilter]);
+
   const dashboardAreaTabOptions = useMemo(() => {
     const uniqueAreas = Array.from(new Set(
       departmentOptions
@@ -295,6 +346,163 @@ export default function PanelIndicadores({ contexto }) {
   }, [dashboardAreaRows, departmentOptions]);
 
   const activeAreaLabel = dashboardFilters.area === "all" ? "General" : dashboardFilters.area;
+
+  const areaScopedDynamicMetrics = useMemo(() => {
+    if (!Array.isArray(dashboardDynamicMetricRows)) return [];
+    if (dashboardFilters.area === "all") return dashboardDynamicMetricRows;
+    return dashboardDynamicMetricRows.filter((item) => item.area === dashboardFilters.area);
+  }, [dashboardDynamicMetricRows, dashboardFilters.area]);
+
+  const areaPriorityMetricRows = useMemo(() => {
+    const normalizedArea = String(activeAreaLabel || "").toLowerCase();
+    const keywordProfiles = [
+      {
+        match: ["inventario"],
+        preferred: ["tiempo", "revision", "producto", "piez", "sku", "cantidad", "caja", "tarima", "existencia", "stock"],
+      },
+      {
+        match: ["limpieza"],
+        preferred: ["tiempo", "frecuencia", "turno", "check", "cumpl", "avance", "porcentaje"],
+      },
+      {
+        match: ["pedido", "embarque", "logistica"],
+        preferred: ["tiempo", "pedido", "surt", "entrega", "guia", "paquete", "caja", "cumpl"],
+      },
+    ];
+
+    const fallbackPreferred = ["tiempo", "cumpl", "porcentaje", "avance", "cantidad", "piez", "product", "score", "rating"];
+    const selectedProfile = keywordProfiles.find((profile) => profile.match.some((token) => normalizedArea.includes(token)));
+    const preferredTokens = selectedProfile?.preferred || fallbackPreferred;
+
+    return [...areaScopedDynamicMetrics]
+      .map((item) => {
+        const metricLabel = `${item.fieldLabel} ${item.boardName}`.toLowerCase();
+        const score = preferredTokens.reduce((sum, token) => (metricLabel.includes(token) ? sum + 1 : sum), 0);
+        return { ...item, priorityScore: score };
+      })
+      .sort((left, right) => {
+        if (right.priorityScore !== left.priorityScore) return right.priorityScore - left.priorityScore;
+        if (right.count !== left.count) return right.count - left.count;
+        return right.average - left.average;
+      })
+      .slice(0, 4);
+  }, [activeAreaLabel, areaScopedDynamicMetrics]);
+
+  const areaPriorityKpiCards = useMemo(() => {
+    return areaPriorityMetricRows.map((item) => ({
+      title: item.fieldLabel,
+      value: `${formatMetricNumber(item.average, 2)}${item.unit ? ` ${item.unit}` : ""}`,
+      subtitle: `${item.area} · ${item.boardName} · ${item.count} muestra(s)`,
+      tone: item.fieldType === "time" ? "cyan" : item.fieldType === "percentage" || item.fieldType === "progress" ? "lime" : "slate",
+      icon: Gauge,
+    }));
+  }, [areaPriorityMetricRows]);
+
+  const scopedInventoryProductTimeRows = useMemo(() => {
+    const rows = Array.isArray(dashboardInventoryProductTimeRows) ? dashboardInventoryProductTimeRows : [];
+    if (dashboardFilters.area === "all") return rows;
+    return rows.filter((item) => item.area === dashboardFilters.area);
+  }, [dashboardFilters.area, dashboardInventoryProductTimeRows]);
+
+  const scopedAreaBoardDetailedRows = useMemo(() => {
+    const rows = Array.isArray(dashboardAreaBoardDetailedRows) ? dashboardAreaBoardDetailedRows : [];
+    if (dashboardFilters.area === "all") return rows;
+    return rows.filter((item) => item.area === dashboardFilters.area);
+  }, [dashboardAreaBoardDetailedRows, dashboardFilters.area]);
+
+  const detailBoardFilterOptions = useMemo(() => {
+    const map = new Map();
+    scopedAreaBoardDetailedRows.forEach((areaItem) => {
+      (areaItem.boards || []).forEach((board) => {
+        if (!map.has(board.boardToken)) {
+          map.set(board.boardToken, {
+            value: board.boardToken,
+            label: `${board.boardName} (${areaItem.area})`,
+          });
+        }
+      });
+    });
+    return [{ value: "all", label: "Todos los tableros" }].concat(
+      Array.from(map.values()).sort((left, right) => left.label.localeCompare(right.label, "es-MX")),
+    );
+  }, [scopedAreaBoardDetailedRows]);
+
+  useEffect(() => {
+    if (detailBoardFilter === "all") return;
+    if (!detailBoardFilterOptions.some((option) => option.value === detailBoardFilter)) {
+      setDetailBoardFilter("all");
+    }
+  }, [detailBoardFilter, detailBoardFilterOptions]);
+
+  const filteredAreaBoardDetailedRows = useMemo(() => {
+    function boardMatchesStatus(board) {
+      if (detailStatusFilter === "all") return true;
+      if (detailStatusFilter === "paused") return board.paused > 0;
+      if (detailStatusFilter === "running") return board.running > 0;
+      if (detailStatusFilter === "completed") return board.completed > 0;
+      if (detailStatusFilter === "pending") return board.totalRecords - (board.completed + board.running + board.paused) > 0;
+      return true;
+    }
+
+    function sortBoards(boards) {
+      const next = [...boards];
+      if (detailSortBy === "efficiency") {
+        return next.sort((left, right) => right.efficiencyPercent - left.efficiencyPercent || right.totalRecords - left.totalRecords);
+      }
+      if (detailSortBy === "pause") {
+        return next.sort((left, right) => right.pauseHours - left.pauseHours || right.totalRecords - left.totalRecords);
+      }
+      if (detailSortBy === "cycle") {
+        return next.sort((left, right) => right.averageCycleMinutes - left.averageCycleMinutes || right.totalRecords - left.totalRecords);
+      }
+      if (detailSortBy === "completion") {
+        return next.sort((left, right) => right.completionPercent - left.completionPercent || right.totalRecords - left.totalRecords);
+      }
+      return next.sort((left, right) => right.totalRecords - left.totalRecords || left.boardName.localeCompare(right.boardName, "es-MX"));
+    }
+
+    const normalizedQuery = String(detailSearchText || "").trim().toLowerCase();
+
+    return scopedAreaBoardDetailedRows
+      .map((areaItem) => {
+        const boards = (areaItem.boards || []).filter((board) => {
+          const boardOk = detailBoardFilter === "all" || board.boardToken === detailBoardFilter;
+          const boardText = `${board.boardName} ${board.sourceLabel} ${(board.inventoryProducts || []).map((item) => item.product).join(" ")} ${(board.dynamicMetrics || []).map((item) => item.fieldLabel).join(" ")}`.toLowerCase();
+          const searchOk = !normalizedQuery || boardText.includes(normalizedQuery) || String(areaItem.area || "").toLowerCase().includes(normalizedQuery);
+          return boardOk && boardMatchesStatus(board) && searchOk;
+        });
+
+        const visibleTotalRecords = boards.reduce((sum, board) => sum + (board.totalRecords || 0), 0);
+        const visibleCompleted = boards.reduce((sum, board) => sum + (board.completed || 0), 0);
+        const visibleRunning = boards.reduce((sum, board) => sum + (board.running || 0), 0);
+        const visiblePaused = boards.reduce((sum, board) => sum + (board.paused || 0), 0);
+        const visibleProductionHours = boards.reduce((sum, board) => sum + (board.productionHours || 0), 0);
+        const visiblePauseHours = boards.reduce((sum, board) => sum + (board.pauseHours || 0), 0);
+        const visibleCompletionPercent = visibleTotalRecords ? (visibleCompleted / visibleTotalRecords) * 100 : 0;
+
+        return {
+          ...areaItem,
+          visibleTotalRecords,
+          visibleCompleted,
+          visibleRunning,
+          visiblePaused,
+          visibleProductionHours,
+          visiblePauseHours,
+          visibleCompletionPercent,
+          visibleBoardCount: boards.length,
+          boards: sortBoards(boards),
+        };
+      })
+      .filter((areaItem) => areaItem.boards.length > 0)
+      .sort((left, right) => right.totalRecords - left.totalRecords || left.area.localeCompare(right.area, "es-MX"));
+  }, [detailBoardFilter, detailSearchText, detailSortBy, detailStatusFilter, scopedAreaBoardDetailedRows]);
+
+  function resetDetailViewFilters() {
+    setDetailBoardFilter("all");
+    setDetailStatusFilter("all");
+    setDetailSortBy("volume");
+    setDetailSearchText("");
+  }
 
   function resetMainDashboardView() {
     setDashboardFilters({
@@ -632,13 +840,29 @@ export default function PanelIndicadores({ contexto }) {
       drawSectionTable("Tendencia general", ["Periodo", "Registros", "Cerrados", "En curso", "Pausados", "Horas prod."], dashboardTrendRows.map((item) => [item.label, String(item.total), String(item.completed), String(item.running || 0), String(item.paused || 0), formatMetricNumber(item.totalSeconds / 3600, 1)]));
       drawSectionTable("Consolidado por área", ["Área", "Registros", "Cerrados", "Promedio (min)", "SLA %", "Tableros / Fuentes"], dashboardAreaRows.map((item) => [item.area, String(item.total), String(item.completed), formatMetricNumber(item.averageMinutes, 1), `${formatMetricNumber(item.slaPercent, 1)}%`, String(item.boardCount)]));
 
-      // ─── PÁGINA 8: CATÁLOGO ───────────────────────────────────────────────────
+      // ─── PÁGINA 8: DETALLE ÁREA -> TABLERO ───────────────────────────────────
+      pdf.addPage();
+      addPageHeader("Detalle Operativo por Área y Tablero", "Resumen granular con estado, eficiencia, pausas y métricas detectadas");
+      drawSectionTable("Detalle consolidado", ["Área", "Tablero", "Estados", "Tiempo", "Eficiencia", "Pausas top", "Métricas top", "SKU/Producto top"], filteredAreaBoardDetailedRows.flatMap((areaItem) =>
+        areaItem.boards.map((board) => [
+          areaItem.area,
+          board.boardName,
+          `C:${board.completed} R:${board.running} P:${board.paused}`,
+          `${formatMetricNumber(board.productionHours, 1)}h prod / ${formatMetricNumber(board.pauseHours, 1)}h pausa`,
+          `${formatMetricNumber(board.efficiencyPercent, 1)}%`,
+          (board.topPauseReasons || []).slice(0, 2).map((reason) => `${reason.reason} (${formatMetricNumber((reason.seconds || 0) / 60, 1)}m)`).join(" | ") || "Sin pausas",
+          (board.dynamicMetrics || []).slice(0, 2).map((metric) => `${metric.fieldLabel}: ${formatMetricNumber(metric.average, 1)}${metric.unit ? ` ${metric.unit}` : ""}`).join(" | ") || "Sin métricas",
+          (board.inventoryProducts || []).slice(0, 2).map((product) => `${product.product}: ${formatMetricNumber(product.totalMinutes, 1)}m`).join(" | ") || "N/A",
+        ]),
+      ));
+
+      // ─── PÁGINA 9: CATÁLOGO ───────────────────────────────────────────────────
       pdf.addPage();
       addPageHeader("Catálogo de Actividades", "Tipo, frecuencia y distribución del catálogo operativo");
       drawSectionTable("Catálogo por tipo", ["Tipo", "Cantidad", "% del catálogo"], dashboardCatalogTypeRows.map((item) => [item.label, String(item.value), `${dashboardMetrics.catalogActiveCount ? formatMetricNumber((item.value / dashboardMetrics.catalogActiveCount) * 100, 1) : 0}%`]));
       drawSectionTable("Catálogo por frecuencia", ["Frecuencia", "Actividades", "% del catálogo"], dashboardCatalogFrequencyRows.map((item) => [item.label, String(item.value), `${dashboardMetrics.catalogActiveCount ? formatMetricNumber((item.value / dashboardMetrics.catalogActiveCount) * 100, 1) : 0}%`]));
 
-      // ─── PÁGINA 9: DIAGNÓSTICO E INFORME EJECUTIVO ───────────────────────────
+      // ─── PÁGINA 10: DIAGNÓSTICO E INFORME EJECUTIVO ──────────────────────────
       pdf.addPage();
       addPageHeader("Informe de Diagnóstico Operativo", "Identificación de problemas, cuellos de botella y recomendaciones");
       let diagY = 76;
@@ -827,6 +1051,21 @@ export default function PanelIndicadores({ contexto }) {
         </div>
       </div>
 
+      <div className="dashboard-area-tabs" role="tablist" aria-label="Dashboard por área">
+        {dashboardAreaTabOptions.map((item) => (
+          <button
+            key={item.value}
+            type="button"
+            role="tab"
+            aria-selected={dashboardFilters.area === item.value}
+            className={dashboardFilters.area === item.value ? "dashboard-area-tab active" : "dashboard-area-tab"}
+            onClick={() => setDashboardFilters((current) => ({ ...current, area: item.value, responsibleId: "all" }))}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
       <DashboardSection title="Resumen ejecutivo" subtitle="KPIs principales para una lectura rápida del periodo filtrado." summary={`${dashboardMetrics.total} registros · ${dashboardMetrics.completed} cerrados · ${dashboardMetrics.areaCount} áreas`} icon={Gauge} open={dashboardSectionsOpen.executive} onToggle={() => setDashboardSectionsOpen((current) => ({ ...current, executive: !current.executive }))}>
         <div className="dashboard-kpi-grid dashboard-kpi-grid-executive">
           {executiveKpiCards.map((item) => (
@@ -839,6 +1078,30 @@ export default function PanelIndicadores({ contexto }) {
               icon={item.icon}
             />
           ))}
+        </div>
+        <div className="dashboard-kpi-priority-shell">
+          <div className="dashboard-panel-header">
+            <h3>KPIs priorizados de {activeAreaLabel}</h3>
+            <Gauge size={18} />
+          </div>
+          <div className="dashboard-kpi-grid dashboard-kpi-grid-executive">
+            {(areaPriorityKpiCards.length ? areaPriorityKpiCards : [{
+              title: "Sin métricas detectadas",
+              value: "0",
+              subtitle: "Crea o captura campos medibles en tableros para ver KPIs automáticos.",
+              tone: "slate",
+              icon: Gauge,
+            }]).map((item) => (
+              <DashboardKpiCard
+                key={`${item.title}-${item.subtitle}`}
+                title={item.title}
+                value={item.value}
+                subtitle={item.subtitle}
+                tone={item.tone}
+                icon={item.icon}
+              />
+            ))}
+          </div>
         </div>
       </DashboardSection>
 
@@ -1245,6 +1508,263 @@ export default function PanelIndicadores({ contexto }) {
               ]}
               emptyLabel="No hay datos de tendencia disponibles para el periodo seleccionado."
             />
+          </article>
+        </div>
+
+        <div className="dashboard-main-grid">
+          <article className="dashboard-panel dashboard-panel-full">
+            <div className="dashboard-panel-header">
+              <h3>Métricas detectadas automáticamente por tableros</h3>
+              <Gauge size={18} />
+            </div>
+            <p className="dashboard-panel-subtitle">
+              El dashboard detecta campos medibles de tus tableros (número, tiempo, porcentaje, progreso, contador, rating, moneda y fórmula) y los consolida por área.
+            </p>
+            <DashboardColumnChart
+              rows={dashboardDynamicMetricRows.slice(0, 10).map((item) => ({
+                key: item.key,
+                label: `${item.area.substring(0, 8)} · ${item.fieldLabel.substring(0, 12)}`,
+                value: item.average,
+                valueLabel: `${formatMetricNumber(item.average, 1)}${item.unit ? ` ${item.unit}` : ""}`,
+                tooltip: `${item.area} · ${item.boardName} · ${item.fieldLabel}: promedio ${formatMetricNumber(item.average, 2)}${item.unit ? ` ${item.unit}` : ""}`,
+                color: "linear-gradient(180deg, #0f766e 0%, #14b8a6 100%)",
+              }))}
+              emptyLabel="No hay campos medibles detectados para este filtro."
+            />
+            <div className="dashboard-table-wrap">
+              <table className="dashboard-table-clean">
+                <thead>
+                  <tr>
+                    <th>Área</th>
+                    <th>Tablero</th>
+                    <th>Métrica</th>
+                    <th>Promedio</th>
+                    <th>Mín</th>
+                    <th>Máx</th>
+                    <th>Muestras</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dashboardDynamicMetricRows.slice(0, 24).map((item) => (
+                    <tr key={item.key}>
+                      <td>{item.area}</td>
+                      <td>{item.boardName}</td>
+                      <td>{item.fieldLabel}</td>
+                      <td>{formatMetricNumber(item.average, 2)}{item.unit ? ` ${item.unit}` : ""}</td>
+                      <td>{formatMetricNumber(item.min, 2)}{item.unit ? ` ${item.unit}` : ""}</td>
+                      <td>{formatMetricNumber(item.max, 2)}{item.unit ? ` ${item.unit}` : ""}</td>
+                      <td>{item.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+
+        <div className="dashboard-main-grid">
+          <article className="dashboard-panel dashboard-panel-full">
+            <div className="dashboard-panel-header">
+              <h3>Leaderboard producto/SKU por tiempo</h3>
+              <Clock3 size={18} />
+            </div>
+            <p className="dashboard-panel-subtitle">
+              Ranking automático para Inventario: agrupa filas por producto/SKU y muestra dónde se concentra más tiempo operativo.
+            </p>
+            <DashboardColumnChart
+              rows={scopedInventoryProductTimeRows.slice(0, 12).map((item) => ({
+                key: item.key,
+                label: `${item.product}`.substring(0, 14),
+                value: item.totalMinutes,
+                valueLabel: `${formatMetricNumber(item.totalMinutes, 1)} min`,
+                tooltip: `${item.area} · ${item.boardName} · ${item.product}: ${formatMetricNumber(item.totalMinutes, 2)} min totales`,
+                color: "linear-gradient(180deg, #0f766e 0%, #22c55e 100%)",
+              }))}
+              emptyLabel="No hay datos suficientes de producto/SKU con tiempo para este filtro."
+            />
+            <div className="dashboard-table-wrap">
+              <table className="dashboard-table-clean">
+                <thead>
+                  <tr>
+                    <th>Área</th>
+                    <th>Tablero</th>
+                    <th>Producto / SKU</th>
+                    <th>Total (min)</th>
+                    <th>Promedio (min)</th>
+                    <th>Mín</th>
+                    <th>Máx</th>
+                    <th>Registros</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {scopedInventoryProductTimeRows.slice(0, 30).map((item) => (
+                    <tr key={item.key}>
+                      <td>{item.area}</td>
+                      <td>{item.boardName}</td>
+                      <td>{item.product}</td>
+                      <td>{formatMetricNumber(item.totalMinutes, 2)}</td>
+                      <td>{formatMetricNumber(item.averageMinutes, 2)}</td>
+                      <td>{formatMetricNumber(item.minMinutes, 2)}</td>
+                      <td>{formatMetricNumber(item.maxMinutes, 2)}</td>
+                      <td>{item.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+
+        <div className="dashboard-main-grid">
+          <article className="dashboard-panel dashboard-panel-full">
+            <div className="dashboard-panel-header">
+              <h3>Detalle completo por área y tablero</h3>
+              <BarChart3 size={18} />
+            </div>
+            <p className="dashboard-panel-subtitle">
+              Vista de alta resolución operativa: cada área agrupa sus tableros con productividad, estados, pausas, métricas detectadas y productos/SKU más demandantes en tiempo.
+            </p>
+            <div className="dashboard-detail-controls">
+              <label className="dashboard-filter-field">
+                <span>Buscar</span>
+                <input
+                  type="text"
+                  value={detailSearchText}
+                  onChange={(event) => setDetailSearchText(event.target.value)}
+                  placeholder="Tablero, métrica o producto/SKU"
+                />
+              </label>
+              <label className="dashboard-filter-field">
+                <span>Tablero</span>
+                <select value={detailBoardFilter} onChange={(event) => setDetailBoardFilter(event.target.value)}>
+                  {detailBoardFilterOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="dashboard-filter-field">
+                <span>Estatus</span>
+                <select value={detailStatusFilter} onChange={(event) => setDetailStatusFilter(event.target.value)}>
+                  <option value="all">Todos</option>
+                  <option value="paused">Con pausa</option>
+                  <option value="running">En curso</option>
+                  <option value="completed">Con cierres</option>
+                  <option value="pending">Con pendientes</option>
+                </select>
+              </label>
+              <label className="dashboard-filter-field">
+                <span>Ordenar por</span>
+                <select value={detailSortBy} onChange={(event) => setDetailSortBy(event.target.value)}>
+                  <option value="volume">Mayor volumen</option>
+                  <option value="efficiency">Mayor eficiencia</option>
+                  <option value="pause">Mayor pausa</option>
+                  <option value="cycle">Mayor ciclo</option>
+                  <option value="completion">Mayor cumplimiento</option>
+                </select>
+              </label>
+              <div className="dashboard-filter-field dashboard-detail-clear-field">
+                <span>Acciones</span>
+                <button type="button" className="icon-button" onClick={resetDetailViewFilters}>
+                  Limpiar filtros
+                </button>
+              </div>
+            </div>
+            {filteredAreaBoardDetailedRows.length ? (
+              <div className="dashboard-area-detail-grid">
+                {filteredAreaBoardDetailedRows.map((areaItem) => (
+                  <section key={areaItem.area} className="dashboard-area-detail-card">
+                    <div className="dashboard-panel-header">
+                      <h3>{areaItem.area}</h3>
+                      <span>{areaItem.visibleBoardCount} tablero(s) visibles</span>
+                    </div>
+                    <div className="dashboard-progress-list">
+                      <DashboardProgressMetric label="Cumplimiento" valueText={`${formatMetricNumber(areaItem.visibleCompletionPercent, 1)}%`} percent={areaItem.visibleCompletionPercent} color="linear-gradient(90deg, #0ea5e9 0%, #22c55e 100%)" />
+                      <DashboardProgressMetric label="Registros" valueText={`${areaItem.visibleTotalRecords} visibles`} percent={100} color="linear-gradient(90deg, #0f766e 0%, #14b8a6 100%)" />
+                      <DashboardProgressMetric label="Pausas" valueText={`${formatMetricNumber(areaItem.visiblePauseHours, 1)} h`} percent={areaItem.visibleProductionHours > 0 ? Math.min(100, (areaItem.visiblePauseHours / areaItem.visibleProductionHours) * 100) : 0} color="linear-gradient(90deg, #dc2626 0%, #f59e0b 100%)" />
+                    </div>
+                    <div className="dashboard-table-wrap">
+                      <table className="dashboard-table-clean">
+                        <thead>
+                          <tr>
+                            <th>Tablero</th>
+                            <th>Fuente</th>
+                            <th>Estados</th>
+                            <th>Tiempo</th>
+                            <th>Eficiencia</th>
+                            <th>Pausas top</th>
+                            <th>Métricas detectadas</th>
+                            <th>Productos/SKU top</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {areaItem.boards.map((board) => (
+                            <tr key={board.boardToken}>
+                              <td>
+                                <strong>{board.boardName}</strong>
+                                <br />
+                                <small>{board.totalRecords} registros · {board.responsibleCount} responsables</small>
+                              </td>
+                              <td>{board.sourceLabel}</td>
+                              <td>
+                                C: {board.completed} · R: {board.running} · P: {board.paused}
+                                <br />
+                                <small>{formatMetricNumber(board.completionPercent, 1)}% cierre</small>
+                              </td>
+                              <td>
+                                {formatMetricNumber(board.productionHours, 2)} h prod.
+                                <br />
+                                <small>{formatMetricNumber(board.pauseHours, 2)} h pausa · {formatMetricNumber(board.averageCycleMinutes, 1)} min ciclo</small>
+                              </td>
+                              <td>{formatMetricNumber(board.efficiencyPercent, 1)}%</td>
+                              <td>
+                                {(board.topPauseReasons || []).length ? board.topPauseReasons.map((reason) => (
+                                  <div key={reason.reason}>
+                                    {reason.reason}: {formatMetricNumber((reason.seconds || 0) / 60, 1)} min
+                                  </div>
+                                )) : <span>Sin pausas registradas</span>}
+                              </td>
+                              <td>
+                                {(board.dynamicMetrics || []).length ? board.dynamicMetrics.slice(0, 4).map((metric) => (
+                                  <div key={metric.key}>
+                                    {metric.fieldLabel}: {formatMetricNumber(metric.average, 2)}{metric.unit ? ` ${metric.unit}` : ""}
+                                  </div>
+                                )) : <span>Sin métricas detectadas</span>}
+                              </td>
+                              <td>
+                                {(board.inventoryProducts || []).length ? board.inventoryProducts.slice(0, 4).map((product) => (
+                                  <div key={product.key}>
+                                    {product.product}: {formatMetricNumber(product.totalMinutes, 1)} min
+                                  </div>
+                                )) : <span>No aplica / sin datos</span>}
+                              </td>
+                            </tr>
+                          ))}
+                          <tr className="dashboard-area-summary-row">
+                            <td>
+                              <strong>Total visible área</strong>
+                            </td>
+                            <td>{areaItem.visibleBoardCount} tablero(s)</td>
+                            <td>
+                              C: {areaItem.visibleCompleted} · R: {areaItem.visibleRunning} · P: {areaItem.visiblePaused}
+                              <br />
+                              <small>{formatMetricNumber(areaItem.visibleCompletionPercent, 1)}% cierre</small>
+                            </td>
+                            <td>
+                              {formatMetricNumber(areaItem.visibleProductionHours, 2)} h prod.
+                              <br />
+                              <small>{formatMetricNumber(areaItem.visiblePauseHours, 2)} h pausa</small>
+                            </td>
+                            <td colSpan={4}>{areaItem.visibleTotalRecords} registros visibles en esta área</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                ))}
+              </div>
+            ) : (
+              <p className="dashboard-empty-text">No hay datos detallados para el filtro seleccionado.</p>
+            )}
           </article>
         </div>
       </DashboardSection>

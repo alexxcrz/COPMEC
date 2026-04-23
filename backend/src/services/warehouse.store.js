@@ -1528,6 +1528,21 @@ export function replaceWarehouseState(nextState) {
   return sanitizedState;
 }
 
+export function restoreWarehouseStateForDemo(auth, snapshot = {}) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+  if (normalizeRole(currentUser.role) !== ROLE_LEAD || currentUser.createdById !== BOOTSTRAP_MASTER_ID) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const currentState = getRawWarehouseState();
+  const restoredState = replaceWarehouseState({
+    ...snapshot,
+    revision: currentState.revision,
+  });
+  return { ok: true, state: restoredState };
+}
+
 export function createWarehouseWeekFromCatalog() {
   const current = getRawWarehouseState();
   const now = new Date();
