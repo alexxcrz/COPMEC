@@ -3877,6 +3877,161 @@ tbody tr:hover {
   justify-content: flex-start;
 }
 
+/* ── Component Type Picker (Monday-style) ── */
+.component-studio-type-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.ctp-category {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ctp-category-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.1rem;
+}
+
+.ctp-category-icon {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.ctp-category-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ctp-type-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.ctp-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.38rem 0.65rem;
+  border: 1.5px solid rgba(162, 170, 181, 0.26);
+  background: #ffffff;
+  border-radius: 999px;
+  cursor: pointer;
+  color: #1f2937;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+}
+
+.ctp-type-chip:hover {
+  border-color: #1b6a57;
+  background: #f0faf7;
+  box-shadow: 0 0 0 2px rgba(27, 106, 87, 0.08);
+}
+
+.ctp-type-chip.active {
+  border-color: #032121;
+  background: #032121;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(3, 33, 33, 0.18);
+}
+
+.ctp-type-chip.hidden {
+  display: none;
+}
+
+.ctp-type-emoji {
+  font-size: 0.95rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.ctp-type-name {
+  line-height: 1.2;
+}
+
+.ctp-selection-preview {
+  background: linear-gradient(135deg, #f0faf7 0%, #e8f5f0 100%);
+  border: 1px solid rgba(27, 106, 87, 0.18);
+  border-radius: 1rem;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.ctp-selection-preview strong {
+  font-size: 0.9rem;
+  color: #032121;
+}
+
+.ctp-selection-preview p {
+  font-size: 0.78rem;
+  color: #374151;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── "+ Agregar columna" en preview table ── */
+.board-preview-add-col-th {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 0.25rem !important;
+  width: 110px;
+  min-width: 110px;
+  position: sticky;
+  right: 0;
+}
+
+.board-preview-add-col-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.65rem;
+  border: 1.5px dashed rgba(27, 106, 87, 0.35);
+  border-radius: 999px;
+  background: transparent;
+  color: #1b6a57;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.board-preview-add-col-btn:hover {
+  border-color: #032121;
+  background: #f0faf7;
+  color: #032121;
+}
+
+.board-preview-add-col-td {
+  width: 110px;
+  min-width: 110px;
+  background: transparent !important;
+  border: none !important;
+}
+
+.board-preview-empty-cell {
+  color: #d1d5db;
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.builder-preview-empty .primary-button {
+  align-self: flex-start;
+  margin-top: 0.5rem;
+}
+
 .component-type-grid {
   display: grid;
   gap: 0.6rem;
