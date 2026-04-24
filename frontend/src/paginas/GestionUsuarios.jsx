@@ -61,6 +61,8 @@ export default function GestionUsuarios({ contexto }) {
   const [creatorSearch, setCreatorSearch] = useState("");
   const [creatorPage, setCreatorPage] = useState(1);
   const [creatorPageSize, setCreatorPageSize] = useState(6);
+  const [activeAreaTab, setActiveAreaTab] = useState(null);
+  const [viewingPlayer, setViewingPlayer] = useState(null);
 
   const creatorGroups = Array.isArray(usersByCreatorGroups) ? usersByCreatorGroups : [];
   const activeCreatorGroup = useMemo(() => {
@@ -191,53 +193,68 @@ export default function GestionUsuarios({ contexto }) {
           ) : null}
 
           {usersViewTab === "area" ? (
-            <div className="saved-board-list permissions-preset-list">
-              {usersByAreaGroups.map((group) => {
-                const { area: rootArea, subArea } = splitAreaAndSubArea ? splitAreaAndSubArea(group.area) : { area: group.area, subArea: "" };
+            <div>
+              {/* Area subtab strip */}
+              {usersByAreaGroups.length > 0 ? (
+                <div className="tab-strip" style={{ overflowX: "auto", whiteSpace: "nowrap", marginBottom: "0.75rem" }}>
+                  {usersByAreaGroups.map((group) => {
+                    const isActive = (activeAreaTab ?? usersByAreaGroups[0]?.area) === group.area;
+                    return (
+                      <button
+                        key={group.area}
+                        type="button"
+                        className={isActive ? "tab active" : "tab"}
+                        onClick={() => setActiveAreaTab(group.area)}
+                      >
+                        {group.area} ({group.users.length})
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              {(() => {
+                const activeGroup = usersByAreaGroups.find((g) => g.area === (activeAreaTab ?? usersByAreaGroups[0]?.area)) || usersByAreaGroups[0];
+                if (!activeGroup) return <p className="subtle-line">No hay áreas configuradas.</p>;
+                const { area: rootArea, subArea } = splitAreaAndSubArea ? splitAreaAndSubArea(activeGroup.area) : { area: activeGroup.area, subArea: "" };
                 const isSubArea = Boolean(subArea);
                 return (
-                <article key={group.area} className="surface-card" style={{ minWidth: "320px", flex: "1 1 360px" }}>
-                  <div className="card-header-row">
-                    <div>
-                      <h3>{group.area}</h3>
-                      <p>{group.users.length} perfil(es) visibles en esta área.</p>
+                  <>
+                    <div className="card-header-row" style={{ marginBottom: "0.75rem" }}>
+                      <div>
+                        <strong>{activeGroup.area}</strong>
+                        <p className="subtle-line">{activeGroup.users.length} perfil(es) en esta área</p>
+                      </div>
+                      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                        <span className="chip primary">{activeGroup.users.filter((u) => u.isActive).length} activos</span>
+                        {currentUser?.role === ROLE_LEAD ? (
+                          <>
+                            {!isSubArea ? <button type="button" className="icon-button" title="Agregar subárea" onClick={() => handleAddAreaOption(activeGroup.area)}><Plus size={14} /></button> : null}
+                            <button type="button" className="icon-button danger" title={isSubArea ? "Eliminar subárea" : "Eliminar área y subáreas"} onClick={() => deleteArea(activeGroup.area)}><Trash2 size={14} /></button>
+                          </>
+                        ) : null}
+                      </div>
                     </div>
-                    <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                      <span className="chip primary">{group.users.filter((user) => user.isActive).length} activos</span>
-                      {currentUser?.role === ROLE_LEAD ? (
-                        <>
-                          {!isSubArea ? <button type="button" className="icon-button" title="Agregar subárea" onClick={() => handleAddAreaOption(group.area)}><Plus size={14} /></button> : null}
-                          <button type="button" className="icon-button danger" title={isSubArea ? "Eliminar subárea" : "Eliminar área y subáreas"} onClick={() => deleteArea(group.area)}><Trash2 size={14} /></button>
-                        </>
-                      ) : null}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                      {activeGroup.users.map((user) => (
+                        <button
+                          key={user.id}
+                          type="button"
+                          className="surface-card"
+                          style={{ flex: "1 1 180px", minWidth: "160px", maxWidth: "220px", cursor: "pointer", textAlign: "left", padding: "0.75rem", display: "flex", flexDirection: "column", gap: "0.35rem", border: "1px solid transparent" }}
+                          onClick={() => setViewingPlayer(user)}
+                        >
+                          <span className="avatar-circle" style={{ alignSelf: "flex-start" }}>{user.name.charAt(0).toUpperCase()}</span>
+                          <strong style={{ fontSize: "0.85rem", lineHeight: 1.2 }}>{user.name}</strong>
+                          <span className={`user-role-badge ${getRoleBadgeClass(user.role)}`} style={{ alignSelf: "flex-start" }}>{user.role}</span>
+                          <span className="subtle-line" style={{ fontSize: "0.75rem" }}>{user.email}</span>
+                        </button>
+                      ))}
                     </div>
-                  </div>
-                  <div className="saved-board-list board-builder-launch-list">
-                    {group.users.map((user) => (
-                      <article key={user.id} className="surface-card">
-                        <div className="card-header-row">
-                          <div className="user-name-cell">
-                            <span className="avatar-circle">{user.name.charAt(0).toUpperCase()}</span>
-                            <div>
-                              <strong>{user.name}</strong>
-                              <span className="subtle-line">Player de acceso · {user.email}</span>
-                            </div>
-                          </div>
-                          <span className={`user-role-badge ${getRoleBadgeClass(user.role)}`}>{user.role}</span>
-                        </div>
-                        <div className="saved-board-list board-builder-launch-list">
-                          <span className="chip">Cargo · {getUserJobTitle(user) || "Sin cargo"}</span>
-                          <span className="chip">Referencia · {userMap.get(user.managerId)?.name || "Sin asignar"}</span>
-                          <span className="chip">Creado por · {userMap.get(user.createdById)?.name || "Sin registro"}</span>
-                          <span className="chip">Tableros · {boardAssignmentsByUser.get(user.id) || 0}</span>
-                          <span className="chip">Perfiles creados · {usersCreatedByMap.get(user.id) || 0}</span>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                </article>
-              );
-              })}
+                    {!activeGroup.users.length ? <p className="subtle-line">No hay perfiles en esta área.</p> : null}
+                  </>
+                );
+              })()}
             </div>
           ) : null}
 
@@ -318,24 +335,18 @@ export default function GestionUsuarios({ contexto }) {
 
                       <div className="saved-board-list board-builder-launch-list">
                         {paginatedCreatorUsers.map((user) => (
-                          <article key={user.id} className="surface-card">
-                            <div className="card-header-row">
-                              <div>
-                                <strong>{user.name}</strong>
-                                <p>{getUserArea(user) || "Sin área"} · {getUserJobTitle(user) || "Sin cargo"}</p>
-                              </div>
-                              <span className={user.isActive ? "chip success" : "chip"}>{user.isActive ? "Activo" : "Inactivo"}</span>
-                            </div>
-                            <div className="saved-board-list board-builder-launch-list">
-                              <span className={`user-role-badge ${getRoleBadgeClass(user.role)}`}>{user.role}</span>
-                              <span className="chip">Referencia · {userMap.get(user.managerId)?.name || "Sin asignar"}</span>
-                              <span className="chip">Tableros · {boardAssignmentsByUser.get(user.id) || 0}</span>
-                            </div>
-                            <div className="row-actions compact" style={{ marginTop: "0.75rem" }}>
-                              <button type="button" className="user-row-button" onClick={() => setCreatorUserViewer(user)}>Ver</button>
-                              <button type="button" className="user-row-button" onClick={() => openEditUser(user)} disabled={!actionPermissions.editUsers}><Pencil size={15} /> Editar</button>
-                            </div>
-                          </article>
+                          <button
+                            key={user.id}
+                            type="button"
+                            className="surface-card"
+                            style={{ flex: "1 1 180px", minWidth: "160px", maxWidth: "220px", cursor: "pointer", textAlign: "left", padding: "0.75rem", display: "flex", flexDirection: "column", gap: "0.35rem", border: "1px solid transparent" }}
+                            onClick={() => setViewingPlayer(user)}
+                          >
+                            <span className="avatar-circle" style={{ alignSelf: "flex-start" }}>{user.name.charAt(0).toUpperCase()}</span>
+                            <strong style={{ fontSize: "0.85rem", lineHeight: 1.2 }}>{user.name}</strong>
+                            <span className={`user-role-badge ${getRoleBadgeClass(user.role)}`} style={{ alignSelf: "flex-start" }}>{user.role}</span>
+                            <span className="subtle-line" style={{ fontSize: "0.75rem" }}>{getUserArea(user) || "Sin área"}</span>
+                          </button>
                         ))}
 
                         {!paginatedCreatorUsers.length ? <p className="subtle-line">No hay players para este filtro.</p> : null}
@@ -397,6 +408,38 @@ export default function GestionUsuarios({ contexto }) {
       </section>
 
       <Modal
+        open={Boolean(viewingPlayer)}
+        title="Detalle del player"
+        confirmLabel="Cerrar"
+        hideCancel
+        onClose={() => setViewingPlayer(null)}
+        onConfirm={() => setViewingPlayer(null)}
+      >
+        {viewingPlayer ? (
+          <div className="modal-form-grid">
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.25rem" }}>
+              <span className="avatar-circle" style={{ fontSize: "1.2rem", width: 44, height: 44 }}>{viewingPlayer.name.charAt(0).toUpperCase()}</span>
+              <div>
+                <strong style={{ fontSize: "1rem" }}>{viewingPlayer.name}</strong>
+                <p className="subtle-line">{viewingPlayer.email}</p>
+              </div>
+            </div>
+            <p className="subtle-line">Área · {getUserArea(viewingPlayer) || "Sin área"}</p>
+            <p className="subtle-line">Cargo · {getUserJobTitle(viewingPlayer) || "Sin cargo"}</p>
+            <p className="subtle-line">Rol interno · <span className={`user-role-badge ${getRoleBadgeClass(viewingPlayer.role)}`}>{viewingPlayer.role}</span></p>
+            <p className="subtle-line">Estado · <span className={viewingPlayer.isActive ? "chip success" : "chip"} style={{ display: "inline" }}>{viewingPlayer.isActive ? "Activo" : "Inactivo"}</span></p>
+            <p className="subtle-line">Referencia · {userMap.get(viewingPlayer.managerId)?.name || "Sin asignar"}</p>
+            <p className="subtle-line">Creado por · {userMap.get(viewingPlayer.createdById)?.name || "Sin registro"}</p>
+            <p className="subtle-line">Tableros asignados · {boardAssignmentsByUser.get(viewingPlayer.id) || 0}</p>
+            <p className="subtle-line">Perfiles creados · {usersCreatedByMap.get(viewingPlayer.id) || 0}</p>
+            <div className="row-actions compact" style={{ marginTop: "0.5rem" }}>
+              <button type="button" className="user-row-button" onClick={() => { openEditUser(viewingPlayer); setViewingPlayer(null); }} disabled={!actionPermissions.editUsers}><Pencil size={15} /> Editar perfil</button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+
+      <Modal
         open={roleModalOpen}
         title={roleModalEditId ? "Editar rol personalizado" : "Nuevo rol personalizado"}
         confirmLabel={roleSaving ? "Guardando…" : roleModalEditId ? "Guardar cambios" : "Crear rol"}
@@ -420,26 +463,6 @@ export default function GestionUsuarios({ contexto }) {
         </div>
       </Modal>
 
-      <Modal
-        open={Boolean(creatorUserViewer)}
-        title="Detalle del player"
-        confirmLabel="Cerrar"
-        hideCancel
-        onClose={() => setCreatorUserViewer(null)}
-        onConfirm={() => setCreatorUserViewer(null)}
-      >
-        {creatorUserViewer ? (
-          <div className="modal-form-grid">
-            <p><strong>{creatorUserViewer.name}</strong></p>
-            <p className="subtle-line">Player de acceso · {creatorUserViewer.email}</p>
-            <p className="subtle-line">Área · {getUserArea(creatorUserViewer) || "Sin área"}</p>
-            <p className="subtle-line">Cargo · {getUserJobTitle(creatorUserViewer) || "Sin cargo"}</p>
-            <p className="subtle-line">Rol interno · {creatorUserViewer.role}</p>
-            <p className="subtle-line">Referencia · {userMap.get(creatorUserViewer.managerId)?.name || "Sin asignar"}</p>
-            <p className="subtle-line">Tableros · {boardAssignmentsByUser.get(creatorUserViewer.id) || 0}</p>
-          </div>
-        ) : null}
-      </Modal>
     </section>
   );
 }

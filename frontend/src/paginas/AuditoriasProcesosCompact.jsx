@@ -115,14 +115,21 @@ const FALLBACK_PROCESS_TEMPLATES = [
   },
 ];
 
+const QUESTION_VALID_TYPES = ["yesno", "text", "scale", "number", "date", "select", "multi"];
+
 function buildQuestionDraft(question = {}) {
+  const type = QUESTION_VALID_TYPES.includes(question.type) ? question.type : "yesno";
   return {
     id: question.id || crypto.randomUUID(),
-    type: question.type === "text" ? "text" : "yesno",
+    type,
     text: String(question.text || "").trim(),
     required: question.required !== false,
     placeholder: String(question.placeholder || "").trim(),
-    answer: question.type === "text" ? String(question.answer || "") : question.answer ?? null,
+    answer: type === "text" ? String(question.answer || "") : question.answer ?? null,
+    allowNote: Boolean(question.allowNote),
+    options: Array.isArray(question.options) ? [...question.options] : [],
+    minValue: typeof question.minValue === "number" ? question.minValue : 1,
+    maxValue: typeof question.maxValue === "number" ? question.maxValue : (type === "scale" ? 5 : 10),
   };
 }
 
@@ -183,14 +190,21 @@ function formatDuration(seconds) {
 
 function normalizeQuestionsForSave(questions = []) {
   return questions
-    .map((question) => ({
-      id: question.id || crypto.randomUUID(),
-      type: question.type === "text" ? "text" : "yesno",
-      text: String(question.text || "").trim(),
-      required: question.required !== false,
-      placeholder: String(question.placeholder || "").trim(),
-      answer: question.type === "text" ? String(question.answer || "") : question.answer ?? null,
-    }))
+    .map((question) => {
+      const type = QUESTION_VALID_TYPES.includes(question.type) ? question.type : "yesno";
+      return {
+        id: question.id || crypto.randomUUID(),
+        type,
+        text: String(question.text || "").trim(),
+        required: question.required !== false,
+        placeholder: String(question.placeholder || "").trim(),
+        answer: type === "text" ? String(question.answer || "") : question.answer ?? null,
+        allowNote: Boolean(question.allowNote),
+        options: Array.isArray(question.options) ? [...question.options] : [],
+        minValue: typeof question.minValue === "number" ? question.minValue : 1,
+        maxValue: typeof question.maxValue === "number" ? question.maxValue : (type === "scale" ? 5 : 10),
+      };
+    })
     .filter((question) => question.text);
 }
 
@@ -826,20 +840,25 @@ function TemplateQuestionEditor({
                   value={question.type}
                   onChange={(event) => setDraft((current) => ({
                     ...current,
-                    questions: current.questions.map((item) => (
-                      item.id === question.id
-                        ? {
-                            ...item,
-                            type: event.target.value === "text" ? "text" : "yesno",
-                            answer: event.target.value === "text" ? String(item.answer || "") : item.answer ?? null,
-                          }
-                        : item
-                    )),
+                    questions: current.questions.map((item) => {
+                      if (item.id !== question.id) return item;
+                      const newType = QUESTION_VALID_TYPES.includes(event.target.value) ? event.target.value : "yesno";
+                      return {
+                        ...item,
+                        type: newType,
+                        answer: newType === "text" ? String(item.answer || "") : null,
+                      };
+                    }),
                   }))}
                   disabled={disabled}
                 >
                   <option value="yesno">Sí / No</option>
-                  <option value="text">Texto</option>
+                  <option value="text">Texto libre</option>
+                  <option value="scale">Escala numérica</option>
+                  <option value="number">Número</option>
+                  <option value="date">Fecha</option>
+                  <option value="select">Selección (lista)</option>
+                  <option value="multi">Opción múltiple</option>
                 </select>
               </label>
               <label className="app-modal-field audit-field-span-2">
@@ -854,7 +873,7 @@ function TemplateQuestionEditor({
                   disabled={disabled}
                 />
               </label>
-              {question.type === "text" ? (
+              {(question.type === "text" || question.type === "number" || question.type === "date") ? (
                 <label className="app-modal-field audit-field-span-2">
                   <span>Placeholder</span>
                   <input
@@ -867,6 +886,105 @@ function TemplateQuestionEditor({
                     disabled={disabled}
                   />
                 </label>
+              ) : null}
+              {question.type === "yesno" ? (
+                <label className="app-modal-field audit-field-span-2" style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(question.allowNote)}
+                    onChange={(event) => setDraft((current) => ({
+                      ...current,
+                      questions: current.questions.map((item) => (item.id === question.id ? { ...item, allowNote: event.target.checked } : item)),
+                    }))}
+                    disabled={disabled}
+                    style={{ width: "auto" }}
+                  />
+                  <span>Permitir nota opcional</span>
+                </label>
+              ) : null}
+              {question.type === "scale" ? (
+                <>
+                  <label className="app-modal-field">
+                    <span>Mínimo</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={99}
+                      value={question.minValue ?? 1}
+                      onChange={(event) => setDraft((current) => ({
+                        ...current,
+                        questions: current.questions.map((item) => (item.id === question.id ? { ...item, minValue: Number(event.target.value) } : item)),
+                      }))}
+                      disabled={disabled}
+                    />
+                  </label>
+                  <label className="app-modal-field">
+                    <span>Máximo</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={question.maxValue ?? 5}
+                      onChange={(event) => setDraft((current) => ({
+                        ...current,
+                        questions: current.questions.map((item) => (item.id === question.id ? { ...item, maxValue: Number(event.target.value) } : item)),
+                      }))}
+                      disabled={disabled}
+                    />
+                  </label>
+                </>
+              ) : null}
+              {(question.type === "select" || question.type === "multi") ? (
+                <div className="app-modal-field audit-field-span-2">
+                  <span style={{ display: "block", marginBottom: "0.35rem", fontWeight: 600, fontSize: "0.8rem" }}>Opciones</span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+                    {(question.options || []).map((opt, optIndex) => (
+                      <div key={optIndex} style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                        <input
+                          value={opt}
+                          onChange={(event) => setDraft((current) => ({
+                            ...current,
+                            questions: current.questions.map((item) => {
+                              if (item.id !== question.id) return item;
+                              const newOpts = [...(item.options || [])];
+                              newOpts[optIndex] = event.target.value;
+                              return { ...item, options: newOpts };
+                            }),
+                          }))}
+                          placeholder={`Opción ${optIndex + 1}`}
+                          disabled={disabled}
+                          style={{ flex: 1 }}
+                        />
+                        <button
+                          type="button"
+                          className="icon-button danger"
+                          onClick={() => setDraft((current) => ({
+                            ...current,
+                            questions: current.questions.map((item) => {
+                              if (item.id !== question.id) return item;
+                              const newOpts = (item.options || []).filter((_, i) => i !== optIndex);
+                              return { ...item, options: newOpts };
+                            }),
+                          }))}
+                          disabled={disabled}
+                        ><Trash2 size={12} /></button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      className="icon-button"
+                      style={{ alignSelf: "flex-start", marginTop: "0.25rem" }}
+                      onClick={() => setDraft((current) => ({
+                        ...current,
+                        questions: current.questions.map((item) => {
+                          if (item.id !== question.id) return item;
+                          return { ...item, options: [...(item.options || []), ""] };
+                        }),
+                      }))}
+                      disabled={disabled}
+                    ><Plus size={12} /> Agregar opción</button>
+                  </div>
+                </div>
               ) : null}
             </div>
           </article>
