@@ -1733,6 +1733,7 @@ function App() { // NOSONAR
         creatorArea: creatorId === "unassigned" ? "Sin área" : getUserArea(userMap.get(creatorId)) || "Sin área",
         users: users.sort((left, right) => left.name.localeCompare(right.name)),
       }))
+      .filter((group) => group.creatorId !== BOOTSTRAP_MASTER_ID)
       .sort((left, right) => left.creatorName.localeCompare(right.creatorName));
   }, [filteredUsers, userMap]);
 
