@@ -4877,6 +4877,25 @@ tbody tr:hover {
   padding-right: 0.12rem;
 }
 
+.board-template-library.collapsed {
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
+}
+
+.board-template-library.collapsed .board-builder-section-head {
+  margin-top: 0;
+}
+
+.board-template-library.collapsed .compact-template-actions {
+  margin-top: 0;
+  max-width: 15rem;
+}
+
+.board-template-library.collapsed .compact-template-actions .icon-button {
+  justify-content: flex-start;
+}
+
 .board-template-rail {
   display: grid;
   gap: 0.55rem;

@@ -1017,11 +1017,11 @@ export function BoardBuilderModal({
         {builderTab !== "preview" ? (
         <section className="board-builder-workbench" aria-hidden="true">
           {builderTab === "base" ? (
-          <section id="bb-step-base" className="board-template-library">
+          <section id="bb-step-base" className={baseTemplatesCollapsed ? "board-template-library collapsed" : "board-template-library"}>
             <div className="builder-section-head board-builder-section-head">
               <div>
                 <h4>Plantillas rápidas</h4>
-                <p>Selecciona una base en formato compacto y arranca rápido sin saturar la vista.</p>
+                {!baseTemplatesCollapsed ? <p>Selecciona una base en formato compacto y arranca rápido sin saturar la vista.</p> : null}
               </div>
               <div className="saved-board-list compact-template-actions">
                 <button
@@ -1029,10 +1029,10 @@ export function BoardBuilderModal({
                   className="icon-button"
                   onClick={() => setBaseTemplatesCollapsed((current) => !current)}
                 >
-                  {baseTemplatesCollapsed ? "Mostrar plantillas" : "Ocultar plantillas"}
+                  {baseTemplatesCollapsed ? <><ArrowDown size={15} /> Mostrar plantillas</> : <><ArrowUp size={15} /> Ocultar plantillas</>}
                 </button>
-                {selectedPreviewTemplateId ? <button type="button" className="icon-button" onClick={onClearTemplatePreview}>Volver al borrador</button> : null}
-                {onSaveTemplate ? <button type="button" className="primary-button" onClick={onSaveTemplate}>Guardar borrador como plantilla</button> : null}
+                {!baseTemplatesCollapsed && selectedPreviewTemplateId ? <button type="button" className="icon-button" onClick={onClearTemplatePreview}>Volver al borrador</button> : null}
+                {!baseTemplatesCollapsed && onSaveTemplate ? <button type="button" className="primary-button" onClick={onSaveTemplate}>Guardar borrador como plantilla</button> : null}
               </div>
             </div>
 
@@ -1094,13 +1094,7 @@ export function BoardBuilderModal({
               </div>
             )}
             </>
-            ) : (
-              <div className="surface-card" style={{ padding: "0.75rem", borderRadius: "0.9rem" }}>
-                <p className="subtle-line" style={{ margin: 0 }}>
-                  Plantillas ocultas para mantener limpio el espacio. Presiona "Mostrar plantillas" para verlas.
-                </p>
-              </div>
-            )}
+            ) : null}
           </section>
           ) : null}
 
