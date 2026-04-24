@@ -617,6 +617,8 @@ export function BoardBuilderModal({
   filteredBoardTemplates = [],
   onPreviewTemplate,
   onApplyTemplate,
+  onDeleteTemplate,
+  canDeleteTemplate,
   selectedPreviewTemplate,
   onClearTemplatePreview,
   previewBoard,
@@ -1074,6 +1076,9 @@ export function BoardBuilderModal({
                       <div className="compact-template-actions">
                         <button type="button" className="icon-button" onClick={() => onPreviewTemplate?.(template.id)}>{isActiveTemplate ? "Vista activa" : "Previsualizar"}</button>
                         <button type="button" className="primary-button" onClick={() => onApplyTemplate?.(template.id)}>Usar plantilla</button>
+                        {onDeleteTemplate && (!canDeleteTemplate || canDeleteTemplate(template)) ? (
+                          <button type="button" className="icon-button danger" onClick={() => onDeleteTemplate(template)}>Eliminar plantilla</button>
+                        ) : null}
                       </div>
                     </article>
                   );

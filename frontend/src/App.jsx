@@ -419,6 +419,7 @@ function App() { // NOSONAR
   const [templateSearch, setTemplateSearch] = useState("");
   const [templateCategoryFilter, setTemplateCategoryFilter] = useState("Todas");
   const [templateEditorModal, setTemplateEditorModal] = useState({ open: false, id: null, name: "", description: "", category: "", visibilityType: "department", sharedDepartments: [], sharedUserIds: [] });
+  const [templateDeleteModal, setTemplateDeleteModal] = useState({ open: false, id: null, name: "" });
   const [templatePreviewId, setTemplatePreviewId] = useState(null);
   const [componentStudioOpen, setComponentStudioOpen] = useState(false);
   const [editingDraftColumnId, setEditingDraftColumnId] = useState(null);
@@ -2519,6 +2520,11 @@ function App() { // NOSONAR
     return BOARD_TEMPLATES.concat(sharedTemplates);
   }, [currentUser, state.boardTemplates]);
 
+  const customTemplateIds = useMemo(
+    () => new Set((state.boardTemplates || []).map((template) => template.id)),
+    [state.boardTemplates],
+  );
+
   const allowedNavItems = useMemo(
     () => currentUser ? NAV_ITEMS.filter((item) => canAccessPage(currentUser, item.id, normalizedPermissions)) : [],
     [currentUser, normalizedPermissions],
@@ -3749,6 +3755,29 @@ function App() { // NOSONAR
       setControlBoardFeedback("Plantilla actualizada correctamente.");
     } catch (error) {
       setControlBoardFeedback(error?.message || "No se pudo actualizar la plantilla.");
+    }
+  }
+
+  function openDeleteBoardTemplateModal(template) {
+    if (!template || !actionPermissions.deleteTemplate || !customTemplateIds.has(template.id)) return;
+    setTemplateDeleteModal({ open: true, id: template.id, name: template.name || "Plantilla" });
+  }
+
+  async function confirmDeleteBoardTemplate() {
+    if (!templateDeleteModal.id || !actionPermissions.deleteTemplate) return;
+
+    try {
+      const result = await requestJson(`/warehouse/templates/${templateDeleteModal.id}`, {
+        method: "DELETE",
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      if (templatePreviewId === templateDeleteModal.id) {
+        setTemplatePreviewId(null);
+      }
+      setControlBoardFeedback(`Plantilla ${templateDeleteModal.name} eliminada correctamente.`);
+      setTemplateDeleteModal({ open: false, id: null, name: "" });
+    } catch (error) {
+      setControlBoardFeedback(error?.message || "No se pudo eliminar la plantilla.");
     }
   }
 
@@ -6189,6 +6218,21 @@ function App() { // NOSONAR
         </div>
       </Modal>
 
+      <Modal
+        open={templateDeleteModal.open}
+        title="Eliminar plantilla"
+        confirmLabel="Eliminar plantilla"
+        cancelLabel="Cancelar"
+        onClose={() => setTemplateDeleteModal({ open: false, id: null, name: "" })}
+        onConfirm={confirmDeleteBoardTemplate}
+      >
+        <div className="modal-form-grid">
+          <p className="subtle-line">Esta acción eliminará la plantilla guardada para todos los usuarios con acceso.</p>
+          <p><strong>{templateDeleteModal.name || "Plantilla"}</strong></p>
+          <p className="validation-text">No se puede deshacer.</p>
+        </div>
+      </Modal>
+
       <BoardBuilderModal
         open={boardBuilderModal.open}
         mode={boardBuilderModal.mode}
@@ -6209,6 +6253,8 @@ function App() { // NOSONAR
         filteredBoardTemplates={filteredBoardTemplates}
         onPreviewTemplate={previewBoardTemplate}
         onApplyTemplate={applyBoardTemplate}
+        onDeleteTemplate={actionPermissions.deleteTemplate ? openDeleteBoardTemplateModal : null}
+        canDeleteTemplate={(template) => customTemplateIds.has(template.id)}
         selectedPreviewTemplate={selectedPreviewTemplate}
         onClearTemplatePreview={() => setTemplatePreviewId(null)}
         previewBoard={boardBuilderPreview}
