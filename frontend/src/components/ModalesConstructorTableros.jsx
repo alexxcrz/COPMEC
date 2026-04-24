@@ -710,6 +710,16 @@ export function BoardBuilderModal({
     date: 140,
   };
   const auxMinWidths = Object.fromEntries(Object.values(BOARD_AUX_COLUMN_DEFINITIONS).map((item) => [item.id, item.minWidth]));
+  const builderTabs = ["base", "identity", "columns", "preview"];
+  const builderTabLabels = {
+    base: "Base",
+    identity: "Identidad",
+    columns: "Columnas",
+    preview: "Vista previa",
+  };
+  const currentBuilderTabIndex = Math.max(0, builderTabs.indexOf(builderTab));
+  const hasBuilderPrev = currentBuilderTabIndex > 0;
+  const hasBuilderNext = currentBuilderTabIndex < builderTabs.length - 1;
 
   function getTemplateOperationalContext(template) {
     const templateSettings = template?.settings && typeof template.settings === "object" ? template.settings : {};
@@ -956,6 +966,16 @@ export function BoardBuilderModal({
     window.addEventListener("mouseup", handleMouseUp);
   }
 
+  function goToPrevBuilderTab() {
+    if (!hasBuilderPrev) return;
+    setBuilderTab(builderTabs[currentBuilderTabIndex - 1]);
+  }
+
+  function goToNextBuilderTab() {
+    if (!hasBuilderNext) return;
+    setBuilderTab(builderTabs[currentBuilderTabIndex + 1]);
+  }
+
   return (
     <Modal
       open={open}
@@ -982,6 +1002,12 @@ export function BoardBuilderModal({
             <button type="button" className="icon-button" onClick={() => setBuilderTab("preview")}>Ver preview</button>
             <button type="button" className="primary-button" onClick={() => { setBuilderTab("columns"); onOpenComponentStudio(); }}><Plus size={15} /> Agregar columna</button>
           </div>
+        </section>
+
+        <section className="board-builder-wizard-nav" aria-label="Navegación del creador de tableros">
+          <button type="button" className="icon-button" onClick={goToPrevBuilderTab} disabled={!hasBuilderPrev}>Anterior</button>
+          <span className="board-builder-wizard-step">Paso {currentBuilderTabIndex + 1} de {builderTabs.length} · {builderTabLabels[builderTab]}</span>
+          <button type="button" className="primary-button" onClick={goToNextBuilderTab} disabled={!hasBuilderNext}>Siguiente</button>
         </section>
         {builderTab !== "preview" ? (
         <section className="board-builder-workbench" aria-hidden="true">
