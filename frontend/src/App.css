@@ -4715,20 +4715,61 @@ tbody tr:hover {
 
 .board-builder-modal-shell {
   display: grid;
-  gap: 0.35rem;
-  grid-template-columns: minmax(760px, 1fr);
+  gap: 0.7rem;
+  grid-template-columns: minmax(390px, 0.9fr) minmax(0, 1.45fr);
   align-items: start;
+}
+
+.board-builder-intuitive-header {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.7rem;
+  padding: 0.85rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(162, 170, 181, 0.24);
+  background: linear-gradient(135deg, #f7fcfa 0%, #ecf7f3 100%);
+}
+
+.board-builder-intuitive-main {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.board-builder-intuitive-main h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #032121;
+}
+
+.board-builder-intuitive-main p {
+  margin: 0;
+  color: #516173;
+  font-size: 0.82rem;
+}
+
+.board-builder-intuitive-chips {
+  margin-top: 0.2rem;
+}
+
+.board-builder-intuitive-actions {
+  align-self: center;
+  justify-content: flex-end;
 }
 
 .board-builder-workbench,
 .board-builder-preview-panel,
 .board-preview-surface {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.55rem;
 }
 
 .board-builder-workbench {
-  display: none;
+  display: grid;
+  gap: 0.7rem;
+  max-height: 72vh;
+  overflow: auto;
+  padding-right: 0.1rem;
 }
 
 .board-builder-workbench .builder-overview-grid,
@@ -4738,8 +4779,8 @@ tbody tr:hover {
 
 .board-builder-workbench .builder-card,
 .board-builder-workbench .compact-builder-card {
-  padding: 0.24rem 0.32rem;
-  border-radius: 0.45rem;
+  padding: 0.62rem 0.72rem;
+  border-radius: 0.9rem;
 }
 
 .board-builder-workbench .switch-button {
@@ -4794,6 +4835,36 @@ tbody tr:hover {
   position: static;
   max-height: 72vh;
   overflow: auto;
+}
+
+.board-builder-identity-panel {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.board-builder-identity-grid {
+  display: grid;
+  gap: 0.62rem;
+}
+
+.board-preview-intuitive-summary {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.6rem 0.72rem;
+  border-radius: 0.88rem;
+  border: 1px dashed rgba(27, 106, 87, 0.28);
+  background: #f6fcfa;
+}
+
+.board-preview-intuitive-summary strong {
+  color: #032121;
+  font-size: 0.92rem;
+}
+
+.board-preview-intuitive-summary span {
+  color: #607083;
+  font-size: 0.78rem;
+  line-height: 1.35;
 }
 
 .board-preview-surface {
@@ -7284,6 +7355,14 @@ tbody tr:hover {
     grid-template-columns: 1fr;
   }
 
+  .board-builder-intuitive-header {
+    grid-template-columns: 1fr;
+  }
+
+  .board-builder-intuitive-actions {
+    justify-content: flex-start;
+  }
+
   .board-builder-preview-panel {
     position: static;
   }
@@ -8130,6 +8209,21 @@ tbody tr:hover {
   .board-builder-modal-shell {
     grid-template-columns: 1fr;
     gap: 0.75rem;
+  }
+
+  .board-builder-intuitive-header {
+    padding: 0.75rem 0.8rem;
+    gap: 0.55rem;
+  }
+
+  .board-builder-intuitive-actions {
+    width: 100%;
+  }
+
+  .board-builder-intuitive-actions .icon-button,
+  .board-builder-intuitive-actions .primary-button {
+    flex: 1 1 auto;
+    justify-content: center;
   }
 
   .board-builder-preview-panel {

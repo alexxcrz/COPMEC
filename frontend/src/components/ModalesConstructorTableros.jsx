@@ -150,7 +150,6 @@ export function BoardComponentStudioModal({
   }, [open, mode]);
 
   const isLastStep = currentStep === studioSteps.length - 1;
-  const availableBoardFieldTypes = BOARD_FIELD_TYPES.filter((type) => type.value !== INVENTORY_LOOKUP_LOGISTICS_FIELD);
   const inventorySourceFields = (draft.columns || []).filter((column) => ["inventoryLookup", INVENTORY_LOOKUP_LOGISTICS_FIELD].includes(column.type));
   const resolvedInventorySourceFieldId = inventorySourceFields.some((column) => column.id === draft.sourceFieldId)
     ? draft.sourceFieldId
@@ -951,6 +950,12 @@ export function BoardBuilderModal({
     window.addEventListener("mouseup", handleMouseUp);
   }
 
+  function handleJumpToSection(sectionId) {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    section.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   return (
     <Modal
       open={open}
@@ -962,8 +967,24 @@ export function BoardBuilderModal({
       onConfirm={onConfirm}
     >
       <div className="board-builder-modal-shell">
+        <section className="board-builder-intuitive-header">
+          <div className="board-builder-intuitive-main">
+            <h3>{mode === "edit" ? "Editor de tablero" : "Creador de tableros"}</h3>
+            <p>Diseña el tablero en 3 pasos: base, identidad y columnas. Todo con vista previa en vivo.</p>
+            <div className="saved-board-list board-builder-intuitive-chips">
+              <span className="chip primary">Paso 1 · Base</span>
+              <span className="chip">Paso 2 · Identidad</span>
+              <span className="chip">Paso 3 · Columnas</span>
+            </div>
+          </div>
+          <div className="saved-board-list board-builder-intuitive-actions">
+            <button type="button" className="icon-button" onClick={() => handleJumpToSection("bb-step-base")}>Ir a base</button>
+            <button type="button" className="icon-button" onClick={() => handleJumpToSection("bb-step-identity")}>Ir a identidad</button>
+            <button type="button" className="primary-button" onClick={onOpenComponentStudio}><Plus size={15} /> Agregar columna</button>
+          </div>
+        </section>
         <section className="board-builder-workbench" aria-hidden="true">
-          <section className="board-template-library">
+          <section id="bb-step-base" className="board-template-library">
             <div className="builder-section-head board-builder-section-head">
               <div>
                 <h4>Plantillas rápidas</h4>
@@ -1040,7 +1061,93 @@ export function BoardBuilderModal({
             )}
           </section>
 
-          <div className="builder-settings-grid board-builder-settings-grid board-builder-short-select-grid">
+          <section id="bb-step-identity" className="builder-card compact-builder-card board-builder-identity-panel">
+            <div className="builder-section-head board-builder-section-head">
+              <div>
+                <h4>Identidad y acceso del tablero</h4>
+                <p>Configura nombre, responsable y visibilidad desde un solo bloque.</p>
+              </div>
+            </div>
+
+            <div className="board-builder-identity-grid">
+              <label className="app-modal-field board-preview-edit-field">
+                <span>Nombre del tablero<span className="required-mark" aria-hidden="true"> *</span></span>
+                <input value={draft.name} onChange={(event) => onChange((current) => ({ ...current, name: event.target.value }))} placeholder="Ej: Control semanal C3" />
+              </label>
+              <label className="app-modal-field board-preview-edit-field board-preview-description-field">
+                <span>Descripción</span>
+                <input value={draft.description} onChange={(event) => onChange((current) => ({ ...current, description: event.target.value }))} placeholder="Describe qué controla este tablero" />
+              </label>
+              <label className="app-modal-field board-preview-edit-field board-preview-owner-field">
+                <span>Player principal</span>
+                <select value={draft.ownerId || currentUser?.id || ""} onChange={(event) => handleOwnerChange(event.target.value)}>
+                  {activeUsers.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
+                </select>
+              </label>
+              <section className="board-preview-assignment-panel">
+                <label className="app-modal-field board-preview-edit-field">
+                  <span>Compartir tablero con</span>
+                  <select value={visibilityType} onChange={(event) => handleVisibilityTypeChange(event.target.value)}>
+                    <option value="users">Player o players específicos</option>
+                    <option value="department">Área o grupo</option>
+                    <option value="all">Todos</option>
+                  </select>
+                </label>
+
+                {visibilityType === "users" ? (
+                  <div className="board-access-selector" ref={accessMenuRef}>
+                    <button type="button" className="board-access-trigger" onClick={() => setAccessMenuOpen((current) => !current)} aria-expanded={accessMenuOpen}>
+                      <span>{selectedPlayersLabel}</span>
+                      <ArrowDown size={16} />
+                    </button>
+                    {accessMenuOpen ? (
+                      <div className="board-access-dropdown">
+                        <label className="app-modal-field board-access-search-field">
+                          <span>Buscar player</span>
+                          <input value={accessSearch} onChange={(event) => setAccessSearch(event.target.value)} placeholder="Escribe un nombre" />
+                        </label>
+                        <div className="board-access-list">
+                          {filteredOperationalUsers.length ? filteredOperationalUsers.map((user) => {
+                            const checked = pendingAccessUserIds.includes(user.id);
+                            return (
+                              <label key={user.id} className="board-access-option">
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => handleTogglePendingAccess(user.id)}
+                                />
+                                <span>{user.name}</span>
+                              </label>
+                            );
+                          }) : <p className="board-access-empty">No hay players disponibles para seleccionar.</p>}
+                        </div>
+                        <div className="board-access-actions">
+                          <button type="button" className="icon-button" onClick={() => setAccessMenuOpen(false)}>Cancelar</button>
+                          <button type="button" className="primary-button" onClick={handleSaveAccessSelection}>Guardar</button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {visibilityType === "department" ? (
+                  <label className="app-modal-field board-preview-edit-field board-preview-department-field">
+                    <span>Áreas con acceso</span>
+                    <select multiple value={draft.sharedDepartments || []} onChange={(event) => onChange((current) => ({ ...current, sharedDepartments: Array.from(event.target.selectedOptions).map((option) => option.value) }))}>
+                      {normalizedDepartmentOptions.map((department) => <option key={department} value={department}>{department}</option>)}
+                    </select>
+                  </label>
+                ) : null}
+
+                {visibilityType === "all" ? <p className="board-assignment-hint">Todos los players con permisos de tableros podrán ver este tablero.</p> : null}
+                {visibilityType === "users" ? <p className="board-assignment-hint">Usa un solo player si quieres asignarlo individualmente o varios para compartir un mismo tablero sin duplicarlo.</p> : null}
+                {visibilityType === "department" ? <p className="board-assignment-hint">Solo los players cuyas áreas coincidan con las seleccionadas verán este tablero.</p> : null}
+                {visibilityType === "department" ? <span className="chip soft board-assignment-chip">{selectedDepartmentsLabel}</span> : null}
+              </section>
+            </div>
+          </section>
+
+          <div id="bb-step-columns" className="builder-settings-grid board-builder-settings-grid board-builder-short-select-grid">
             <div className="builder-card compact-builder-card board-builder-switch-row">
               <div>
                 <strong>Workflow</strong>
@@ -1168,81 +1275,10 @@ export function BoardBuilderModal({
                   <span className="chip">Secciones: {previewSections.length}</span>
                   <span className="chip">Filas demo: {previewRows.length}</span>
                 </div>
-                <div className="board-preview-inline-fields">
-                  <label className="app-modal-field board-preview-edit-field">
-                    <span>Nombre del tablero<span className="required-mark" aria-hidden="true"> *</span></span>
-                    <input value={draft.name} onChange={(event) => onChange((current) => ({ ...current, name: event.target.value }))} placeholder="Nuevo tablero" />
-                  </label>
-                  <label className="app-modal-field board-preview-edit-field board-preview-description-field">
-                    <span>Descripción</span>
-                    <input value={draft.description} onChange={(event) => onChange((current) => ({ ...current, description: event.target.value }))} placeholder="Describe qué controla este tablero" />
-                  </label>
-                  <label className="app-modal-field board-preview-edit-field board-preview-owner-field">
-                    <span>Player principal</span>
-                    <select value={draft.ownerId || currentUser?.id || ""} onChange={(event) => handleOwnerChange(event.target.value)}>
-                      {activeUsers.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
-                    </select>
-                  </label>
-                  <section className="board-preview-assignment-panel">
-                    <label className="app-modal-field board-preview-edit-field">
-                      <span>Compartir tablero con</span>
-                      <select value={visibilityType} onChange={(event) => handleVisibilityTypeChange(event.target.value)}>
-                        <option value="users">Player o players específicos</option>
-                        <option value="department">Área o grupo</option>
-                        <option value="all">Todos</option>
-                      </select>
-                    </label>
-
-                    {visibilityType === "users" ? (
-                      <div className="board-access-selector" ref={accessMenuRef}>
-                        <button type="button" className="board-access-trigger" onClick={() => setAccessMenuOpen((current) => !current)} aria-expanded={accessMenuOpen}>
-                          <span>{selectedPlayersLabel}</span>
-                          <ArrowDown size={16} />
-                        </button>
-                        {accessMenuOpen ? (
-                          <div className="board-access-dropdown">
-                            <label className="app-modal-field board-access-search-field">
-                              <span>Buscar player</span>
-                              <input value={accessSearch} onChange={(event) => setAccessSearch(event.target.value)} placeholder="Escribe un nombre" />
-                            </label>
-                            <div className="board-access-list">
-                              {filteredOperationalUsers.length ? filteredOperationalUsers.map((user) => {
-                                const checked = pendingAccessUserIds.includes(user.id);
-                                return (
-                                  <label key={user.id} className="board-access-option">
-                                    <input
-                                      type="checkbox"
-                                      checked={checked}
-                                      onChange={() => handleTogglePendingAccess(user.id)}
-                                    />
-                                    <span>{user.name}</span>
-                                  </label>
-                                );
-                              }) : <p className="board-access-empty">No hay players disponibles para seleccionar.</p>}
-                            </div>
-                            <div className="board-access-actions">
-                              <button type="button" className="icon-button" onClick={() => setAccessMenuOpen(false)}>Cancelar</button>
-                              <button type="button" className="primary-button" onClick={handleSaveAccessSelection}>Guardar</button>
-                            </div>
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : null}
-
-                    {visibilityType === "department" ? (
-                      <label className="app-modal-field board-preview-edit-field board-preview-department-field">
-                        <span>Áreas con acceso</span>
-                        <select multiple value={draft.sharedDepartments || []} onChange={(event) => onChange((current) => ({ ...current, sharedDepartments: Array.from(event.target.selectedOptions).map((option) => option.value) }))}>
-                          {normalizedDepartmentOptions.map((department) => <option key={department} value={department}>{department}</option>)}
-                        </select>
-                      </label>
-                    ) : null}
-
-                    {visibilityType === "all" ? <p className="board-assignment-hint">Todos los players con permisos de tableros podrán ver este tablero.</p> : null}
-                    {visibilityType === "users" ? <p className="board-assignment-hint">Usa un solo player si quieres asignarlo individualmente o varios para compartir un mismo tablero sin duplicarlo.</p> : null}
-                    {visibilityType === "department" ? <p className="board-assignment-hint">Solo los players cuyas áreas coincidan con las seleccionadas verán este tablero.</p> : null}
-                    {visibilityType === "department" ? <span className="chip soft board-assignment-chip">{selectedDepartmentsLabel}</span> : null}
-                  </section>
+                <div className="board-preview-intuitive-summary">
+                  <strong>{draft.name || "Nuevo tablero"}</strong>
+                  <span>{draft.description || "Sin descripción todavía."}</span>
+                  <span>Responsable · {ownerName}</span>
                 </div>
               </div>
               <div className="board-preview-head-side">
