@@ -6220,6 +6220,7 @@ function App() { // NOSONAR
 
       <Modal
         open={templateDeleteModal.open}
+        backdropClassName="template-delete-backdrop"
         title="Eliminar plantilla"
         confirmLabel="Eliminar plantilla"
         cancelLabel="Cancelar"

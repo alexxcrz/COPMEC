@@ -49,6 +49,11 @@
   z-index: 110;
 }
 
+/* Confirmación de eliminar plantilla sobre el modal de crear tablero */
+.sicfla-modal-backdrop.template-delete-backdrop {
+  z-index: 130;
+}
+
 .sicfla-modal.user-management-modal .sicfla-modal-body {
   padding-right: 0.3rem;
 }

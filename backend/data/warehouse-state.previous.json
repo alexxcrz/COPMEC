@@ -1,5 +1,5 @@
 {
-  "revision": 2206,
+  "revision": 2207,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro"
@@ -21,7 +21,10 @@
       "mustChangePassword": false,
       "temporaryPasswordIssuedAt": null,
       "passwordHash": "scrypt$83760299b6d0bf4d368f00503249a640$5b55f94a03de1a1b7cc77927bb62a9e2f6892445aa1e379e6f5ba196de29a28ac90dd6942ef514c7d283d960ce650c7dc7155923f26aa76129d8e2124a2c3d78",
-      "sessionVersion": 2
+      "sessionVersion": 2,
+      "telefono": "2224562420",
+      "telefono_visible": false,
+      "birthday": "1993-12-27"
     },
     {
       "id": "usr-a2hd8qtb",
@@ -9129,7 +9132,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-19T15:47:56.575Z",
+  "updatedAt": "2026-04-19T18:19:36.124Z",
   "permissions": {
     "pages": {
       "index": {
