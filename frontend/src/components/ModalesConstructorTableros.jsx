@@ -1019,7 +1019,7 @@ export function BoardBuilderModal({
             <div className="builder-section-head board-builder-section-head">
               <div>
                 <h4>Plantillas rápidas</h4>
-                <p>Carga una base semanal ya preparada para C1, C2, C3, nave o estación, y después ajusta solo lo necesario.</p>
+                <p>Selecciona una base en formato compacto y arranca rápido sin saturar la vista.</p>
               </div>
               <div className="saved-board-list compact-template-actions">
                 {selectedPreviewTemplateId ? <button type="button" className="icon-button" onClick={onClearTemplatePreview}>Volver al borrador</button> : null}
@@ -1048,37 +1048,26 @@ export function BoardBuilderModal({
             ) : null}
 
             {filteredBoardTemplates.length ? (
-              <div className="builder-template-grid builder-template-grid-compact">
+              <div className="board-template-rail">
                 {filteredBoardTemplates.map((template) => {
                   const { contextType, contextLabel, contextOptions, contextValue } = getTemplateOperationalContext(template);
                   const isActiveTemplate = selectedPreviewTemplateId === template.id;
                   return (
-                    <article key={template.id} className={["builder-template-card", "compact-template-card", isActiveTemplate ? "active" : ""].filter(Boolean).join(" ")}>
-                      <div>
+                    <article key={template.id} className={isActiveTemplate ? "board-template-rail-item active" : "board-template-rail-item"}>
+                      <div className="board-template-rail-main">
                         <strong>{template.name}</strong>
                         <p>{template.description || "Plantilla reutilizable para arrancar más rápido el tablero."}</p>
+                        <div className="saved-board-list board-template-rail-meta">
+                          <span className="chip">{template.category || "Operación"}</span>
+                          {contextType !== "none" ? <span className="chip primary">{contextLabel || "Contexto"} · {contextValue || contextOptions[0]}</span> : null}
+                          {contextType === "custom" && contextOptions.length ? <span className="chip">{contextOptions.length} opción(es)</span> : null}
+                        </div>
                       </div>
-
-                      <div className="saved-board-list compact-template-meta">
-                        <span className="chip">{template.category || "Operación"}</span>
-                        {contextType !== "none" ? <span className="chip primary">{contextLabel || "Contexto operativo"} · {contextValue || contextOptions[0]}</span> : null}
-                        {contextType === "cleaningSite" ? <span className="chip">C1 / C2 / C3</span> : null}
-                        {contextType === "custom" && contextOptions.length ? <span className="chip">{contextOptions.length} opción(es)</span> : null}
-                      </div>
-
-                      {contextType !== "none" ? (
-                        <p className="compact-template-note">
-                          {contextType === "cleaningSite"
-                            ? "El descuento automático de limpieza saldrá de la sede activa de esta plantilla."
-                            : `Opciones iniciales: ${contextOptions.join(", ")}`}
-                        </p>
-                      ) : null}
-
-                      <div className="compact-template-actions">
+                      <div className="board-template-rail-actions">
                         <button type="button" className="icon-button" onClick={() => onPreviewTemplate?.(template.id)}>{isActiveTemplate ? "Vista activa" : "Previsualizar"}</button>
-                        <button type="button" className="primary-button" onClick={() => onApplyTemplate?.(template.id)}>Usar plantilla</button>
+                        <button type="button" className="primary-button" onClick={() => onApplyTemplate?.(template.id)}>Usar</button>
                         {onDeleteTemplate && (!canDeleteTemplate || canDeleteTemplate(template)) ? (
-                          <button type="button" className="icon-button danger" onClick={() => onDeleteTemplate(template)}>Eliminar plantilla</button>
+                          <button type="button" className="icon-button danger" onClick={() => onDeleteTemplate(template)}>Eliminar</button>
                         ) : null}
                       </div>
                     </article>

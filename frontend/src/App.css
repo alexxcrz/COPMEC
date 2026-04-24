@@ -4877,6 +4877,69 @@ tbody tr:hover {
   padding-right: 0.12rem;
 }
 
+.board-template-rail {
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: 1fr;
+}
+
+.board-template-rail-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(162, 170, 181, 0.24);
+  background: #ffffff;
+}
+
+.board-template-rail-item.active {
+  border-color: rgba(27, 106, 87, 0.38);
+  box-shadow: 0 0 0 2px rgba(27, 106, 87, 0.08);
+  background: #f4fbf7;
+}
+
+.board-template-rail-main {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.board-template-rail-main strong {
+  color: #12352f;
+  font-size: 0.86rem;
+}
+
+.board-template-rail-main p {
+  margin: 0;
+  color: #74808f;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.board-template-rail-meta {
+  gap: 0.35rem;
+}
+
+.board-template-rail-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.board-template-rail-actions .icon-button,
+.board-template-rail-actions .primary-button {
+  min-height: 2rem;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.75rem;
+}
+
 .board-builder-identity-panel {
   display: grid;
   gap: 0.65rem;
@@ -7397,6 +7460,15 @@ tbody tr:hover {
 
   .board-builder-focus-layout {
     grid-template-columns: 1fr;
+  }
+
+  .board-template-rail-item {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .board-template-rail-actions {
+    justify-content: flex-start;
   }
 
   .board-builder-intuitive-header {
