@@ -654,6 +654,7 @@ export function BoardBuilderModal({
 
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [accessMenuOpen, setAccessMenuOpen] = useState(false);
+  const [builderTab, setBuilderTab] = useState("base");
   const [accessSearch, setAccessSearch] = useState("");
   const [pendingAccessUserIds, setPendingAccessUserIds] = useState([]);
   const [draggingColumnToken, setDraggingColumnToken] = useState("");
@@ -729,6 +730,11 @@ export function BoardBuilderModal({
       contextValue,
     };
   }
+
+  useEffect(() => {
+    if (!open) return;
+    setBuilderTab("base");
+  }, [open]);
 
   useEffect(() => {
     if (!actionMenuOpen) return undefined;
@@ -950,12 +956,6 @@ export function BoardBuilderModal({
     window.addEventListener("mouseup", handleMouseUp);
   }
 
-  function handleJumpToSection(sectionId) {
-    const section = document.getElementById(sectionId);
-    if (!section) return;
-    section.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
   return (
     <Modal
       open={open}
@@ -970,20 +970,22 @@ export function BoardBuilderModal({
         <section className="board-builder-intuitive-header">
           <div className="board-builder-intuitive-main">
             <h3>{mode === "edit" ? "Editor de tablero" : "Creador de tableros"}</h3>
-            <p>Diseña el tablero en 3 pasos: base, identidad y columnas. Todo con vista previa en vivo.</p>
+            <p>Diseña por pestañas para evitar saturación: una vista a la vez y más enfoque.</p>
             <div className="saved-board-list board-builder-intuitive-chips">
-              <span className="chip primary">Paso 1 · Base</span>
-              <span className="chip">Paso 2 · Identidad</span>
-              <span className="chip">Paso 3 · Columnas</span>
+              <button type="button" className={builderTab === "base" ? "tab active" : "tab"} onClick={() => setBuilderTab("base")}>Base</button>
+              <button type="button" className={builderTab === "identity" ? "tab active" : "tab"} onClick={() => setBuilderTab("identity")}>Identidad</button>
+              <button type="button" className={builderTab === "columns" ? "tab active" : "tab"} onClick={() => setBuilderTab("columns")}>Columnas</button>
+              <button type="button" className={builderTab === "preview" ? "tab active" : "tab"} onClick={() => setBuilderTab("preview")}>Vista previa</button>
             </div>
           </div>
           <div className="saved-board-list board-builder-intuitive-actions">
-            <button type="button" className="icon-button" onClick={() => handleJumpToSection("bb-step-base")}>Ir a base</button>
-            <button type="button" className="icon-button" onClick={() => handleJumpToSection("bb-step-identity")}>Ir a identidad</button>
-            <button type="button" className="primary-button" onClick={onOpenComponentStudio}><Plus size={15} /> Agregar columna</button>
+            <button type="button" className="icon-button" onClick={() => setBuilderTab("preview")}>Ver preview</button>
+            <button type="button" className="primary-button" onClick={() => { setBuilderTab("columns"); onOpenComponentStudio(); }}><Plus size={15} /> Agregar columna</button>
           </div>
         </section>
+        {builderTab !== "preview" ? (
         <section className="board-builder-workbench" aria-hidden="true">
+          {builderTab === "base" ? (
           <section id="bb-step-base" className="board-template-library">
             <div className="builder-section-head board-builder-section-head">
               <div>
@@ -1060,7 +1062,9 @@ export function BoardBuilderModal({
               </div>
             )}
           </section>
+          ) : null}
 
+          {builderTab === "identity" ? (
           <section id="bb-step-identity" className="builder-card compact-builder-card board-builder-identity-panel">
             <div className="builder-section-head board-builder-section-head">
               <div>
@@ -1146,7 +1150,10 @@ export function BoardBuilderModal({
               </section>
             </div>
           </section>
+          ) : null}
 
+          {builderTab === "columns" ? (
+          <>
           <div id="bb-step-columns" className="builder-settings-grid board-builder-settings-grid board-builder-short-select-grid">
             <div className="builder-card compact-builder-card board-builder-switch-row">
               <div>
@@ -1264,8 +1271,12 @@ export function BoardBuilderModal({
               </div>
             </>
           ) : null}
+          </>
+          ) : null}
         </section>
+        ) : null}
 
+        {builderTab === "preview" ? (
         <aside className="board-builder-preview-panel">
           <div className="board-preview-surface">
             <div className="board-preview-head">
@@ -1468,6 +1479,7 @@ export function BoardBuilderModal({
             </section>
           </div>
         </aside>
+        ) : null}
       </div>
     </Modal>
   );
