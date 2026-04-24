@@ -1011,6 +1011,7 @@ export function BoardBuilderModal({
           <span className="board-builder-wizard-step">Paso {currentBuilderTabIndex + 1} de {builderTabs.length} · {builderTabLabels[builderTab]}</span>
           <button type="button" className="primary-button" onClick={goToNextBuilderTab} disabled={!hasBuilderNext}>Siguiente</button>
         </section>
+        <div className={builderTab === "preview" ? "board-builder-focus-layout preview-only" : "board-builder-focus-layout"}>
         {builderTab !== "preview" ? (
         <section className="board-builder-workbench" aria-hidden="true">
           {builderTab === "base" ? (
@@ -1307,8 +1308,7 @@ export function BoardBuilderModal({
         </section>
         ) : null}
 
-        {builderTab === "preview" ? (
-        <aside className="board-builder-preview-panel">
+        <aside className={builderTab === "preview" ? "board-builder-preview-panel board-builder-preview-panel-focus" : "board-builder-preview-panel"}>
           <div className="board-preview-surface">
             <div className="board-preview-head">
               <div className="board-preview-head-main">
@@ -1510,7 +1510,7 @@ export function BoardBuilderModal({
             </section>
           </div>
         </aside>
-        ) : null}
+        </div>
       </div>
     </Modal>
   );

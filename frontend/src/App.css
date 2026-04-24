@@ -4716,8 +4716,19 @@ tbody tr:hover {
 .board-builder-modal-shell {
   display: grid;
   gap: 0.7rem;
-  grid-template-columns: minmax(390px, 0.9fr) minmax(0, 1.45fr);
+  grid-template-columns: 1fr;
   align-items: start;
+}
+
+.board-builder-focus-layout {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: minmax(300px, 0.58fr) minmax(0, 1.42fr);
+  align-items: start;
+}
+
+.board-builder-focus-layout.preview-only {
+  grid-template-columns: 1fr;
 }
 
 .board-builder-intuitive-header {
@@ -4854,6 +4865,16 @@ tbody tr:hover {
   position: static;
   max-height: 72vh;
   overflow: auto;
+}
+
+.board-builder-preview-panel-focus {
+  max-height: none;
+}
+
+.board-template-library {
+  max-height: 58vh;
+  overflow: auto;
+  padding-right: 0.12rem;
 }
 
 .board-builder-identity-panel {
@@ -7371,6 +7392,10 @@ tbody tr:hover {
 
   .builder-template-grid-compact,
   .board-builder-modal-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .board-builder-focus-layout {
     grid-template-columns: 1fr;
   }
 
