@@ -657,6 +657,7 @@ export function BoardBuilderModal({
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [accessMenuOpen, setAccessMenuOpen] = useState(false);
   const [builderTab, setBuilderTab] = useState("base");
+  const [baseTemplatesCollapsed, setBaseTemplatesCollapsed] = useState(true);
   const [accessSearch, setAccessSearch] = useState("");
   const [pendingAccessUserIds, setPendingAccessUserIds] = useState([]);
   const [draggingColumnToken, setDraggingColumnToken] = useState("");
@@ -746,6 +747,7 @@ export function BoardBuilderModal({
   useEffect(() => {
     if (!open) return;
     setBuilderTab("base");
+    setBaseTemplatesCollapsed(true);
   }, [open]);
 
   useEffect(() => {
@@ -1022,11 +1024,20 @@ export function BoardBuilderModal({
                 <p>Selecciona una base en formato compacto y arranca rápido sin saturar la vista.</p>
               </div>
               <div className="saved-board-list compact-template-actions">
+                <button
+                  type="button"
+                  className="icon-button"
+                  onClick={() => setBaseTemplatesCollapsed((current) => !current)}
+                >
+                  {baseTemplatesCollapsed ? "Mostrar plantillas" : "Ocultar plantillas"}
+                </button>
                 {selectedPreviewTemplateId ? <button type="button" className="icon-button" onClick={onClearTemplatePreview}>Volver al borrador</button> : null}
                 {onSaveTemplate ? <button type="button" className="primary-button" onClick={onSaveTemplate}>Guardar borrador como plantilla</button> : null}
               </div>
             </div>
 
+            {!baseTemplatesCollapsed ? (
+            <>
             <div className="builder-template-toolbar compact-template-toolbar compact-template-toolbar-grid">
               <label className="app-modal-field">
                 <span>Buscar plantilla</span>
@@ -1080,6 +1091,14 @@ export function BoardBuilderModal({
                   <strong>No hay plantillas para ese filtro</strong>
                   <p>Ajusta la búsqueda o guarda tu borrador actual como plantilla reutilizable.</p>
                 </div>
+              </div>
+            )}
+            </>
+            ) : (
+              <div className="surface-card" style={{ padding: "0.75rem", borderRadius: "0.9rem" }}>
+                <p className="subtle-line" style={{ margin: 0 }}>
+                  Plantillas ocultas para mantener limpio el espacio. Presiona "Mostrar plantillas" para verlas.
+                </p>
               </div>
             )}
           </section>
