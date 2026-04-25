@@ -852,10 +852,12 @@ export function BoardBuilderModal({
   }
 
   function handlePreviewColumnDrop(targetToken) {
-    if (!draggingColumnToken || !targetToken || draggingColumnToken === targetToken) return;
+    // Permitir pasar el token origen explícito (para compatibilidad con dataTransfer)
+    const fromToken = draggingColumnToken || (window.event && window.event.dataTransfer && window.event.dataTransfer.getData("text/plain"));
+    if (!fromToken || !targetToken || fromToken === targetToken) return;
     onChange((current) => {
       const currentOrder = getNormalizedBoardColumnOrder({ fields: current.columns || [], settings: current.settings || {} });
-      const nextOrder = reorderBoardColumnOrderTokens(draggingColumnToken, targetToken, currentOrder);
+      const nextOrder = reorderBoardColumnOrderTokens(fromToken, targetToken, currentOrder);
       return {
         ...current,
         columns: sortBoardFieldsByColumnOrder(current.columns || [], nextOrder),
@@ -1401,20 +1403,40 @@ export function BoardBuilderModal({
                         <th
                           key={column.token}
                           draggable={!resizingToken}
-                          onDragStart={() => {
+                          onDragStart={e => {
                             if (resizingToken) return;
                             setDraggingColumnToken(column.token);
+                            e.dataTransfer.effectAllowed = "move";
+                            e.dataTransfer.setData("text/plain", column.token);
                           }}
                           onDragEnd={() => setDraggingColumnToken("")}
-                          onDragOver={(event) => event.preventDefault()}
-                          onDrop={() => handlePreviewColumnDrop(column.token)}
+                          onDragOver={event => {
+                            event.preventDefault();
+                            event.dataTransfer.dropEffect = "move";
+                          }}
+                          onDrop={event => {
+                            event.preventDefault();
+                            const fromToken = draggingColumnToken || event.dataTransfer.getData("text/plain");
+                            handlePreviewColumnDrop(column.token, fromToken);
+                          }}
                           className={[
                             "board-preview-field-heading",
                             draggingColumnToken === column.token ? "dragging" : "",
                             resizingToken === `${column.kind}:${column.id}` ? "is-resizing" : "",
+                            draggingColumnToken && draggingColumnToken !== column.token ? "drop-target" : "",
                           ].filter(Boolean).join(" ")}
                           title="Arrastra para reordenar"
-                          style={column.kind === "field" ? getPreviewCellStyle(column.field) : getPreviewAuxCellStyle(column.id)}
+                          style={{
+                            ...(column.kind === "field" ? getPreviewCellStyle(column.field) : getPreviewAuxCellStyle(column.id)),
+                            cursor: resizingToken ? "col-resize" : draggingColumnToken ? "grabbing" : "grab",
+                            opacity: draggingColumnToken === column.token ? 0.5 : 1,
+                            border: draggingColumnToken && draggingColumnToken !== column.token ? "2px dashed #032121" : undefined,
+                            zIndex: draggingColumnToken === column.token ? 2 : 1,
+                            position: draggingColumnToken ? "relative" : undefined,
+                            boxShadow: draggingColumnToken === column.token ? "0 4px 24px 0 rgba(3,33,33,0.10)" : undefined,
+                            transition: "border 0.15s, opacity 0.15s, box-shadow 0.2s, transform 0.25s cubic-bezier(.4,1.6,.6,1)",
+                            transform: draggingColumnToken === column.token ? "scale(1.04) translateY(-2px)" : "none"
+                          }}
                         >
                           <span className="board-preview-field-label">{column.kind === "field" ? `${column.field.label}${column.field.required ? " *" : ""}` : column.label}</span>
                           <button
