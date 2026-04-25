@@ -2,6 +2,70 @@ const ACTIVE_BOX_STORAGE_PREFIX = "copmec_returns_recondition_active_box";
 // --- Tarima/caja state helpers ---
 // const ACTIVE_TARIMA_STORAGE_PREFIX = "copmec_returns_recondition_active_tarima"; // Eliminada duplicada
 import { useEffect, useMemo, useRef, useState } from "react";
+// Drag & Drop
+import { useCallback } from "react";
+// Clave para persistir el orden de productos por caja
+const PRODUCT_ORDER_STORAGE_PREFIX = "copmec_returns_recondition_product_order";
+  // Estado para el orden de productos (drag & drop)
+  const [productOrder, setProductOrder] = useState([]);
+  // Estado para el ancho de cada producto/caja (por id)
+  const PRODUCT_WIDTH_STORAGE_PREFIX = "copmec_returns_recondition_product_width";
+  const [productWidths, setProductWidths] = useState({});
+
+  // Cargar anchos guardados al montar/cambiar caja
+  useEffect(() => {
+    if (!activeBox?.id) return;
+    try {
+      const raw = localStorage.getItem(`${PRODUCT_WIDTH_STORAGE_PREFIX}:${activeBox.id}`);
+      if (raw) setProductWidths(JSON.parse(raw));
+      else setProductWidths({});
+    } catch {
+      setProductWidths({});
+    }
+  }, [activeBox?.id]);
+
+  // Guardar anchos al cambiar
+  useEffect(() => {
+    if (!activeBox?.id) return;
+    try {
+      localStorage.setItem(`${PRODUCT_WIDTH_STORAGE_PREFIX}:${activeBox.id}`, JSON.stringify(productWidths));
+    } catch {}
+  }, [productWidths, activeBox?.id]);
+
+  // Handler para cambiar el ancho de un producto/caja
+  const handleResizeProduct = (itemId, newWidth) => {
+    setProductWidths((widths) => ({ ...widths, [itemId]: Math.max(180, Math.min(800, Math.round(newWidth))) }));
+  };
+
+  // Cargar orden guardado al montar/cambiar caja
+  useEffect(() => {
+    if (!activeBox?.id) return;
+    try {
+      const raw = localStorage.getItem(`${PRODUCT_ORDER_STORAGE_PREFIX}:${activeBox.id}`);
+      if (raw) setProductOrder(JSON.parse(raw));
+      else setProductOrder([]);
+    } catch {
+      setProductOrder([]);
+    }
+  }, [activeBox?.id]);
+
+  // Guardar orden al cambiar
+  useEffect(() => {
+    if (!activeBox?.id) return;
+    try {
+      localStorage.setItem(`${PRODUCT_ORDER_STORAGE_PREFIX}:${activeBox.id}`, JSON.stringify(productOrder));
+    } catch {}
+  }, [productOrder, activeBox?.id]);
+
+  // Función para reordenar productos
+  const moveProduct = useCallback((fromIdx, toIdx) => {
+    setProductOrder((order) => {
+      const arr = order.length ? [...order] : activeProducts.map((p) => p.itemId);
+      const [removed] = arr.splice(fromIdx, 1);
+      arr.splice(toIdx, 0, removed);
+      return arr;
+    });
+  }, [activeProducts]);
 import { Modal } from "../../components/Modal";
 import { findInventoryItemByQuery, normalizeKey, formatElapsedMs } from "../../utils/utilidades.jsx";
 
@@ -125,12 +189,14 @@ export default function ReturnsReconditionScanner({
     [inventoryItems],
   );
 
-  const activeProducts = useMemo(
-    () => Object.values(activeBox?.products || {})
-      .filter((p) => !p.tarimaId || !hiddenTarimaIds.includes(p.tarimaId) === false)
-      .sort((a, b) => Number(a.firstCapturedAt || 0) - Number(b.firstCapturedAt || 0)),
-    [activeBox, hiddenTarimaIds],
-  );
+  // Ordenar productos según productOrder
+  const activeProducts = useMemo(() => {
+    const products = Object.values(activeBox?.products || {})
+      .filter((p) => !p.tarimaId || !hiddenTarimaIds.includes(p.tarimaId) === false);
+    if (!productOrder.length) return products.sort((a, b) => Number(a.firstCapturedAt || 0) - Number(b.firstCapturedAt || 0));
+    const map = new Map(products.map((p) => [p.itemId, p]));
+    return productOrder.map((id) => map.get(id)).filter(Boolean).concat(products.filter((p) => !productOrder.includes(p.itemId)));
+  }, [activeBox, hiddenTarimaIds, productOrder]);
     // Cierre de tarima: ocultar productos de la tarima cerrada
     async function finishActiveTarimaManually() {
       if (!activeTarima) return;
@@ -744,46 +810,99 @@ export default function ReturnsReconditionScanner({
       </div>
 
       <div className="returns-scan-cards">
-        {activeProducts.length ? activeProducts.map((product) => (
-          <article key={product.itemId} className="returns-scan-card">
-            <div className="returns-scan-card-head">
-              <strong>{product.code} · {product.name}</strong>
-              <div className="saved-board-list">
-                <span className="chip primary">{product.totalPieces} pzas</span>
-                <button type="button" className="icon-button" onClick={() => openLotModalForProduct(product)}>
-                  Cambiar lote
-                </button>
+        {activeProducts.length ? activeProducts.map((product, idx) => {
+          const width = productWidths[product.itemId] || 320;
+          return (
+            <article
+              key={product.itemId}
+              className="returns-scan-card"
+              draggable
+              onDragStart={e => {
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("text/plain", idx);
+              }}
+              onDragOver={e => e.preventDefault()}
+              onDrop={e => {
+                e.preventDefault();
+                const fromIdx = Number(e.dataTransfer.getData("text/plain"));
+                if (fromIdx !== idx) moveProduct(fromIdx, idx);
+              }}
+              style={{ cursor: "grab", opacity: 1, width: width + "px", minWidth: "180px", maxWidth: "800px", position: "relative" }}
+            >
+              <div className="returns-scan-card-head">
+                <strong>{product.code} · {product.name}</strong>
+                <div className="saved-board-list">
+                  <span className="chip primary">{product.totalPieces} pzas</span>
+                  <button type="button" className="icon-button" onClick={() => openLotModalForProduct(product)}>
+                    Cambiar lote
+                  </button>
+                  <span className="chip" style={{ background: "#ede9fe", color: "#5b21b6", fontSize: 12, marginLeft: 8 }}>Arrastra para reordenar</span>
+                  <span className="chip" style={{ background: "#e0f2fe", color: "#0369a1", fontSize: 12, marginLeft: 8 }}>
+                    Arrastra borde para ancho
+                  </span>
+                </div>
               </div>
-            </div>
-            <p>{product.presentation || "Sin presentación"}</p>
-            <div className="saved-board-list" style={{ marginBottom: "0.5rem" }}>
-              <span className="chip">Workflow: {activeBox?.flowType === "reacondicionado" ? "Reacondicionado" : "Devolución"}</span>
-              <span className="chip">Caja: {activeBox?.palletNumber || "-"}</span>
-              <span className="chip">Fila tablero: {product.rowId || "pendiente"}</span>
-              <span className="chip">Lotes: {product.lots.length}</span>
-            </div>
-            <div className="table-wrap">
-              <table className="inventory-table-clean">
-                <thead>
-                  <tr>
-                    <th>Lote</th>
-                    <th>Caducidad</th>
-                    <th>Piezas</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {product.lots.map((lot) => (
-                    <tr key={`${product.itemId}-${lot.lot}-${lot.expiry}`}>
-                      <td>{lot.lot}</td>
-                      <td>{lot.expiry}</td>
-                      <td>{lot.pieces}</td>
+              <p>{product.presentation || "Sin presentación"}</p>
+              <div className="saved-board-list" style={{ marginBottom: "0.5rem" }}>
+                <span className="chip">Workflow: {activeBox?.flowType === "reacondicionado" ? "Reacondicionado" : "Devolución"}</span>
+                <span className="chip">Caja: {activeBox?.palletNumber || "-"}</span>
+                <span className="chip">Fila tablero: {product.rowId || "pendiente"}</span>
+                <span className="chip">Lotes: {product.lots.length}</span>
+              </div>
+              <div className="table-wrap">
+                <table className="inventory-table-clean">
+                  <thead>
+                    <tr>
+                      <th>Lote</th>
+                      <th>Caducidad</th>
+                      <th>Piezas</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </article>
-        )) : <p className="subtle-line">Aún no hay productos escaneados en esta caja.</p>}
+                  </thead>
+                  <tbody>
+                    {product.lots.map((lot) => (
+                      <tr key={`${product.itemId}-${lot.lot}-${lot.expiry}`}>
+                        <td>{lot.lot}</td>
+                        <td>{lot.expiry}</td>
+                        <td>{lot.pieces}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/* Handler de redimensionamiento del ancho */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  width: "10px",
+                  height: "100%",
+                  cursor: "ew-resize",
+                  zIndex: 10,
+                  userSelect: "none",
+                }}
+                onMouseDown={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const startX = e.clientX;
+                  const startWidth = width;
+                  function onMouseMove(ev) {
+                    const delta = ev.clientX - startX;
+                    handleResizeProduct(product.itemId, startWidth + delta);
+                  }
+                  function onMouseUp() {
+                    window.removeEventListener("mousemove", onMouseMove);
+                    window.removeEventListener("mouseup", onMouseUp);
+                  }
+                  window.addEventListener("mousemove", onMouseMove);
+                  window.addEventListener("mouseup", onMouseUp);
+                }}
+                title="Arrastra para ajustar el ancho"
+                aria-label="Arrastra para ajustar el ancho"
+              />
+            </article>
+          );
+        }) : <p className="subtle-line">Aún no hay productos escaneados en esta caja.</p>}
       </div>
 
       <Modal
