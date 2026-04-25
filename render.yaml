@@ -9,7 +9,7 @@ services:
       npm install -g npm
       cd backend && npm install && npx prisma db push --skip-generate || true
       cd ../frontend && npm install && npm run build
-    startCommand: npx npm start
+    startCommand: node src/index.js
     healthCheckPath: /api/health
     autoDeployTrigger: commit
     envVars:
