@@ -1,7 +1,8 @@
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 const ACTIVE_BOX_STORAGE_PREFIX = "copmec_returns_recondition_active_box";
 // --- Tarima/caja state helpers ---
 // const ACTIVE_TARIMA_STORAGE_PREFIX = "copmec_returns_recondition_active_tarima"; // Eliminada duplicada
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+// ...existing code...
 // Clave para persistir el orden de productos por caja
 const PRODUCT_ORDER_STORAGE_PREFIX = "copmec_returns_recondition_product_order";
 const PRODUCT_WIDTH_STORAGE_PREFIX = "copmec_returns_recondition_product_width";
@@ -41,7 +42,29 @@ async function toDataUrl(url) {
   });
 }
 
-export default function ReturnsReconditionScanner({
+// ...existing code...
+// Error boundary solo en desarrollo para evitar ReferenceError y mostrar mensaje amigable
+function DevErrorBoundary({ children }) {
+  const [err, setErr] = React.useState(null);
+  try {
+    if (err) throw err;
+    return children;
+  } catch (e) {
+    if (!err) setErr(e);
+    return <div style={{color:'#b91c1c',background:'#fff0f0',padding:24,borderRadius:16}}><b>Error en ReturnsReconditionScanner:</b><br/>{String(e.message || e)}</div>;
+  }
+}
+
+// ...existing code...
+
+export default function ReturnsReconditionScanner(props) {
+  if (import.meta.env && import.meta.env.DEV) {
+    return <DevErrorBoundary><ReturnsReconditionScannerInner {...props} /></DevErrorBoundary>;
+  }
+  return <ReturnsReconditionScannerInner {...props} />;
+}
+
+function ReturnsReconditionScannerInner({
   boardView,
   currentUser,
   inventoryItems,
@@ -58,6 +81,23 @@ export default function ReturnsReconditionScanner({
   const [productOrder, setProductOrder] = useState([]);
   // Estado para el ancho de cada producto/caja (por id)
   const [productWidths, setProductWidths] = useState({});
+  // IDs de tarimas cerradas ocultas hasta cierre de semana
+  const [hiddenTarimaIds, setHiddenTarimaIds] = useState([]);
+  const scanRef = useRef(null);
+  const lotInputRef = useRef(null);
+  const expiryInputRef = useRef(null);
+  const autoScanTimeoutRef = useRef(null);
+  const modalAutoCommitRef = useRef(false);
+  const [scanValue, setScanValue] = useState("");
+  const [activeBox, setActiveBox] = useState(null);
+  const [activeTarima, setActiveTarima] = useState(null);
+  const [completedBoxes, setCompletedBoxes] = useState([]);
+  const [pendingItem, setPendingItem] = useState(null);
+  const [setupModalOpen, setSetupModalOpen] = useState(false);
+  const [setupForm, setSetupForm] = useState({ palletNumber: "", tarimaNumber: "", flowType: "devolucion", targetPieces: 50 });
+  const [lotModalOpen, setLotModalOpen] = useState(false);
+  const [lotForm, setLotForm] = useState({ lot: "", expiry: "", pieces: 1, selectedLotKey: "" });
+  const [nowTick, setNowTick] = useState(() => Date.now());
 
   // Cargar anchos guardados al montar/cambiar caja
   useEffect(() => {
@@ -107,29 +147,13 @@ export default function ReturnsReconditionScanner({
   // Función para reordenar productos
   const moveProduct = useCallback((fromIdx, toIdx) => {
     setProductOrder((order) => {
-      const arr = order.length ? [...order] : activeProducts.map((p) => p.itemId);
+      const baseProducts = Object.values(activeBox?.products || {});
+      const arr = order.length ? [...order] : baseProducts.map((p) => p.itemId);
       const [removed] = arr.splice(fromIdx, 1);
       arr.splice(toIdx, 0, removed);
       return arr;
     });
-  }, [activeProducts]);
-  // IDs de tarimas cerradas ocultas hasta cierre de semana
-  const [hiddenTarimaIds, setHiddenTarimaIds] = useState([]);
-  const scanRef = useRef(null);
-  const lotInputRef = useRef(null);
-  const expiryInputRef = useRef(null);
-  const autoScanTimeoutRef = useRef(null);
-  const modalAutoCommitRef = useRef(false);
-  const [scanValue, setScanValue] = useState("");
-  const [activeBox, setActiveBox] = useState(null);
-  const [activeTarima, setActiveTarima] = useState(null);
-  const [completedBoxes, setCompletedBoxes] = useState([]);
-  const [pendingItem, setPendingItem] = useState(null);
-  const [setupModalOpen, setSetupModalOpen] = useState(false);
-  const [setupForm, setSetupForm] = useState({ palletNumber: "", tarimaNumber: "", flowType: "devolucion", targetPieces: 50 });
-  const [lotModalOpen, setLotModalOpen] = useState(false);
-  const [lotForm, setLotForm] = useState({ lot: "", expiry: "", pieces: 1, selectedLotKey: "" });
-  const [nowTick, setNowTick] = useState(() => Date.now());
+  }, [activeBox?.products]);
 
   const boardLabel = String(boardView?.name || "Proceso").trim() || "Proceso";
 

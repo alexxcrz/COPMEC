@@ -851,9 +851,8 @@ export function BoardBuilderModal({
     }));
   }
 
-  function handlePreviewColumnDrop(targetToken) {
-    // Permitir pasar el token origen explícito (para compatibilidad con dataTransfer)
-    const fromToken = draggingColumnToken || (window.event && window.event.dataTransfer && window.event.dataTransfer.getData("text/plain"));
+  function handlePreviewColumnDrop(targetToken, fromTokenOverride = "") {
+    const fromToken = fromTokenOverride || draggingColumnToken;
     if (!fromToken || !targetToken || fromToken === targetToken) return;
     onChange((current) => {
       const currentOrder = getNormalizedBoardColumnOrder({ fields: current.columns || [], settings: current.settings || {} });
