@@ -5,9 +5,9 @@ services:
     rootDir: backend
     plan: free
     buildCommand: |
-      rm -f yarn.lock backend/yarn.lock frontend/yarn.lock
-      npm install -g npm
-      cd backend && npm install && npx prisma db push --skip-generate || true
+      rm -f yarn.lock ../yarn.lock ../frontend/yarn.lock
+      npm install
+      npx prisma db push || true
       cd ../frontend && npm install && npm run build
     startCommand: node src/index.js
     healthCheckPath: /api/health
