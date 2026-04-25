@@ -2843,8 +2843,10 @@ html {
   display: grid;
   grid-template-columns: repeat(2, minmax(170px, 1fr));
   gap: 0.55rem;
-  min-width: min(440px, 100%);
-  flex: 0 1 auto;
+  min-width: 0;
+  width: 100%;
+  max-width: 440px;
+  flex: 1 1 320px;
 }
 
 .board-context-inline-filters .board-top-select {
@@ -2857,6 +2859,40 @@ html {
   align-items: center;
   gap: 0.4rem;
   flex: 0 0 auto;
+}
+
+.mis-tableros-shell,
+.mis-tableros-shell > *,
+.mis-tableros-shell .surface-card,
+.mis-tableros-shell .table-card,
+.mis-tableros-shell .card-header-row,
+.mis-tableros-shell .card-header-row > div,
+.mis-tableros-shell .toolbar-actions,
+.mis-tableros-shell .custom-board-toolbar-actions,
+.mis-tableros-shell .board-context-inline-filters,
+.mis-tableros-shell .board-top-select {
+  min-width: 0;
+}
+
+.mis-tableros-shell {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.mis-tableros-shell .board-pdf-root,
+.mis-tableros-shell .table-card {
+  width: 100%;
+  max-width: 100%;
+}
+
+.mis-tableros-shell .card-header-row {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.mis-tableros-shell .custom-board-toolbar-actions {
+  width: 100%;
 }
 
 .custom-board-add-row-button {

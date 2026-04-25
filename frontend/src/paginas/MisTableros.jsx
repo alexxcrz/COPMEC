@@ -201,7 +201,7 @@ export default function MisTableros({ contexto }) {
   const cleaningNaveValue = boardOperationalContextValue || effectiveCleaningNaves[0] || "C3";
 
   return (
-    <section className="admin-page-layout">
+    <section className="admin-page-layout mis-tableros-shell">
       {selectedCustomBoard ? (
         <>
           <div className="inventory-stat-grid custom-board-stat-grid">
