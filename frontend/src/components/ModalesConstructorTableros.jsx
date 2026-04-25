@@ -666,6 +666,7 @@ export function BoardBuilderModal({
   const accessMenuRef = useRef(null);
   const templateSearchInputRef = useRef(null);
   const resizeStateRef = useRef({ kind: "", id: "", startX: 0, startWidth: 0 });
+  const draggingColumnTokenRef = useRef("");
   const previewSections = getBoardSectionGroups(previewBoard);
   const previewRows = previewBoard?.rows?.slice(0, 2) || [];
   const orderedPreviewColumns = getOrderedBoardColumns(previewBoard || { fields: draft.columns, settings: draft.settings }, true);
@@ -852,7 +853,7 @@ export function BoardBuilderModal({
   }
 
   function handlePreviewColumnDrop(targetToken, fromTokenOverride = "") {
-    const fromToken = fromTokenOverride || draggingColumnToken;
+    const fromToken = fromTokenOverride || draggingColumnTokenRef.current || draggingColumnToken;
     if (!fromToken || !targetToken || fromToken === targetToken) return;
     onChange((current) => {
       const currentOrder = getNormalizedBoardColumnOrder({ fields: current.columns || [], settings: current.settings || {} });
@@ -866,7 +867,18 @@ export function BoardBuilderModal({
         },
       };
     });
+    draggingColumnTokenRef.current = "";
     setDraggingColumnToken("");
+  }
+
+  function movePreviewColumnByStep(columnToken, step) {
+    const currentIndex = orderedPreviewColumns.findIndex((column) => column.token === columnToken);
+    if (currentIndex === -1) return;
+    const targetIndex = currentIndex + step;
+    if (targetIndex < 0 || targetIndex >= orderedPreviewColumns.length) return;
+    const targetToken = orderedPreviewColumns[targetIndex]?.token;
+    if (!targetToken) return;
+    handlePreviewColumnDrop(targetToken, columnToken);
   }
 
   function resolveFieldWidthPx(field) {
@@ -1398,24 +1410,36 @@ export function BoardBuilderModal({
                       </tr>
                     ) : null}
                     <tr>
-                      {orderedPreviewColumns.map((column) => (
+                      {orderedPreviewColumns.map((column, columnIndex) => (
                         <th
                           key={column.token}
                           draggable={!resizingToken}
                           onDragStart={e => {
                             if (resizingToken) return;
+                            draggingColumnTokenRef.current = column.token;
                             setDraggingColumnToken(column.token);
                             e.dataTransfer.effectAllowed = "move";
-                            e.dataTransfer.setData("text/plain", column.token);
+                            try {
+                              e.dataTransfer.setData("text/plain", column.token);
+                              e.dataTransfer.setData("text", column.token);
+                            } catch {
+                              // Some browsers can block setData for custom drags; state/ref still preserve token.
+                            }
                           }}
-                          onDragEnd={() => setDraggingColumnToken("")}
+                          onDragEnd={() => {
+                            draggingColumnTokenRef.current = "";
+                            setDraggingColumnToken("");
+                          }}
                           onDragOver={event => {
                             event.preventDefault();
                             event.dataTransfer.dropEffect = "move";
                           }}
                           onDrop={event => {
                             event.preventDefault();
-                            const fromToken = draggingColumnToken || event.dataTransfer.getData("text/plain");
+                            const fromToken = event.dataTransfer.getData("text/plain")
+                              || event.dataTransfer.getData("text")
+                              || draggingColumnTokenRef.current
+                              || draggingColumnToken;
                             handlePreviewColumnDrop(column.token, fromToken);
                           }}
                           className={[
@@ -1429,15 +1453,51 @@ export function BoardBuilderModal({
                             ...(column.kind === "field" ? getPreviewCellStyle(column.field) : getPreviewAuxCellStyle(column.id)),
                             cursor: resizingToken ? "col-resize" : draggingColumnToken ? "grabbing" : "grab",
                             opacity: draggingColumnToken === column.token ? 0.5 : 1,
-                            border: draggingColumnToken && draggingColumnToken !== column.token ? "2px dashed #032121" : undefined,
+                            background: draggingColumnToken && draggingColumnToken !== column.token ? "rgba(3, 33, 33, 0.06)" : undefined,
                             zIndex: draggingColumnToken === column.token ? 2 : 1,
                             position: draggingColumnToken ? "relative" : undefined,
                             boxShadow: draggingColumnToken === column.token ? "0 4px 24px 0 rgba(3,33,33,0.10)" : undefined,
-                            transition: "border 0.15s, opacity 0.15s, box-shadow 0.2s, transform 0.25s cubic-bezier(.4,1.6,.6,1)",
+                            transition: "background 0.15s, opacity 0.15s, box-shadow 0.2s, transform 0.25s cubic-bezier(.4,1.6,.6,1)",
                             transform: draggingColumnToken === column.token ? "scale(1.04) translateY(-2px)" : "none"
                           }}
                         >
-                          <span className="board-preview-field-label">{column.kind === "field" ? `${column.field.label}${column.field.required ? " *" : ""}` : column.label}</span>
+                          <div style={{ display: "grid", gap: "0.3rem" }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.35rem" }}>
+                              <span className="board-preview-field-label">{column.kind === "field" ? `${column.field.label}${column.field.required ? " *" : ""}` : column.label}</span>
+                              <div style={{ display: "inline-flex", gap: "0.22rem", alignItems: "center" }}>
+                                <button
+                                  type="button"
+                                  className="icon-button"
+                                  style={{ minHeight: "1.35rem", padding: "0.12rem 0.38rem", fontSize: "0.68rem" }}
+                                  title="Mover columna a la izquierda"
+                                  aria-label="Mover columna a la izquierda"
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    movePreviewColumnByStep(column.token, -1);
+                                  }}
+                                  disabled={columnIndex === 0}
+                                >
+                                  ←
+                                </button>
+                                <button
+                                  type="button"
+                                  className="icon-button"
+                                  style={{ minHeight: "1.35rem", padding: "0.12rem 0.38rem", fontSize: "0.68rem" }}
+                                  title="Mover columna a la derecha"
+                                  aria-label="Mover columna a la derecha"
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    movePreviewColumnByStep(column.token, 1);
+                                  }}
+                                  disabled={columnIndex === orderedPreviewColumns.length - 1}
+                                >
+                                  →
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                           <button
                             type="button"
                             className="board-preview-resize-handle"

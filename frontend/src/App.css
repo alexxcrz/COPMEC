@@ -3242,7 +3242,9 @@ html {
 }
 
 .table-wrap {
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
 }
 
 table {
@@ -3375,10 +3377,18 @@ tbody tr:hover {
 
 .table-wrap input,
 .table-wrap select {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   min-height: 1.9rem;
   border-radius: 0.62rem;
   padding: 0 0.58rem;
   font-size: 0.8rem;
+}
+
+.board-runtime-table td > *,
+.board-runtime-table th > * {
+  max-width: 100%;
 }
 
 .chip.primary {

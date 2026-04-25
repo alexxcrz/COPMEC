@@ -462,7 +462,8 @@ function App() { // NOSONAR
   const [syncStatus, setSyncStatus] = useState("Conectando");
   const [securityEvents, setSecurityEvents] = useState([]);
   const [securityEventsStatus, setSecurityEventsStatus] = useState("idle");
-  const antiCaptureEnabled = import.meta.env.PROD;
+  const sessionRole = normalizeRole(state.users.find((user) => user.id === sessionUserId)?.role);
+  const antiCaptureEnabled = import.meta.env.PROD && sessionRole !== ROLE_LEAD;
   const [isDemoMode, setIsDemoMode] = useState(false);
   const preDemoStateRef = useRef(null);
   const isHydratedRef = useRef(false);
@@ -5203,19 +5204,22 @@ function App() { // NOSONAR
   }
 
   function getBoardFieldValue(board, row, field) {
-    const values = row.values || {};
+    if (!field || !field.id) return "";
+
+    const values = row?.values || {};
+    const boardFields = board?.fields || [];
     const rawValue = values[field.id];
 
     if (field.type === "inventoryProperty") {
-      const resolvedSourceFieldId = resolveInventoryPropertySourceFieldId(board.fields || [], field.sourceFieldId, field.id);
+      const resolvedSourceFieldId = resolveInventoryPropertySourceFieldId(boardFields, field.sourceFieldId, field.id);
       const lookupId = values[resolvedSourceFieldId];
       const inventoryItem = (state.inventoryItems || []).find((item) => item.id === lookupId);
       return inventoryItem?.[field.inventoryProperty] ?? "";
     }
 
     if (field.type === "formula") {
-      const left = Number(values[field.formulaLeftFieldId] ?? getBoardFieldValue(board, row, board.fields.find((item) => item.id === field.formulaLeftFieldId)) ?? 0);
-      const right = Number(values[field.formulaRightFieldId] ?? getBoardFieldValue(board, row, board.fields.find((item) => item.id === field.formulaRightFieldId)) ?? 0);
+      const left = Number(values[field.formulaLeftFieldId] ?? getBoardFieldValue(board, row, boardFields.find((item) => item.id === field.formulaLeftFieldId)) ?? 0);
+      const right = Number(values[field.formulaRightFieldId] ?? getBoardFieldValue(board, row, boardFields.find((item) => item.id === field.formulaRightFieldId)) ?? 0);
       if (field.formulaOperation === "subtract") return left - right;
       if (field.formulaOperation === "multiply") return left * right;
       if (field.formulaOperation === "divide") return right === 0 ? 0 : left / right;
