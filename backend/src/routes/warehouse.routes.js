@@ -332,8 +332,17 @@ warehouseRouter.post("/inventory/columns", requireAuth, (req, res) => {
 warehouseRouter.delete("/inventory/columns/:columnId", requireAuth, (req, res) => {
   const result = deleteWarehouseInventoryColumn(req.auth, req.params.columnId);
   if (!result.ok) {
-    const status = result.reason === "auth_required" ? 401 : result.reason === "column_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
-    res.status(status).json({ ok: false, message: "No fue posible eliminar la columna de inventario." });
+    const status = result.reason === "auth_required"
+      ? 401
+      : result.reason === "column_not_found"
+        ? 404
+        : result.reason === "forbidden" || result.reason === "system_column"
+          ? 403
+          : 400;
+    const message = result.reason === "system_column"
+      ? "La columna es del sistema y no se puede eliminar."
+      : "No fue posible eliminar la columna de inventario.";
+    res.status(status).json({ ok: false, message });
     return;
   }
 

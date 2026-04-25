@@ -1,3 +1,5 @@
+import ReturnsReconditionScanner from "../features/boards/ReturnsReconditionScanner.jsx";
+
 export default function MisTableros({ contexto }) {
   const {
     visibleControlBoards,
@@ -181,6 +183,7 @@ export default function MisTableros({ contexto }) {
   const boardCategoryText = String(boardView?.category || "").toLowerCase();
   const boardDescriptionText = String(boardView?.description || "").toLowerCase();
   const boardLooksCleaning = [boardNameText, boardCategoryText, boardDescriptionText].some((text) => text.includes("limp"));
+  const boardLooksReturnsRecondition = [boardNameText, boardCategoryText, boardDescriptionText].some((text) => /(devol|reacond|maquila)/.test(text));
   const isCleaningRelatedBoard = boardOperationalContextType === "cleaningSite" || boardLooksCleaning;
 
   // Compute available cleaning naves from inventory items that have activity consumptions
@@ -310,6 +313,23 @@ export default function MisTableros({ contexto }) {
             </div>
             {isHistoricalCustomBoardView ? <p className="subtle-line">Vista histórica en solo lectura. El tablero activo ya quedó limpio para la semana actual.</p> : null}
             <p className="required-legend"><span className="required-mark" aria-hidden="true">*</span> obligatorio</p>
+
+            {boardLooksReturnsRecondition ? (
+              <ReturnsReconditionScanner
+                boardView={boardView}
+                currentUser={currentUser}
+                inventoryItems={state.inventoryItems || []}
+                state={state}
+                requestJson={requestJson}
+                applyRemoteWarehouseState={applyRemoteWarehouseState}
+                setState={setState}
+                setLoginDirectory={setLoginDirectory}
+                skipNextSyncRef={skipNextSyncRef}
+                setSyncStatus={setSyncStatus}
+                setBoardRuntimeFeedback={setBoardRuntimeFeedback}
+                disabled={isHistoricalCustomBoardView}
+              />
+            ) : null}
 
             <div className="table-wrap">
               <table className="admin-table-clean board-runtime-table">

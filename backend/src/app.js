@@ -91,7 +91,10 @@ app.use(rateLimit({
   max: maxRequestsPerWindow,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => req.path === "/api/health" || req.path.startsWith("/api/chat"),
+  skip: (req) =>
+    req.path === "/api/health" ||
+    req.path.startsWith("/api/chat") ||
+    req.path.startsWith("/api/auth"),
   handler: (req, res) => {
     auditSecurityEvent("rate_limited", req, { scope: "global" });
     res.status(429).json({ message: "Demasiadas solicitudes. Intenta de nuevo en unos minutos." });

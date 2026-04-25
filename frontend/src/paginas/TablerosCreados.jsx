@@ -165,21 +165,23 @@ export default function TablerosCreados({ contexto }) {
           <div className="created-board-grid full-width">
             {visibleCreatorBoards.length ? visibleCreatorBoards.map((board) => (
               <article key={board.id} className="created-board-card surface-card">
-                <div>
-                  <strong>{board.name}</strong>
-                  <p>{board.description || "Sin descripción."}</p>
+                <div className="created-board-card-top">
+                  <div className="created-board-card-head">
+                    <strong>{board.name}</strong>
+                    <p>{board.description || "Sin descripción."}</p>
+                  </div>
+                  <div className="saved-board-list created-board-card-stats">
+                    <span className="chip primary">Campos: {(board.fields || []).length}</span>
+                    <span className="chip">Filas: {(board.rows || []).length}</span>
+                  </div>
                 </div>
-                <div className="saved-board-list">
-                  <span className="chip primary">Campos: {(board.fields || []).length}</span>
-                  <span className="chip">Filas: {(board.rows || []).length}</span>
-                </div>
-                <div className="board-meta-inline">
+                <div className="board-meta-inline created-board-card-meta">
                   <span>Player principal · {userMap.get(board.ownerId)?.name || "N/A"}</span>
                   <span>Creó · {userMap.get(board.createdById)?.name || "N/A"}</span>
                   <span>{getBoardAssignmentSummary(board, userMap)}</span>
                 </div>
                 <div className="toolbar-actions">
-                  <button type="button" className="primary-button" onClick={() => {
+                  <button type="button" className="primary-button created-board-open-action" onClick={() => {
                     setSelectedCustomBoardId(board.id);
                     setPage(PAGE_CUSTOM_BOARDS);
                   }}>
@@ -197,7 +199,7 @@ export default function TablerosCreados({ contexto }) {
                     </button>
                   ) : null}
                   {actionPermissions.deleteBoard && canEditBoard(currentUser, board) ? (
-                    <button type="button" className="icon-button danger" onClick={() => setDeleteBoardId(board.id)}>
+                    <button type="button" className="icon-button danger created-board-delete-action" onClick={() => setDeleteBoardId(board.id)}>
                       <Trash2 size={15} /> Eliminar tablero
                     </button>
                   ) : null}

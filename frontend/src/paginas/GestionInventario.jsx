@@ -72,6 +72,10 @@ export default function GestionInventario({ contexto }) {
     () => (inventoryColumns || []).filter((column) => column.domain === inventoryTab),
     [inventoryColumns, inventoryTab],
   );
+  const customInventoryColumns = useMemo(
+    () => currentInventoryColumns.filter((column) => !column.isSystem),
+    [currentInventoryColumns],
+  );
   const inventoryTitle = inventoryTab === INVENTORY_DOMAIN_CLEANING ? "Insumos de limpieza" : inventoryTab === INVENTORY_DOMAIN_ORDERS ? "Insumos para pedidos" : "Productos";
 
   function formatCleaningLocation(item) {
@@ -226,7 +230,7 @@ export default function GestionInventario({ contexto }) {
           </div>
         </div>
       </article>
-      {currentInventoryColumns.length ? (
+      {customInventoryColumns.length ? (
         <article className="surface-card inventory-surface-card table-card">
           <div className="card-header-row">
             <div>
@@ -235,7 +239,7 @@ export default function GestionInventario({ contexto }) {
             </div>
           </div>
           <div className="saved-board-list board-builder-launch-list">
-            {currentInventoryColumns.map((column) => (
+            {customInventoryColumns.map((column) => (
               <span key={column.id} className="chip">
                 {column.label}
                 {deleteInventoryColumn ? (

@@ -1,4 +1,13 @@
-﻿/* eslint-disable */
+﻿// Convierte milisegundos a formato hh:mm:ss
+export function formatElapsedMs(ms) {
+  if (!Number.isFinite(ms) || ms < 0) return "00:00:00";
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+  const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+  const seconds = String(totalSeconds % 60).padStart(2, "0");
+  return `${hours}:${minutes}:${seconds}`;
+}
+/* eslint-disable */
 import {
   STORAGE_KEY, SIDEBAR_COLLAPSED_KEY, ACTIVE_PAGE_KEY, DASHBOARD_SECTIONS_KEY, NOTIFICATION_READ_KEY, NOTIFICATION_DELETED_KEY, NOTIFICATION_INBOX_KEY, EMPTY_OBJECT, BOOTSTRAP_MASTER_ID, MASTER_USERNAME, API_BASE_URL, ENABLE_LEGACY_WHOLE_STATE_SYNC, PAGE_BOARD, PAGE_CUSTOM_BOARDS, PAGE_ADMIN, PAGE_DASHBOARD, PAGE_HISTORY, PAGE_PROCESS_AUDITS, PAGE_INVENTORY, PAGE_USERS, PAGE_BIBLIOTECA, PAGE_INCIDENCIAS, PAGE_NOT_FOUND, PAGE_ROUTE_SLUGS, PAGE_ROUTE_ALIASES, EMPTY_LOGIN_DIRECTORY, ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR, STATUS_PENDING, STATUS_RUNNING, STATUS_PAUSED, STATUS_FINISHED, INVENTORY_DOMAIN_BASE, INVENTORY_DOMAIN_CLEANING, INVENTORY_DOMAIN_ORDERS, INVENTORY_MOVEMENT_RESTOCK, INVENTORY_MOVEMENT_CONSUME, INVENTORY_MOVEMENT_TRANSFER, CONTROL_STATUS_OPTIONS, USER_ROLES, PERMISSION_SCHEMA_VERSION, ROLE_LEVEL, TEMPORARY_PASSWORD_MIN_LENGTH, PROFILE_SELF_EDIT_LIMIT, DEFAULT_AREA_OPTIONS, DEFAULT_BOARD_SECTION_OPTIONS, INVENTORY_LOOKUP_LOGISTICS_FIELD, BOARD_ACTIVITY_LIST_FIELD, DEFAULT_JOB_TITLE_BY_ROLE, DASHBOARD_CHART_PALETTE, DEFAULT_DASHBOARD_SECTION_STATE, DEFAULT_ADMIN_TAB, ACTIVITY_FREQUENCY_OPTIONS, ACTIVITY_FREQUENCY_LABELS, ACTIVITY_FREQUENCY_DAY_OFFSETS, BOARD_FIELD_TYPES, BOARD_FIELD_TYPE_DETAILS, BOARD_FIELD_WIDTHS, COLOR_RULE_OPERATORS, BOARD_FIELD_WIDTH_STYLES, BOARD_FIELD_MIN_WIDTH_BY_TYPE, DEFAULT_BOARD_AUX_COLUMNS_ORDER, BOARD_AUX_COLUMN_DEFINITIONS, BOARD_AUX_COLUMN_IDS, BOARD_TEMPLATES, FORMULA_OPERATIONS, OPTION_SOURCE_TYPES, INVENTORY_PROPERTIES, INVENTORY_IMPORT_FIELD_ALIASES, INVENTORY_DOMAIN_OPTIONS, INVENTORY_MOVEMENT_OPTIONS, CLEANING_SITE_OPTIONS, DEFAULT_CLEANING_SITE, BOARD_OPERATIONAL_CONTEXT_NONE, BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE, BOARD_OPERATIONAL_CONTEXT_CUSTOM, BOARD_OPERATIONAL_CONTEXT_OPTIONS, NAV_ITEMS, ACTION_DEFINITIONS, BOARD_PERMISSION_ACTION_IDS, BOARD_PERMISSION_ACTIONS, PAGE_ACTION_GROUPS, PERMISSION_PRESETS, RESPONSIBLE_VISUALS, ALL_PAGES, ALL_ACTION_IDS, ROLE_PERMISSION_MATRIX, KPI_STYLES
 } from "./constantes.js";
@@ -150,6 +159,48 @@ export function normalizeInventoryDomain(value) {
   if (["cleaning", "limpieza", "clean"].includes(key)) return INVENTORY_DOMAIN_CLEANING;
   if (["orders", "order", "pedidos", "pedido"].includes(key)) return INVENTORY_DOMAIN_ORDERS;
   return INVENTORY_DOMAIN_BASE;
+}
+
+const INVENTORY_SYSTEM_COLUMNS = Object.freeze([
+  { id: "invcol-base-lote", domain: INVENTORY_DOMAIN_BASE, label: "Lote", key: "lote", createdAt: "1970-01-01T00:00:00.000Z", isSystem: true },
+  { id: "invcol-base-caducidad", domain: INVENTORY_DOMAIN_BASE, label: "Caducidad", key: "caducidad", createdAt: "1970-01-01T00:00:00.000Z", isSystem: true },
+]);
+
+export function mergeInventoryColumnsWithSystem(columns = []) {
+  const normalizedColumns = (Array.isArray(columns) ? columns : [])
+    .map((entry) => ({
+      id: String(entry?.id || `invcol-${Math.random().toString(36).slice(2, 10)}`).trim(),
+      domain: normalizeInventoryDomain(entry?.domain),
+      label: String(entry?.label || "").trim(),
+      key: String(entry?.key || "").trim(),
+      createdAt: entry?.createdAt || new Date().toISOString(),
+      isSystem: Boolean(entry?.isSystem),
+    }))
+    .filter((entry) => entry.label && entry.key);
+
+  const byDomainAndKey = new Map(normalizedColumns.map((entry) => [`${entry.domain}::${normalizeKey(entry.key)}`, entry]));
+  const merged = [...normalizedColumns];
+
+  INVENTORY_SYSTEM_COLUMNS.forEach((systemColumn) => {
+    const domainKey = `${systemColumn.domain}::${normalizeKey(systemColumn.key)}`;
+    const existing = byDomainAndKey.get(domainKey);
+    if (existing) {
+      const index = merged.findIndex((entry) => entry.id === existing.id);
+      if (index >= 0) {
+        merged[index] = {
+          ...existing,
+          label: systemColumn.label,
+          key: systemColumn.key,
+          domain: systemColumn.domain,
+          isSystem: true,
+        };
+      }
+      return;
+    }
+    merged.push({ ...systemColumn });
+  });
+
+  return merged;
 }
 
 export function inventoryDomainUsesPresentation(domain) {
@@ -859,15 +910,34 @@ export function clearSessionExpiredHandler() {
   _onSessionExpiredGlobal = null;
 }
 
+function shouldRetryInventoryRequestInDev(path, method) {
+  if (!import.meta.env.DEV) return false;
+  if (String(method || "GET").toUpperCase() !== "POST") return false;
+  if (path === "/warehouse/inventory/columns") return true;
+  return /^\/warehouse\/inventory\/[^/]+\/duplicate$/.test(String(path || ""));
+}
+
+function buildDevBackendUrl(path) {
+  const protocol = globalThis.location?.protocol || "http:";
+  const hostname = globalThis.location?.hostname || "localhost";
+  return `${protocol}//${hostname}:4000/api${path}`;
+}
+
 export async function requestJson(path, options = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const requestInit = {
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(options.headers ?? EMPTY_OBJECT),
     },
     ...options,
-  });
+  };
+
+  let response = await fetch(`${API_BASE_URL}${path}`, requestInit);
+
+  if (response.status === 404 && shouldRetryInventoryRequestInDev(path, requestInit.method)) {
+    response = await fetch(buildDevBackendUrl(path), requestInit);
+  }
 
   if (!response.ok) {
     const errorPayload = await response.json().catch(() => ({}));
@@ -2990,7 +3060,7 @@ export function buildSampleState() {
     weeks: starterWorkspace?.weeks || weeks,
     catalog,
     inventoryItems,
-    inventoryColumns: [],
+    inventoryColumns: mergeInventoryColumnsWithSystem([]),
     inventoryMovements: [],
     activities: starterWorkspace?.activities || activities,
     pauseLogs: starterWorkspace?.pauseLogs || pauseLogs,
@@ -3076,7 +3146,7 @@ export function buildNormalizedWarehouseState(parsed, sampleState, users, normal
       : sampleState.boardWeekHistory,
     controlBoards: getNormalizedControlBoards(parsed.controlBoards, users, normalizedPermissions, sampleState),
     inventoryItems: Array.isArray(parsed.inventoryItems) && parsed.inventoryItems.length ? parsed.inventoryItems.map((item) => normalizeInventoryItemRecord(item)) : sampleState.inventoryItems,
-    inventoryColumns: Array.isArray(parsed.inventoryColumns) ? parsed.inventoryColumns : sampleState.inventoryColumns,
+    inventoryColumns: mergeInventoryColumnsWithSystem(Array.isArray(parsed.inventoryColumns) ? parsed.inventoryColumns : sampleState.inventoryColumns),
     inventoryMovements: Array.isArray(parsed.inventoryMovements) ? parsed.inventoryMovements : sampleState.inventoryMovements,
     boardTemplates: Array.isArray(parsed.boardTemplates) ? parsed.boardTemplates : [],
     permissions: normalizedPermissions,

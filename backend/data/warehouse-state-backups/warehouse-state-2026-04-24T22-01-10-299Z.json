@@ -1,5 +1,5 @@
 {
-  "revision": 2321,
+  "revision": 2319,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro"
@@ -9576,7 +9576,27 @@
           "colorRules": []
         }
       ],
-      "rows": [],
+      "rows": [
+        {
+          "id": "row-1aa747315a64",
+          "values": {
+            "fld-6f1i241y": "T1",
+            "fld-s060ynsd": "Devolución",
+            "fld-5t8y7u2c": "inv-g819ahar",
+            "fld-jdjyikw2": "123456 | 159456 | 789458 | 1349856",
+            "fld-kdeih26e": "27/12/2027 | 27/12/2027 | 27/12/2027 | 27/12/2027",
+            "fld-giinpivu": 50,
+            "fld-15wb88gu": 50
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "En curso",
+          "startTime": "2026-04-24T21:59:45.486Z",
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": "2026-04-24T21:59:45.486Z",
+          "createdAt": "2026-04-24T21:59:45.134Z"
+        }
+      ],
       "permissions": {
         "isEnabled": false,
         "visibility": {
@@ -9874,7 +9894,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-24T23:09:17.021Z",
+  "updatedAt": "2026-04-24T22:00:58.820Z",
   "permissions": {
     "pages": {
       "index": {

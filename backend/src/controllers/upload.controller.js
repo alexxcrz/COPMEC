@@ -27,24 +27,25 @@ export async function uploadFileController(req, res, next) {
     fs.writeFileSync(filePath, req.file.buffer);
 
     const fileUrl = `/api/uploads/files/${uniqueName}`;
+    const uploadPayload = {
+      fileUrl,
+      fileThumbUrl: fileUrl,
+      filePublicId: uniqueName,
+      fileMimeType: req.file.mimetype,
+      bytes: req.file.size,
+      originalName: req.file.originalname,
+    };
 
     auditSecurityEvent("file_uploaded", req, {
       originalName: req.file.originalname,
       mimeType: req.file.mimetype,
       bytes: req.file.size,
-      fileUrl,
+      fileUrl: uploadPayload.fileUrl,
     });
 
     return res.status(201).json({
       ok: true,
-      data: {
-        fileUrl,
-        fileThumbUrl: fileUrl,
-        filePublicId: uniqueName,
-        fileMimeType: req.file.mimetype,
-        bytes: req.file.size,
-        originalName: req.file.originalname,
-      },
+      data: uploadPayload,
     });
   } catch (error) {
     return next(error);
@@ -54,13 +55,14 @@ export async function uploadFileController(req, res, next) {
 export async function serveUploadedFileController(req, res, next) {
   try {
     const { fileName } = req.params;
-    if (!fileName || /[\/\\]/.test(fileName)) {
+    if (!fileName || /[/\\]/.test(fileName)) {
       return res.status(400).json({ ok: false, message: "Nombre de archivo inválido." });
     }
     const filePath = path.join(uploadsDirectory, fileName);
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ ok: false, message: "Archivo no encontrado." });
     }
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
     res.sendFile(filePath);
   } catch (error) {
     return next(error);

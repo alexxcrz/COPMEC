@@ -336,6 +336,7 @@ import {
   buildNormalizedWarehouseState, normalizeWarehouseState, loadState,
 
   buildWeekActivities, buildStarterWorkspace, updateElapsedForFinish,
+  mergeInventoryColumnsWithSystem,
 
 } from "./utils/utilidades.jsx";
 
@@ -434,6 +435,7 @@ function App() { // NOSONAR
   const [inventoryImportFeedback, setInventoryImportFeedback] = useState({ tone: "", message: "" });
   const [permissionsFeedback, setPermissionsFeedback] = useState({ tone: "", message: "" });
   const [appToasts, setAppToasts] = useState([]);
+  const [globalCaptureShieldActive, setGlobalCaptureShieldActive] = useState(false);
   const [notificationInboxState, setNotificationInboxState] = useState(() => readNotificationInboxState());
   const [notificationReadState, setNotificationReadState] = useState(() => readNotificationReadState());
   const [notificationDeletedState, setNotificationDeletedState] = useState(() => readNotificationDeletedState());
@@ -460,6 +462,7 @@ function App() { // NOSONAR
   const [syncStatus, setSyncStatus] = useState("Conectando");
   const [securityEvents, setSecurityEvents] = useState([]);
   const [securityEventsStatus, setSecurityEventsStatus] = useState("idle");
+  const antiCaptureEnabled = import.meta.env.PROD;
   const [isDemoMode, setIsDemoMode] = useState(false);
   const preDemoStateRef = useRef(null);
   const isHydratedRef = useRef(false);
@@ -474,6 +477,23 @@ function App() { // NOSONAR
   const sessionSnapshotRef = useRef({ userId: "", sessionVersion: 0 });
   const pauseContinueTimerRef = useRef(null);
   const boardPauseContinueTimerRef = useRef(null);
+  const globalCaptureShieldTimerRef = useRef(null);
+
+  function armGlobalCaptureShield(nextMs = 1600, notify = false) {
+    if (!antiCaptureEnabled) return;
+    setGlobalCaptureShieldActive(true);
+    if (notify) {
+      pushAppToast("Captura detectada. Pantalla protegida temporalmente.", "warning");
+    }
+    if (globalCaptureShieldTimerRef.current) {
+      globalThis.clearTimeout(globalCaptureShieldTimerRef.current);
+    }
+    globalCaptureShieldTimerRef.current = globalThis.setTimeout(() => {
+      if (!document.hidden) {
+        setGlobalCaptureShieldActive(false);
+      }
+    }, nextMs);
+  }
 
   function dismissAppToast(toastId) {
     setAppToasts((current) => current.map((toast) => (toast.id === toastId ? { ...toast, isClosing: true } : toast)));
@@ -556,6 +576,79 @@ function App() { // NOSONAR
     const timer = globalThis.setInterval(() => setNow(Date.now()), 1000);
     return () => globalThis.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!antiCaptureEnabled) {
+      setGlobalCaptureShieldActive(false);
+      return undefined;
+    }
+    if (!sessionUserId) return undefined;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setGlobalCaptureShieldActive(true);
+        return;
+      }
+      setGlobalCaptureShieldActive(false);
+    };
+
+    const handleWindowBlur = () => setGlobalCaptureShieldActive(true);
+    const handleWindowFocus = () => setGlobalCaptureShieldActive(false);
+
+    const handleContextMenu = (event) => event.preventDefault();
+
+    const handleClipboardBlock = (event) => {
+      const tagName = String(event.target?.tagName || "").toLowerCase();
+      if (tagName === "input" || tagName === "textarea") return;
+      event.preventDefault();
+    };
+
+    const handleDragStart = (event) => event.preventDefault();
+
+    const handleKeyDown = (event) => {
+      const key = String(event.key || "").toLowerCase();
+      if ((event.ctrlKey || event.metaKey) && key === "p") {
+        event.preventDefault();
+        armGlobalCaptureShield(1200, true);
+        return;
+      }
+      if (event.metaKey && event.shiftKey && ["3", "4", "5"].includes(key)) {
+        armGlobalCaptureShield(1500, true);
+      }
+    };
+
+    const handleKeyUp = (event) => {
+      if (event.key === "PrintScreen") {
+        armGlobalCaptureShield(1500, true);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener("contextmenu", handleContextMenu);
+    document.addEventListener("copy", handleClipboardBlock);
+    document.addEventListener("cut", handleClipboardBlock);
+    document.addEventListener("dragstart", handleDragStart);
+    globalThis.addEventListener("blur", handleWindowBlur);
+    globalThis.addEventListener("focus", handleWindowFocus);
+    globalThis.addEventListener("keydown", handleKeyDown);
+    globalThis.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      if (globalCaptureShieldTimerRef.current) {
+        globalThis.clearTimeout(globalCaptureShieldTimerRef.current);
+        globalCaptureShieldTimerRef.current = null;
+      }
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener("contextmenu", handleContextMenu);
+      document.removeEventListener("copy", handleClipboardBlock);
+      document.removeEventListener("cut", handleClipboardBlock);
+      document.removeEventListener("dragstart", handleDragStart);
+      globalThis.removeEventListener("blur", handleWindowBlur);
+      globalThis.removeEventListener("focus", handleWindowFocus);
+      globalThis.removeEventListener("keydown", handleKeyDown);
+      globalThis.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [antiCaptureEnabled, sessionUserId]);
 
   useEffect(() => {
     localStorage.setItem(NOTIFICATION_READ_KEY, JSON.stringify(notificationReadState));
@@ -2555,7 +2648,7 @@ function App() { // NOSONAR
     return availableBoardTemplates.filter((template) => {
       const category = getBoardTemplateCategory(template);
       const matchesCategory = templateCategoryFilter === "Todas" || category === templateCategoryFilter;
-      const matchesSearch = !term || [template.name, template.description, category].some((value) => String(value || "").toLowerCase().includes(term));
+      const matchesSearch = !term || String(template.name || "").toLowerCase().includes(term);
       return matchesCategory && matchesSearch;
     });
   }, [availableBoardTemplates, templateCategoryFilter, templateSearch]);
@@ -5191,9 +5284,40 @@ function App() { // NOSONAR
     return Array.from(existing).sort((a, b) => a.localeCompare(b, "es-MX"));
   }, [state.inventory]);
   const inventoryCustomColumnsForModal = useMemo(
-    () => (state.inventoryColumns || []).filter((column) => column.domain === inventoryModal.domain),
+    () => mergeInventoryColumnsWithSystem(state.inventoryColumns || []).filter((column) => column.domain === inventoryModal.domain),
     [inventoryModal.domain, state.inventoryColumns],
   );
+  const inventorySystemColumnSuggestions = useMemo(() => {
+    const lots = new Set();
+    const expiries = new Set();
+
+    allInventoryItems
+      .filter((item) => normalizeInventoryDomain(item.domain) === normalizeInventoryDomain(inventoryModal.domain))
+      .forEach((item) => {
+        const lotValue = String(item?.customFields?.lote || "").trim();
+        const expiryValue = String(item?.customFields?.caducidad || "").trim();
+        if (lotValue) lots.add(lotValue);
+        if (expiryValue) expiries.add(expiryValue);
+
+        try {
+          const history = JSON.parse(String(item?.customFields?.lotesCaducidades || "[]"));
+          if (!Array.isArray(history)) return;
+          history.forEach((entry) => {
+            const lot = String(entry?.lot || "").trim();
+            const expiry = String(entry?.expiry || "").trim();
+            if (lot) lots.add(lot);
+            if (expiry) expiries.add(expiry);
+          });
+        } catch {
+          // Ignorar historiales corruptos para no romper el modal.
+        }
+      });
+
+    return {
+      lote: Array.from(lots).sort((a, b) => a.localeCompare(b, "es-MX")),
+      caducidad: Array.from(expiries).sort((a, b) => a.localeCompare(b, "es-MX")),
+    };
+  }, [allInventoryItems, inventoryModal.domain]);
   const shouldShowTransferTargetEmptyState = !hasOrderTransferTargets;
   const shouldShowTransferRemainingUnits = (movement) => movement.remainingUnits !== null;
   const shouldShowTransferMovementEmptyState = orderInventoryTransferMovements.length === 0;
@@ -5721,6 +5845,12 @@ function App() { // NOSONAR
   return (
     <main className={`warehouse-app ${isSidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <AppToastStack toasts={appToasts} onDismiss={dismissAppToast} />
+      {antiCaptureEnabled && globalCaptureShieldActive ? (
+        <div className="global-capture-shield" role="status" aria-live="polite">
+          <strong>Contenido protegido</strong>
+          <p>Regresa a esta ventana para continuar.</p>
+        </div>
+      ) : null}
       <button type="button" className={`sidebar-overlay ${isSidebarOpen ? "visible" : ""}`} onClick={() => setIsSidebarOpen(false)} aria-label="Cerrar menú lateral" />
       <Sidebar
         currentUser={currentUser}
@@ -6528,6 +6658,7 @@ function App() { // NOSONAR
             <label key={column.id} className="app-modal-field">
               <span>{column.label}</span>
               <input
+                list={column.key === "lote" ? "inventory-system-lote-options" : column.key === "caducidad" ? "inventory-system-caducidad-options" : undefined}
                 value={inventoryModal.customFields?.[column.key] || ""}
                 onChange={(event) => setInventoryModal((current) => ({
                   ...current,
@@ -6540,6 +6671,12 @@ function App() { // NOSONAR
               />
             </label>
           ))}
+          <datalist id="inventory-system-lote-options">
+            {inventorySystemColumnSuggestions.lote.map((option) => <option key={option} value={option} />)}
+          </datalist>
+          <datalist id="inventory-system-caducidad-options">
+            {inventorySystemColumnSuggestions.caducidad.map((option) => <option key={option} value={option} />)}
+          </datalist>
           {shouldShowCleaningLinkFields ? (
             <>
               <label className="app-modal-field">

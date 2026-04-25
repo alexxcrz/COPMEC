@@ -8,6 +8,9 @@ const ALLOWED_MIME_TYPES = [
   "image/png",
   "image/webp",
   "image/gif",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.ms-excel",
@@ -16,7 +19,7 @@ const ALLOWED_MIME_TYPES = [
   "text/plain",
 ];
 
-const ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".pdf", ".xlsx", ".xls", ".docx", ".doc", ".txt"]);
+const ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".mp4", ".webm", ".mov", ".pdf", ".xlsx", ".xls", ".docx", ".doc", ".txt"]);
 
 const storage = multer.memoryStorage();
 
@@ -35,7 +38,7 @@ function fileFilter(_req, file, cb) {
 
 export const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 20, parts: 25 },
+  limits: { fileSize: 50 * 1024 * 1024, files: 1, fields: 20, parts: 25 },
   fileFilter,
 });
 

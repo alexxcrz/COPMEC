@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomBytes, randomUUID } from "node:crypto";
 import { publicLoginDirectoryEnabled } from "../config/env.js";
+import { INTERNAL_STORAGE_ONLY, isInternalStorageUrl } from "../config/storage.js";
 import { hashPassword, isStrongPassword, isTemporaryPassword, verifyPassword } from "../utils/passwords.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -22,6 +23,10 @@ const BOARD_OPERATIONAL_CONTEXT_NONE = "none";
 const BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE = "cleaningSite";
 const BOARD_OPERATIONAL_CONTEXT_CUSTOM = "custom";
 const BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE_OPTIONS = ["C1", "C2", "C3"];
+const INVENTORY_SYSTEM_COLUMNS = Object.freeze([
+  { id: "invcol-base-lote", domain: "base", label: "Lote", key: "lote", createdAt: "1970-01-01T00:00:00.000Z", isSystem: true },
+  { id: "invcol-base-caducidad", domain: "base", label: "Caducidad", key: "caducidad", createdAt: "1970-01-01T00:00:00.000Z", isSystem: true },
+]);
 
 const ROLE_LEAD = "Lead";
 const ROLE_SR = "Senior (Sr)";
@@ -466,6 +471,46 @@ function normalizeInventoryDomain(value) {
   return "base";
 }
 
+function normalizeInventoryColumnRecord(column = {}) {
+  return {
+    id: String(column?.id || makeId("invcol")).trim(),
+    domain: normalizeInventoryDomain(column?.domain),
+    label: String(column?.label || "").trim(),
+    key: String(column?.key || "").trim(),
+    createdAt: column?.createdAt || new Date().toISOString(),
+    isSystem: Boolean(column?.isSystem),
+  };
+}
+
+function withSystemInventoryColumns(columns = []) {
+  const normalizedColumns = (Array.isArray(columns) ? columns : [])
+    .map((entry) => normalizeInventoryColumnRecord(entry))
+    .filter((entry) => entry.label && entry.key);
+
+  const byDomainAndKey = new Map(normalizedColumns.map((entry) => [`${entry.domain}::${normalizeKey(entry.key)}`, entry]));
+
+  const merged = [...normalizedColumns];
+  INVENTORY_SYSTEM_COLUMNS.forEach((systemColumn) => {
+    const key = `${systemColumn.domain}::${normalizeKey(systemColumn.key)}`;
+    const existing = byDomainAndKey.get(key);
+    if (existing) {
+      const next = {
+        ...existing,
+        label: systemColumn.label,
+        key: systemColumn.key,
+        domain: systemColumn.domain,
+        isSystem: true,
+      };
+      const index = merged.findIndex((entry) => entry.id === existing.id);
+      if (index >= 0) merged[index] = next;
+      return;
+    }
+    merged.push({ ...systemColumn });
+  });
+
+  return merged;
+}
+
 function inventoryDomainUsesPresentation(domain) {
   return normalizeInventoryDomain(domain) !== "orders";
 }
@@ -879,17 +924,7 @@ function normalizeState(state, previousState = null) {
       };
     }),
     inventoryItems: Array.isArray(state.inventoryItems) ? state.inventoryItems.map((item) => normalizeInventoryItemRecord(item, item?.id)) : getDefaultInventoryItems(),
-    inventoryColumns: Array.isArray(state.inventoryColumns)
-      ? state.inventoryColumns
-        .map((entry) => ({
-          id: String(entry?.id || makeId("invcol")).trim(),
-          domain: normalizeInventoryDomain(entry?.domain),
-          label: String(entry?.label || "").trim(),
-          key: String(entry?.key || "").trim(),
-          createdAt: entry?.createdAt || new Date().toISOString(),
-        }))
-        .filter((entry) => entry.label && entry.key)
-      : [],
+    inventoryColumns: withSystemInventoryColumns(state.inventoryColumns),
     inventoryMovements: Array.isArray(state.inventoryMovements) ? state.inventoryMovements.map((movement) => normalizeInventoryMovementRecord(movement, null, movement?.id)) : [],
     catalog: Array.isArray(state.catalog) && state.catalog.length
       ? state.catalog.map((item) => sanitizeCatalogItemDraft(item, item?.id))
@@ -1226,7 +1261,7 @@ function buildSampleState() {
       { id: "cat-rampas", name: "Revisión de rampas", timeLimitMinutes: 35, isMandatory: false, isDeleted: false, frequency: "weekly", category: "Seguridad" },
     ],
     inventoryItems: getDefaultInventoryItems(),
-    inventoryColumns: [],
+    inventoryColumns: withSystemInventoryColumns([]),
     inventoryMovements: [],
     activities: [],
     pauseLogs: [],
@@ -2799,11 +2834,12 @@ export function createWarehouseInventoryColumn(auth, payload = {}) {
     label,
     key,
     createdAt: new Date().toISOString(),
+    isSystem: false,
   };
 
   const nextState = {
     ...currentState,
-    inventoryColumns: [...(currentState.inventoryColumns || []), column],
+    inventoryColumns: withSystemInventoryColumns([...(currentState.inventoryColumns || []), column]),
   };
 
   return { ok: true, state: replaceWarehouseState(nextState), column };
@@ -2821,6 +2857,7 @@ export function deleteWarehouseInventoryColumn(auth, columnId) {
   const currentColumns = currentState.inventoryColumns || [];
   const target = currentColumns.find((entry) => entry.id === columnId);
   if (!target) return { ok: false, reason: "column_not_found" };
+  if (target.isSystem) return { ok: false, reason: "system_column" };
 
   const nextColumns = currentColumns.filter((entry) => entry.id !== columnId);
   const nextItems = (currentState.inventoryItems || []).map((item) => {
@@ -3082,11 +3119,16 @@ export function addProcessAuditEvidence(auth, auditId, payload = {}) {
 
   const url = String(payload?.url || payload?.fileUrl || "").trim();
   if (!url) return { ok: false, reason: "invalid_payload" };
+  const thumbnailUrl = String(payload?.thumbnailUrl || payload?.fileThumbUrl || url).trim();
+
+  if (INTERNAL_STORAGE_ONLY && (!isInternalStorageUrl(url) || !isInternalStorageUrl(thumbnailUrl))) {
+    return { ok: false, reason: "invalid_payload" };
+  }
 
   const evidence = {
     id: makeId("audev"),
     url,
-    thumbnailUrl: String(payload?.thumbnailUrl || payload?.fileThumbUrl || url).trim(),
+    thumbnailUrl,
     name: String(payload?.name || payload?.originalName || "Evidencia").trim(),
     mimeType: String(payload?.mimeType || payload?.fileMimeType || "").trim(),
     createdAt: new Date().toISOString(),
@@ -4302,14 +4344,26 @@ export function getBibliotecaFiles() {
 
 export function addBibliotecaFile(payload) {
   const currentState = getRawWarehouseState();
+  const nextFileUrl = payload.fileUrl || null;
+  const nextThumbUrl = payload.fileThumbUrl || null;
+
+  if (INTERNAL_STORAGE_ONLY) {
+    if (nextFileUrl && !isInternalStorageUrl(nextFileUrl)) {
+      throw new Error("URL de archivo externa no permitida por política de almacenamiento interno.");
+    }
+    if (nextThumbUrl && !isInternalStorageUrl(nextThumbUrl)) {
+      throw new Error("URL de miniatura externa no permitida por política de almacenamiento interno.");
+    }
+  }
+
   const file = {
     id: makeId("bib"),
     area: payload.area || "General",
     description: payload.description || "",
     originalName: payload.originalName || "archivo",
     fileName: payload.fileName || null,
-    fileUrl: payload.fileUrl || null,
-    fileThumbUrl: payload.fileThumbUrl || null,
+    fileUrl: nextFileUrl,
+    fileThumbUrl: nextThumbUrl,
     filePublicId: payload.filePublicId || null,
     fileMimeType: payload.fileMimeType || "application/octet-stream",
     bytes: payload.bytes || 0,

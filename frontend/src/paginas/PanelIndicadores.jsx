@@ -963,58 +963,6 @@ export default function PanelIndicadores({ contexto }) {
           <h3>Dashboard COPMEC</h3>
         </div>
         <div className="dashboard-filter-panel">
-          <div className="dashboard-action-row" role="group" aria-label="Acciones del dashboard">
-            {isRootLead ? (
-              <button
-                type="button"
-                className="icon-button dashboard-filter-icon-button"
-                onClick={() => setConfirmResetOpen(true)}
-                title="Reiniciar datos reales del dashboard"
-                aria-label="Reiniciar datos reales del dashboard"
-              >
-                <RotateCcw size={16} />
-              </button>
-            ) : null}
-            {isRootLead ? (
-              <button
-                type="button"
-                className="icon-button dashboard-filter-icon-button"
-                onClick={isDemoMode ? deactivateDemoMode : activateDemoMode}
-                title={isDemoMode ? "Desactivar demo" : "Activar demo"}
-                aria-label={isDemoMode ? "Desactivar demo" : "Activar demo"}
-                aria-pressed={isDemoMode}
-                style={isDemoMode ? { color: "#f59e0b" } : undefined}
-              >
-                <Zap size={16} />
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className="icon-button dashboard-filter-icon-button"
-              onClick={exportDashboardToPdf}
-              disabled={isExportingPdf}
-              title={isExportingPdf ? "Exportando PDF de datos" : "Exportar PDF"}
-              aria-label={isExportingPdf ? "Exportando PDF de datos" : "Exportar PDF"}
-            >
-              <Download size={16} />
-            </button>
-            <button
-              type="button"
-              className="icon-button dashboard-filter-icon-button"
-              onClick={() => setDashboardSectionsOpen({
-                executive: !areAllSectionsOpen,
-                people: !areAllSectionsOpen,
-                trends: !areAllSectionsOpen,
-                causes: !areAllSectionsOpen,
-                alerts: !areAllSectionsOpen,
-              })}
-              title={areAllSectionsOpen ? "Contraer todo" : "Expandir todo"}
-              aria-label={areAllSectionsOpen ? "Contraer todo" : "Expandir todo"}
-              aria-pressed={areAllSectionsOpen}
-            >
-              {areAllSectionsOpen ? <PauseCircle size={16} /> : <Play size={16} />}
-            </button>
-          </div>
           <div className="dashboard-filter-row">
             <label className="dashboard-filter-field dashboard-filter-field-range">
               <span>Rango de fechas</span>
@@ -1040,6 +988,58 @@ export default function PanelIndicadores({ contexto }) {
                   <option value="board">Tableros operativos</option>
                 </select>
               </label>
+            </div>
+            <div className="dashboard-action-row dashboard-filter-inline-actions" role="group" aria-label="Acciones del dashboard">
+              {isRootLead ? (
+                <button
+                  type="button"
+                  className="icon-button dashboard-filter-icon-button"
+                  onClick={() => setConfirmResetOpen(true)}
+                  title="Reiniciar datos reales del dashboard"
+                  aria-label="Reiniciar datos reales del dashboard"
+                >
+                  <RotateCcw size={16} />
+                </button>
+              ) : null}
+              {isRootLead ? (
+                <button
+                  type="button"
+                  className="icon-button dashboard-filter-icon-button"
+                  onClick={isDemoMode ? deactivateDemoMode : activateDemoMode}
+                  title={isDemoMode ? "Desactivar demo" : "Activar demo"}
+                  aria-label={isDemoMode ? "Desactivar demo" : "Activar demo"}
+                  aria-pressed={isDemoMode}
+                  style={isDemoMode ? { color: "#f59e0b" } : undefined}
+                >
+                  <Zap size={16} />
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="icon-button dashboard-filter-icon-button"
+                onClick={exportDashboardToPdf}
+                disabled={isExportingPdf}
+                title={isExportingPdf ? "Exportando PDF de datos" : "Exportar PDF"}
+                aria-label={isExportingPdf ? "Exportando PDF de datos" : "Exportar PDF"}
+              >
+                <Download size={16} />
+              </button>
+              <button
+                type="button"
+                className="icon-button dashboard-filter-icon-button"
+                onClick={() => setDashboardSectionsOpen({
+                  executive: !areAllSectionsOpen,
+                  people: !areAllSectionsOpen,
+                  trends: !areAllSectionsOpen,
+                  causes: !areAllSectionsOpen,
+                  alerts: !areAllSectionsOpen,
+                })}
+                title={areAllSectionsOpen ? "Contraer todo" : "Expandir todo"}
+                aria-label={areAllSectionsOpen ? "Contraer todo" : "Expandir todo"}
+                aria-pressed={areAllSectionsOpen}
+              >
+                {areAllSectionsOpen ? <PauseCircle size={16} /> : <Play size={16} />}
+              </button>
             </div>
           </div>
         </div>

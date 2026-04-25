@@ -664,6 +664,7 @@ export function BoardBuilderModal({
   const [resizingToken, setResizingToken] = useState("");
   const actionMenuRef = useRef(null);
   const accessMenuRef = useRef(null);
+  const templateSearchInputRef = useRef(null);
   const resizeStateRef = useRef({ kind: "", id: "", startX: 0, startWidth: 0 });
   const previewSections = getBoardSectionGroups(previewBoard);
   const previewRows = previewBoard?.rows?.slice(0, 2) || [];
@@ -749,6 +750,15 @@ export function BoardBuilderModal({
     setBuilderTab("base");
     setBaseTemplatesCollapsed(true);
   }, [open]);
+
+  useEffect(() => {
+    if (!open || builderTab !== "base" || baseTemplatesCollapsed) return;
+    const focusTimer = globalThis.setTimeout(() => {
+      templateSearchInputRef.current?.focus();
+      templateSearchInputRef.current?.select();
+    }, 0);
+    return () => globalThis.clearTimeout(focusTimer);
+  }, [open, builderTab, baseTemplatesCollapsed]);
 
   useEffect(() => {
     if (!actionMenuOpen) return undefined;
@@ -980,6 +990,12 @@ export function BoardBuilderModal({
     setBuilderTab(builderTabs[currentBuilderTabIndex + 1]);
   }
 
+  const focusLayoutClassName = [
+    "board-builder-focus-layout",
+    builderTab === "preview" ? "preview-only" : "",
+    builderTab === "base" ? "base-stage" : "",
+  ].filter(Boolean).join(" ");
+
   return (
     <Modal
       open={open}
@@ -994,7 +1010,11 @@ export function BoardBuilderModal({
         <section className="board-builder-intuitive-header">
           <div className="board-builder-intuitive-main">
             <h3>{mode === "edit" ? "Editor de tablero" : "Creador de tableros"}</h3>
-            <p>Diseña por pestañas para evitar saturación: una vista a la vez y más enfoque.</p>
+            <div className="board-meta-inline board-meta-inline-header">
+              <span>Creador · {currentUser?.name || userMap.get(previewBoard.ownerId)?.name || "Sin asignar"}</span>
+              <span>{previewAssignmentSummary}</span>
+              {operationalContextType !== "none" && operationalContextValue ? <span>{operationalContextLabel || "Contexto operativo"} · {operationalContextValue}</span> : null}
+            </div>
             <div className="saved-board-list board-builder-intuitive-chips">
               <button type="button" className={builderTab === "base" ? "tab active" : "tab"} onClick={() => setBuilderTab("base")}>Base</button>
               <button type="button" className={builderTab === "identity" ? "tab active" : "tab"} onClick={() => setBuilderTab("identity")}>Identidad</button>
@@ -1013,24 +1033,29 @@ export function BoardBuilderModal({
           <span className="board-builder-wizard-step">Paso {currentBuilderTabIndex + 1} de {builderTabs.length} · {builderTabLabels[builderTab]}</span>
           <button type="button" className="primary-button" onClick={goToNextBuilderTab} disabled={!hasBuilderNext}>Siguiente</button>
         </section>
-        <div className={builderTab === "preview" ? "board-builder-focus-layout preview-only" : "board-builder-focus-layout"}>
+        <div className={focusLayoutClassName}>
+        {builderTab === "base" ? (
+          <button
+            type="button"
+            className={baseTemplatesCollapsed ? "board-builder-template-edge-toggle collapsed" : "board-builder-template-edge-toggle"}
+            onClick={() => setBaseTemplatesCollapsed((current) => !current)}
+            aria-expanded={!baseTemplatesCollapsed}
+            aria-controls="bb-step-base"
+          >
+            <Menu size={15} />
+            <span>{baseTemplatesCollapsed ? "Plantillas" : "Ocultar"}</span>
+          </button>
+        ) : null}
         {builderTab !== "preview" ? (
-        <section className="board-builder-workbench" aria-hidden="true">
+        <section className={builderTab === "base" ? (baseTemplatesCollapsed ? "board-builder-workbench board-builder-template-workbench collapsed" : "board-builder-workbench board-builder-template-workbench") : "board-builder-workbench"} aria-hidden="true">
           {builderTab === "base" ? (
           <section id="bb-step-base" className={baseTemplatesCollapsed ? "board-template-library collapsed" : "board-template-library"}>
             <div className="builder-section-head board-builder-section-head">
               <div>
                 <h4>Plantillas rápidas</h4>
-                {!baseTemplatesCollapsed ? <p>Selecciona una base en formato compacto y arranca rápido sin saturar la vista.</p> : null}
+                <p>Activa una plantilla cuando lo necesites y mantén la vista previa libre para diseñar mejor.</p>
               </div>
               <div className="saved-board-list compact-template-actions">
-                <button
-                  type="button"
-                  className="icon-button"
-                  onClick={() => setBaseTemplatesCollapsed((current) => !current)}
-                >
-                  {baseTemplatesCollapsed ? <><ArrowDown size={15} /> Mostrar plantillas</> : <><ArrowUp size={15} /> Ocultar plantillas</>}
-                </button>
                 {!baseTemplatesCollapsed && selectedPreviewTemplateId ? <button type="button" className="icon-button" onClick={onClearTemplatePreview}>Volver al borrador</button> : null}
                 {!baseTemplatesCollapsed && onSaveTemplate ? <button type="button" className="primary-button" onClick={onSaveTemplate}>Guardar borrador como plantilla</button> : null}
               </div>
@@ -1039,9 +1064,9 @@ export function BoardBuilderModal({
             {!baseTemplatesCollapsed ? (
             <>
             <div className="builder-template-toolbar compact-template-toolbar compact-template-toolbar-grid">
-              <label className="app-modal-field">
-                <span>Buscar plantilla</span>
-                <input value={templateSearch || ""} onChange={(event) => onTemplateSearchChange?.(event.target.value)} placeholder="Ej: limpieza, nave, estación" />
+              <label className="app-modal-field compact-template-search-field">
+                <span>Buscar por nombre</span>
+                <input ref={templateSearchInputRef} value={templateSearch || ""} onChange={(event) => onTemplateSearchChange?.(event.target.value)} placeholder="Ej: devoluciones" />
               </label>
               <label className="app-modal-field">
                 <span>Categoría</span>
@@ -1319,11 +1344,6 @@ export function BoardBuilderModal({
                   <span className="chip">Secciones: {previewSections.length}</span>
                   <span className="chip">Filas demo: {previewRows.length}</span>
                 </div>
-                <div className="board-preview-intuitive-summary">
-                  <strong>{draft.name || "Nuevo tablero"}</strong>
-                  <span>{draft.description || "Sin descripción todavía."}</span>
-                  <span>Responsable · {ownerName}</span>
-                </div>
               </div>
               <div className="board-preview-head-side">
                 <div className="board-preview-switches-top">
@@ -1352,9 +1372,6 @@ export function BoardBuilderModal({
                   </button>
                   {actionMenuOpen ? (
                     <div className="board-builder-actions-dropdown">
-                      <button type="button" className="board-builder-menu-item" onClick={() => { setActionMenuOpen(false); onOpenComponentStudio(); }}>
-                        Agregar componente
-                      </button>
                       <button type="button" className="board-builder-menu-item" onClick={() => { setActionMenuOpen(false); onImportFromExcel?.(); }}>
                         Importar desde Excel
                       </button>
@@ -1366,13 +1383,6 @@ export function BoardBuilderModal({
                 </div>
               </div>
             </div>
-
-            <div className="board-meta-inline board-meta-inline-preview">
-              <span>Creador · {currentUser?.name || userMap.get(previewBoard.ownerId)?.name || "Sin asignar"}</span>
-              <span>{previewAssignmentSummary}</span>
-              {operationalContextType !== "none" && operationalContextValue ? <span>{operationalContextLabel || "Contexto operativo"} · {operationalContextValue}</span> : null}
-            </div>
-
             {(previewBoard.fields || []).length ? (
               <div className="table-wrap board-preview-table-wrap">
                 <table className="admin-table-clean board-preview-table">
@@ -1480,7 +1490,6 @@ export function BoardBuilderModal({
               <div className="builder-section-head board-builder-section-head">
                 <div>
                   <h4>Componentes dentro del constructor</h4>
-                  <p>Arrastra cualquier encabezado en la tabla, incluido Estado, Tiempo, Acciones y Player, para acomodar todo libremente.</p>
                 </div>
                 <span className="chip primary">{draft.columns.length} componente(s)</span>
               </div>
@@ -1493,19 +1502,19 @@ export function BoardBuilderModal({
                   const formulaOpSymbol = { add: "+", subtract: "−", multiply: "×", divide: "÷", average: "prom", min: "mín", max: "máx", percent: "%" }[field.formulaOperation] || field.formulaOperation;
                   const formulaDetail = formulaLeftLabel && formulaRightLabel ? `${formulaLeftLabel} ${formulaOpSymbol} ${formulaRightLabel}` : null;
                   return (
-                    <div key={field.id} className="board-inline-component-chip" style={{ flexDirection: "column", alignItems: "flex-start", gap: "0.3rem", padding: "0.55rem 0.7rem" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap", width: "100%" }}>
-                        <span className="chip primary" style={{ flexShrink: 0 }}>{field.label}</span>
-                        <span style={{ fontSize: "0.7rem", background: "#e0f2fe", color: "#0369a1", borderRadius: "999px", padding: "0.1rem 0.5rem", fontWeight: 600, flexShrink: 0 }}>{typeLabel}</span>
+                    <article key={field.id} className="board-inline-component-chip">
+                      <div className="board-inline-component-main">
+                        <span className="chip primary board-inline-component-label">{field.label}</span>
+                        <span className="board-inline-component-type">{typeLabel}</span>
                         {formulaDetail ? (
-                          <span style={{ fontSize: "0.72rem", color: "#374151", background: "#f1f5f9", borderRadius: "6px", padding: "0.1rem 0.45rem", fontFamily: "monospace", flexShrink: 0 }}>{formulaDetail}</span>
+                          <span className="board-inline-component-formula">{formulaDetail}</span>
                         ) : null}
-                        <span style={{ marginLeft: "auto", display: "flex", gap: "0.3rem", flexShrink: 0 }}>
+                        <span className="board-inline-component-actions">
                           <button type="button" className="icon-button" onClick={() => onEditDraftColumn(field.id)}><Pencil size={14} /> Editar</button>
                           <button type="button" className="icon-button danger" onClick={() => onRemoveDraftColumn(field.id)}><Trash2 size={14} /> Quitar</button>
                         </span>
                       </div>
-                    </div>
+                    </article>
                   );
                 })}
               </div>

@@ -452,6 +452,40 @@ function isVideoEvidence(evidence = {}) {
   return String(evidence.mimeType || "").startsWith("video/") || /\.(mp4|mov|webm|ogg)$/i.test(String(evidence.name || evidence.url || ""));
 }
 
+const PREWARMED_AUDIT_MEDIA_URLS = new Set();
+const PREWARMED_AUDIT_MEDIA_POOL = [];
+
+function prewarmAuditEvidenceMedia(evidences = [], limit = 24) {
+  (Array.isArray(evidences) ? evidences : []).slice(0, limit).forEach((evidence) => {
+    const imageLike = isImageEvidence(evidence);
+    const videoLike = isVideoEvidence(evidence);
+    const mediaUrl = String((imageLike ? (evidence?.thumbnailUrl || evidence?.url) : evidence?.url) || "").trim();
+    if (!mediaUrl || PREWARMED_AUDIT_MEDIA_URLS.has(mediaUrl)) return;
+    PREWARMED_AUDIT_MEDIA_URLS.add(mediaUrl);
+
+    if (imageLike) {
+      const image = new Image();
+      image.decoding = "async";
+      image.fetchPriority = "high";
+      image.src = mediaUrl;
+      PREWARMED_AUDIT_MEDIA_POOL.push(image);
+      return;
+    }
+
+    if (videoLike) {
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.src = mediaUrl;
+      video.load();
+      PREWARMED_AUDIT_MEDIA_POOL.push(video);
+    }
+  });
+
+  if (PREWARMED_AUDIT_MEDIA_POOL.length > 60) {
+    PREWARMED_AUDIT_MEDIA_POOL.splice(0, PREWARMED_AUDIT_MEDIA_POOL.length - 60);
+  }
+}
+
 function EvidenceLightbox({ evidences, startIndex, onClose }) {
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const total = evidences.length;
@@ -603,6 +637,10 @@ function AuditEvidenceGrid({ evidences, canEdit, canUpload, uploading, onOpenGal
   const [lightbox, setLightbox] = useState(null);
   const imageEvidences = useMemo(() => evidences.filter((evidence) => isImageEvidence(evidence)), [evidences]);
 
+  useEffect(() => {
+    prewarmAuditEvidenceMedia(evidences, canUpload ? 8 : 20);
+  }, [canUpload, evidences]);
+
   function openLightbox(evidence) {
     const index = imageEvidences.findIndex((item) => item.id === evidence.id);
     setLightbox({ evidences: imageEvidences, startIndex: index >= 0 ? index : 0 });
@@ -629,11 +667,18 @@ function AuditEvidenceGrid({ evidences, canEdit, canUpload, uploading, onOpenGal
             <div className="audit-evidence-preview-shell">
               {isImageEvidence(evidence) ? (
                 <button type="button" className="audit-evidence-preview-button" onClick={() => openLightbox(evidence)}>
-                  <img src={evidence.thumbnailUrl || evidence.url} alt={evidence.name || "Evidencia"} className="audit-evidence-preview-image" />
+                  <img
+                    src={evidence.thumbnailUrl || evidence.url}
+                    alt={evidence.name || "Evidencia"}
+                    className="audit-evidence-preview-image"
+                    loading="eager"
+                    decoding="async"
+                    fetchPriority="high"
+                  />
                 </button>
               ) : isVideoEvidence(evidence) ? (
                 <a href={evidence.url} target="_blank" rel="noreferrer" className="audit-evidence-preview-button audit-evidence-preview-video-link">
-                  <video src={evidence.url} className="audit-evidence-preview-video" muted playsInline preload="metadata" />
+                  <video src={evidence.url} poster={evidence.thumbnailUrl || undefined} className="audit-evidence-preview-video" muted playsInline preload="metadata" />
                 </a>
               ) : (
                 <a href={evidence.url} target="_blank" rel="noreferrer" className="audit-evidence-preview-file">
@@ -1047,8 +1092,21 @@ export default function AuditoriasProcesosCompact({ contexto }) {
   const [auditViewerDirty, setAuditViewerDirty] = useState(false);
   const [auditViewerSaving, setAuditViewerSaving] = useState(false);
   const [auditViewerRichEditorState, setAuditViewerRichEditorState] = useState({});
+  const [auditShieldActive, setAuditShieldActive] = useState(false);
+  const [auditShieldTick, setAuditShieldTick] = useState(() => Date.now());
   const galleryEvidenceInputRef = useRef(null);
   const mobileCameraInputRef = useRef(null);
+  const watermarkTiles = useMemo(() => Array.from({ length: 12 }, (_, index) => index), []);
+
+  const auditShieldWatermark = useMemo(() => {
+    const stamp = formatDateTime(new Date(auditShieldTick).toISOString());
+    return `${currentUser?.name || "Usuario"} · ${stamp} · Confidencial`;
+  }, [auditShieldTick, currentUser?.name]);
+
+  function openAuditViewer(audit) {
+    prewarmAuditEvidenceMedia(audit?.evidences || [], 30);
+    setAuditViewerModal({ open: true, audit });
+  }
 
   const resolvedTemplates = useMemo(() => {
     return (Array.isArray(processAuditTemplates) ? processAuditTemplates : []).map((template) => ({
@@ -1200,13 +1258,54 @@ export default function AuditoriasProcesosCompact({ contexto }) {
       setAuditViewerDraft(null);
       setAuditViewerDirty(false);
       setAuditViewerRichEditorState({});
+      setAuditShieldActive(false);
       return;
     }
     if (auditViewerDirty && auditViewerDraft?.id === auditViewerModal.audit.id) return;
+    prewarmAuditEvidenceMedia(auditViewerModal.audit.evidences || [], 30);
     setAuditViewerDraft(cloneAuditRecord(auditViewerModal.audit));
     setAuditViewerRichEditorState(buildRichEditorState(auditViewerModal.audit));
     setAuditViewerDirty(false);
   }, [auditViewerDirty, auditViewerDraft?.id, auditViewerModal.audit, auditViewerModal.open]);
+
+  useEffect(() => {
+    if (!auditViewerModal.open) return undefined;
+
+    const tickTimer = globalThis.setInterval(() => setAuditShieldTick(Date.now()), 30000);
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setAuditShieldActive(true);
+        return;
+      }
+      setAuditShieldActive(false);
+    };
+
+    const handleWindowBlur = () => setAuditShieldActive(true);
+    const handleWindowFocus = () => setAuditShieldActive(false);
+
+    const handleKeyUp = (event) => {
+      if (event.key !== "PrintScreen") return;
+      setAuditShieldActive(true);
+      pushAppToast("Captura detectada. Contenido protegido temporalmente.", "warning");
+      globalThis.setTimeout(() => {
+        if (!document.hidden) setAuditShieldActive(false);
+      }, 1400);
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    globalThis.addEventListener("blur", handleWindowBlur);
+    globalThis.addEventListener("focus", handleWindowFocus);
+    globalThis.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      globalThis.clearInterval(tickTimer);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      globalThis.removeEventListener("blur", handleWindowBlur);
+      globalThis.removeEventListener("focus", handleWindowFocus);
+      globalThis.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [auditViewerModal.open, pushAppToast]);
 
   useEffect(() => {
     if (newAuditTemplateId || !templateCandidates.length) return;
@@ -1840,7 +1939,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                 <p className="subtle-line">Duración: {formatDuration(getAuditDurationSeconds(audit))}</p>
                 <p className="subtle-line">Preguntas: {(audit.questions || []).length} · Evidencias: {(audit.evidences || []).length}</p>
                 <div className="audit-inline-actions">
-                  <button type="button" className="icon-button" onClick={() => setAuditViewerModal({ open: true, audit })}>Ver</button>
+                  <button type="button" className="icon-button" onClick={() => openAuditViewer(audit)}>Ver</button>
                   <button type="button" className="icon-button danger" onClick={() => openDeleteAuditModal(audit)} disabled={!canManageAudits}>Eliminar</button>
                 </div>
               </article>
@@ -1903,11 +2002,28 @@ export default function AuditoriasProcesosCompact({ contexto }) {
         title="Detalle de auditoría"
         confirmLabel="Cerrar"
         hideCancel
+        className="audit-viewer-modal"
         onClose={() => setAuditViewerModal({ open: false, audit: null })}
         onConfirm={() => setAuditViewerModal({ open: false, audit: null })}
       >
         {auditViewerDraft ? (
-          <div className="modal-form-grid">
+          <div
+            className={auditShieldActive ? "audit-viewer-secure-shell shielded" : "audit-viewer-secure-shell"}
+            onContextMenu={(event) => event.preventDefault()}
+            onCopy={(event) => event.preventDefault()}
+            onCut={(event) => event.preventDefault()}
+            onDragStart={(event) => event.preventDefault()}
+          >
+            <div className="audit-viewer-watermark-layer" aria-hidden="true">
+              {watermarkTiles.map((tileId) => <span key={`wm-${tileId}`}>{auditShieldWatermark}</span>)}
+            </div>
+            {auditShieldActive ? (
+              <div className="audit-viewer-shield" aria-live="polite">
+                <strong>Contenido protegido</strong>
+                <p>Regresa a esta ventana para continuar.</p>
+              </div>
+            ) : null}
+            <div className="modal-form-grid">
             <p><strong>{auditViewerDraft.area}</strong> · {auditViewerDraft.process}</p>
             <p className="subtle-line">Subárea: {auditViewerDraft.subArea || "-"}</p>
             <p className="subtle-line">Auditor: {auditViewerDraft.auditorName || "Sin auditor"}</p>
@@ -1976,6 +2092,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                 onOpenCamera={() => {}}
                 onDelete={() => {}}
               />
+            </div>
             </div>
           </div>
         ) : null}

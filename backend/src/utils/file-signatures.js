@@ -26,6 +26,16 @@ function matchesWebp(buffer) {
   return buffer.subarray(0, 4).toString("ascii") === "RIFF" && buffer.subarray(8, 12).toString("ascii") === "WEBP";
 }
 
+function matchesMp4Like(buffer) {
+  if (!buffer || buffer.length < 12) return false;
+  return buffer.subarray(4, 8).toString("ascii") === "ftyp";
+}
+
+function matchesWebm(buffer) {
+  if (!buffer || buffer.length < 4) return false;
+  return startsWithBytes(buffer, [0x1a, 0x45, 0xdf, 0xa3]);
+}
+
 export function isAllowedUploadBuffer(file) {
   const extension = path.extname(String(file?.originalname || "")).toLowerCase();
   const buffer = file?.buffer;
@@ -42,6 +52,12 @@ export function isAllowedUploadBuffer(file) {
   }
   if (extension === ".webp") {
     return matchesWebp(buffer);
+  }
+  if (extension === ".mp4" || extension === ".mov") {
+    return matchesMp4Like(buffer);
+  }
+  if (extension === ".webm") {
+    return matchesWebm(buffer);
   }
   if (extension === ".pdf") {
     return buffer.subarray(0, 5).toString("ascii") === "%PDF-";

@@ -12,16 +12,24 @@ createRoot(document.getElementById('root')).render(
 
 // ─── Registrar Service Worker para notificaciones push ─────────────────────
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/service-worker.js')
-    .then((registration) => {
+  (async () => {
+    try {
+      if (import.meta.env.DEV) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((registration) => registration.unregister()));
+        return;
+      }
+
+      const registration = await navigator.serviceWorker.register('/service-worker.js');
       console.log('✓ Service Worker registrado:', registration);
       // Solicitar permisos de notificación
-      if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission().then((permission) => {
-          console.log('Notificaciones:', permission);
-        });
+      if ('Notification' in globalThis && Notification.permission === 'default') {
+        const permission = await Notification.requestPermission();
+        console.log('Notificaciones:', permission);
       }
-    })
-    .catch((err) => console.error('Error registrando SW:', err));
+    } catch (err) {
+      console.error('Error en ciclo de Service Worker:', err);
+    }
+  })();
 }
 
