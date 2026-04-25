@@ -1,15 +1,62 @@
 const ACTIVE_BOX_STORAGE_PREFIX = "copmec_returns_recondition_active_box";
 // --- Tarima/caja state helpers ---
 // const ACTIVE_TARIMA_STORAGE_PREFIX = "copmec_returns_recondition_active_tarima"; // Eliminada duplicada
-import { useEffect, useMemo, useRef, useState } from "react";
-// Drag & Drop
-import { useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 // Clave para persistir el orden de productos por caja
 const PRODUCT_ORDER_STORAGE_PREFIX = "copmec_returns_recondition_product_order";
+const PRODUCT_WIDTH_STORAGE_PREFIX = "copmec_returns_recondition_product_width";
+import { Modal } from "../../components/Modal";
+import { findInventoryItemByQuery, normalizeKey, formatElapsedMs } from "../../utils/utilidades.jsx";
+
+const ACTIVE_TARIMA_STORAGE_PREFIX = "copmec_returns_recondition_active_tarima";
+
+function normalizeExpiryInput(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function safeParseLotHistory(value) {
+  try {
+    const parsed = JSON.parse(String(value || "[]"));
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((entry) => ({
+        lot: String(entry?.lot || "").trim(),
+        expiry: normalizeExpiryInput(entry?.expiry),
+        updatedAt: String(entry?.updatedAt || "").trim(),
+      }))
+      .filter((entry) => entry.lot && entry.expiry);
+  } catch {
+    return [];
+  }
+}
+
+async function toDataUrl(url) {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(typeof reader.result === "string" ? reader.result : "");
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+export default function ReturnsReconditionScanner({
+  boardView,
+  currentUser,
+  inventoryItems,
+  requestJson,
+  applyRemoteWarehouseState,
+  setState,
+  setLoginDirectory,
+  skipNextSyncRef,
+  setSyncStatus,
+  setBoardRuntimeFeedback,
+  disabled,
+}) {
   // Estado para el orden de productos (drag & drop)
   const [productOrder, setProductOrder] = useState([]);
   // Estado para el ancho de cada producto/caja (por id)
-  const PRODUCT_WIDTH_STORAGE_PREFIX = "copmec_returns_recondition_product_width";
   const [productWidths, setProductWidths] = useState({});
 
   // Cargar anchos guardados al montar/cambiar caja
@@ -66,55 +113,6 @@ const PRODUCT_ORDER_STORAGE_PREFIX = "copmec_returns_recondition_product_order";
       return arr;
     });
   }, [activeProducts]);
-import { Modal } from "../../components/Modal";
-import { findInventoryItemByQuery, normalizeKey, formatElapsedMs } from "../../utils/utilidades.jsx";
-
-const ACTIVE_TARIMA_STORAGE_PREFIX = "copmec_returns_recondition_active_tarima";
-
-function normalizeExpiryInput(value) {
-  return String(value || "").trim().toUpperCase();
-}
-
-function safeParseLotHistory(value) {
-  try {
-    const parsed = JSON.parse(String(value || "[]"));
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .map((entry) => ({
-        lot: String(entry?.lot || "").trim(),
-        expiry: normalizeExpiryInput(entry?.expiry),
-        updatedAt: String(entry?.updatedAt || "").trim(),
-      }))
-      .filter((entry) => entry.lot && entry.expiry);
-  } catch {
-    return [];
-  }
-}
-
-async function toDataUrl(url) {
-  const response = await fetch(url);
-  const blob = await response.blob();
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(typeof reader.result === "string" ? reader.result : "");
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
-export default function ReturnsReconditionScanner({
-  boardView,
-  currentUser,
-  inventoryItems,
-  requestJson,
-  applyRemoteWarehouseState,
-  setState,
-  setLoginDirectory,
-  skipNextSyncRef,
-  setSyncStatus,
-  setBoardRuntimeFeedback,
-  disabled,
-}) {
   // IDs de tarimas cerradas ocultas hasta cierre de semana
   const [hiddenTarimaIds, setHiddenTarimaIds] = useState([]);
   const scanRef = useRef(null);
