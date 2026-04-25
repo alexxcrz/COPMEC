@@ -478,6 +478,16 @@ function App() { // NOSONAR
   const pauseContinueTimerRef = useRef(null);
   const boardPauseContinueTimerRef = useRef(null);
   const globalCaptureShieldTimerRef = useRef(null);
+  const boardCellSaveTimersRef = useRef(new Map());
+  const boardCellSaveVersionRef = useRef(new Map());
+
+  useEffect(() => () => {
+    boardCellSaveTimersRef.current.forEach((timerId) => {
+      globalThis.clearTimeout(timerId);
+    });
+    boardCellSaveTimersRef.current.clear();
+    boardCellSaveVersionRef.current.clear();
+  }, []);
 
   function armGlobalCaptureShield(nextMs = 1600, notify = false) {
     if (!antiCaptureEnabled) return;
@@ -4597,18 +4607,57 @@ function App() { // NOSONAR
     const board = (state.controlBoards || []).find((item) => item.id === boardId);
     const row = board?.rows?.find((item) => item.id === rowId);
     if (!canEditBoardRowRecord(currentUser, board, row, normalizedPermissions)) return;
-    requestJson(`/warehouse/boards/${boardId}/rows/${rowId}`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        values: {
-          [field.id]: rawValue,
-        },
+
+    // Keep typing responsive by updating local state immediately.
+    setState((current) => ({
+      ...current,
+      controlBoards: (current.controlBoards || []).map((controlBoard) => {
+        if (controlBoard.id !== boardId) return controlBoard;
+        return {
+          ...controlBoard,
+          rows: (controlBoard.rows || []).map((boardRow) => {
+            if (boardRow.id !== rowId) return boardRow;
+            return {
+              ...boardRow,
+              values: {
+                ...(boardRow.values || {}),
+                [field.id]: rawValue,
+              },
+            };
+          }),
+        };
       }),
-    }).then((remoteState) => {
-      applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
-    }).catch((error) => {
-      setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo actualizar la fila." });
-    });
+    }));
+
+    const saveKey = `${boardId}:${rowId}:${field.id}`;
+    const lastVersion = Number(boardCellSaveVersionRef.current.get(saveKey) || 0);
+    const nextVersion = lastVersion + 1;
+    boardCellSaveVersionRef.current.set(saveKey, nextVersion);
+
+    const previousTimer = boardCellSaveTimersRef.current.get(saveKey);
+    if (previousTimer) {
+      globalThis.clearTimeout(previousTimer);
+    }
+
+    const timerId = globalThis.setTimeout(() => {
+      requestJson(`/warehouse/boards/${boardId}/rows/${rowId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          values: {
+            [field.id]: rawValue,
+          },
+        }),
+      }).then((remoteState) => {
+        // If a newer keystroke for this same cell exists, ignore this stale response.
+        if (boardCellSaveVersionRef.current.get(saveKey) !== nextVersion) return;
+        applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      }).catch((error) => {
+        if (boardCellSaveVersionRef.current.get(saveKey) !== nextVersion) return;
+        setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo actualizar la fila." });
+      });
+    }, 220);
+
+    boardCellSaveTimersRef.current.set(saveKey, timerId);
   }
 
   function getBoardExportRows(board) {
