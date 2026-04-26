@@ -20,6 +20,7 @@ const TARIMA_STATUS_FINISHED = "Terminado";
 function resolveTarimaWorkflowStatus(tarima) {
   if (!tarima) return TARIMA_STATUS_PENDING;
   if (tarima.workflowStatus) return tarima.workflowStatus;
+  if (tarima.pausedAt) return TARIMA_STATUS_PAUSED;
   if (tarima.closedAt || tarima.stoppedAt) return TARIMA_STATUS_FINISHED;
   return TARIMA_STATUS_RUNNING;
 }
@@ -154,6 +155,7 @@ function ReturnsReconditionScannerInner({
   
   const [scanValue, setScanValue] = useState("");
   const [activeTarima, setActiveTarima] = useState(null);
+  const [activeTarimaHydrated, setActiveTarimaHydrated] = useState(false);
   const [activeBoxId, setActiveBoxId] = useState(null);
   const [completedBoxes, setCompletedBoxes] = useState([]);
   const [completedBoxesHydrated, setCompletedBoxesHydrated] = useState(false);
@@ -399,10 +401,19 @@ function ReturnsReconditionScannerInner({
     if (!boardId || disabled || activeTarima) return;
     try {
       const raw = localStorage.getItem(`${ACTIVE_TARIMA_STORAGE_PREFIX}:${boardId}`);
-      if (!raw) return;
+      if (!raw) {
+        setActiveTarimaHydrated(true);
+        return;
+      }
       const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== "object") return;
-      if (parsed.stoppedAt || parsed.closedAt) return;
+      if (!parsed || typeof parsed !== "object") {
+        setActiveTarimaHydrated(true);
+        return;
+      }
+      if (parsed.stoppedAt || parsed.closedAt) {
+        setActiveTarimaHydrated(true);
+        return;
+      }
       const normalizedTarima = {
         ...parsed,
         workflowStatus: resolveTarimaWorkflowStatus(parsed),
@@ -415,6 +426,8 @@ function ReturnsReconditionScannerInner({
       }
     } catch {
       // Ignore corrupted local state.
+    } finally {
+      setActiveTarimaHydrated(true);
     }
   }, [activeTarima, boardId, disabled, setBoardRuntimeFeedback]);
 
@@ -470,7 +483,7 @@ function ReturnsReconditionScannerInner({
 
   // Recuperar tarima desde filas remotas para consistencia entre dispositivos.
   useEffect(() => {
-    if (activeTarima || !boardId || disabled) return;
+    if (!activeTarimaHydrated || activeTarima || !boardId || disabled) return;
     const rows = Array.isArray(boardView?.rows) ? boardView.rows : [];
     if (!rows.length) return;
 
@@ -547,12 +560,22 @@ function ReturnsReconditionScannerInner({
     const recoveredBoxes = Array.from(boxMap.values()).filter((box) => Object.keys(box.products || {}).length > 0);
     if (!recoveredBoxes.length) return;
 
+    const firstRowTs = inProgressRows
+      .map((row) => {
+        const rawTs = row?.startTime || row?.createdAt || row?.updatedAt || "";
+        const parsedTs = new Date(rawTs).getTime();
+        return Number.isFinite(parsedTs) ? parsedTs : null;
+      })
+      .filter((value) => value !== null)
+      .sort((left, right) => left - right)[0];
+    const recoveredStartedAt = firstRowTs ? new Date(firstRowTs).toISOString() : new Date().toISOString();
+
     const recoveredTarima = {
       id: `remote-${boardId}`,
       tarimaNumber: "RECUPERADA",
       flowType: recoveredBoxes[0]?.flowType || "devolucion",
       boxes: recoveredBoxes,
-      startedAt: new Date().toISOString(),
+      startedAt: recoveredStartedAt,
       totalPieces: recoveredBoxes.reduce((acc, box) => acc + Number(box.totalPieces || 0), 0),
       workflowStatus: TARIMA_STATUS_RUNNING,
       pausedAccumulatedMs: 0,
@@ -571,6 +594,7 @@ function ReturnsReconditionScannerInner({
     currentUser?.username,
     disabled,
     inventoryMapById,
+    activeTarimaHydrated,
     setBoardRuntimeFeedback,
   ]);
 
