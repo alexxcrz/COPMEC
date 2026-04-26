@@ -338,6 +338,126 @@ function ReturnsReconditionScannerInner({
     }
   }, [activeTarima, boardId]);
 
+  // Recuperar tarima desde filas remotas para consistencia entre dispositivos.
+  useEffect(() => {
+    if (activeTarima || !boardId || disabled) return;
+    const rows = Array.isArray(boardView?.rows) ? boardView.rows : [];
+    if (!rows.length) return;
+
+    const inProgressRows = rows.filter((row) => String(row?.status || "").toLowerCase() !== "terminado");
+    if (!inProgressRows.length) return;
+
+    const fieldTarima = boardFieldMap.get("tarima");
+    const fieldTipo = boardFieldMap.get("tipo de flujo");
+    const fieldProducto = boardFieldMap.get("producto");
+    const fieldLote = boardFieldMap.get("lote");
+    const fieldCaducidad = boardFieldMap.get("caducidad");
+    const fieldPiezas = boardFieldMap.get("piezas");
+    const fieldMeta = boardFieldMap.get("meta de caja");
+
+    const boxMap = new Map();
+    inProgressRows.forEach((row, index) => {
+      const values = row?.values || {};
+      const boxNumber = String(values[fieldTarima?.id] ?? "").trim() || `Caja-${index + 1}`;
+      const boxKey = normalizeKey(boxNumber) || `caja-${index + 1}`;
+
+      if (!boxMap.has(boxKey)) {
+        const flowRaw = String(values[fieldTipo?.id] ?? "").toLowerCase();
+        const flowType = flowRaw.includes("reacond") ? "reacondicionado" : "devolucion";
+        boxMap.set(boxKey, {
+          id: `recovered-${boxKey}`,
+          palletNumber: boxNumber,
+          targetPieces: Math.max(1, Number(values[fieldMeta?.id] || 50)),
+          tarimaId: `remote-${boardId}`,
+          tarimaNumber: "RECUPERADA",
+          flowType,
+          reviewerName: currentUser?.name || currentUser?.username || "N/A",
+          products: {},
+          totalPieces: 0,
+          startedAt: new Date().toISOString(),
+          persistedRowIds: row?.id ? [row.id] : [],
+          timerRowId: row?.id || "",
+        });
+      }
+
+      const box = boxMap.get(boxKey);
+      const productId = values[fieldProducto?.id];
+      if (!productId) return;
+      const item = inventoryMapById.get(productId) || { id: productId, code: String(productId), name: "Producto", presentation: "" };
+      const pieces = Math.max(0, Number(values[fieldPiezas?.id] || 0));
+      const lotSummary = String(values[fieldLote?.id] || "").split("|").map((v) => String(v || "").trim()).filter(Boolean);
+      const expirySummary = String(values[fieldCaducidad?.id] || "").split("|").map((v) => normalizeExpiryInput(v)).filter(Boolean);
+      const lots = lotSummary.length
+        ? lotSummary.map((lot, lotIndex) => ({
+          lot,
+          expiry: expirySummary[lotIndex] || expirySummary[0] || "-",
+          pieces: lotIndex === 0 ? pieces : 0,
+        }))
+        : [{ lot: "-", expiry: "-", pieces }];
+
+      box.products[item.id] = {
+        itemId: item.id,
+        code: item.code || String(item.id),
+        name: item.name || "Producto",
+        presentation: item.presentation || "",
+        totalPieces: pieces,
+        targetPieces: box.targetPieces,
+        lots,
+        rowId: row?.id || "",
+        lastLotKey: "",
+        firstCapturedAt: row?.updatedAt ? new Date(row.updatedAt).getTime() : Date.now(),
+        tarimaId: box.tarimaId,
+      };
+      box.totalPieces += pieces;
+      if (row?.id) {
+        box.persistedRowIds = Array.from(new Set([...(box.persistedRowIds || []), row.id]));
+      }
+    });
+
+    const recoveredBoxes = Array.from(boxMap.values()).filter((box) => Object.keys(box.products || {}).length > 0);
+    if (!recoveredBoxes.length) return;
+
+    const recoveredTarima = {
+      id: `remote-${boardId}`,
+      tarimaNumber: "RECUPERADA",
+      flowType: recoveredBoxes[0]?.flowType || "devolucion",
+      boxes: recoveredBoxes,
+      startedAt: new Date().toISOString(),
+      totalPieces: recoveredBoxes.reduce((acc, box) => acc + Number(box.totalPieces || 0), 0),
+      recovered: true,
+    };
+
+    setActiveTarima(recoveredTarima);
+    setActiveBoxId(recoveredBoxes[0]?.id || null);
+    setBoardRuntimeFeedback({ tone: "success", message: "Tarima recuperada desde tablero para vista compartida en dispositivos." });
+  }, [
+    activeTarima,
+    boardFieldMap,
+    boardId,
+    boardView?.rows,
+    currentUser?.name,
+    currentUser?.username,
+    disabled,
+    inventoryMapById,
+    setBoardRuntimeFeedback,
+  ]);
+
+  async function closeBoxFromProductCard(boxId) {
+    if (!activeTarima || !boxId) return;
+    const box = (activeTarima.boxes || []).find((entry) => entry.id === boxId);
+    if (!box) return;
+    const hasProducts = Object.keys(box.products || {}).length > 0;
+    if (!hasProducts) {
+      setBoardRuntimeFeedback({ tone: "danger", message: "No puedes terminar una caja vacía." });
+      return;
+    }
+    await closeCurrentBox({
+      ...box,
+      products: Object.values(box.products || {}),
+    });
+    setBoardRuntimeFeedback({ tone: "success", message: `Caja ${box.palletNumber} terminada manualmente.` });
+  }
+
   useEffect(() => {
     if (!lotModalOpen || !pendingItem) return undefined;
     const scannedText = String(lotForm.lot || "").trim();
@@ -1135,6 +1255,15 @@ function ReturnsReconditionScannerInner({
                     <div className="returns-scan-card-head">
                       <strong>{product.code} · {product.name}</strong>
                       <div className="saved-board-list">
+                        <button
+                          type="button"
+                          className="icon-button returns-scan-icon-only returns-scan-close-box"
+                          onClick={() => { void closeBoxFromProductCard(product.boxId); }}
+                          title={`Cerrar caja ${product.boxNumber}`}
+                          aria-label={`Cerrar caja ${product.boxNumber}`}
+                        >
+                          x
+                        </button>
                         <span className="chip" style={{ background: "#f0fdf4", color: "#15803d" }}>Caja: {product.boxNumber}</span>
                         <span className="chip primary">{product.totalPieces}/{product.targetPieces} pzas</span>
                         {!isCompleted && (
@@ -1143,11 +1272,11 @@ function ReturnsReconditionScannerInner({
                           </button>
                         )}
                         {isCompleted && (
-                          <button type="button" className="icon-button" onClick={() => {
+                          <button type="button" className="icon-button returns-scan-icon-only" onClick={() => {
                             const box = activeTarima.boxes.find(b => b.id === product.boxId);
                             if (box) void generateSingleBoxPDF(box);
-                          }} title="Reimprimir PDF">
-                            🖨️ Reimprimir
+                          }} title="Reimprimir PDF" aria-label="Reimprimir PDF">
+                            P
                           </button>
                         )}
                       </div>
