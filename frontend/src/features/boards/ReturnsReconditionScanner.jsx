@@ -242,11 +242,6 @@ function ReturnsReconditionScannerInner({
     [inventoryItems],
   );
 
-  const activeBox = useMemo(() => {
-    if (!activeTarima || !activeBoxId) return null;
-    return (activeTarima.boxes || []).find((box) => box.id === activeBoxId) || null;
-  }, [activeTarima, activeBoxId]);
-
   // Ordenar productos según productOrder
   const activeProducts = useMemo(() => {
     const products = Object.values(activeBox?.products || {})
