@@ -5642,6 +5642,39 @@ tbody tr:hover {
   box-shadow: 0 0 0 3px rgba(15, 77, 64, 0.12);
 }
 
+.returns-scan-boxes-grid {
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+}
+
+.returns-scan-box-section {
+  border: 1px solid rgba(15, 77, 64, 0.2);
+  border-radius: 1rem;
+  padding: 1rem;
+  background: #f8faf9;
+}
+
+.returns-scan-box-section.active {
+  background: #f0fdf4;
+  border-color: rgba(15, 77, 64, 0.5);
+}
+
+.returns-scan-box-header {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid rgba(15, 77, 64, 0.15);
+}
+
+.returns-scan-box-header strong {
+  font-size: 0.9rem;
+  color: #0f3f35;
+  flex: 1;
+}
+
 .returns-scan-cards {
   display: grid;
   gap: 0.45rem;

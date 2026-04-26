@@ -79,26 +79,57 @@ function ReturnsReconditionScannerInner({
 }) {
   // Estado para el orden de productos (drag & drop)
   const [productOrder, setProductOrder] = useState([]);
-  // Estado para el ancho de cada producto/caja (por id)
   const [productWidths, setProductWidths] = useState({});
-  // IDs de tarimas cerradas ocultas hasta cierre de semana
   const [hiddenTarimaIds, setHiddenTarimaIds] = useState([]);
   const scanRef = useRef(null);
   const lotInputRef = useRef(null);
   const expiryInputRef = useRef(null);
   const autoScanTimeoutRef = useRef(null);
   const modalAutoCommitRef = useRef(false);
+  const pauseCheckIntervalRef = useRef(null);
+  
   const [scanValue, setScanValue] = useState("");
-  const [activeBox, setActiveBox] = useState(null);
   const [activeTarima, setActiveTarima] = useState(null);
+  const [activeBoxId, setActiveBoxId] = useState(null);
   const [completedBoxes, setCompletedBoxes] = useState([]);
   const [pendingItem, setPendingItem] = useState(null);
+  const [systemPaused, setSystemPaused] = useState(false);
+  
+  // Modales
+  const [tarimaModalOpen, setTarimaModalOpen] = useState(false);
+  const [boxModalOpen, setBoxModalOpen] = useState(false);
   const [setupModalOpen, setSetupModalOpen] = useState(false);
-  const [setupForm, setSetupForm] = useState({ palletNumber: "", tarimaNumber: "", flowType: "devolucion", targetPieces: 50 });
   const [lotModalOpen, setLotModalOpen] = useState(false);
+  
+  const [tarimaForm, setTarimaForm] = useState({ tarimaNumber: "", flowType: "devolucion" });
+  const [boxForm, setBoxForm] = useState({ boxNumber: "", targetPieces: 50 });
+  const [setupForm, setSetupForm] = useState({ palletNumber: "", tarimaNumber: "", flowType: "devolucion", targetPieces: 50 });
   const [lotForm, setLotForm] = useState({ lot: "", expiry: "", pieces: 1, selectedLotKey: "" });
+  
   const [nowTick, setNowTick] = useState(() => Date.now());
+  
+  // Obtener caja activa
+  const activeBox = useMemo(() => {
+    if (!activeTarima || !activeBoxId) return null;
+    return activeTarima.boxes?.find((b) => b.id === activeBoxId) || null;
+  }, [activeTarima, activeBoxId]);
 
+  // Pausa automática por horario México (16:00-08:00)
+  useEffect(() => {
+    const checkPause = () => {
+      const now = new Date();
+      const mexicoTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
+      const hours = mexicoTime.getHours();
+      const shouldPause = hours >= 16 || hours < 8;
+      setSystemPaused(shouldPause);
+    };
+    checkPause();
+    pauseCheckIntervalRef.current = setInterval(checkPause, 60000);
+    return () => {
+      if (pauseCheckIntervalRef.current) clearInterval(pauseCheckIntervalRef.current);
+    };
+  }, []);
+  
   // Cargar anchos guardados al montar/cambiar caja
   useEffect(() => {
     if (!activeBox?.id) return;
@@ -187,7 +218,7 @@ function ReturnsReconditionScannerInner({
       autoScanTimeoutRef.current = null;
     }
 
-    if (disabled || lotModalOpen || setupModalOpen) return undefined;
+    if (disabled || lotModalOpen || setupModalOpen || tarimaModalOpen || boxModalOpen) return undefined;
     const raw = String(scanValue || "").trim();
     if (!raw) return undefined;
 
@@ -204,12 +235,17 @@ function ReturnsReconditionScannerInner({
         autoScanTimeoutRef.current = null;
       }
     };
-  }, [scanValue, disabled, lotModalOpen, setupModalOpen, inventoryItems]);
+  }, [scanValue, disabled, lotModalOpen, setupModalOpen, tarimaModalOpen, boxModalOpen, inventoryItems]);
 
   const inventoryMapById = useMemo(
     () => new Map((inventoryItems || []).map((item) => [item.id, item])),
     [inventoryItems],
   );
+
+  const activeBox = useMemo(() => {
+    if (!activeTarima || !activeBoxId) return null;
+    return (activeTarima.boxes || []).find((box) => box.id === activeBoxId) || null;
+  }, [activeTarima, activeBoxId]);
 
   // Ordenar productos según productOrder
   const activeProducts = useMemo(() => {
@@ -220,20 +256,7 @@ function ReturnsReconditionScannerInner({
     return productOrder.map((id) => map.get(id)).filter(Boolean).concat(products.filter((p) => !productOrder.includes(p.itemId)));
   }, [activeBox, hiddenTarimaIds, productOrder]);
     // Cierre de tarima: ocultar productos de la tarima cerrada
-    async function finishActiveTarimaManually() {
-      if (!activeTarima) return;
-      const hasProducts = Object.keys(activeTarima.products || {}).length > 0;
-      if (!hasProducts) {
-        setBoardRuntimeFeedback({ tone: "danger", message: "No puedes terminar una tarima vacía." });
-        return;
-      }
-      await closeCurrentBox({
-        ...activeTarima,
-        products: Object.values(activeTarima.products || {}),
-      });
-      setHiddenTarimaIds((prev) => [...prev, activeTarima.id]);
-      setBoardRuntimeFeedback({ tone: "success", message: "Tarima terminada manualmente y PDF generado." });
-    }
+
   const activePieces = useMemo(
     () => activeProducts.reduce((acc, product) => acc + Number(product.totalPieces || 0), 0),
     [activeProducts],
@@ -275,33 +298,38 @@ function ReturnsReconditionScannerInner({
     return safeParseLotHistory(item?.customFields?.lotesCaducidades);
   }
 
+  // Cargar tarima desde localStorage al montar
   useEffect(() => {
-    if (!boardId || disabled || activeBox) return;
+    if (!boardId || disabled || activeTarima) return;
     try {
       const raw = localStorage.getItem(`${ACTIVE_TARIMA_STORAGE_PREFIX}:${boardId}`);
       if (!raw) return;
       const parsed = JSON.parse(raw);
       if (!parsed || typeof parsed !== "object") return;
       if (parsed.stoppedAt || parsed.closedAt) return;
-      setActiveBox(parsed);
-      setBoardRuntimeFeedback({ tone: "success", message: `Caja ${parsed.palletNumber || "activa"} recuperada tras recarga.` });
+      setActiveTarima(parsed);
+      if (parsed.boxes && parsed.boxes.length > 0) {
+        setActiveBoxId(parsed.boxes[0].id);
+        setBoardRuntimeFeedback({ tone: "success", message: `Tarima ${parsed.tarimaNumber || "activa"} recuperada tras recarga.` });
+      }
     } catch {
       // Ignore corrupted local state.
     }
-  }, [activeBox, activeBoxStorageKey, boardId, disabled, setBoardRuntimeFeedback]);
+  }, [activeTarima, boardId, disabled, setBoardRuntimeFeedback]);
 
+  // Guardar tarima en localStorage
   useEffect(() => {
     if (!boardId) return;
     try {
-      if (activeBox && !activeBox.stoppedAt && !activeBox.closedAt) {
-        localStorage.setItem(activeBoxStorageKey, JSON.stringify(activeBox));
+      if (activeTarima && !activeTarima.stoppedAt && !activeTarima.closedAt) {
+        localStorage.setItem(`${ACTIVE_TARIMA_STORAGE_PREFIX}:${boardId}`, JSON.stringify(activeTarima));
       } else {
-        localStorage.removeItem(activeBoxStorageKey);
+        localStorage.removeItem(`${ACTIVE_TARIMA_STORAGE_PREFIX}:${boardId}`);
       }
     } catch {
       // Ignore localStorage write errors.
     }
-  }, [activeBox, activeBoxStorageKey, boardId]);
+  }, [activeTarima, boardId]);
 
   useEffect(() => {
     if (!lotModalOpen || !pendingItem) return undefined;
@@ -543,12 +571,15 @@ function ReturnsReconditionScannerInner({
     };
     await closeBoardWorkflowRows(payload);
     setCompletedBoxes((current) => [payload, ...current].slice(0, 20));
-    setActiveBox(null);
-    try {
-      localStorage.removeItem(activeBoxStorageKey);
-    } catch {
-      // Ignore localStorage cleanup errors.
-    }
+    
+    // Remover caja de tarima
+    setActiveTarima((current) => {
+      if (!current) return current;
+      const updatedBoxes = current.boxes.filter((b) => b.id !== box.id);
+      return { ...current, boxes: updatedBoxes };
+    });
+    
+    setActiveBoxId(null);
     await exportClosedBoxPdf(payload);
   }
 
@@ -563,7 +594,31 @@ function ReturnsReconditionScannerInner({
       ...activeBox,
       products: Object.values(activeBox.products || {}),
     });
-    setBoardRuntimeFeedback({ tone: "success", message: "Caja terminada manualmente y PDF generado." });
+    setBoardRuntimeFeedback({ tone: "success", message: "Caja terminada y PDF generado." });
+  }
+  
+  async function finishActiveTarimaManually() {
+    if (!activeTarima) return;
+    const allBoxes = activeTarima.boxes || [];
+    if (allBoxes.length === 0) {
+      setBoardRuntimeFeedback({ tone: "danger", message: "No hay cajas en esta tarima." });
+      return;
+    }
+    
+    // Generar PDF consolidado de tarima
+    for (const box of allBoxes) {
+      if (Object.keys(box.products || {}).length > 0) {
+        await closeCurrentBox({
+          ...box,
+          products: Object.values(box.products || {}),
+        });
+      }
+    }
+    
+    // Marcar tarima como cerrada
+    setActiveTarima((current) => (current ? { ...current, closedAt: new Date().toISOString(), stoppedAt: new Date().toISOString() } : null));
+    setActiveBoxId(null);
+    setBoardRuntimeFeedback({ tone: "success", message: `Tarima ${activeTarima.tarimaNumber} cerrada completamente. PDF consolidado generado.` });
   }
 
   function getPreferredLotFromProduct(product) {
@@ -597,8 +652,66 @@ function ReturnsReconditionScannerInner({
     openLotModalForItem(item, product);
   }
 
+  // Crear nueva tarima
+  function startNewTarima() {
+    if (!tarimaForm.tarimaNumber) {
+      setBoardRuntimeFeedback({ tone: "danger", message: "Ingresa número de tarima." });
+      return;
+    }
+    const newTarima = {
+      id: `tarima-${Date.now()}`,
+      tarimaNumber: tarimaForm.tarimaNumber,
+      flowType: tarimaForm.flowType,
+      boxes: [],
+      startedAt: new Date().toISOString(),
+      totalPieces: 0,
+    };
+    setActiveTarima(newTarima);
+    setTarimaModalOpen(false);
+    setTarimaForm({ tarimaNumber: "", flowType: "devolucion" });
+    setBoardRuntimeFeedback({ tone: "success", message: `Tarima ${tarimaForm.tarimaNumber} iniciada.` });
+    setBoxModalOpen(true);
+  }
+  
+  // Crear nueva caja dentro de tarima
+  function addNewBoxToTarima() {
+    if (!activeTarima) {
+      setBoardRuntimeFeedback({ tone: "danger", message: "Primero crea una tarima." });
+      return;
+    }
+    if (!boxForm.boxNumber) {
+      setBoardRuntimeFeedback({ tone: "danger", message: "Ingresa número de caja." });
+      return;
+    }
+    const newBox = {
+      id: `box-${Date.now()}`,
+      palletNumber: boxForm.boxNumber,
+      targetPieces: Math.max(1, boxForm.targetPieces),
+      products: {},
+      totalPieces: 0,
+      startedAt: new Date().toISOString(),
+      persistedRowIds: [],
+      timerRowId: "",
+    };
+    const updatedTarima = {
+      ...activeTarima,
+      boxes: [...(activeTarima.boxes || []), newBox],
+    };
+    setActiveTarima(updatedTarima);
+    setActiveBoxId(newBox.id);
+    setBoxModalOpen(false);
+    setBoxForm({ boxNumber: "", targetPieces: 50 });
+    setBoardRuntimeFeedback({ tone: "success", message: `Caja ${boxForm.boxNumber} agregada.` });
+  }
+  
   function handleScanSubmit() {
-    if (disabled) return;
+    if (disabled || systemPaused) {
+      if (systemPaused) {
+        setBoardRuntimeFeedback({ tone: "warning", message: "Sistema pausado automáticamente. Se reanudará a las 08:00 hrs México." });
+      }
+      return;
+    }
+    
     const raw = String(scanValue || "").trim();
     if (!raw) return;
     const found = findInventoryItemByQuery(inventoryItems, raw);
@@ -609,9 +722,18 @@ function ReturnsReconditionScannerInner({
     }
 
     setScanValue("");
+    
+    // Si no hay tarima, abrir modal de tarima
+    if (!activeTarima) {
+      setPendingItem(found);
+      setTarimaModalOpen(true);
+      return;
+    }
+    
+    // Si hay tarima pero no hay caja, abrir modal de caja
     if (!activeBox) {
       setPendingItem(found);
-      setSetupModalOpen(true);
+      setBoxModalOpen(true);
       return;
     }
 
@@ -623,34 +745,30 @@ function ReturnsReconditionScannerInner({
       void commitLotEntry(found, preferredLot.lot, preferredLot.expiry, 1, { closeModal: false, successMode: "auto" });
       return;
     }
+    
+    // Si escanea producto diferente, preguntar si abre nueva caja
+    const hasOtherProducts = Object.keys(activeBox.products || {}).length > 0;
+    const isDifferentProduct = hasOtherProducts && !currentProduct;
+    
+    if (isDifferentProduct) {
+      setPendingItem(found);
+      // Auto-open box modal para new caja
+      setBoxModalOpen(true);
+      return;
+    }
 
-    setActiveBox((current) => (current ? { ...current, lastScannedItemId: found.id } : current));
+    setActiveTarima((current) => {
+      if (!current) return current;
+      const updatedBoxes = current.boxes.map((b) => {
+        if (b.id === activeBoxId) {
+          return { ...b, lastScannedItemId: found.id };
+        }
+        return b;
+      });
+      return { ...current, boxes: updatedBoxes };
+    });
+    
     openLotModalForItem(found, currentProduct);
-  }
-
-  function startBoxAndContinue() {
-    const palletNumber = String(setupForm.palletNumber || "").trim();
-    const targetPieces = Math.max(1, Number(setupForm.targetPieces || 0));
-    if (!palletNumber || !targetPieces) return;
-
-    const nextBox = {
-      id: `box-${Date.now()}`,
-      palletNumber,
-      flowType: setupForm.flowType,
-      targetPieces,
-      reviewerName: currentUser?.name || "N/A",
-      startedAt: new Date().toISOString(),
-      stoppedAt: "",
-      timerRowId: "",
-      persistedRowIds: [],
-      products: {},
-      totalPieces: 0,
-      lastScannedItemId: "",
-    };
-
-    setActiveBox(nextBox);
-    setSetupModalOpen(false);
-    if (pendingItem) openLotModalForItem(pendingItem);
   }
 
   async function commitLotEntry(itemRef, lotValue, expiryValue, piecesValue, options = {}) {
@@ -728,7 +846,13 @@ function ReturnsReconditionScannerInner({
       lastScannedItemId: item.id,
     };
 
-    setActiveBox(nextBox);
+    // Actualizar tarima con la caja modificada
+    setActiveTarima((current) => {
+      if (!current) return current;
+      const updatedBoxes = current.boxes.map((b) => (b.id === activeBoxId ? nextBox : b));
+      const newTotalPieces = updatedBoxes.reduce((acc, b) => acc + (b.totalPieces || 0), 0);
+      return { ...current, boxes: updatedBoxes, totalPieces: newTotalPieces };
+    });
     if (options.closeModal !== false) {
       setLotModalOpen(false);
       setPendingItem(null);
@@ -798,19 +922,30 @@ function ReturnsReconditionScannerInner({
     <section className="returns-scan-shell board-pdf-hide">
       <div className="returns-scan-head">
         <div>
-          <h4>Modo escaneo · Devoluciones / Reacondicionado</h4>
-          <p>Escanea código, captura lote y caducidad. El foco se mantiene en el escáner.</p>
+          <h4>Modo escaneo · {activeTarima ? `Tarima ${activeTarima.tarimaNumber}` : "Inicio escaneo"}</h4>
+          <p>{activeTarima ? `Flujo: ${activeTarima.flowType === "reacondicionado" ? "Reacondicionado" : "Devolución"}` : "Escanea un código para crear tarima"}</p>
         </div>
         <div className="saved-board-list">
-          <span className="chip">Caja activa: {activeBox?.palletNumber || "-"}</span>
-          <span className="chip">Meta de caja: {activeBox?.targetPieces || 0}</span>
-          <span className="chip primary">Acumulado: {activePieces}</span>
-          <span className="chip">Tiempo: {formatElapsedMs(elapsedMs)}</span>
-          {activeBox ? (
-            <button type="button" className="icon-button" onClick={() => { void finishActiveBoxManually(); }} disabled={disabled}>
-              Terminar caja
-            </button>
-          ) : null}
+          {systemPaused && (
+            <span className="chip" style={{ background: "#fee2e2", color: "#991b1b" }}>⏸ Pausado automáticamente (16:00-08:00 hrs MX)</span>
+          )}
+          {activeTarima && (
+            <>
+              <span className="chip">Tarima: {activeTarima.tarimaNumber}</span>
+              <span className="chip">Cajas: {(activeTarima.boxes || []).length}</span>
+              <span className="chip primary">Total acumulado: {activeTarima.totalPieces || 0}</span>
+              {activeBox && (
+                <>
+                  <span className="chip">Caja activa: {activeBox.palletNumber}</span>
+                  <span className="chip">Meta caja: {activeBox.targetPieces}</span>
+                  <span className="chip">Caja actual: {activePieces}</span>
+                </>
+              )}
+              <button type="button" className="icon-button" onClick={() => { void finishActiveTarimaManually(); }} disabled={disabled || !activeTarima}>
+                Terminar Tarima
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -826,102 +961,169 @@ function ReturnsReconditionScannerInner({
               handleScanSubmit();
             }
           }}
-          placeholder={disabled ? "Vista histórica en solo lectura" : "Escanea o escribe código (auto-registro sin Enter)"}
-          disabled={disabled || lotModalOpen || setupModalOpen}
+          placeholder={disabled ? "Vista histórica en solo lectura" : systemPaused ? "Sistema pausado (reanudar 08:00 hrs MX)" : "Escanea o escribe código (auto-registro)"}
+          disabled={disabled || systemPaused || lotModalOpen || tarimaModalOpen || boxModalOpen}
         />
       </div>
 
-      <div className="returns-scan-cards">
-        {activeProducts.length ? activeProducts.map((product, idx) => {
-          const width = productWidths[product.itemId] || 320;
-          return (
-            <article
-              key={product.itemId}
-              className="returns-scan-card"
-              draggable
-              onDragStart={e => {
-                e.dataTransfer.effectAllowed = "move";
-                e.dataTransfer.setData("text/plain", idx);
-              }}
-              onDragOver={e => e.preventDefault()}
-              onDrop={e => {
-                e.preventDefault();
-                const fromIdx = Number(e.dataTransfer.getData("text/plain"));
-                if (fromIdx !== idx) moveProduct(fromIdx, idx);
-              }}
-              style={{ cursor: "grab", opacity: 1, width: width + "px", minWidth: "180px", maxWidth: "800px", position: "relative" }}
-            >
-              <div className="returns-scan-card-head">
-                <strong>{product.code} · {product.name}</strong>
-                <div className="saved-board-list">
-                  <span className="chip primary">{product.totalPieces} pzas</span>
-                  <button type="button" className="icon-button" onClick={() => openLotModalForProduct(product)}>
-                    Cambiar lote
+      {/* Cajas de Tarima */}
+      {activeTarima && (activeTarima.boxes || []).length > 0 ? (
+        <div className="returns-scan-boxes-grid">
+          {(activeTarima.boxes || []).map((box) => (
+            <div key={box.id} className={`returns-scan-box-section ${activeBoxId === box.id ? "active" : ""}`}>
+              <div className="returns-scan-box-header">
+                <strong>Caja: {box.palletNumber}</strong>
+                <span className="chip primary">{box.totalPieces}/{box.targetPieces} pzas</span>
+                {activeBoxId !== box.id && (
+                  <button type="button" className="icon-button" onClick={() => setActiveBoxId(box.id)}>
+                    Activar
                   </button>
-                  <span className="chip" style={{ background: "#ede9fe", color: "#5b21b6", fontSize: 12, marginLeft: 8 }}>Arrastra para reordenar</span>
-                  <span className="chip" style={{ background: "#e0f2fe", color: "#0369a1", fontSize: 12, marginLeft: 8 }}>
-                    Arrastra borde para ancho
-                  </span>
-                </div>
+                )}
+                {activeBoxId === box.id && (
+                  <button type="button" className="icon-button" onClick={() => { void finishActiveBoxManually(); }} disabled={disabled || Object.keys(box.products || {}).length === 0}>
+                    Terminar Caja
+                  </button>
+                )}
               </div>
-              <p>{product.presentation || "Sin presentación"}</p>
-              <div className="saved-board-list" style={{ marginBottom: "0.5rem" }}>
-                <span className="chip">Workflow: {activeBox?.flowType === "reacondicionado" ? "Reacondicionado" : "Devolución"}</span>
-                <span className="chip">Caja: {activeBox?.palletNumber || "-"}</span>
-                <span className="chip">Fila tablero: {product.rowId || "pendiente"}</span>
-                <span className="chip">Lotes: {product.lots.length}</span>
-              </div>
-              <div className="returns-scan-lot-table" role="table" aria-label={`Lotes de ${product.name}`}>
-                <div className="returns-scan-lot-header" role="row">
-                  <span role="columnheader">Lote</span>
-                  <span role="columnheader">Caducidad</span>
-                  <span role="columnheader">Piezas</span>
+              
+              {activeBoxId === box.id && (
+                <div className="returns-scan-cards">
+                  {activeProducts.length ? activeProducts.map((product, idx) => {
+                    const width = productWidths[product.itemId] || 320;
+                    return (
+                      <article
+                        key={product.itemId}
+                        className="returns-scan-card"
+                        draggable
+                        onDragStart={e => {
+                          e.dataTransfer.effectAllowed = "move";
+                          e.dataTransfer.setData("text/plain", idx);
+                        }}
+                        onDragOver={e => e.preventDefault()}
+                        onDrop={e => {
+                          e.preventDefault();
+                          const fromIdx = Number(e.dataTransfer.getData("text/plain"));
+                          if (fromIdx !== idx) moveProduct(fromIdx, idx);
+                        }}
+                        style={{ cursor: "grab", opacity: 1, width: width + "px", minWidth: "180px", maxWidth: "800px", position: "relative" }}
+                      >
+                        <div className="returns-scan-card-head">
+                          <strong>{product.code} · {product.name}</strong>
+                          <div className="saved-board-list">
+                            <span className="chip primary">{product.totalPieces} pzas</span>
+                            <button type="button" className="icon-button" onClick={() => openLotModalForProduct(product)}>
+                              Cambiar lote
+                            </button>
+                          </div>
+                        </div>
+                        <p>{product.presentation || "Sin presentación"}</p>
+                        <div className="returns-scan-lot-table" role="table" aria-label={`Lotes de ${product.name}`}>
+                          <div className="returns-scan-lot-header" role="row">
+                            <span role="columnheader">Lote</span>
+                            <span role="columnheader">Caducidad</span>
+                            <span role="columnheader">Piezas</span>
+                          </div>
+                          <div className="returns-scan-lot-body" role="rowgroup">
+                            {product.lots.map((lot) => (
+                              <div className="returns-scan-lot-row" role="row" key={`${product.itemId}-${lot.lot}-${lot.expiry}`}>
+                                <span role="cell" data-label="Lote">{lot.lot}</span>
+                                <span role="cell" data-label="Caducidad">{lot.expiry}</span>
+                                <span role="cell" data-label="Piezas">{lot.pieces}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            right: 0,
+                            width: "10px",
+                            height: "100%",
+                            cursor: "ew-resize",
+                            zIndex: 10,
+                            userSelect: "none",
+                          }}
+                          onMouseDown={e => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const startX = e.clientX;
+                            const startWidth = width;
+                            function onMouseMove(ev) {
+                              const delta = ev.clientX - startX;
+                              handleResizeProduct(product.itemId, startWidth + delta);
+                            }
+                            function onMouseUp() {
+                              window.removeEventListener("mousemove", onMouseMove);
+                              window.removeEventListener("mouseup", onMouseUp);
+                            }
+                            window.addEventListener("mousemove", onMouseMove);
+                            window.addEventListener("mouseup", onMouseUp);
+                          }}
+                          title="Arrastra para ajustar el ancho"
+                          aria-label="Arrastra para ajustar el ancho"
+                        />
+                      </article>
+                    );
+                  }) : <p className="subtle-line">Aún no hay productos en esta caja.</p>}
                 </div>
-                <div className="returns-scan-lot-body" role="rowgroup">
-                  {product.lots.map((lot) => (
-                    <div className="returns-scan-lot-row" role="row" key={`${product.itemId}-${lot.lot}-${lot.expiry}`}>
-                      <span role="cell" data-label="Lote">{lot.lot}</span>
-                      <span role="cell" data-label="Caducidad">{lot.expiry}</span>
-                      <span role="cell" data-label="Piezas">{lot.pieces}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {/* Handler de redimensionamiento del ancho */}
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  right: 0,
-                  width: "10px",
-                  height: "100%",
-                  cursor: "ew-resize",
-                  zIndex: 10,
-                  userSelect: "none",
-                }}
-                onMouseDown={e => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  const startX = e.clientX;
-                  const startWidth = width;
-                  function onMouseMove(ev) {
-                    const delta = ev.clientX - startX;
-                    handleResizeProduct(product.itemId, startWidth + delta);
-                  }
-                  function onMouseUp() {
-                    window.removeEventListener("mousemove", onMouseMove);
-                    window.removeEventListener("mouseup", onMouseUp);
-                  }
-                  window.addEventListener("mousemove", onMouseMove);
-                  window.addEventListener("mouseup", onMouseUp);
-                }}
-                title="Arrastra para ajustar el ancho"
-                aria-label="Arrastra para ajustar el ancho"
-              />
-            </article>
-          );
-        }) : <p className="subtle-line">Aún no hay productos escaneados en esta caja.</p>}
-      </div>
+              )}
+            </div>
+          ))}
+          <div style={{ padding: "1rem", textAlign: "center" }}>
+            <button type="button" className="icon-button" onClick={() => setBoxModalOpen(true)} disabled={disabled || systemPaused}>
+              + Nueva Caja
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className="subtle-line">{activeTarima ? "Sin cajas aún. Escanea un código para crear la primera caja." : "Sin tarima activa."}</p>
+      )}
+
+      {/* Modal Tarima Inicial */}
+      <Modal
+        open={tarimaModalOpen}
+        title="Nueva Tarima"
+        confirmLabel="Crear Tarima"
+        cancelLabel="Cancelar"
+        onClose={() => { setTarimaModalOpen(false); setPendingItem(null); }}
+        onConfirm={startNewTarima}
+      >
+        <div className="returns-scan-modal-grid">
+          <label className="app-modal-field">
+            <span>Número de Tarima</span>
+            <input value={tarimaForm.tarimaNumber} onChange={(event) => setTarimaForm((current) => ({ ...current, tarimaNumber: event.target.value }))} placeholder="Ej: TARIMA-001" />
+          </label>
+          <label className="app-modal-field">
+            <span>Tipo de Flujo</span>
+            <select value={tarimaForm.flowType} onChange={(event) => setTarimaForm((current) => ({ ...current, flowType: event.target.value }))}>
+              <option value="devolucion">Devolución</option>
+              <option value="reacondicionado">Reacondicionado</option>
+            </select>
+          </label>
+        </div>
+      </Modal>
+
+      {/* Modal Nueva Caja */}
+      <Modal
+        open={boxModalOpen}
+        title="Nueva Caja"
+        confirmLabel="Agregar Caja"
+        cancelLabel="Cancelar"
+        onClose={() => { setBoxModalOpen(false); setPendingItem(null); }}
+        onConfirm={addNewBoxToTarima}
+      >
+        <div className="returns-scan-modal-grid">
+          <label className="app-modal-field">
+            <span>Número de Caja</span>
+            <input value={boxForm.boxNumber} onChange={(event) => setBoxForm((current) => ({ ...current, boxNumber: event.target.value }))} placeholder="Ej: CAJ-001" />
+          </label>
+          <label className="app-modal-field">
+            <span>Meta de Piezas</span>
+            <input type="number" min="1" value={boxForm.targetPieces} onChange={(event) => setBoxForm((current) => ({ ...current, targetPieces: Number(event.target.value || 50) }))} />
+          </label>
+        </div>
+      </Modal>
 
       <Modal
         open={setupModalOpen}
