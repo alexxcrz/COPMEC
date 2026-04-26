@@ -588,15 +588,24 @@ function ReturnsReconditionScannerInner({
     };
     await closeBoardWorkflowRows(payload);
     setCompletedBoxes((current) => [payload, ...current].slice(0, 20));
+    setCollapsedProducts((current) => {
+      const next = new Set(current);
+      Object.keys(box.products || {}).forEach((itemId) => {
+        next.delete(`${box.id}-${itemId}`);
+      });
+      return next;
+    });
     
     // Remover caja de tarima
+    let nextActiveBoxId = null;
     setActiveTarima((current) => {
       if (!current) return current;
       const updatedBoxes = current.boxes.filter((b) => b.id !== box.id);
+      nextActiveBoxId = updatedBoxes[0]?.id || null;
       return { ...current, boxes: updatedBoxes };
     });
     
-    setActiveBoxId(null);
+    setActiveBoxId(nextActiveBoxId);
     await exportClosedBoxPdf(payload);
   }
 
@@ -704,6 +713,10 @@ function ReturnsReconditionScannerInner({
       id: `box-${Date.now()}`,
       palletNumber: boxForm.boxNumber,
       targetPieces: Math.max(1, boxForm.targetPieces),
+      tarimaId: activeTarima.id,
+      tarimaNumber: activeTarima.tarimaNumber,
+      flowType: activeTarima.flowType,
+      reviewerName: currentUser?.name || currentUser?.username || "N/A",
       products: {},
       totalPieces: 0,
       startedAt: new Date().toISOString(),
@@ -997,6 +1010,16 @@ function ReturnsReconditionScannerInner({
               <p className="subtle-line">Total acumulado: {activeTarima.totalPieces || 0} pzas · {(activeTarima.boxes || []).length} cajas</p>
             </div>
             <div className="saved-board-list">
+              <button
+                type="button"
+                className="icon-button returns-scan-icon-only returns-scan-close-box"
+                onClick={() => { void finishActiveBoxManually(); }}
+                disabled={disabled || systemPaused || !activeBox}
+                title="Cerrar caja activa"
+                aria-label="Cerrar caja activa"
+              >
+                x
+              </button>
               <button type="button" className="icon-button" onClick={() => setBoxModalOpen(true)} disabled={disabled || systemPaused}>
                 + Nueva Caja
               </button>
@@ -1005,6 +1028,31 @@ function ReturnsReconditionScannerInner({
               </button>
             </div>
           </div>
+
+          {(() => {
+            const closedForTarima = completedBoxes.filter(
+              (box) => box.tarimaId === activeTarima.id || String(box.tarimaNumber || "") === String(activeTarima.tarimaNumber || ""),
+            );
+            if (!closedForTarima.length) return null;
+            return (
+              <div className="returns-scan-closed-box-tabs">
+                {closedForTarima.map((box) => (
+                  <div className="returns-scan-closed-box-tab" key={`${box.id}-${box.closedAt}`}>
+                    <span>Caja {box.palletNumber} · {box.totalPieces || 0} pzas</span>
+                    <button
+                      type="button"
+                      className="icon-button returns-scan-icon-only"
+                      onClick={() => { void generateSingleBoxPDF(box); }}
+                      title="Reimprimir PDF de caja"
+                      aria-label="Reimprimir PDF de caja"
+                    >
+                      P
+                    </button>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Pestañas de productos completados */}
           {(() => {

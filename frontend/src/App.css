@@ -5704,9 +5704,10 @@ tbody tr:hover {
 }
 
 .returns-scan-cards {
-  display: grid;
-  gap: 0.2rem;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.12rem;
 }
 
 .returns-scan-card {
@@ -5716,6 +5717,46 @@ tbody tr:hover {
   border-radius: 0.8rem;
   border: 1px solid rgba(15, 77, 64, 0.16);
   background: #ffffff;
+}
+
+.returns-scan-icon-only {
+  min-width: 1.72rem;
+  min-height: 1.72rem;
+  width: 1.72rem;
+  height: 1.72rem;
+  padding: 0;
+  border-radius: 999px;
+  line-height: 1;
+}
+
+.returns-scan-close-box {
+  border-color: rgba(127, 29, 29, 0.35);
+  color: #7f1d1d;
+  background: #fff1f2;
+}
+
+.returns-scan-close-box:disabled {
+  opacity: 0.5;
+}
+
+.returns-scan-closed-box-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: -0.15rem;
+}
+
+.returns-scan-closed-box-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #ecfdf3;
+  color: #166534;
+  border: 1px solid rgba(22, 101, 52, 0.3);
+  border-radius: 999px;
+  padding: 0.2rem 0.45rem 0.2rem 0.65rem;
+  font-size: 0.74rem;
+  font-weight: 600;
 }
 
 .returns-scan-card-head {
