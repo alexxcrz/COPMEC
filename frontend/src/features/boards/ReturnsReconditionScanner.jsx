@@ -42,6 +42,56 @@ async function toDataUrl(url) {
   });
 }
 
+async function printPdfBlob(blob) {
+  if (!(blob instanceof Blob)) return;
+  const blobUrl = URL.createObjectURL(blob);
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "0";
+  iframe.src = blobUrl;
+
+  await new Promise((resolve, reject) => {
+    const cleanup = () => {
+      URL.revokeObjectURL(blobUrl);
+      iframe.remove();
+    };
+    const handleLoad = () => {
+      const win = iframe.contentWindow;
+      if (!win) {
+        cleanup();
+        reject(new Error("No se pudo abrir el visor de impresión."));
+        return;
+      }
+
+      const done = () => {
+        cleanup();
+        resolve();
+      };
+
+      // afterprint no siempre se dispara en todos los navegadores; fallback con timeout corto.
+      const timeoutId = globalThis.setTimeout(done, 2000);
+      const handleAfterPrint = () => {
+        globalThis.clearTimeout(timeoutId);
+        done();
+      };
+      win.addEventListener("afterprint", handleAfterPrint, { once: true });
+      win.focus();
+      win.print();
+    };
+
+    iframe.addEventListener("load", handleLoad, { once: true });
+    iframe.addEventListener("error", () => {
+      cleanup();
+      reject(new Error("No se pudo cargar el PDF para impresión."));
+    }, { once: true });
+    document.body.appendChild(iframe);
+  });
+}
+
 // ...existing code...
 // Error boundary solo en desarrollo para evitar ReferenceError y mostrar mensaje amigable
 function DevErrorBoundary({ children }) {
@@ -691,7 +741,6 @@ function ReturnsReconditionScannerInner({
       });
 
       const blob = doc.output("blob");
-      doc.save(`caja-${box.palletNumber}-${box.flowType}.pdf`);
       await printPdfBlob(blob);
     } catch (error) {
       setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo generar el PDF de la caja." });
