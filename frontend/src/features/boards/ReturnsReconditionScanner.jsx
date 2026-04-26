@@ -274,10 +274,10 @@ function ReturnsReconditionScannerInner({
   }, []);
 
   useEffect(() => {
-    if (!activeTarima?.startedAt || activeTarima?.stoppedAt || resolveTarimaWorkflowStatus(activeTarima) !== TARIMA_STATUS_RUNNING) return undefined;
+    if (!activeTarima?.startedAt || activeTarima?.stoppedAt || activeTarima?.pausedAt || systemPaused || resolveTarimaWorkflowStatus(activeTarima) !== TARIMA_STATUS_RUNNING) return undefined;
     const timer = globalThis.setInterval(() => setNowTick(Date.now()), 1000);
     return () => globalThis.clearInterval(timer);
-  }, [activeTarima]);
+  }, [activeTarima, systemPaused]);
 
   useEffect(() => {
     if (disabled) return;
@@ -349,11 +349,11 @@ function ReturnsReconditionScannerInner({
     ? (() => {
       const startedAtMs = new Date(activeTarima.startedAt).getTime();
       const pausedAccumulatedMs = Number(activeTarima.pausedAccumulatedMs || 0);
+      if (activeTarima.pausedAt) {
+        return Math.max(0, new Date(activeTarima.pausedAt).getTime() - startedAtMs - pausedAccumulatedMs);
+      }
       if (tarimaStatus === TARIMA_STATUS_FINISHED && activeTarima.stoppedAt) {
         return Math.max(0, new Date(activeTarima.stoppedAt).getTime() - startedAtMs - pausedAccumulatedMs);
-      }
-      if (tarimaStatus === TARIMA_STATUS_PAUSED && activeTarima.pausedAt) {
-        return Math.max(0, new Date(activeTarima.pausedAt).getTime() - startedAtMs - pausedAccumulatedMs);
       }
       return Math.max(0, nowTick - startedAtMs - pausedAccumulatedMs);
     })()
@@ -1329,6 +1329,44 @@ function ReturnsReconditionScannerInner({
               <span className="chip primary">Total acumulado: {tarimaDisplayedTotalPieces}</span>
               <span className="chip" style={tarimaStatusColor}>Workflow tarima: {tarimaStatus}</span>
               <span className="chip">Tiempo tarima: {formatElapsedMs(Math.max(0, tarimaElapsedMs))}</span>
+              <div className="row-actions compact board-workflow-actions">
+                {(tarimaStatus === TARIMA_STATUS_PENDING || tarimaStatus === TARIMA_STATUS_PAUSED) ? (
+                  <button
+                    type="button"
+                    className="board-action-button start icon-only"
+                    title={tarimaStatus === TARIMA_STATUS_PAUSED ? "Quitar pausa / Reanudar" : "Iniciar"}
+                    aria-label={tarimaStatus === TARIMA_STATUS_PAUSED ? "Quitar pausa / Reanudar" : "Iniciar"}
+                    onClick={startTarimaWorkflow}
+                    disabled={disabled || !activeTarima}
+                  >
+                    <Play size={13} />
+                  </button>
+                ) : null}
+                {tarimaStatus === TARIMA_STATUS_RUNNING ? (
+                  <button
+                    type="button"
+                    className="board-action-button pause icon-only"
+                    title="Poner pausa"
+                    aria-label="Poner pausa"
+                    onClick={pauseTarimaWorkflow}
+                    disabled={disabled || !activeTarima}
+                  >
+                    <PauseCircle size={13} />
+                  </button>
+                ) : null}
+                {(tarimaStatus === TARIMA_STATUS_RUNNING || tarimaStatus === TARIMA_STATUS_PAUSED) ? (
+                  <button
+                    type="button"
+                    className="board-action-button finish icon-only"
+                    title="Finalizar"
+                    aria-label="Finalizar"
+                    onClick={() => { void finishActiveTarimaManually(); }}
+                    disabled={disabled || !activeTarima}
+                  >
+                    <Square size={13} />
+                  </button>
+                ) : null}
+              </div>
               {activeBox && (
                 <>
                   <span className="chip">Caja activa: {activeBox.palletNumber}</span>
