@@ -92,6 +92,7 @@ function ReturnsReconditionScannerInner({
   const [activeTarima, setActiveTarima] = useState(null);
   const [activeBoxId, setActiveBoxId] = useState(null);
   const [completedBoxes, setCompletedBoxes] = useState([]);
+  const [collapsedProducts, setCollapsedProducts] = useState(new Set());
   const [pendingItem, setPendingItem] = useState(null);
   const [systemPaused, setSystemPaused] = useState(false);
   
@@ -127,6 +128,19 @@ function ReturnsReconditionScannerInner({
       if (pauseCheckIntervalRef.current) clearInterval(pauseCheckIntervalRef.current);
     };
   }, []);
+
+  // Toggle collapse/expand producto
+  const toggleProductCollapsed = (productKey) => {
+    setCollapsedProducts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(productKey)) {
+        newSet.delete(productKey);
+      } else {
+        newSet.add(productKey);
+      }
+      return newSet;
+    });
+  };
   
   // Cargar anchos guardados al montar/cambiar caja
   useEffect(() => {
@@ -439,6 +453,16 @@ function ReturnsReconditionScannerInner({
       });
       applyRemoteWarehouseState(patchedState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
     }
+  }
+
+  async function generateSingleBoxPDF(box) {
+    // Para reimprimir: crear snapshot de caja con timestamp
+    const payload = {
+      ...box,
+      closedAt: box.closedAt || new Date().toISOString(),
+      stoppedAt: box.stoppedAt || new Date().toISOString(),
+    };
+    await exportClosedBoxPdf(payload);
   }
 
   async function exportClosedBoxPdf(box) {
@@ -852,6 +876,11 @@ function ReturnsReconditionScannerInner({
     }
     persistLotHistory(item, lot, expiry);
 
+    // Auto-collapse product if it reached its target
+    if (nextProduct.totalPieces >= nextProduct.targetPieces) {
+      setCollapsedProducts(prev => new Set(prev).add(`${activeBoxId}-${item.id}`));
+    }
+
     if (totalPieces >= Number(activeBox.targetPieces || 0)) {
       await closeCurrentBox({
         ...nextBox,
@@ -977,6 +1006,47 @@ function ReturnsReconditionScannerInner({
             </div>
           </div>
 
+          {/* Pestañas de productos completados */}
+          {(() => {
+            const completedProducts = [];
+            (activeTarima.boxes || []).forEach((box) => {
+              Object.values(box.products || {}).forEach((product) => {
+                if (product.totalPieces >= product.targetPieces) {
+                  completedProducts.push({ ...product, boxId: box.id, boxNumber: box.palletNumber });
+                }
+              });
+            });
+            
+            return completedProducts.length > 0 ? (
+              <div style={{ borderBottom: "1px solid rgba(15, 77, 64, 0.2)", paddingBottom: "0.8rem", marginBottom: "0.8rem", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                {completedProducts.map((product) => {
+                  const productKey = `${product.boxId}-${product.itemId}`;
+                  const isCollapsed = collapsedProducts.has(productKey);
+                  return (
+                    <button
+                      key={productKey}
+                      type="button"
+                      onClick={() => toggleProductCollapsed(productKey)}
+                      style={{
+                        padding: "0.5rem 1rem",
+                        background: isCollapsed ? "#f0fdf4" : "#e8f5e9",
+                        border: "1px solid #4caf50",
+                        borderRadius: "0.5rem",
+                        cursor: "pointer",
+                        fontSize: "0.85rem",
+                        fontWeight: "500",
+                        color: "#15803d",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      {isCollapsed ? "▶" : "▼"} {product.code.substring(0, 8)} ({product.totalPieces}p)
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null;
+          })()}
+
           {/* Todas las tarjetitas de la tarima */}
           <div className="returns-scan-cards">
             {(() => {
@@ -990,32 +1060,48 @@ function ReturnsReconditionScannerInner({
               return allProducts.length ? allProducts.map((product, idx) => {
                 const width = productWidths[product.itemId] || 320;
                 const isProductActive = activeBoxId === product.boxId;
+                const productKey = `${product.boxId}-${product.itemId}`;
+                const isCollapsed = collapsedProducts.has(productKey);
+                const isCompleted = product.totalPieces >= product.targetPieces;
+
+                // No renderizar colapsadas en la vista principal
+                if (isCollapsed && isCompleted) return null;
                 
                 return (
                   <article
                     key={`${product.boxId}-${product.itemId}`}
                     className="returns-scan-card"
-                    draggable={isProductActive}
-                    onDragStart={isProductActive ? e => {
+                    draggable={isProductActive && !isCompleted}
+                    onDragStart={isProductActive && !isCompleted ? e => {
                       e.dataTransfer.effectAllowed = "move";
                       e.dataTransfer.setData("text/plain", idx);
                     } : undefined}
-                    onDragOver={isProductActive ? e => e.preventDefault() : undefined}
-                    onDrop={isProductActive ? e => {
+                    onDragOver={isProductActive && !isCompleted ? e => e.preventDefault() : undefined}
+                    onDrop={isProductActive && !isCompleted ? e => {
                       e.preventDefault();
                       const fromIdx = Number(e.dataTransfer.getData("text/plain"));
                       if (fromIdx !== idx) moveProduct(fromIdx, idx);
                     } : undefined}
-                    style={{ cursor: isProductActive ? "grab" : "default", opacity: 1, width: width + "px", minWidth: "180px", maxWidth: "800px", position: "relative" }}
+                    style={{ cursor: isProductActive && !isCompleted ? "grab" : "default", opacity: 1, width: width + "px", minWidth: "180px", maxWidth: "800px", position: "relative", ...(isCompleted ? { opacity: 0.7, background: "#f0fdf4" } : {}) }}
                   >
                     <div className="returns-scan-card-head">
                       <strong>{product.code} · {product.name}</strong>
                       <div className="saved-board-list">
                         <span className="chip" style={{ background: "#f0fdf4", color: "#15803d" }}>Caja: {product.boxNumber}</span>
-                        <span className="chip primary">{product.totalPieces} pzas</span>
-                        <button type="button" className="icon-button" onClick={() => openLotModalForProduct(product)} disabled={!isProductActive}>
-                          Cambiar lote
-                        </button>
+                        <span className="chip primary">{product.totalPieces}/{product.targetPieces} pzas</span>
+                        {!isCompleted && (
+                          <button type="button" className="icon-button" onClick={() => openLotModalForProduct(product)} disabled={!isProductActive}>
+                            Cambiar lote
+                          </button>
+                        )}
+                        {isCompleted && (
+                          <button type="button" className="icon-button" onClick={() => {
+                            const box = activeTarima.boxes.find(b => b.id === product.boxId);
+                            if (box) void generateSingleBoxPDF(box);
+                          }} title="Reimprimir PDF">
+                            🖨️ Reimprimir
+                          </button>
+                        )}
                       </div>
                     </div>
                     <p>{product.presentation || "Sin presentación"}</p>
@@ -1035,7 +1121,7 @@ function ReturnsReconditionScannerInner({
                         ))}
                       </div>
                     </div>
-                    {isProductActive && (
+                    {isProductActive && !isCompleted && (
                       <div
                         style={{
                           position: "absolute",
