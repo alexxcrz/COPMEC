@@ -979,53 +979,55 @@ function ReturnsReconditionScannerInner({
                 )}
               </div>
               
-              {activeBoxId === box.id && (
-                <div className="returns-scan-cards">
-                  {activeProducts.length ? activeProducts.map((product, idx) => {
-                    const width = productWidths[product.itemId] || 320;
-                    return (
-                      <article
-                        key={product.itemId}
-                        className="returns-scan-card"
-                        draggable
-                        onDragStart={e => {
-                          e.dataTransfer.effectAllowed = "move";
-                          e.dataTransfer.setData("text/plain", idx);
-                        }}
-                        onDragOver={e => e.preventDefault()}
-                        onDrop={e => {
-                          e.preventDefault();
-                          const fromIdx = Number(e.dataTransfer.getData("text/plain"));
-                          if (fromIdx !== idx) moveProduct(fromIdx, idx);
-                        }}
-                        style={{ cursor: "grab", opacity: 1, width: width + "px", minWidth: "180px", maxWidth: "800px", position: "relative" }}
-                      >
-                        <div className="returns-scan-card-head">
-                          <strong>{product.code} · {product.name}</strong>
-                          <div className="saved-board-list">
-                            <span className="chip primary">{product.totalPieces} pzas</span>
-                            <button type="button" className="icon-button" onClick={() => openLotModalForProduct(product)}>
-                              Cambiar lote
-                            </button>
-                          </div>
+              {/* Productos de esta caja */}
+              <div className="returns-scan-cards">
+                {Object.values(box.products || {}).length ? Object.values(box.products || {}).map((product, idx) => {
+                  const width = productWidths[product.itemId] || 320;
+                  const isBoxActive = activeBoxId === box.id;
+                  return (
+                    <article
+                      key={product.itemId}
+                      className="returns-scan-card"
+                      draggable={isBoxActive}
+                      onDragStart={isBoxActive ? e => {
+                        e.dataTransfer.effectAllowed = "move";
+                        e.dataTransfer.setData("text/plain", idx);
+                      } : undefined}
+                      onDragOver={isBoxActive ? e => e.preventDefault() : undefined}
+                      onDrop={isBoxActive ? e => {
+                        e.preventDefault();
+                        const fromIdx = Number(e.dataTransfer.getData("text/plain"));
+                        if (fromIdx !== idx) moveProduct(fromIdx, idx);
+                      } : undefined}
+                      style={{ cursor: isBoxActive ? "grab" : "default", opacity: 1, width: width + "px", minWidth: "180px", maxWidth: "800px", position: "relative" }}
+                    >
+                      <div className="returns-scan-card-head">
+                        <strong>{product.code} · {product.name}</strong>
+                        <div className="saved-board-list">
+                          <span className="chip primary">{product.totalPieces} pzas</span>
+                          <button type="button" className="icon-button" onClick={() => openLotModalForProduct(product)} disabled={!isBoxActive}>
+                            Cambiar lote
+                          </button>
                         </div>
-                        <p>{product.presentation || "Sin presentación"}</p>
-                        <div className="returns-scan-lot-table" role="table" aria-label={`Lotes de ${product.name}`}>
-                          <div className="returns-scan-lot-header" role="row">
-                            <span role="columnheader">Lote</span>
-                            <span role="columnheader">Caducidad</span>
-                            <span role="columnheader">Piezas</span>
-                          </div>
-                          <div className="returns-scan-lot-body" role="rowgroup">
-                            {product.lots.map((lot) => (
-                              <div className="returns-scan-lot-row" role="row" key={`${product.itemId}-${lot.lot}-${lot.expiry}`}>
-                                <span role="cell" data-label="Lote">{lot.lot}</span>
-                                <span role="cell" data-label="Caducidad">{lot.expiry}</span>
-                                <span role="cell" data-label="Piezas">{lot.pieces}</span>
-                              </div>
-                            ))}
-                          </div>
+                      </div>
+                      <p>{product.presentation || "Sin presentación"}</p>
+                      <div className="returns-scan-lot-table" role="table" aria-label={`Lotes de ${product.name}`}>
+                        <div className="returns-scan-lot-header" role="row">
+                          <span role="columnheader">Lote</span>
+                          <span role="columnheader">Caducidad</span>
+                          <span role="columnheader">Piezas</span>
                         </div>
+                        <div className="returns-scan-lot-body" role="rowgroup">
+                          {product.lots.map((lot) => (
+                            <div className="returns-scan-lot-row" role="row" key={`${product.itemId}-${lot.lot}-${lot.expiry}`}>
+                              <span role="cell" data-label="Lote">{lot.lot}</span>
+                              <span role="cell" data-label="Caducidad">{lot.expiry}</span>
+                              <span role="cell" data-label="Piezas">{lot.pieces}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      {isBoxActive && (
                         <div
                           style={{
                             position: "absolute",
@@ -1056,11 +1058,11 @@ function ReturnsReconditionScannerInner({
                           title="Arrastra para ajustar el ancho"
                           aria-label="Arrastra para ajustar el ancho"
                         />
-                      </article>
-                    );
-                  }) : <p className="subtle-line">Aún no hay productos en esta caja.</p>}
-                </div>
-              )}
+                      )}
+                    </article>
+                  );
+                }) : <p className="subtle-line">Aún no hay productos en esta caja.</p>}
+              </div>
             </div>
           ))}
           <div style={{ padding: "1rem", textAlign: "center" }}>

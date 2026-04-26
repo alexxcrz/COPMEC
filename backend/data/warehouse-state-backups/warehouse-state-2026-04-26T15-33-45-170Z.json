@@ -1,5 +1,5 @@
 {
-  "revision": 2419,
+  "revision": 2434,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro"
@@ -378,7 +378,10 @@
       "activityCatalogIds": [],
       "activityConsumptions": [],
       "consumptionPerStart": 0,
-      "customFields": {}
+      "customFields": {
+        "lote": "123456",
+        "caducidad": "091226"
+      }
     },
     {
       "id": "inv-ssle5epu",
@@ -463,8 +466,8 @@
       "activityConsumptions": [],
       "consumptionPerStart": 0,
       "customFields": {
-        "lote": "123456",
-        "caducidad": "081227"
+        "lote": "789456",
+        "caducidad": "100628"
       }
     },
     {
@@ -9611,19 +9614,39 @@
             "fld-6f1i241y": "1",
             "fld-35em8nu4": "2026-04-26",
             "fld-5t8y7u2c": "inv-2eyg6glv",
-            "fld-jdjyikw2": "123456",
-            "fld-kdeih26e": "081227",
-            "fld-giinpivu": 18,
+            "fld-jdjyikw2": "123456 | 789456",
+            "fld-kdeih26e": "081227 | 100628",
+            "fld-giinpivu": 22,
             "fld-iplaceek": 50,
             "fld-cm8ddbc8": ""
           },
           "responsibleId": "usr-lead-nu7wt83h",
-          "status": "En curso",
+          "status": "Terminado",
           "startTime": "2026-04-26T14:53:01.259Z",
-          "endTime": null,
-          "accumulatedSeconds": 0,
-          "lastResumedAt": "2026-04-26T14:53:01.259Z",
+          "endTime": "2026-04-26T14:56:12.197Z",
+          "accumulatedSeconds": 190,
+          "lastResumedAt": null,
           "createdAt": "2026-04-26T14:53:00.758Z"
+        },
+        {
+          "id": "row-23c846b36cbf",
+          "values": {
+            "fld-6f1i241y": "1",
+            "fld-35em8nu4": "2026-04-26",
+            "fld-5t8y7u2c": "inv-ammofvq7",
+            "fld-jdjyikw2": "123456",
+            "fld-kdeih26e": "091226",
+            "fld-giinpivu": 50,
+            "fld-iplaceek": 50,
+            "fld-cm8ddbc8": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Terminado",
+          "startTime": null,
+          "endTime": "2026-04-26T14:56:15.952Z",
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-26T14:56:09.673Z"
         }
       ],
       "permissions": {
@@ -9923,7 +9946,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-26T14:53:33.105Z",
+  "updatedAt": "2026-04-26T14:56:15.981Z",
   "permissions": {
     "pages": {
       "index": {
