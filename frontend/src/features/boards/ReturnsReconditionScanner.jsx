@@ -1130,16 +1130,6 @@ function ReturnsReconditionScannerInner({
               <p className="subtle-line">Total acumulado: {activeTarima.totalPieces || 0} pzas · {(activeTarima.boxes || []).length} cajas</p>
             </div>
             <div className="saved-board-list">
-              <button
-                type="button"
-                className="icon-button returns-scan-icon-only returns-scan-close-box"
-                onClick={() => { void finishActiveBoxManually(); }}
-                disabled={disabled || systemPaused || !activeBox}
-                title="Cerrar caja activa"
-                aria-label="Cerrar caja activa"
-              >
-                x
-              </button>
               <button type="button" className="icon-button" onClick={() => setBoxModalOpen(true)} disabled={disabled || systemPaused}>
                 + Nueva Caja
               </button>
