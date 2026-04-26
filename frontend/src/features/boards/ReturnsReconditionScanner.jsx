@@ -11,6 +11,7 @@ import { Modal } from "../../components/Modal";
 import { findInventoryItemByQuery, normalizeKey, formatElapsedMs } from "../../utils/utilidades.jsx";
 
 const ACTIVE_TARIMA_STORAGE_PREFIX = "copmec_returns_recondition_active_tarima";
+const COMPLETED_BOXES_STORAGE_PREFIX = "copmec_returns_recondition_completed_boxes";
 const TARIMA_STATUS_PENDING = "Pendiente";
 const TARIMA_STATUS_RUNNING = "En curso";
 const TARIMA_STATUS_PAUSED = "Pausado";
@@ -149,12 +150,14 @@ function ReturnsReconditionScannerInner({
   const autoScanTimeoutRef = useRef(null);
   const modalAutoCommitRef = useRef(false);
   const pauseCheckIntervalRef = useRef(null);
+  const tarimaPauseContinueTimerRef = useRef(null);
   
   const [scanValue, setScanValue] = useState("");
   const [activeTarima, setActiveTarima] = useState(null);
   const [activeBoxId, setActiveBoxId] = useState(null);
   const [completedBoxes, setCompletedBoxes] = useState([]);
   const [collapsedProducts, setCollapsedProducts] = useState(new Set());
+  const [expandedClosedBoxes, setExpandedClosedBoxes] = useState(new Set());
   const [pendingItem, setPendingItem] = useState(null);
   const [systemPaused, setSystemPaused] = useState(false);
   
@@ -162,6 +165,7 @@ function ReturnsReconditionScannerInner({
   const [tarimaModalOpen, setTarimaModalOpen] = useState(false);
   const [boxModalOpen, setBoxModalOpen] = useState(false);
   const [lotModalOpen, setLotModalOpen] = useState(false);
+  const [tarimaPauseState, setTarimaPauseState] = useState({ open: false, reason: "", error: "", completed: false, continueReady: false });
   
   const [tarimaForm, setTarimaForm] = useState({ tarimaNumber: "", flowType: "devolucion" });
   const [boxForm, setBoxForm] = useState({ boxNumber: "", targetPieces: 50 });
@@ -428,6 +432,32 @@ function ReturnsReconditionScannerInner({
     }
   }, [activeTarima, boardId]);
 
+  useEffect(() => {
+    if (!boardId) return;
+    try {
+      const raw = localStorage.getItem(`${COMPLETED_BOXES_STORAGE_PREFIX}:${boardId}`);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      setCompletedBoxes(parsed);
+    } catch {
+      setCompletedBoxes([]);
+    }
+  }, [boardId]);
+
+  useEffect(() => {
+    if (!boardId) return;
+    try {
+      if (completedBoxes.length) {
+        localStorage.setItem(`${COMPLETED_BOXES_STORAGE_PREFIX}:${boardId}`, JSON.stringify(completedBoxes));
+      } else {
+        localStorage.removeItem(`${COMPLETED_BOXES_STORAGE_PREFIX}:${boardId}`);
+      }
+    } catch {
+      // Ignore localStorage write errors.
+    }
+  }, [boardId, completedBoxes]);
+
   // Recuperar tarima desde filas remotas para consistencia entre dispositivos.
   useEffect(() => {
     if (activeTarima || !boardId || disabled) return;
@@ -551,6 +581,30 @@ function ReturnsReconditionScannerInner({
     setBoardRuntimeFeedback({ tone: "success", message: `Caja ${box.palletNumber} terminada manualmente.` });
   }
 
+  function toggleClosedBoxExpanded(boxKey) {
+    setExpandedClosedBoxes((current) => {
+      const next = new Set(current);
+      if (next.has(boxKey)) next.delete(boxKey);
+      else next.add(boxKey);
+      return next;
+    });
+  }
+
+  const closedForTarima = useMemo(() => {
+    if (!boardId) return [];
+    return completedBoxes.filter((box) => box.boardId === boardId);
+  }, [boardId, completedBoxes]);
+
+  const tarimaDisplayedTotalPieces = useMemo(() => {
+    const openPieces = Number(activeTarima?.totalPieces || 0);
+    const closedPieces = closedForTarima.reduce((acc, box) => acc + Number(box.totalPieces || 0), 0);
+    return openPieces + closedPieces;
+  }, [activeTarima?.totalPieces, closedForTarima]);
+
+  const tarimaDisplayedBoxCount = useMemo(() => {
+    return Number((activeTarima?.boxes || []).length) + closedForTarima.length;
+  }, [activeTarima?.boxes, closedForTarima]);
+
   function startTarimaWorkflow() {
     if (!activeTarima) return;
     if (resolveTarimaWorkflowStatus(activeTarima) === TARIMA_STATUS_FINISHED) return;
@@ -571,15 +625,37 @@ function ReturnsReconditionScannerInner({
   function pauseTarimaWorkflow() {
     if (!activeTarima) return;
     if (resolveTarimaWorkflowStatus(activeTarima) !== TARIMA_STATUS_RUNNING) return;
+    setTarimaPauseState({ open: true, reason: "", error: "", completed: false, continueReady: false });
+  }
+
+  function handleConfirmTarimaPause() {
+    if (tarimaPauseState.completed) {
+      if (!tarimaPauseState.continueReady) return;
+      if (tarimaPauseContinueTimerRef.current) clearTimeout(tarimaPauseContinueTimerRef.current);
+      startTarimaWorkflow();
+      setTarimaPauseState({ open: false, reason: "", error: "", completed: false, continueReady: false });
+      return;
+    }
+
+    if (!tarimaPauseState.reason.trim()) {
+      setTarimaPauseState((current) => ({ ...current, error: "El motivo es obligatorio para poder pausar." }));
+      return;
+    }
+
     setActiveTarima((current) => {
       if (!current) return current;
       return {
         ...current,
         workflowStatus: TARIMA_STATUS_PAUSED,
         pausedAt: new Date().toISOString(),
+        lastPauseReason: tarimaPauseState.reason.trim(),
       };
     });
-    setBoardRuntimeFeedback({ tone: "warning", message: "Workflow de tarima pausado." });
+    if (tarimaPauseContinueTimerRef.current) clearTimeout(tarimaPauseContinueTimerRef.current);
+    tarimaPauseContinueTimerRef.current = globalThis.setTimeout(() => {
+      setTarimaPauseState((current) => (current.completed ? { ...current, continueReady: true } : current));
+    }, 3000);
+    setTarimaPauseState((current) => ({ ...current, error: "", completed: true, continueReady: false }));
   }
 
   useEffect(() => {
@@ -824,6 +900,7 @@ function ReturnsReconditionScannerInner({
   async function closeCurrentBox(box) {
     const payload = {
       ...box,
+      boardId,
       closedAt: new Date().toISOString(),
       stoppedAt: new Date().toISOString(),
       totalPieces: box.totalPieces,
@@ -938,6 +1015,8 @@ function ReturnsReconditionScannerInner({
       pausedAccumulatedMs: 0,
       pausedAt: null,
     };
+    setCompletedBoxes([]);
+    setExpandedClosedBoxes(new Set());
     setActiveTarima(newTarima);
     setTarimaModalOpen(false);
     setTarimaForm({ tarimaNumber: "", flowType: "devolucion" });
@@ -1213,8 +1292,8 @@ function ReturnsReconditionScannerInner({
           {activeTarima && (
             <>
               <span className="chip">Tarima: {activeTarima.tarimaNumber}</span>
-              <span className="chip">Cajas: {(activeTarima.boxes || []).length}</span>
-              <span className="chip primary">Total acumulado: {activeTarima.totalPieces || 0}</span>
+              <span className="chip">Cajas: {tarimaDisplayedBoxCount}</span>
+              <span className="chip primary">Total acumulado: {tarimaDisplayedTotalPieces}</span>
               <span className="chip" style={tarimaStatusColor}>Workflow tarima: {tarimaStatus}</span>
               <span className="chip">Tiempo tarima: {formatElapsedMs(Math.max(0, tarimaElapsedMs))}</span>
               {activeBox && (
@@ -1253,67 +1332,107 @@ function ReturnsReconditionScannerInner({
             <div>
               <strong>Tarima: {activeTarima.tarimaNumber}</strong>
               <p className="subtle-line">
-                Total acumulado: {activeTarima.totalPieces || 0} pzas · {(activeTarima.boxes || []).length} cajas · Workflow tarima: {tarimaStatus} · Tiempo: {formatElapsedMs(Math.max(0, tarimaElapsedMs))}
+                Total acumulado: {tarimaDisplayedTotalPieces} pzas · {tarimaDisplayedBoxCount} cajas · Workflow tarima: {tarimaStatus} · Tiempo: {formatElapsedMs(Math.max(0, tarimaElapsedMs))}
               </p>
             </div>
             <div className="row-actions compact board-workflow-actions">
-              <button
-                type="button"
-                className="board-action-button start icon-only"
-                title="Iniciar/Reanudar"
-                aria-label="Iniciar/Reanudar"
-                onClick={startTarimaWorkflow}
-                disabled={disabled || !activeTarima || tarimaStatus === TARIMA_STATUS_RUNNING || tarimaStatus === TARIMA_STATUS_FINISHED}
-              >
-                <Play size={13} />
-              </button>
-              <button
-                type="button"
-                className="board-action-button pause icon-only"
-                title="Pausar"
-                aria-label="Pausar"
-                onClick={pauseTarimaWorkflow}
-                disabled={disabled || !activeTarima || tarimaStatus !== TARIMA_STATUS_RUNNING}
-              >
-                <PauseCircle size={13} />
-              </button>
-              <button
-                type="button"
-                className="board-action-button finish icon-only"
-                title="Finalizar"
-                aria-label="Finalizar"
-                onClick={() => { void finishActiveTarimaManually(); }}
-                disabled={disabled || !activeTarima || tarimaStatus === TARIMA_STATUS_FINISHED}
-              >
-                <Square size={13} />
-              </button>
+              {tarimaStatus === TARIMA_STATUS_PENDING || tarimaStatus === TARIMA_STATUS_PAUSED ? (
+                <button
+                  type="button"
+                  className="board-action-button start icon-only"
+                  title="Iniciar/Reanudar"
+                  aria-label="Iniciar/Reanudar"
+                  onClick={startTarimaWorkflow}
+                  disabled={disabled || !activeTarima}
+                >
+                  <Play size={13} />
+                </button>
+              ) : null}
+              {tarimaStatus === TARIMA_STATUS_RUNNING ? (
+                <button
+                  type="button"
+                  className="board-action-button pause icon-only"
+                  title="Pausar"
+                  aria-label="Pausar"
+                  onClick={pauseTarimaWorkflow}
+                  disabled={disabled || !activeTarima}
+                >
+                  <PauseCircle size={13} />
+                </button>
+              ) : null}
+              {tarimaStatus === TARIMA_STATUS_RUNNING || tarimaStatus === TARIMA_STATUS_PAUSED ? (
+                <button
+                  type="button"
+                  className="board-action-button finish icon-only"
+                  title="Finalizar"
+                  aria-label="Finalizar"
+                  onClick={() => { void finishActiveTarimaManually(); }}
+                  disabled={disabled || !activeTarima}
+                >
+                  <Square size={13} />
+                </button>
+              ) : null}
             </div>
           </div>
 
-          {(() => {
-            const closedForTarima = completedBoxes.filter(
-              (box) => box.tarimaId === activeTarima.id || String(box.tarimaNumber || "") === String(activeTarima.tarimaNumber || ""),
-            );
-            if (!closedForTarima.length) return null;
-            return (
-              <div className="returns-scan-closed-box-tabs">
-                {closedForTarima.map((box) => (
-                  <div className="returns-scan-closed-box-tab" key={`${box.id}-${box.closedAt}`}>
-                    <span>Caja {box.palletNumber} · {box.totalPieces || 0} pzas</span>
+          {closedForTarima.length ? (
+            <div className="returns-scan-closed-box-tabs">
+              {closedForTarima.map((box) => {
+                const boxKey = `${box.id}-${box.closedAt}`;
+                const isExpanded = expandedClosedBoxes.has(boxKey);
+                return (
+                  <div className="returns-scan-closed-box-tab" key={boxKey}>
+                    <button type="button" className="chip" onClick={() => toggleClosedBoxExpanded(boxKey)}>
+                      {isExpanded ? "▼" : "▶"} Caja {box.palletNumber} · {box.totalPieces || 0} pzas
+                    </button>
                     <button
                       type="button"
                       className="icon-button returns-scan-icon-only"
-                      onClick={() => { void generateSingleBoxPDF(box); }}
+                      onClick={(event) => {
+                        void generateSingleBoxPDF(box);
+                      }}
                       title="Reimprimir PDF de caja"
                       aria-label="Reimprimir PDF de caja"
                     >
                       P
                     </button>
                   </div>
-                ))}
-              </div>
-            );
-          })()}
+                );
+              })}
+            </div>
+          ) : null}
+
+          {closedForTarima.filter((box) => expandedClosedBoxes.has(`${box.id}-${box.closedAt}`)).map((box) => (
+            <div className="returns-scan-cards" key={`expanded-${box.id}-${box.closedAt}`}>
+              {Object.values(box.products || {}).map((product) => (
+                <article key={`closed-${box.id}-${product.itemId}`} className="returns-scan-card" style={{ opacity: 0.82, background: "#f8fafc" }}>
+                  <div className="returns-scan-card-head">
+                    <strong>{product.code} · {product.name}</strong>
+                    <div className="saved-board-list">
+                      <span className="chip" style={{ background: "#ecfdf3", color: "#166534" }}>Caja cerrada: {box.palletNumber}</span>
+                    </div>
+                  </div>
+                  <p>{product.presentation || "Sin presentación"}</p>
+                  <div className="returns-scan-lot-table" role="table" aria-label={`Lotes cerrados de ${product.name}`}>
+                    <div className="returns-scan-lot-header" role="row">
+                      <span role="columnheader">Lote</span>
+                      <span role="columnheader">Caducidad</span>
+                      <span role="columnheader">Piezas</span>
+                    </div>
+                    <div className="returns-scan-lot-body" role="rowgroup">
+                      {(product.lots || []).map((lot) => (
+                        <div className="returns-scan-lot-row" role="row" key={`closed-${product.itemId}-${lot.lot}-${lot.expiry}`}>
+                          <span role="cell" data-label="Lote">{lot.lot}</span>
+                          <span role="cell" data-label="Caducidad">{lot.expiry}</span>
+                          <span role="cell" data-label="Piezas">{lot.pieces}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ))}
 
           {/* Pestañas de productos completados */}
           {(() => {
@@ -1538,6 +1657,38 @@ function ReturnsReconditionScannerInner({
       </Modal>
 
       <Modal
+        open={tarimaPauseState.open}
+        title="Pausar tarima"
+        confirmLabel={tarimaPauseState.completed ? (tarimaPauseState.continueReady ? "Continuar" : "Espera un momento...") : "Confirmar pausa"}
+        cancelLabel="Cancelar"
+        hideCancel={tarimaPauseState.completed}
+        confirmDisabled={tarimaPauseState.completed && !tarimaPauseState.continueReady}
+        onClose={() => {
+          if (tarimaPauseContinueTimerRef.current) clearTimeout(tarimaPauseContinueTimerRef.current);
+          setTarimaPauseState({ open: false, reason: "", error: "", completed: false, continueReady: false });
+        }}
+        onConfirm={handleConfirmTarimaPause}
+      >
+        <div className="returns-scan-modal-grid">
+          {tarimaPauseState.completed ? (
+            <>
+              <p className="validation-text success">Continuemos. La tarima quedó pausada y el motivo se guardó correctamente.</p>
+              <p className="modal-footnote">{tarimaPauseState.continueReady ? "Pulsa continuar para reanudar la tarima." : "El botón Continuar se habilitará en unos segundos..."}</p>
+            </>
+          ) : (
+            <>
+              <label className="app-modal-field">
+                <span>Motivo de pausa</span>
+                <input value={tarimaPauseState.reason} onChange={(event) => setTarimaPauseState((current) => ({ ...current, reason: event.target.value, error: "" }))} placeholder="Describe por qué se detiene la tarima" />
+              </label>
+              {tarimaPauseState.error ? <p className="validation-text">{tarimaPauseState.error}</p> : null}
+              <p className="modal-footnote">El motivo es obligatorio para poder pausar.</p>
+            </>
+          )}
+        </div>
+      </Modal>
+
+      <Modal
         open={lotModalOpen}
         title={`Registrar lote · ${pendingItem?.code || ""}`}
         confirmLabel="Guardar lote"
@@ -1634,14 +1785,6 @@ function ReturnsReconditionScannerInner({
         ) : null}
       </Modal>
 
-      {completedBoxes.length ? (
-        <div className="returns-scan-history">
-          <strong>Cajas cerradas recientes</strong>
-          <div className="saved-board-list">
-            {completedBoxes.map((box) => <span key={box.id} className="chip">{box.palletNumber} · {box.totalPieces} pzas</span>)}
-          </div>
-        </div>
-      ) : null}
     </section>
   );
 }
