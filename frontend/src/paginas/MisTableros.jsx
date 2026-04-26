@@ -185,6 +185,9 @@ export default function MisTableros({ contexto }) {
   const boardLooksCleaning = [boardNameText, boardCategoryText, boardDescriptionText].some((text) => text.includes("limp"));
   const boardLooksReturnsRecondition = [boardNameText, boardCategoryText, boardDescriptionText].some((text) => /(devol|reacond|maquila)/.test(text));
   const isCleaningRelatedBoard = boardOperationalContextType === "cleaningSite" || boardLooksCleaning;
+  const visibleBoardColumns = boardLooksReturnsRecondition
+    ? boardColumns.filter((column) => column.kind === "field")
+    : boardColumns;
 
   // Compute available cleaning naves from inventory items that have activity consumptions
   const cleaningNaveOptions = (() => {
@@ -334,7 +337,7 @@ export default function MisTableros({ contexto }) {
             <div className="table-wrap">
               <table className="admin-table-clean board-runtime-table">
                 <thead>
-                  {selectedCustomBoardSections.length ? (
+                  {selectedCustomBoardSections.length && !boardLooksReturnsRecondition ? (
                     <tr className="board-pdf-hide">
                       {selectedCustomBoardSections.map((section, index) => (
                         <th key={`${section.name}-${index}`} colSpan={section.span} className="board-section-header-cell" style={{ backgroundColor: section.color }}>
@@ -344,7 +347,7 @@ export default function MisTableros({ contexto }) {
                     </tr>
                   ) : null}
                   <tr>
-                    {boardColumns.map((column) => (
+                    {visibleBoardColumns.map((column) => (
                       <th key={column.token} className={column.kind !== "field" && column.id === "workflow" ? "board-pdf-hide" : ""} style={column.kind === "field" ? getFieldColumnStyle(column.field) : getAuxColumnStyle(column.id)} title={column.kind === "field" ? `${column.field.helpText || column.field.label}${column.field.required ? " · Obligatorio" : ""}` : column.label}>
                         {column.kind === "field" ? formatFieldLabel(column.field.label, column.field.required) : column.label}
                       </th>
@@ -363,7 +366,7 @@ export default function MisTableros({ contexto }) {
                     const canFinishRow = row.status === STATUS_RUNNING;
                     return (
                       <tr key={row.id}>
-                        {boardColumns.map((column) => {
+                        {visibleBoardColumns.map((column) => {
                           if (column.kind !== "field") {
                             if (column.id === "assignee") {
                               return (
@@ -695,7 +698,7 @@ export default function MisTableros({ contexto }) {
                   })}
                   {!(boardView?.rows || []).length ? (
                     <tr>
-                      <td colSpan={boardColumns.length}>
+                      <td colSpan={visibleBoardColumns.length || 1}>
                         <span className="subtle-line">{isHistoricalCustomBoardView ? "No hubo filas registradas en esa semana para este tablero." : "Este tablero aún no tiene filas."}</span>
                       </td>
                     </tr>

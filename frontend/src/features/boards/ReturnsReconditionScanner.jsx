@@ -255,10 +255,10 @@ function ReturnsReconditionScannerInner({
   }, []);
 
   useEffect(() => {
-    if (!activeBox?.startedAt || activeBox?.stoppedAt) return undefined;
+    if (!activeTarima?.startedAt || activeTarima?.stoppedAt) return undefined;
     const timer = globalThis.setInterval(() => setNowTick(Date.now()), 1000);
     return () => globalThis.clearInterval(timer);
-  }, [activeBox?.startedAt, activeBox?.stoppedAt]);
+  }, [activeTarima?.startedAt, activeTarima?.stoppedAt]);
 
   useEffect(() => {
     if (disabled) return;
@@ -318,6 +318,9 @@ function ReturnsReconditionScannerInner({
     () => activeProducts.reduce((acc, product) => acc + Number(product.totalPieces || 0), 0),
     [activeProducts],
   );
+  const tarimaElapsedMs = activeTarima?.startedAt
+    ? (activeTarima?.stoppedAt ? new Date(activeTarima.stoppedAt).getTime() : nowTick) - new Date(activeTarima.startedAt).getTime()
+    : 0;
   const elapsedMs = activeBox?.startedAt
     ? (activeBox?.stoppedAt ? new Date(activeBox.stoppedAt).getTime() : nowTick) - new Date(activeBox.startedAt).getTime()
     : 0;
@@ -1138,6 +1141,8 @@ function ReturnsReconditionScannerInner({
               <span className="chip">Tarima: {activeTarima.tarimaNumber}</span>
               <span className="chip">Cajas: {(activeTarima.boxes || []).length}</span>
               <span className="chip primary">Total acumulado: {activeTarima.totalPieces || 0}</span>
+              <span className="chip">Workflow tarima: {activeTarima?.stoppedAt ? "Terminado" : "En curso"}</span>
+              <span className="chip">Tiempo tarima: {formatElapsedMs(Math.max(0, tarimaElapsedMs))}</span>
               {activeBox && (
                 <>
                   <span className="chip">Caja activa: {activeBox.palletNumber}</span>
@@ -1176,7 +1181,9 @@ function ReturnsReconditionScannerInner({
           <div className="returns-scan-tarima-header">
             <div>
               <strong>Tarima: {activeTarima.tarimaNumber}</strong>
-              <p className="subtle-line">Total acumulado: {activeTarima.totalPieces || 0} pzas · {(activeTarima.boxes || []).length} cajas</p>
+              <p className="subtle-line">
+                Total acumulado: {activeTarima.totalPieces || 0} pzas · {(activeTarima.boxes || []).length} cajas · Workflow tarima: {activeTarima?.stoppedAt ? "Terminado" : "En curso"} · Tiempo: {formatElapsedMs(Math.max(0, tarimaElapsedMs))}
+              </p>
             </div>
             <div className="saved-board-list">
               <button type="button" className="icon-button" onClick={() => setBoxModalOpen(true)} disabled={disabled || systemPaused}>
