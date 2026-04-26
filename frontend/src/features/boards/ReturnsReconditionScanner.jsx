@@ -156,6 +156,7 @@ function ReturnsReconditionScannerInner({
   const [activeTarima, setActiveTarima] = useState(null);
   const [activeBoxId, setActiveBoxId] = useState(null);
   const [completedBoxes, setCompletedBoxes] = useState([]);
+  const [completedBoxesHydrated, setCompletedBoxesHydrated] = useState(false);
   const [collapsedProducts, setCollapsedProducts] = useState(new Set());
   const [expandedClosedBoxes, setExpandedClosedBoxes] = useState(new Set());
   const [pendingItem, setPendingItem] = useState(null);
@@ -411,7 +412,6 @@ function ReturnsReconditionScannerInner({
       setActiveTarima(normalizedTarima);
       if (normalizedTarima.boxes && normalizedTarima.boxes.length > 0) {
         setActiveBoxId(normalizedTarima.boxes[0].id);
-        setBoardRuntimeFeedback({ tone: "success", message: `Tarima ${normalizedTarima.tarimaNumber || "activa"} recuperada tras recarga.` });
       }
     } catch {
       // Ignore corrupted local state.
@@ -436,17 +436,27 @@ function ReturnsReconditionScannerInner({
     if (!boardId) return;
     try {
       const raw = localStorage.getItem(`${COMPLETED_BOXES_STORAGE_PREFIX}:${boardId}`);
-      if (!raw) return;
+      if (!raw) {
+        setCompletedBoxes([]);
+        setCompletedBoxesHydrated(true);
+        return;
+      }
       const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return;
+      if (!Array.isArray(parsed)) {
+        setCompletedBoxes([]);
+        setCompletedBoxesHydrated(true);
+        return;
+      }
       setCompletedBoxes(parsed);
+      setCompletedBoxesHydrated(true);
     } catch {
       setCompletedBoxes([]);
+      setCompletedBoxesHydrated(true);
     }
   }, [boardId]);
 
   useEffect(() => {
-    if (!boardId) return;
+    if (!boardId || !completedBoxesHydrated) return;
     try {
       if (completedBoxes.length) {
         localStorage.setItem(`${COMPLETED_BOXES_STORAGE_PREFIX}:${boardId}`, JSON.stringify(completedBoxes));
@@ -456,7 +466,7 @@ function ReturnsReconditionScannerInner({
     } catch {
       // Ignore localStorage write errors.
     }
-  }, [boardId, completedBoxes]);
+  }, [boardId, completedBoxes, completedBoxesHydrated]);
 
   // Recuperar tarima desde filas remotas para consistencia entre dispositivos.
   useEffect(() => {
@@ -552,7 +562,6 @@ function ReturnsReconditionScannerInner({
 
     setActiveTarima(recoveredTarima);
     setActiveBoxId(recoveredBoxes[0]?.id || null);
-    setBoardRuntimeFeedback({ tone: "success", message: "Tarima recuperada desde tablero para vista compartida en dispositivos." });
   }, [
     activeTarima,
     boardFieldMap,
