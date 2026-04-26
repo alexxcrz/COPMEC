@@ -503,7 +503,22 @@ export default function MisTableros({ contexto }) {
                           }
 
                           if (["number", "currency", "percentage"].includes(field.type)) {
-                            return <td key={field.id} style={columnStyle}><input type="number" value={row.values?.[field.id] || ""} onChange={(event) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, Number(event.target.value || 0))} placeholder={field.placeholder || "Escribe un valor"} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
+                            return (
+                              <td key={field.id} style={columnStyle}>
+                                <input
+                                  type="number"
+                                  value={row.values?.[field.id] ?? ""}
+                                  onChange={(event) => {
+                                    const rawValue = event.target.value;
+                                    updateBoardRowValue(selectedCustomBoard.id, row.id, field, rawValue === "" ? "" : Number(rawValue));
+                                  }}
+                                  placeholder={field.placeholder || "Escribe un valor"}
+                                  style={controlStyle}
+                                  title={field.helpText || field.label}
+                                  disabled={!rowFieldEditable}
+                                />
+                              </td>
+                            );
                           }
 
                           if (field.type === "textarea") {
@@ -606,7 +621,10 @@ export default function MisTableros({ contexto }) {
                           }
 
                           if (field.type === "progress") {
-                            const progVal = Math.min(100, Math.max(0, Number(row.values?.[field.id] || 0)));
+                            const rawProgressValue = row.values?.[field.id];
+                            const hasProgressValue = rawProgressValue !== "" && rawProgressValue !== null && rawProgressValue !== undefined;
+                            const progVal = hasProgressValue ? Math.min(100, Math.max(0, Number(rawProgressValue))) : 0;
+                            const progressInputValue = hasProgressValue ? progVal : "";
                             const progColor = progVal >= 80 ? "#16a34a" : progVal >= 50 ? "#d97706" : "#dc2626";
                             return (
                               <td key={field.id} style={columnStyle}>
@@ -618,8 +636,17 @@ export default function MisTableros({ contexto }) {
                                     type="number"
                                     min="0"
                                     max="100"
-                                    value={progVal}
-                                    onChange={(event) => rowFieldEditable && updateBoardRowValue(selectedCustomBoard.id, row.id, field, Math.min(100, Math.max(0, Number(event.target.value || 0))))}
+                                    value={progressInputValue}
+                                    onChange={(event) => {
+                                      if (!rowFieldEditable) return;
+                                      const rawValue = event.target.value;
+                                      if (rawValue === "") {
+                                        updateBoardRowValue(selectedCustomBoard.id, row.id, field, "");
+                                        return;
+                                      }
+                                      const numericValue = Number(rawValue);
+                                      updateBoardRowValue(selectedCustomBoard.id, row.id, field, Math.min(100, Math.max(0, numericValue)));
+                                    }}
                                     style={{ width: "44px", fontSize: "11px", textAlign: "right", border: "none", background: "transparent" }}
                                     disabled={!rowFieldEditable}
                                   />

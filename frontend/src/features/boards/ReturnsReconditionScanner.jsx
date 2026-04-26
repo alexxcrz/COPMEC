@@ -1115,7 +1115,18 @@ function ReturnsReconditionScannerInner({
           </label>
           <label className="app-modal-field">
             <span>Meta de Piezas</span>
-            <input type="number" min="1" value={boxForm.targetPieces} onChange={(event) => setBoxForm((current) => ({ ...current, targetPieces: Number(event.target.value || 50) }))} />
+            <input
+              type="number"
+              min="1"
+              value={boxForm.targetPieces}
+              onChange={(event) => {
+                const rawValue = event.target.value;
+                setBoxForm((current) => ({
+                  ...current,
+                  targetPieces: rawValue === "" ? "" : Number(rawValue),
+                }));
+              }}
+            />
           </label>
         </div>
       </Modal>
@@ -1184,7 +1195,18 @@ function ReturnsReconditionScannerInner({
           </label>
           <label className="app-modal-field">
             <span>Piezas</span>
-            <input type="number" min="1" value={lotForm.pieces} onChange={(event) => setLotForm((current) => ({ ...current, pieces: Number(event.target.value || 1) }))} />
+            <input
+              type="number"
+              min="1"
+              value={lotForm.pieces}
+              onChange={(event) => {
+                const rawValue = event.target.value;
+                setLotForm((current) => ({
+                  ...current,
+                  pieces: rawValue === "" ? "" : Number(rawValue),
+                }));
+              }}
+            />
           </label>
         </div>
         {pendingItem ? (
