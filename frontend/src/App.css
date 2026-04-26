@@ -5648,6 +5648,34 @@ tbody tr:hover {
   width: 100%;
 }
 
+.returns-scan-tarima-container {
+  border: 2px solid rgba(15, 77, 64, 0.3);
+  border-radius: 1.2rem;
+  padding: 1.2rem;
+  background: #f8faf9;
+  display: grid;
+  gap: 1rem;
+}
+
+.returns-scan-tarima-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid rgba(15, 77, 64, 0.15);
+}
+
+.returns-scan-tarima-header strong {
+  font-size: 1.1rem;
+  color: #032121;
+  display: block;
+}
+
+.returns-scan-tarima-header .subtle-line {
+  margin-top: 0.3rem;
+  font-size: 0.85rem;
+}
+
 .returns-scan-box-section {
   border: 1px solid rgba(15, 77, 64, 0.2);
   border-radius: 1rem;

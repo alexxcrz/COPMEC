@@ -1,5 +1,5 @@
 {
-  "revision": 2438,
+  "revision": 2456,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro"
@@ -338,7 +338,10 @@
       "activityCatalogIds": [],
       "activityConsumptions": [],
       "consumptionPerStart": 0,
-      "customFields": {}
+      "customFields": {
+        "lote": "123456",
+        "caducidad": "0812365"
+      }
     },
     {
       "id": "inv-4n0dwn7n",
@@ -9591,7 +9594,7 @@
             "fld-288qq5dv": "inv-uedj3bs4",
             "fld-84knvz2z": "123456",
             "fld-3iisyp99": "0812365",
-            "fld-zapc1vgv": 1,
+            "fld-zapc1vgv": 8,
             "fld-dnlcoahj": 50
           },
           "responsibleId": "usr-lead-nu7wt83h",
@@ -9900,7 +9903,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-26T15:47:53.397Z",
+  "updatedAt": "2026-04-26T15:54:14.652Z",
   "permissions": {
     "pages": {
       "index": {

@@ -959,116 +959,118 @@ function ReturnsReconditionScannerInner({
         />
       </div>
 
-      {/* Cajas de Tarima */}
+      {/* Cajas de Tarima - TODO EN UN CONTENEDOR */}
       {activeTarima && (activeTarima.boxes || []).length > 0 ? (
-        <div className="returns-scan-boxes-grid">
-          {(activeTarima.boxes || []).map((box) => (
-            <div key={box.id} className={`returns-scan-box-section ${activeBoxId === box.id ? "active" : ""}`}>
-              <div className="returns-scan-box-header">
-                <strong>Caja: {box.palletNumber}</strong>
-                <span className="chip primary">{box.totalPieces}/{box.targetPieces} pzas</span>
-                {activeBoxId !== box.id && (
-                  <button type="button" className="icon-button" onClick={() => setActiveBoxId(box.id)}>
-                    Activar
-                  </button>
-                )}
-                {activeBoxId === box.id && (
-                  <button type="button" className="icon-button" onClick={() => { void finishActiveBoxManually(); }} disabled={disabled || Object.keys(box.products || {}).length === 0}>
-                    Terminar Caja
-                  </button>
-                )}
-              </div>
-              
-              {/* Productos de esta caja */}
-              <div className="returns-scan-cards">
-                {Object.values(box.products || {}).length ? Object.values(box.products || {}).map((product, idx) => {
-                  const width = productWidths[product.itemId] || 320;
-                  const isBoxActive = activeBoxId === box.id;
-                  return (
-                    <article
-                      key={product.itemId}
-                      className="returns-scan-card"
-                      draggable={isBoxActive}
-                      onDragStart={isBoxActive ? e => {
-                        e.dataTransfer.effectAllowed = "move";
-                        e.dataTransfer.setData("text/plain", idx);
-                      } : undefined}
-                      onDragOver={isBoxActive ? e => e.preventDefault() : undefined}
-                      onDrop={isBoxActive ? e => {
-                        e.preventDefault();
-                        const fromIdx = Number(e.dataTransfer.getData("text/plain"));
-                        if (fromIdx !== idx) moveProduct(fromIdx, idx);
-                      } : undefined}
-                      style={{ cursor: isBoxActive ? "grab" : "default", opacity: 1, width: width + "px", minWidth: "180px", maxWidth: "800px", position: "relative" }}
-                    >
-                      <div className="returns-scan-card-head">
-                        <strong>{product.code} · {product.name}</strong>
-                        <div className="saved-board-list">
-                          <span className="chip primary">{product.totalPieces} pzas</span>
-                          <button type="button" className="icon-button" onClick={() => openLotModalForProduct(product)} disabled={!isBoxActive}>
-                            Cambiar lote
-                          </button>
-                        </div>
-                      </div>
-                      <p>{product.presentation || "Sin presentación"}</p>
-                      <div className="returns-scan-lot-table" role="table" aria-label={`Lotes de ${product.name}`}>
-                        <div className="returns-scan-lot-header" role="row">
-                          <span role="columnheader">Lote</span>
-                          <span role="columnheader">Caducidad</span>
-                          <span role="columnheader">Piezas</span>
-                        </div>
-                        <div className="returns-scan-lot-body" role="rowgroup">
-                          {product.lots.map((lot) => (
-                            <div className="returns-scan-lot-row" role="row" key={`${product.itemId}-${lot.lot}-${lot.expiry}`}>
-                              <span role="cell" data-label="Lote">{lot.lot}</span>
-                              <span role="cell" data-label="Caducidad">{lot.expiry}</span>
-                              <span role="cell" data-label="Piezas">{lot.pieces}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      {isBoxActive && (
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: 0,
-                            right: 0,
-                            width: "10px",
-                            height: "100%",
-                            cursor: "ew-resize",
-                            zIndex: 10,
-                            userSelect: "none",
-                          }}
-                          onMouseDown={e => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            const startX = e.clientX;
-                            const startWidth = width;
-                            function onMouseMove(ev) {
-                              const delta = ev.clientX - startX;
-                              handleResizeProduct(product.itemId, startWidth + delta);
-                            }
-                            function onMouseUp() {
-                              window.removeEventListener("mousemove", onMouseMove);
-                              window.removeEventListener("mouseup", onMouseUp);
-                            }
-                            window.addEventListener("mousemove", onMouseMove);
-                            window.addEventListener("mouseup", onMouseUp);
-                          }}
-                          title="Arrastra para ajustar el ancho"
-                          aria-label="Arrastra para ajustar el ancho"
-                        />
-                      )}
-                    </article>
-                  );
-                }) : <p className="subtle-line">Aún no hay productos en esta caja.</p>}
-              </div>
+        <div className="returns-scan-tarima-container">
+          <div className="returns-scan-tarima-header">
+            <div>
+              <strong>Tarima: {activeTarima.tarimaNumber}</strong>
+              <p className="subtle-line">Total acumulado: {activeTarima.totalPieces || 0} pzas · {(activeTarima.boxes || []).length} cajas</p>
             </div>
-          ))}
-          <div style={{ padding: "1rem", textAlign: "center" }}>
-            <button type="button" className="icon-button" onClick={() => setBoxModalOpen(true)} disabled={disabled || systemPaused}>
-              + Nueva Caja
-            </button>
+            <div className="saved-board-list">
+              <button type="button" className="icon-button" onClick={() => setBoxModalOpen(true)} disabled={disabled || systemPaused}>
+                + Nueva Caja
+              </button>
+              <button type="button" className="icon-button" onClick={() => { void finishActiveTarimaManually(); }} disabled={disabled || !activeTarima}>
+                Terminar Tarima
+              </button>
+            </div>
+          </div>
+
+          {/* Todas las tarjetitas de la tarima */}
+          <div className="returns-scan-cards">
+            {(() => {
+              const allProducts = [];
+              (activeTarima.boxes || []).forEach((box) => {
+                Object.values(box.products || {}).forEach((product) => {
+                  allProducts.push({ ...product, boxId: box.id, boxNumber: box.palletNumber });
+                });
+              });
+              
+              return allProducts.length ? allProducts.map((product, idx) => {
+                const width = productWidths[product.itemId] || 320;
+                const isProductActive = activeBoxId === product.boxId;
+                
+                return (
+                  <article
+                    key={`${product.boxId}-${product.itemId}`}
+                    className="returns-scan-card"
+                    draggable={isProductActive}
+                    onDragStart={isProductActive ? e => {
+                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.setData("text/plain", idx);
+                    } : undefined}
+                    onDragOver={isProductActive ? e => e.preventDefault() : undefined}
+                    onDrop={isProductActive ? e => {
+                      e.preventDefault();
+                      const fromIdx = Number(e.dataTransfer.getData("text/plain"));
+                      if (fromIdx !== idx) moveProduct(fromIdx, idx);
+                    } : undefined}
+                    style={{ cursor: isProductActive ? "grab" : "default", opacity: 1, width: width + "px", minWidth: "180px", maxWidth: "800px", position: "relative" }}
+                  >
+                    <div className="returns-scan-card-head">
+                      <strong>{product.code} · {product.name}</strong>
+                      <div className="saved-board-list">
+                        <span className="chip" style={{ background: "#f0fdf4", color: "#15803d" }}>Caja: {product.boxNumber}</span>
+                        <span className="chip primary">{product.totalPieces} pzas</span>
+                        <button type="button" className="icon-button" onClick={() => openLotModalForProduct(product)} disabled={!isProductActive}>
+                          Cambiar lote
+                        </button>
+                      </div>
+                    </div>
+                    <p>{product.presentation || "Sin presentación"}</p>
+                    <div className="returns-scan-lot-table" role="table" aria-label={`Lotes de ${product.name}`}>
+                      <div className="returns-scan-lot-header" role="row">
+                        <span role="columnheader">Lote</span>
+                        <span role="columnheader">Caducidad</span>
+                        <span role="columnheader">Piezas</span>
+                      </div>
+                      <div className="returns-scan-lot-body" role="rowgroup">
+                        {product.lots.map((lot) => (
+                          <div className="returns-scan-lot-row" role="row" key={`${product.itemId}-${lot.lot}-${lot.expiry}`}>
+                            <span role="cell" data-label="Lote">{lot.lot}</span>
+                            <span role="cell" data-label="Caducidad">{lot.expiry}</span>
+                            <span role="cell" data-label="Piezas">{lot.pieces}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {isProductActive && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          right: 0,
+                          width: "10px",
+                          height: "100%",
+                          cursor: "ew-resize",
+                          zIndex: 10,
+                          userSelect: "none",
+                        }}
+                        onMouseDown={e => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const startX = e.clientX;
+                          const startWidth = width;
+                          function onMouseMove(ev) {
+                            const delta = ev.clientX - startX;
+                            handleResizeProduct(product.itemId, startWidth + delta);
+                          }
+                          function onMouseUp() {
+                            window.removeEventListener("mousemove", onMouseMove);
+                            window.removeEventListener("mouseup", onMouseUp);
+                          }
+                          window.addEventListener("mousemove", onMouseMove);
+                          window.addEventListener("mouseup", onMouseUp);
+                        }}
+                        title="Arrastra para ajustar el ancho"
+                        aria-label="Arrastra para ajustar el ancho"
+                      />
+                    )}
+                  </article>
+                );
+              }) : <p className="subtle-line">Crea la primera caja escaneando un producto.</p>;
+            })()}
           </div>
         </div>
       ) : (
