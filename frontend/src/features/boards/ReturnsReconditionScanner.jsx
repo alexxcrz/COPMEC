@@ -98,12 +98,10 @@ function ReturnsReconditionScannerInner({
   // Modales
   const [tarimaModalOpen, setTarimaModalOpen] = useState(false);
   const [boxModalOpen, setBoxModalOpen] = useState(false);
-  const [setupModalOpen, setSetupModalOpen] = useState(false);
   const [lotModalOpen, setLotModalOpen] = useState(false);
   
   const [tarimaForm, setTarimaForm] = useState({ tarimaNumber: "", flowType: "devolucion" });
   const [boxForm, setBoxForm] = useState({ boxNumber: "", targetPieces: 50 });
-  const [setupForm, setSetupForm] = useState({ palletNumber: "", tarimaNumber: "", flowType: "devolucion", targetPieces: 50 });
   const [lotForm, setLotForm] = useState({ lot: "", expiry: "", pieces: 1, selectedLotKey: "" });
   
   const [nowTick, setNowTick] = useState(() => Date.now());
@@ -201,7 +199,7 @@ function ReturnsReconditionScannerInner({
   useEffect(() => {
     if (disabled) return;
     scanRef.current?.focus();
-  }, [activeBox, disabled, lotModalOpen, setupModalOpen]);
+  }, [activeBox, disabled, lotModalOpen]);
 
   useEffect(() => {
     if (!lotModalOpen) return;
@@ -218,7 +216,7 @@ function ReturnsReconditionScannerInner({
       autoScanTimeoutRef.current = null;
     }
 
-    if (disabled || lotModalOpen || setupModalOpen || tarimaModalOpen || boxModalOpen) return undefined;
+    if (disabled || lotModalOpen || tarimaModalOpen || boxModalOpen) return undefined;
     const raw = String(scanValue || "").trim();
     if (!raw) return undefined;
 
@@ -235,7 +233,7 @@ function ReturnsReconditionScannerInner({
         autoScanTimeoutRef.current = null;
       }
     };
-  }, [scanValue, disabled, lotModalOpen, setupModalOpen, tarimaModalOpen, boxModalOpen, inventoryItems]);
+  }, [scanValue, disabled, lotModalOpen, tarimaModalOpen, boxModalOpen, inventoryItems]);
 
   const inventoryMapById = useMemo(
     () => new Map((inventoryItems || []).map((item) => [item.id, item])),
@@ -1116,33 +1114,6 @@ function ReturnsReconditionScannerInner({
           <label className="app-modal-field">
             <span>Meta de Piezas</span>
             <input type="number" min="1" value={boxForm.targetPieces} onChange={(event) => setBoxForm((current) => ({ ...current, targetPieces: Number(event.target.value || 50) }))} />
-          </label>
-        </div>
-      </Modal>
-
-      <Modal
-        open={setupModalOpen}
-        title="Nueva caja"
-        confirmLabel="Continuar"
-        cancelLabel="Cancelar"
-        onClose={() => { setSetupModalOpen(false); setPendingItem(null); }}
-        onConfirm={startBoxAndContinue}
-      >
-        <div className="returns-scan-modal-grid">
-          <label className="app-modal-field">
-            <span>Número de caja</span>
-            <input value={setupForm.palletNumber} onChange={(event) => setSetupForm((current) => ({ ...current, palletNumber: event.target.value }))} placeholder="Ej: CAJ-001" />
-          </label>
-          <label className="app-modal-field">
-            <span>Tipo de flujo</span>
-            <select value={setupForm.flowType} onChange={(event) => setSetupForm((current) => ({ ...current, flowType: event.target.value }))}>
-              <option value="devolucion">Devolución</option>
-              <option value="reacondicionado">Reacondicionado</option>
-            </select>
-          </label>
-          <label className="app-modal-field">
-            <span>Piezas meta por caja</span>
-            <input type="number" min="1" value={setupForm.targetPieces} onChange={(event) => setSetupForm((current) => ({ ...current, targetPieces: Number(event.target.value || 1) }))} />
           </label>
         </div>
       </Modal>
