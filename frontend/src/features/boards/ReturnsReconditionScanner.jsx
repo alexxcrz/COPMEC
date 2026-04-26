@@ -871,25 +871,21 @@ function ReturnsReconditionScannerInner({
                 <span className="chip">Fila tablero: {product.rowId || "pendiente"}</span>
                 <span className="chip">Lotes: {product.lots.length}</span>
               </div>
-              <div className="table-wrap">
-                <table className="inventory-table-clean">
-                  <thead>
-                    <tr>
-                      <th>Lote</th>
-                      <th>Caducidad</th>
-                      <th>Piezas</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {product.lots.map((lot) => (
-                      <tr key={`${product.itemId}-${lot.lot}-${lot.expiry}`}>
-                        <td>{lot.lot}</td>
-                        <td>{lot.expiry}</td>
-                        <td>{lot.pieces}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="returns-scan-lot-table" role="table" aria-label={`Lotes de ${product.name}`}>
+                <div className="returns-scan-lot-header" role="row">
+                  <span role="columnheader">Lote</span>
+                  <span role="columnheader">Caducidad</span>
+                  <span role="columnheader">Piezas</span>
+                </div>
+                <div className="returns-scan-lot-body" role="rowgroup">
+                  {product.lots.map((lot) => (
+                    <div className="returns-scan-lot-row" role="row" key={`${product.itemId}-${lot.lot}-${lot.expiry}`}>
+                      <span role="cell" data-label="Lote">{lot.lot}</span>
+                      <span role="cell" data-label="Caducidad">{lot.expiry}</span>
+                      <span role="cell" data-label="Piezas">{lot.pieces}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
               {/* Handler de redimensionamiento del ancho */}
               <div
