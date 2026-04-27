@@ -561,20 +561,37 @@ function ReturnsReconditionScannerInner({
     try {
       const raw = localStorage.getItem(`${COMPLETED_BOXES_STORAGE_PREFIX}:${boardId}`);
       if (!raw) {
-        setCompletedBoxes([]);
+        setCompletedBoxes((current) => (Array.isArray(current) ? current : []));
         setCompletedBoxesHydrated(true);
         return;
       }
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) {
-        setCompletedBoxes([]);
+        setCompletedBoxes((current) => (Array.isArray(current) ? current : []));
         setCompletedBoxesHydrated(true);
         return;
       }
-      setCompletedBoxes(parsed);
+      setCompletedBoxes((current) => {
+        const currentList = Array.isArray(current) ? current : [];
+        const persistedList = parsed;
+        const seenKeys = new Set();
+        const merged = [];
+
+        const pushUnique = (box) => {
+          if (!box || typeof box !== "object") return;
+          const key = `${String(box.id || "")}|${String(box.closedAt || box.stoppedAt || "")}|${String(box.palletNumber || "")}`;
+          if (seenKeys.has(key)) return;
+          seenKeys.add(key);
+          merged.push(box);
+        };
+
+        currentList.forEach(pushUnique);
+        persistedList.forEach(pushUnique);
+        return merged.slice(0, 50);
+      });
       setCompletedBoxesHydrated(true);
     } catch {
-      setCompletedBoxes([]);
+      setCompletedBoxes((current) => (Array.isArray(current) ? current : []));
       setCompletedBoxesHydrated(true);
     }
   }, [boardId]);
