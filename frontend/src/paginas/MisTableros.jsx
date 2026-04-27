@@ -171,8 +171,10 @@ export default function MisTableros({ contexto }) {
   const boardView = selectedCustomBoardDisplay || selectedCustomBoard;
   const isBoardOwner = Boolean(selectedCustomBoard && currentUser && (currentUser.role === "Lead" || selectedCustomBoard.createdById === currentUser.id || selectedCustomBoard.ownerId === currentUser.id));
   const [manualGlobalPause, setManualGlobalPause] = useState(false);
+  const [globalForceActive, setGlobalForceActive] = useState(false);
   const selectedBoardId = String(selectedCustomBoard?.id || "default");
   const globalPauseStorageKey = `copmec_global_pause:${selectedBoardId}`;
+  const globalForceStorageKey = `copmec_global_force:${selectedBoardId}`;
   const boardColumns = boardView ? getOrderedBoardColumns(boardView, isBoardOwner) : [];
   const boardOperationalContextType = String(boardView?.settings?.operationalContextType || "none");
   const boardOperationalContextLabel = String(boardView?.settings?.operationalContextLabel || "").trim()
@@ -221,6 +223,23 @@ export default function MisTableros({ contexto }) {
       // Ignore localStorage errors.
     }
   }, [globalPauseStorageKey, manualGlobalPause]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(globalForceStorageKey);
+      setGlobalForceActive(raw === "1");
+    } catch {
+      setGlobalForceActive(false);
+    }
+  }, [globalForceStorageKey]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(globalForceStorageKey, globalForceActive ? "1" : "0");
+    } catch {
+      // Ignore localStorage errors.
+    }
+  }, [globalForceStorageKey, globalForceActive]);
 
   // Compute available cleaning naves from inventory items that have activity consumptions
   const cleaningNaveOptions = (() => {
@@ -347,6 +366,9 @@ export default function MisTableros({ contexto }) {
                   <span className="chip" style={manualGlobalPause ? { background: "#fee2e2", color: "#991b1b" } : { background: "#ecfdf3", color: "#166534" }}>
                     {manualGlobalPause ? "Pausa global activa" : "Global activo"}
                   </span>
+                  {globalForceActive ? (
+                    <span className="chip" style={{ background: "#fff7ed", color: "#9a3412" }}>Horas extra activas</span>
+                  ) : null}
                 </div>
                 {canControlGlobalPause ? (
                   <div className="row-actions compact board-workflow-actions" aria-label="Control global">
@@ -357,9 +379,10 @@ export default function MisTableros({ contexto }) {
                       aria-label="Quitar pausa global"
                       onClick={() => {
                         setManualGlobalPause(false);
-                        setBoardRuntimeFeedback({ tone: "success", message: "Pausa global desactivada." });
+                        setGlobalForceActive(true);
+                        setBoardRuntimeFeedback({ tone: "success", message: "Global iniciado para horas extra." });
                       }}
-                      disabled={!manualGlobalPause}
+                      disabled={globalForceActive && !manualGlobalPause}
                     >
                       <Play size={13} />
                     </button>
@@ -370,6 +393,7 @@ export default function MisTableros({ contexto }) {
                       aria-label="Activar pausa global"
                       onClick={() => {
                         setManualGlobalPause(true);
+                        setGlobalForceActive(false);
                         setBoardRuntimeFeedback({ tone: "warning", message: "Pausa global activada." });
                       }}
                       disabled={manualGlobalPause}
@@ -407,6 +431,7 @@ export default function MisTableros({ contexto }) {
                 setSyncStatus={setSyncStatus}
                 setBoardRuntimeFeedback={setBoardRuntimeFeedback}
                 manualGlobalPause={manualGlobalPause}
+                globalForceActive={globalForceActive}
                 disabled={isHistoricalCustomBoardView}
               />
             ) : null}
@@ -426,7 +451,14 @@ export default function MisTableros({ contexto }) {
                   <tr>
                     {visibleBoardColumns.map((column) => (
                       <th key={column.token} className={column.kind !== "field" && column.id === "workflow" ? "board-pdf-hide" : ""} style={column.kind === "field" ? getFieldColumnStyle(column.field) : getAuxColumnStyle(column.id)} title={column.kind === "field" ? `${column.field.helpText || column.field.label}${column.field.required ? " · Obligatorio" : ""}` : column.label}>
-                        {column.kind === "field" ? formatFieldLabel(column.field.label, column.field.required) : column.label}
+                        {column.kind === "field"
+                          ? formatFieldLabel(
+                            boardLooksReturnsRecondition && String(column.field.label || "").trim().toLowerCase() === "tarima"
+                              ? "Caja"
+                              : column.field.label,
+                            column.field.required,
+                          )
+                          : column.label}
                       </th>
                     ))}
                   </tr>

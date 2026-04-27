@@ -174,6 +174,7 @@ function ReturnsReconditionScannerInner({
   setSyncStatus,
   setBoardRuntimeFeedback,
   manualGlobalPause = false,
+  globalForceActive = false,
   disabled,
 }) {
   // Estado para el orden de productos (drag & drop)
@@ -210,7 +211,7 @@ function ReturnsReconditionScannerInner({
   const [lotForm, setLotForm] = useState({ lot: "", expiry: "", pieces: 1, selectedLotKey: "" });
   
   const [nowTick, setNowTick] = useState(() => Date.now());
-  const effectiveGlobalPause = Boolean(systemPaused || manualGlobalPause);
+  const effectiveGlobalPause = Boolean(manualGlobalPause || (systemPaused && !globalForceActive));
   
   // Obtener caja activa
   const activeBox = useMemo(() => {
@@ -696,8 +697,94 @@ function ReturnsReconditionScannerInner({
   }
 
   const closedForTarima = useMemo(() => {
-    return Array.isArray(completedBoxes) ? completedBoxes : [];
-  }, [completedBoxes]);
+    const localClosed = Array.isArray(completedBoxes) ? completedBoxes : [];
+    const rows = Array.isArray(boardView?.rows) ? boardView.rows : [];
+    const finishedRows = rows.filter((row) => String(row?.status || "").toLowerCase() === "terminado");
+    if (!finishedRows.length) return localClosed;
+
+    const fieldTarima = boardFieldMap.get("tarima");
+    const fieldTipo = boardFieldMap.get("tipo de flujo");
+    const fieldProducto = boardFieldMap.get("producto");
+    const fieldLote = boardFieldMap.get("lote");
+    const fieldCaducidad = boardFieldMap.get("caducidad");
+    const fieldPiezas = boardFieldMap.get("piezas");
+    const fieldMeta = boardFieldMap.get("meta de caja");
+
+    const recoveredByBox = new Map();
+    finishedRows.forEach((row, index) => {
+      const values = row?.values || {};
+      const boxNumber = String(values[fieldTarima?.id] ?? "").trim() || `Caja-${index + 1}`;
+      const boxKey = normalizeKey(boxNumber) || `caja-${index + 1}`;
+
+      if (!recoveredByBox.has(boxKey)) {
+        const flowRaw = String(values[fieldTipo?.id] ?? "").toLowerCase();
+        const flowType = flowRaw.includes("reacond") ? "reacondicionado" : "devolucion";
+        recoveredByBox.set(boxKey, {
+          id: `closed-${boxKey}`,
+          boardId,
+          palletNumber: boxNumber,
+          targetPieces: Math.max(1, Number(values[fieldMeta?.id] || 50)),
+          tarimaId: activeTarima?.id || `remote-${boardId}`,
+          tarimaNumber: activeTarima?.tarimaNumber || "RECUPERADA",
+          flowType,
+          reviewerName: currentUser?.name || currentUser?.username || "N/A",
+          products: {},
+          totalPieces: 0,
+          startedAt: row?.startTime || row?.createdAt || new Date().toISOString(),
+          closedAt: row?.endTime || row?.updatedAt || new Date().toISOString(),
+          stoppedAt: row?.endTime || row?.updatedAt || new Date().toISOString(),
+        });
+      }
+
+      const box = recoveredByBox.get(boxKey);
+      const productId = values[fieldProducto?.id];
+      if (!productId) return;
+      const item = inventoryMapById.get(productId) || { id: productId, code: String(productId), name: "Producto", presentation: "" };
+      const pieces = Math.max(0, Number(values[fieldPiezas?.id] || 0));
+      const lotSummary = String(values[fieldLote?.id] || "").split("|").map((value) => String(value || "").trim()).filter(Boolean);
+      const expirySummary = String(values[fieldCaducidad?.id] || "").split("|").map((value) => normalizeExpiryInput(value)).filter(Boolean);
+      const lots = lotSummary.length
+        ? lotSummary.map((lot, lotIndex) => ({
+          lot,
+          expiry: expirySummary[lotIndex] || expirySummary[0] || "-",
+          pieces: lotIndex === 0 ? pieces : 0,
+        }))
+        : [{ lot: "-", expiry: "-", pieces }];
+
+      box.products[item.id] = {
+        itemId: item.id,
+        code: item.code || String(item.id),
+        name: item.name || "Producto",
+        presentation: item.presentation || "",
+        totalPieces: pieces,
+        targetPieces: box.targetPieces,
+        lots,
+      };
+      box.totalPieces += pieces;
+    });
+
+    const localByPallet = new Map(
+      localClosed.map((box) => [normalizeKey(String(box?.palletNumber || "")), box]),
+    );
+    const merged = [...localClosed];
+    recoveredByBox.forEach((box) => {
+      const key = normalizeKey(String(box?.palletNumber || ""));
+      if (!localByPallet.has(key)) {
+        merged.push(box);
+      }
+    });
+    return merged;
+  }, [
+    completedBoxes,
+    boardView?.rows,
+    boardFieldMap,
+    boardId,
+    activeTarima?.id,
+    activeTarima?.tarimaNumber,
+    currentUser?.name,
+    currentUser?.username,
+    inventoryMapById,
+  ]);
 
   const tarimaDisplayedTotalPieces = useMemo(() => {
     const openPieces = Number(activeTarima?.totalPieces || 0);
