@@ -373,6 +373,35 @@ function ReturnsReconditionScannerInner({
     [activeProducts],
   );
   const tarimaStatus = resolveTarimaWorkflowStatus(activeTarima);
+  const normalizedRole = String(currentUser?.role || "").trim().toLowerCase();
+  const boardCreatorId = boardView?.createdById || boardView?.ownerId || "";
+  const canControlTarimaWorkflow = Boolean(
+    currentUser
+    && (
+      normalizedRole === "lead"
+      || normalizedRole === "líder"
+      || normalizedRole === "lider"
+      || currentUser?.id === boardCreatorId
+    )
+  );
+  const canStartGlobalWorkflow = Boolean(
+    canControlTarimaWorkflow
+    && activeTarima
+    && !disabled
+    && (tarimaStatus === TARIMA_STATUS_PENDING || tarimaStatus === TARIMA_STATUS_PAUSED)
+  );
+  const canPauseGlobalWorkflow = Boolean(
+    canControlTarimaWorkflow
+    && activeTarima
+    && !disabled
+    && tarimaStatus === TARIMA_STATUS_RUNNING
+  );
+  const canFinishGlobalWorkflow = Boolean(
+    canControlTarimaWorkflow
+    && activeTarima
+    && !disabled
+    && (tarimaStatus === TARIMA_STATUS_RUNNING || tarimaStatus === TARIMA_STATUS_PAUSED)
+  );
   const tarimaStatusColor = tarimaStatus === TARIMA_STATUS_FINISHED
     ? { background: "#dcfce7", color: "#166534" }
     : tarimaStatus === TARIMA_STATUS_PAUSED
@@ -408,13 +437,6 @@ function ReturnsReconditionScannerInner({
   );
 
   const boardId = boardView?.id || "";
-  const canControlTarimaWorkflow = Boolean(
-    currentUser
-    && (
-      String(currentUser?.role || "").toLowerCase() === "lead"
-      || currentUser?.id === boardView?.createdById
-    )
-  );
   const activeBoxStorageKey = `${ACTIVE_BOX_STORAGE_PREFIX}:${boardId || "default"}`;
 
   const pendingLotOptions = useMemo(() => {
@@ -1399,42 +1421,36 @@ function ReturnsReconditionScannerInner({
                 <span className="chip">Tiempo tarima: {formatElapsedMs(Math.max(0, tarimaElapsedMs))}</span>
                 {canControlTarimaWorkflow ? (
                   <div className="row-actions compact board-workflow-actions returns-scan-workflow-inline" aria-label="Workflow general tarima">
-                    {tarimaStatus === TARIMA_STATUS_PENDING || tarimaStatus === TARIMA_STATUS_PAUSED ? (
-                      <button
-                        type="button"
-                        className="board-action-button start icon-only"
-                        title="Iniciar/Reanudar"
-                        aria-label="Iniciar/Reanudar"
-                        onClick={startTarimaWorkflow}
-                        disabled={disabled || !activeTarima}
-                      >
-                        <Play size={13} />
-                      </button>
-                    ) : null}
-                    {tarimaStatus === TARIMA_STATUS_RUNNING ? (
-                      <button
-                        type="button"
-                        className="board-action-button pause icon-only"
-                        title="Pausar"
-                        aria-label="Pausar"
-                        onClick={pauseTarimaWorkflow}
-                        disabled={disabled || !activeTarima}
-                      >
-                        <PauseCircle size={13} />
-                      </button>
-                    ) : null}
-                    {tarimaStatus === TARIMA_STATUS_RUNNING || tarimaStatus === TARIMA_STATUS_PAUSED ? (
-                      <button
-                        type="button"
-                        className="board-action-button finish icon-only"
-                        title="Finalizar"
-                        aria-label="Finalizar"
-                        onClick={() => { void finishActiveTarimaManually(); }}
-                        disabled={disabled || !activeTarima || !canControlTarimaWorkflow}
-                      >
-                        <Square size={13} />
-                      </button>
-                    ) : null}
+                    <button
+                      type="button"
+                      className="board-action-button start icon-only"
+                      title="Iniciar/Reanudar"
+                      aria-label="Iniciar/Reanudar"
+                      onClick={startTarimaWorkflow}
+                      disabled={!canStartGlobalWorkflow}
+                    >
+                      <Play size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      className="board-action-button pause icon-only"
+                      title="Pausar"
+                      aria-label="Pausar"
+                      onClick={pauseTarimaWorkflow}
+                      disabled={!canPauseGlobalWorkflow}
+                    >
+                      <PauseCircle size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      className="board-action-button finish icon-only"
+                      title="Finalizar"
+                      aria-label="Finalizar"
+                      onClick={() => { void finishActiveTarimaManually(); }}
+                      disabled={!canFinishGlobalWorkflow}
+                    >
+                      <Square size={13} />
+                    </button>
                   </div>
                 ) : null}
               </div>
