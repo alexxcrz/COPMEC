@@ -3105,12 +3105,49 @@ export function getTimeLimitMinutes(activity, catalogMap) {
   return catalogMap.get(activity.catalogActivityId)?.timeLimitMinutes || 0;
 }
 
-export function getElapsedSeconds(activity, now) {
+/**
+ * Calculates how many seconds between `fromMs` and `toMs` fall within
+ * the daily work window [startHour, endHour). Handles multi-day spans.
+ */
+function calcWorkSeconds(fromMs, toMs, startHour, endHour) {
+  if (toMs <= fromMs || startHour >= endHour) return Math.max(0, Math.floor((toMs - fromMs) / 1000));
+  const MS_PER_HOUR = 3600000;
+  let total = 0;
+  const fromDate = new Date(fromMs);
+  const startOfDay = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+  let dayStart = startOfDay.getTime();
+  while (dayStart < toMs) {
+    const windowOpen = dayStart + startHour * MS_PER_HOUR;
+    const windowClose = dayStart + endHour * MS_PER_HOUR;
+    const overlapStart = Math.max(fromMs, windowOpen);
+    const overlapEnd = Math.min(toMs, windowClose);
+    if (overlapEnd > overlapStart) {
+      total += Math.floor((overlapEnd - overlapStart) / 1000);
+    }
+    dayStart += 86400000;
+  }
+  return total;
+}
+
+export function getElapsedSeconds(activity, now, pauseState) {
   if (!activity) return 0;
   if (activity.status !== STATUS_RUNNING || !activity.lastResumedAt) {
     return activity.accumulatedSeconds || 0;
   }
-  const delta = Math.max(0, Math.floor((now - new Date(activity.lastResumedAt).getTime()) / 1000));
+  const resumedMs = new Date(activity.lastResumedAt).getTime();
+  // Cap now at pause activation time if global pause is on
+  let effectiveNow = typeof now === "number" ? now : Number(now);
+  if (pauseState?.globalPauseEnabled && pauseState?.globalPauseActivatedAt) {
+    const pausedAt = new Date(pauseState.globalPauseActivatedAt).getTime();
+    if (!isNaN(pausedAt)) effectiveNow = Math.min(effectiveNow, pausedAt);
+  }
+  const workHours = pauseState?.workHours;
+  let delta;
+  if (workHours && typeof workHours.startHour === "number" && typeof workHours.endHour === "number") {
+    delta = calcWorkSeconds(resumedMs, effectiveNow, workHours.startHour, workHours.endHour);
+  } else {
+    delta = Math.max(0, Math.floor((effectiveNow - resumedMs) / 1000));
+  }
   return (activity.accumulatedSeconds || 0) + delta;
 }
 
@@ -3184,6 +3221,11 @@ export function normalizeSystemOperationalSettings(value) {
       globalPauseEnabled: Boolean(source.pauseControl?.globalPauseEnabled),
       forceGlobalPause: Boolean(source.pauseControl?.forceGlobalPause),
       reasons: normalizedReasons.length ? normalizedReasons : defaultReasons.map((entry) => normalizeSystemPauseReason(entry, entry)),
+      workHours: {
+        startHour: (() => { const v = Number(source.pauseControl?.workHours?.startHour ?? 8); return Number.isFinite(v) ? Math.min(23, Math.max(0, Math.round(v))) : 8; })(),
+        endHour: (() => { const v = Number(source.pauseControl?.workHours?.endHour ?? 16); return Number.isFinite(v) ? Math.min(23, Math.max(0, Math.round(v))) : 16; })(),
+      },
+      globalPauseActivatedAt: (() => { const raw = source.pauseControl?.globalPauseActivatedAt; return (raw && !isNaN(Date.parse(raw))) ? String(raw) : null; })(),
     },
   };
 }

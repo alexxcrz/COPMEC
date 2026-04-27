@@ -317,10 +317,18 @@ function normalizeSystemPauseControl(value) {
       seen.add(key);
       return true;
     });
+  const rawStartHour = Number(source.workHours?.startHour ?? 8);
+  const rawEndHour = Number(source.workHours?.endHour ?? 16);
+  const startHour = Number.isFinite(rawStartHour) ? Math.min(23, Math.max(0, Math.round(rawStartHour))) : 8;
+  const endHour = Number.isFinite(rawEndHour) ? Math.min(23, Math.max(0, Math.round(rawEndHour))) : 16;
+  const rawActivatedAt = source.globalPauseActivatedAt;
+  const globalPauseActivatedAt = (rawActivatedAt && !isNaN(Date.parse(rawActivatedAt))) ? String(rawActivatedAt) : null;
   return {
     globalPauseEnabled: Boolean(source.globalPauseEnabled),
     forceGlobalPause: Boolean(source.forceGlobalPause),
     reasons: reasons.length ? reasons : fallbackReasons,
+    workHours: { startHour, endHour },
+    globalPauseActivatedAt,
   };
 }
 
@@ -1705,10 +1713,19 @@ export function updateWarehouseSystemOperationalSettings(auth, patch = {}) {
   }
 
   const currentOperational = normalizeSystemOperationalSettings(current.system?.operational);
-  const nextOperational = normalizeSystemOperationalSettings({
-    ...currentOperational,
-    ...(patch && typeof patch === "object" ? patch : EMPTY_OBJECT),
-  });
+  const patchNormalized = patch && typeof patch === "object" ? patch : EMPTY_OBJECT;
+  const merged = { ...currentOperational, ...patchNormalized };
+  // Track when global pause is toggled
+  if (merged.pauseControl && typeof merged.pauseControl === "object") {
+    const currentlyPaused = currentOperational.pauseControl?.globalPauseEnabled;
+    const nextPaused = Boolean(merged.pauseControl.globalPauseEnabled);
+    if (!currentlyPaused && nextPaused) {
+      merged.pauseControl = { ...merged.pauseControl, globalPauseActivatedAt: new Date().toISOString() };
+    } else if (currentlyPaused && !nextPaused) {
+      merged.pauseControl = { ...merged.pauseControl, globalPauseActivatedAt: null };
+    }
+  }
+  const nextOperational = normalizeSystemOperationalSettings(merged);
 
   const nextState = {
     ...current,

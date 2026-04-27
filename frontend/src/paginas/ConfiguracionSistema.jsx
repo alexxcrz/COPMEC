@@ -49,6 +49,7 @@ export default function ConfiguracionSistema({ contexto }) {
     return operationalSettings.naveWeekSchedules[weekKey] || { C1: [], C2: [], C3: [], P: [] };
   });
   const [pauseDraft, setPauseDraft] = useState(() => operationalSettings.pauseControl);
+    const [workHoursDraft, setWorkHoursDraft] = useState(() => operationalSettings.pauseControl.workHours || { startHour: 8, endHour: 16 });
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
   const [isSavingPause, setIsSavingPause] = useState(false);
 
@@ -70,6 +71,9 @@ export default function ConfiguracionSistema({ contexto }) {
   useEffect(() => {
     setPauseDraft(operationalSettings.pauseControl);
   }, [operationalSettings.pauseControl]);
+  useEffect(() => {
+    setWorkHoursDraft(operationalSettings.pauseControl.workHours || { startHour: 8, endHour: 16 });
+  }, [operationalSettings.pauseControl.workHours]);
 
   function toggleNaveDay(nave, dayOffset) {
     setScheduleDraft((current) => {
@@ -147,6 +151,25 @@ export default function ConfiguracionSistema({ contexto }) {
     }));
   }
 
+  const [isSavingWorkHours, setIsSavingWorkHours] = useState(false);
+
+  async function handleSaveWorkHours() {
+    if (!canManageSystemSettings || isSavingWorkHours) return;
+    const startHour = Math.min(23, Math.max(0, Math.round(Number(workHoursDraft.startHour) || 8)));
+    const endHour = Math.min(23, Math.max(0, Math.round(Number(workHoursDraft.endHour) || 16)));
+    setIsSavingWorkHours(true);
+    try {
+      await updateSystemOperationalSettings({
+        pauseControl: { ...pauseDraft, workHours: { startHour, endHour } },
+      });
+      pushAppToast(`Horario laboral guardado: ${String(startHour).padStart(2, "0")}:00 – ${String(endHour).padStart(2, "0")}:00`, "success");
+    } catch (error) {
+      pushAppToast(error?.message || "No se pudo guardar el horario laboral.", "danger");
+    } finally {
+      setIsSavingWorkHours(false);
+    }
+  }
+
   return (
     <section className="admin-page-layout">
       <article className="surface-card full-width admin-surface-card">
@@ -155,6 +178,47 @@ export default function ConfiguracionSistema({ contexto }) {
             <h3>Configuración del sistema</h3>
             <p className="subtle-line">Centraliza pausas globales, reglas de pausa y programación semanal por nave.</p>
           </div>
+        </div>
+      </article>
+
+      <article className="surface-card full-width admin-surface-card">
+        <div className="card-header-row">
+          <div>
+            <h3>Horario laboral</h3>
+            <p className="subtle-line">Define el rango horario en que se acumula tiempo en los tableros. Fuera de este rango el contador se congela automáticamente.</p>
+          </div>
+        </div>
+        <div className="modal-form-grid system-config-pause-grid">
+          <label className="app-modal-field">
+            <span>Hora de inicio (0–23)</span>
+            <input
+              type="number"
+              min="0"
+              max="23"
+              value={workHoursDraft.startHour ?? 8}
+              onChange={(event) => setWorkHoursDraft((current) => ({ ...current, startHour: event.target.value === "" ? "" : Number(event.target.value) }))}
+              disabled={!canManageSystemSettings}
+            />
+          </label>
+          <label className="app-modal-field">
+            <span>Hora de fin (0–23)</span>
+            <input
+              type="number"
+              min="0"
+              max="23"
+              value={workHoursDraft.endHour ?? 16}
+              onChange={(event) => setWorkHoursDraft((current) => ({ ...current, endHour: event.target.value === "" ? "" : Number(event.target.value) }))}
+              disabled={!canManageSystemSettings}
+            />
+          </label>
+        </div>
+        <p className="subtle-line" style={{ marginTop: 4 }}>
+          Ventana activa: <strong>{String(Math.min(23, Math.max(0, Math.round(Number(workHoursDraft.startHour) || 8)))).padStart(2, "0")}:00</strong> – <strong>{String(Math.min(23, Math.max(0, Math.round(Number(workHoursDraft.endHour) || 16)))).padStart(2, "0")}:00</strong>
+        </p>
+        <div className="row-actions compact">
+          <button type="button" className="primary-button" onClick={handleSaveWorkHours} disabled={!canManageSystemSettings || isSavingWorkHours}>
+            {isSavingWorkHours ? "Guardando..." : "Guardar horario laboral"}
+          </button>
         </div>
       </article>
 

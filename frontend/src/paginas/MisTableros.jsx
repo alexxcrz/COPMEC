@@ -231,6 +231,11 @@ export default function MisTableros({ contexto }) {
   const manualGlobalPause = Boolean(systemPauseControl?.globalPauseEnabled);
   const globalForceActive = Boolean(systemPauseControl?.forceGlobalPause);
   const globalPauseLocked = manualGlobalPause;
+    const pauseState = {
+      globalPauseEnabled: manualGlobalPause,
+      globalPauseActivatedAt: systemPauseControl?.globalPauseActivatedAt || null,
+      workHours: systemPauseControl?.workHours || { startHour: 8, endHour: 16 },
+    };
   const boardOperationalContextType = String(boardView?.settings?.operationalContextType || "none");
   const boardOperationalContextLabel = String(boardView?.settings?.operationalContextLabel || "").trim()
     || (boardOperationalContextType === "cleaningSite" ? "Sede de limpieza" : "Ubicación operativa");
@@ -645,12 +650,12 @@ export default function MisTableros({ contexto }) {
 
                             if (column.id === "time") {
                               const effectiveNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : now;
-                              return <td key={`${row.id}-${column.token}`} style={getEffectiveColumnWidth(column)}>{formatDurationClock(getElapsedSeconds(row, effectiveNow))}</td>;
+                              return <td key={`${row.id}-${column.token}`} style={getEffectiveColumnWidth(column)}>{formatDurationClock(getElapsedSeconds(row, effectiveNow, pauseState))}</td>;
                             }
 
                             if (column.id === "totalTime") {
                               const effectiveNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : now;
-                              const prodSecs = getElapsedSeconds(row, effectiveNow);
+                              const prodSecs = getElapsedSeconds(row, effectiveNow, pauseState);
                               const totalSecs = row.startTime
                                 ? Math.max(prodSecs, Math.floor((effectiveNow - new Date(row.startTime).getTime()) / 1000))
                                 : 0;
@@ -659,7 +664,7 @@ export default function MisTableros({ contexto }) {
 
                             if (column.id === "efficiency") {
                               const effectiveNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : now;
-                              const prodSecs = getElapsedSeconds(row, effectiveNow);
+                              const prodSecs = getElapsedSeconds(row, effectiveNow, pauseState);
                               const totalSecs = row.startTime
                                 ? Math.max(prodSecs, Math.floor((effectiveNow - new Date(row.startTime).getTime()) / 1000))
                                 : prodSecs;
@@ -830,7 +835,7 @@ export default function MisTableros({ contexto }) {
                             const startTimeMs = row.startTime ? new Date(row.startTime).getTime() : NaN;
                             const hasStartTimeMs = Number.isFinite(startTimeMs);
                             const projectedEndMs = hasStartTimeMs
-                              ? startTimeMs + (Math.max(0, getElapsedSeconds(row, effectiveNowMs)) * 1000)
+                              ? startTimeMs + (Math.max(0, getElapsedSeconds(row, effectiveNowMs, pauseState)) * 1000)
                               : NaN;
 
                             let displayTimeValue = normalizeTimeInput24h(rawTimeValue, false);
