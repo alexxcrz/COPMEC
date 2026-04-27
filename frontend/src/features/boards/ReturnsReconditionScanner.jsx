@@ -1381,63 +1381,71 @@ function ReturnsReconditionScannerInner({
         </div>
         <div className="saved-board-list">
           {systemPaused && (
-            <span className="chip" style={{ background: "#fee2e2", color: "#991b1b" }}>⏸ Pausado automáticamente ({TARIMA_PAUSE_WINDOW_LABEL} · {TARIMA_PAUSE_TIMEZONE})</span>
+            <span
+              className="chip"
+              style={{ background: "#fee2e2", color: "#991b1b" }}
+              title={`Horario activo: ${TARIMA_PAUSE_WINDOW_LABEL} · ${TARIMA_PAUSE_TIMEZONE}`}
+            >
+              ⏸ Pausa global por jornada
+            </span>
           )}
           {activeTarima && (
-            <>
-              <span className="chip">Tarima: {activeTarima.tarimaNumber}</span>
-              <span className="chip">Cajas: {tarimaDisplayedBoxCount}</span>
-              <span className="chip primary">Total acumulado: {tarimaDisplayedTotalPieces}</span>
-              <span className="chip" style={tarimaStatusColor}>Workflow tarima: {tarimaStatus}</span>
-              <span className="chip">Tiempo tarima: {formatElapsedMs(Math.max(0, tarimaElapsedMs))}</span>
-              {canControlTarimaWorkflow ? (
-                <div className="row-actions compact board-workflow-actions" aria-label="Workflow general tarima">
-                  {tarimaStatus === TARIMA_STATUS_PENDING || tarimaStatus === TARIMA_STATUS_PAUSED ? (
-                    <button
-                      type="button"
-                      className="board-action-button start icon-only"
-                      title="Iniciar/Reanudar"
-                      aria-label="Iniciar/Reanudar"
-                      onClick={startTarimaWorkflow}
-                      disabled={disabled || !activeTarima}
-                    >
-                      <Play size={13} />
-                    </button>
-                  ) : null}
-                  {tarimaStatus === TARIMA_STATUS_RUNNING ? (
-                    <button
-                      type="button"
-                      className="board-action-button pause icon-only"
-                      title="Pausar"
-                      aria-label="Pausar"
-                      onClick={pauseTarimaWorkflow}
-                      disabled={disabled || !activeTarima}
-                    >
-                      <PauseCircle size={13} />
-                    </button>
-                  ) : null}
-                  {tarimaStatus === TARIMA_STATUS_RUNNING || tarimaStatus === TARIMA_STATUS_PAUSED ? (
-                    <button
-                      type="button"
-                      className="board-action-button finish icon-only"
-                      title="Finalizar"
-                      aria-label="Finalizar"
-                      onClick={() => { void finishActiveTarimaManually(); }}
-                      disabled={disabled || !activeTarima || !canControlTarimaWorkflow}
-                    >
-                      <Square size={13} />
-                    </button>
-                  ) : null}
-                </div>
-              ) : null}
-              {activeBox && (
-                <>
+            <div className="returns-scan-head-meta">
+              <div className="returns-scan-head-meta-row">
+                <span className="chip">Tarima: {activeTarima.tarimaNumber}</span>
+                <span className="chip">Cajas: {tarimaDisplayedBoxCount}</span>
+                <span className="chip primary">Total acumulado: {tarimaDisplayedTotalPieces}</span>
+                <span className="chip" style={tarimaStatusColor}>Workflow tarima: {tarimaStatus}</span>
+                <span className="chip">Tiempo tarima: {formatElapsedMs(Math.max(0, tarimaElapsedMs))}</span>
+                {canControlTarimaWorkflow ? (
+                  <div className="row-actions compact board-workflow-actions returns-scan-workflow-inline" aria-label="Workflow general tarima">
+                    {tarimaStatus === TARIMA_STATUS_PENDING || tarimaStatus === TARIMA_STATUS_PAUSED ? (
+                      <button
+                        type="button"
+                        className="board-action-button start icon-only"
+                        title="Iniciar/Reanudar"
+                        aria-label="Iniciar/Reanudar"
+                        onClick={startTarimaWorkflow}
+                        disabled={disabled || !activeTarima}
+                      >
+                        <Play size={13} />
+                      </button>
+                    ) : null}
+                    {tarimaStatus === TARIMA_STATUS_RUNNING ? (
+                      <button
+                        type="button"
+                        className="board-action-button pause icon-only"
+                        title="Pausar"
+                        aria-label="Pausar"
+                        onClick={pauseTarimaWorkflow}
+                        disabled={disabled || !activeTarima}
+                      >
+                        <PauseCircle size={13} />
+                      </button>
+                    ) : null}
+                    {tarimaStatus === TARIMA_STATUS_RUNNING || tarimaStatus === TARIMA_STATUS_PAUSED ? (
+                      <button
+                        type="button"
+                        className="board-action-button finish icon-only"
+                        title="Finalizar"
+                        aria-label="Finalizar"
+                        onClick={() => { void finishActiveTarimaManually(); }}
+                        disabled={disabled || !activeTarima || !canControlTarimaWorkflow}
+                      >
+                        <Square size={13} />
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+              {activeBox ? (
+                <div className="returns-scan-head-meta-row">
                   <span className="chip">Caja activa: {activeBox.palletNumber}</span>
                   <span className="chip">Meta caja: {activeBox.targetPieces}</span>
                   <span className="chip">Caja actual: {activePieces}</span>
-                </>
-              )}
-            </>
+                </div>
+              ) : null}
+            </div>
           )}
         </div>
       </div>
@@ -1454,7 +1462,7 @@ function ReturnsReconditionScannerInner({
               handleScanSubmit();
             }
           }}
-          placeholder={disabled ? "Vista histórica en solo lectura" : systemPaused ? `Sistema pausado (${TARIMA_PAUSE_WINDOW_LABEL})` : tarimaWorkflowBlocked ? "Workflow de tarima en pausa/finalizado" : "Escanea o escribe código (auto-registro)"}
+          placeholder={disabled ? "Vista histórica en solo lectura" : systemPaused ? "Pausa global por jornada" : tarimaWorkflowBlocked ? "Workflow de tarima en pausa/finalizado" : "Escanea o escribe código (auto-registro)"}
           disabled={disabled || systemPaused || tarimaWorkflowBlocked || lotModalOpen || tarimaModalOpen || boxModalOpen}
         />
       </div>

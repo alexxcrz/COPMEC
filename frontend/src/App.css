@@ -5621,6 +5621,22 @@ tbody tr:hover {
   font-size: 0.76rem;
 }
 
+.returns-scan-head-meta {
+  display: grid;
+  gap: 0.36rem;
+}
+
+.returns-scan-head-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.returns-scan-workflow-inline {
+  margin-left: 0.1rem;
+}
+
 .returns-scan-bar {
   display: grid;
 }
@@ -5739,6 +5755,16 @@ tbody tr:hover {
 
 .returns-scan-close-box:disabled {
   opacity: 0.5;
+}
+
+@media (max-width: 980px) {
+  .returns-scan-head {
+    grid-template-columns: 1fr;
+  }
+
+  .returns-scan-head-meta-row {
+    gap: 0.32rem;
+  }
 }
 
 .returns-scan-closed-box-tabs {
