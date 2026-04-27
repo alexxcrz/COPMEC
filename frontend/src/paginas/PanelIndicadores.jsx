@@ -245,7 +245,7 @@ export default function PanelIndicadores({ contexto }) {
     Download,
     RotateCcw,
     hardResetDashboard,
-    isRootLead,
+    canManageDashboardState,
     isDemoMode,
     activateDemoMode,
     deactivateDemoMode,
@@ -990,7 +990,7 @@ export default function PanelIndicadores({ contexto }) {
               </label>
             </div>
             <div className="dashboard-action-row dashboard-filter-inline-actions" role="group" aria-label="Acciones del dashboard">
-              {isRootLead ? (
+              {canManageDashboardState ? (
                 <button
                   type="button"
                   className="icon-button dashboard-filter-icon-button"
@@ -1001,7 +1001,7 @@ export default function PanelIndicadores({ contexto }) {
                   <RotateCcw size={16} />
                 </button>
               ) : null}
-              {isRootLead ? (
+              {canManageDashboardState ? (
                 <button
                   type="button"
                   className="icon-button dashboard-filter-icon-button"

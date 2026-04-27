@@ -5736,6 +5736,7 @@ function App() { // NOSONAR
     Plus,
     hardResetDashboard,
     isRootLead,
+    canManageDashboardState,
     isDemoMode,
     activateDemoMode,
     deactivateDemoMode,
