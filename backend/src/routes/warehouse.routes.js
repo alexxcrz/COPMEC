@@ -34,6 +34,7 @@ import {
   updateWarehouseBoardOperationalContext,
   updateWarehouseCatalogItem,
   updateWarehouseInventoryItem,
+  updateWarehouseInventoryLotHistory,
   updateWarehousePermissionOverride,
   updateWarehousePermissionsModel,
   updateWarehouseSelfProfile,
@@ -288,6 +289,22 @@ warehouseRouter.patch("/inventory/:itemId", requireAuth, (req, res) => {
   }
 
   auditSecurityEvent("warehouse_inventory_item_updated", req, {
+    itemId: result.itemId,
+    itemCode: result.itemCode,
+    revision: result.state?.revision,
+  });
+  res.json({ ok: true, data: { state: result.state, itemId: result.itemId, itemCode: result.itemCode } });
+});
+
+warehouseRouter.patch("/inventory/:itemId/lot-history", requireAuth, (req, res) => {
+  const result = updateWarehouseInventoryLotHistory(req.auth, req.params.itemId, req.body || {});
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "item_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
+    res.status(status).json({ ok: false, message: "No fue posible guardar el historial de lotes del inventario." });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_inventory_lot_history_updated", req, {
     itemId: result.itemId,
     itemCode: result.itemCode,
     revision: result.state?.revision,

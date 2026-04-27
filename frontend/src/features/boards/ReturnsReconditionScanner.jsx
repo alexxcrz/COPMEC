@@ -132,6 +132,18 @@ function mergeLotHistoryEntries(...sources) {
   return merged;
 }
 
+function getLegacyLotEntryFromItem(item) {
+  const lot = String(item?.customFields?.lote || "").trim();
+  const expiry = normalizeExpiryInput(item?.customFields?.caducidad);
+  if (!lot || !expiry) return null;
+  return {
+    lot,
+    expiry,
+    etiqueta: String(item?.customFields?.etiqueta || "").trim(),
+    updatedAt: "",
+  };
+}
+
 async function toDataUrl(url) {
   const response = await fetch(url);
   const blob = await response.blob();
@@ -553,10 +565,15 @@ function ReturnsReconditionScannerInner({
     const itemId = String(item?.id || "").trim();
     if (!itemId) return [];
     const fromItem = safeParseLotHistory(item?.customFields?.lotesCaducidades);
+    const fromLegacy = getLegacyLotEntryFromItem(item);
     const fromMemory = Array.isArray(lotHistoryMemoryRef.current.get(itemId))
       ? lotHistoryMemoryRef.current.get(itemId)
       : [];
-    return mergeLotHistoryEntries(fromMemory, fromItem);
+    const merged = mergeLotHistoryEntries(fromMemory, fromItem, fromLegacy ? [fromLegacy] : []);
+    if (merged.length && fromMemory.length !== merged.length) {
+      lotHistoryMemoryRef.current.set(itemId, merged);
+    }
+    return merged;
   }
 
   const pendingLotOptions = useMemo(() => {
@@ -1080,7 +1097,7 @@ function ReturnsReconditionScannerInner({
     // localStorage.setItem(`${ACTIVE_TARIMA_STORAGE_PREFIX}:${boardId}`, JSON.stringify(activeTarima));
 
     try {
-      const result = await requestJson(`/warehouse/inventory/${itemId}`, {
+      const result = await requestJson(`/warehouse/inventory/${itemId}/lot-history`, {
         method: "PATCH",
         body: JSON.stringify(payload),
       });

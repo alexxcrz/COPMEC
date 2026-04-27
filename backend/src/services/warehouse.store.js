@@ -2656,6 +2656,54 @@ export function updateWarehouseInventoryItem(auth, itemId, payload) {
   return { ok: true, state: replaceWarehouseState(nextState), itemId: item.id, itemCode: item.code };
 }
 
+export function updateWarehouseInventoryLotHistory(auth, itemId, payload = {}) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const currentState = getRawWarehouseState();
+  const currentItem = (currentState.inventoryItems || []).find((entry) => entry.id === itemId);
+  if (!currentItem) return { ok: false, reason: "item_not_found" };
+
+  const canManageInventory = canUserDoWarehouseAction(
+    currentUser,
+    getInventoryManageActionId(currentItem.domain),
+    currentState.permissions,
+  );
+  const canOperateBoard = canUserDoWarehouseAction(currentUser, "createBoardRow", currentState.permissions)
+    || canUserDoWarehouseAction(currentUser, "boardWorkflow", currentState.permissions);
+  if (!canManageInventory && !canOperateBoard) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const incomingCustomFields = payload?.customFields && typeof payload.customFields === "object"
+    ? payload.customFields
+    : {};
+  const lot = String(incomingCustomFields.lote ?? payload?.lote ?? "").trim();
+  const expiry = String(incomingCustomFields.caducidad ?? payload?.caducidad ?? "").trim();
+  const etiqueta = String(incomingCustomFields.etiqueta ?? payload?.etiqueta ?? "").trim();
+  const lotesCaducidades = String(incomingCustomFields.lotesCaducidades ?? payload?.lotesCaducidades ?? "").trim();
+
+  const nextCustomFields = {
+    ...(currentItem.customFields || {}),
+    ...(lot ? { lote: lot } : {}),
+    ...(expiry ? { caducidad: expiry } : {}),
+    ...(etiqueta ? { etiqueta } : {}),
+    ...(lotesCaducidades ? { lotesCaducidades } : {}),
+  };
+
+  const nextItem = normalizeInventoryItemRecord({
+    ...currentItem,
+    customFields: nextCustomFields,
+  }, currentItem.id);
+
+  const nextState = {
+    ...currentState,
+    inventoryItems: (currentState.inventoryItems || []).map((entry) => (entry.id === itemId ? nextItem : entry)),
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState), itemId: nextItem.id, itemCode: nextItem.code };
+}
+
 export function deleteWarehouseInventoryItem(auth, itemId) {
   const currentUser = findWarehouseUserById(auth?.userId);
   if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
