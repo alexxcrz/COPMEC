@@ -925,6 +925,7 @@ function ReturnsReconditionScannerInner({
         ...(item.customFields || {}),
         lote: lot,
         caducidad: normalizedExpiry,
+        lotesCaducidades: JSON.stringify(next),
       },
     };
     // Si necesitas persistir tarima, hazlo fuera del objeto:
