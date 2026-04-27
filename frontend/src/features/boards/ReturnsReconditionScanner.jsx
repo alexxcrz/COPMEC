@@ -216,6 +216,7 @@ function ReturnsReconditionScannerInner({
   const [activeBoxId, setActiveBoxId] = useState(null);
   const [completedBoxes, setCompletedBoxes] = useState([]);
   const [completedBoxesHydrated, setCompletedBoxesHydrated] = useState(false);
+  const [recentlyClosedBoxKeys, setRecentlyClosedBoxKeys] = useState(new Set());
   const [collapsedProducts, setCollapsedProducts] = useState(new Set());
   const [expandedClosedBoxes, setExpandedClosedBoxes] = useState(new Set());
   const [pendingItem, setPendingItem] = useState(null);
@@ -755,7 +756,10 @@ function ReturnsReconditionScannerInner({
   const closedForTarima = useMemo(() => {
     const localClosed = Array.isArray(completedBoxes) ? completedBoxes : [];
     const rows = Array.isArray(boardView?.rows) ? boardView.rows : [];
-    const finishedRows = rows.filter((row) => String(row?.status || "").toLowerCase() === "terminado");
+    const finishedRows = rows.filter((row) => {
+      const normalizedStatus = String(row?.status || "").toLowerCase();
+      return normalizedStatus === "terminado" || Boolean(row?.endTime);
+    });
     if (!finishedRows.length) return localClosed;
 
     const fieldTarima = boardFieldMap.get("tarima");
@@ -1167,6 +1171,15 @@ function ReturnsReconditionScannerInner({
     };
     await closeBoardWorkflowRows(payload);
     setCompletedBoxes((current) => [payload, ...current].slice(0, 20));
+    const closedBoxKey = `${payload.id}-${payload.closedAt}`;
+    setRecentlyClosedBoxKeys((current) => new Set(current).add(closedBoxKey));
+    globalThis.setTimeout(() => {
+      setRecentlyClosedBoxKeys((current) => {
+        const next = new Set(current);
+        next.delete(closedBoxKey);
+        return next;
+      });
+    }, 2200);
     setCollapsedProducts((current) => {
       const next = new Set(current);
       Object.keys(box.products || {}).forEach((itemId) => {
@@ -1687,7 +1700,7 @@ function ReturnsReconditionScannerInner({
                 const boxKey = `${box.id}-${box.closedAt}`;
                 const isExpanded = expandedClosedBoxes.has(boxKey);
                 return (
-                  <div className="returns-scan-closed-box-tab" key={boxKey}>
+                  <div className={`returns-scan-closed-box-tab${recentlyClosedBoxKeys.has(boxKey) ? " is-new" : ""}`} key={boxKey}>
                     <button type="button" className="chip" onClick={() => toggleClosedBoxExpanded(boxKey)}>
                       {isExpanded ? "▼" : "▶"} Caja {box.palletNumber} · {box.totalPieces || 0} pzas
                     </button>
