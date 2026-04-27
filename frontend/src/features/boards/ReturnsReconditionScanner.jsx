@@ -60,7 +60,29 @@ function resolveTarimaWorkflowStatus(tarima) {
 }
 
 function normalizeExpiryInput(value) {
-  return String(value || "").trim().toUpperCase();
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  const compact = raw.replace(/\D/g, "");
+  if (/^\d{6}$/.test(compact)) {
+    const day = Number.parseInt(compact.slice(0, 2), 10);
+    const month = Number.parseInt(compact.slice(2, 4), 10);
+    const year = 2000 + Number.parseInt(compact.slice(4, 6), 10);
+    if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+      return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${String(year)}`;
+    }
+  }
+
+  if (/^\d{8}$/.test(compact)) {
+    const day = Number.parseInt(compact.slice(0, 2), 10);
+    const month = Number.parseInt(compact.slice(2, 4), 10);
+    const year = Number.parseInt(compact.slice(4, 8), 10);
+    if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900) {
+      return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${String(year)}`;
+    }
+  }
+
+  return raw.toUpperCase();
 }
 
 function safeParseLotHistory(value) {
