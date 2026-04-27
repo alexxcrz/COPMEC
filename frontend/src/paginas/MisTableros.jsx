@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import ReturnsReconditionScanner from "../features/boards/ReturnsReconditionScanner.jsx";
 
 export default function MisTableros({ contexto }) {
@@ -169,6 +170,9 @@ export default function MisTableros({ contexto }) {
     : (label, required = false) => `${label}${required ? " *" : ""}`;
   const boardView = selectedCustomBoardDisplay || selectedCustomBoard;
   const isBoardOwner = Boolean(selectedCustomBoard && currentUser && (currentUser.role === "Lead" || selectedCustomBoard.createdById === currentUser.id || selectedCustomBoard.ownerId === currentUser.id));
+  const [manualGlobalPause, setManualGlobalPause] = useState(false);
+  const selectedBoardId = String(selectedCustomBoard?.id || "default");
+  const globalPauseStorageKey = `copmec_global_pause:${selectedBoardId}`;
   const boardColumns = boardView ? getOrderedBoardColumns(boardView, isBoardOwner) : [];
   const boardOperationalContextType = String(boardView?.settings?.operationalContextType || "none");
   const boardOperationalContextLabel = String(boardView?.settings?.operationalContextLabel || "").trim()
@@ -184,10 +188,39 @@ export default function MisTableros({ contexto }) {
   const boardDescriptionText = String(boardView?.description || "").toLowerCase();
   const boardLooksCleaning = [boardNameText, boardCategoryText, boardDescriptionText].some((text) => text.includes("limp"));
   const boardLooksReturnsRecondition = [boardNameText, boardCategoryText, boardDescriptionText].some((text) => /(devol|reacond|maquila)/.test(text));
+  const normalizedRole = String(currentUser?.role || "").trim().toLowerCase();
+  const canControlGlobalPause = Boolean(
+    boardLooksReturnsRecondition
+    && currentUser
+    && (
+      normalizedRole === "lead"
+      || normalizedRole === "lider"
+      || normalizedRole === "líder"
+      || currentUser?.id === boardView?.createdById
+      || currentUser?.id === boardView?.ownerId
+    )
+  );
   const isCleaningRelatedBoard = boardOperationalContextType === "cleaningSite" || boardLooksCleaning;
   const visibleBoardColumns = boardLooksReturnsRecondition
     ? boardColumns.filter((column) => column.kind === "field")
     : boardColumns;
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(globalPauseStorageKey);
+      setManualGlobalPause(raw === "1");
+    } catch {
+      setManualGlobalPause(false);
+    }
+  }, [globalPauseStorageKey]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(globalPauseStorageKey, manualGlobalPause ? "1" : "0");
+    } catch {
+      // Ignore localStorage errors.
+    }
+  }, [globalPauseStorageKey, manualGlobalPause]);
 
   // Compute available cleaning naves from inventory items that have activity consumptions
   const cleaningNaveOptions = (() => {
@@ -307,6 +340,49 @@ export default function MisTableros({ contexto }) {
               </div>
             </div>
 
+            {boardLooksReturnsRecondition ? (
+              <div className="board-global-pause-top board-pdf-hide">
+                <div className="saved-board-list">
+                  <span className="chip primary">Global</span>
+                  <span className="chip" style={manualGlobalPause ? { background: "#fee2e2", color: "#991b1b" } : { background: "#ecfdf3", color: "#166534" }}>
+                    {manualGlobalPause ? "Pausa global activa" : "Global activo"}
+                  </span>
+                </div>
+                {canControlGlobalPause ? (
+                  <div className="row-actions compact board-workflow-actions" aria-label="Control global">
+                    <button
+                      type="button"
+                      className="board-action-button start icon-only"
+                      title="Quitar pausa global"
+                      aria-label="Quitar pausa global"
+                      onClick={() => {
+                        setManualGlobalPause(false);
+                        setBoardRuntimeFeedback({ tone: "success", message: "Pausa global desactivada." });
+                      }}
+                      disabled={!manualGlobalPause}
+                    >
+                      <Play size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      className="board-action-button pause icon-only"
+                      title="Activar pausa global"
+                      aria-label="Activar pausa global"
+                      onClick={() => {
+                        setManualGlobalPause(true);
+                        setBoardRuntimeFeedback({ tone: "warning", message: "Pausa global activada." });
+                      }}
+                      disabled={manualGlobalPause}
+                    >
+                      <PauseCircle size={13} />
+                    </button>
+                  </div>
+                ) : (
+                  <span className="subtle-line">Solo Lead o creador pueden cambiar pausa global.</span>
+                )}
+              </div>
+            ) : null}
+
             <div className="board-meta-inline board-meta-inline-header">
               <span>Creó · {userMap.get(boardView?.createdById)?.name || "N/A"}</span>
               <span>Player principal · {userMap.get(boardView?.ownerId)?.name || "N/A"}</span>
@@ -330,6 +406,7 @@ export default function MisTableros({ contexto }) {
                 skipNextSyncRef={skipNextSyncRef}
                 setSyncStatus={setSyncStatus}
                 setBoardRuntimeFeedback={setBoardRuntimeFeedback}
+                manualGlobalPause={manualGlobalPause}
                 disabled={isHistoricalCustomBoardView}
               />
             ) : null}

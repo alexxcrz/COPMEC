@@ -173,6 +173,7 @@ function ReturnsReconditionScannerInner({
   skipNextSyncRef,
   setSyncStatus,
   setBoardRuntimeFeedback,
+  manualGlobalPause = false,
   disabled,
 }) {
   // Estado para el orden de productos (drag & drop)
@@ -209,6 +210,7 @@ function ReturnsReconditionScannerInner({
   const [lotForm, setLotForm] = useState({ lot: "", expiry: "", pieces: 1, selectedLotKey: "" });
   
   const [nowTick, setNowTick] = useState(() => Date.now());
+  const effectiveGlobalPause = Boolean(systemPaused || manualGlobalPause);
   
   // Obtener caja activa
   const activeBox = useMemo(() => {
@@ -309,10 +311,10 @@ function ReturnsReconditionScannerInner({
   }, []);
 
   useEffect(() => {
-    if (!activeTarima?.startedAt || activeTarima?.stoppedAt || activeTarima?.pausedAt || systemPaused || resolveTarimaWorkflowStatus(activeTarima) !== TARIMA_STATUS_RUNNING) return undefined;
+    if (!activeTarima?.startedAt || activeTarima?.stoppedAt || activeTarima?.pausedAt || effectiveGlobalPause || resolveTarimaWorkflowStatus(activeTarima) !== TARIMA_STATUS_RUNNING) return undefined;
     const timer = globalThis.setInterval(() => setNowTick(Date.now()), 1000);
     return () => globalThis.clearInterval(timer);
-  }, [activeTarima, systemPaused]);
+  }, [activeTarima, effectiveGlobalPause]);
 
   useEffect(() => {
     if (disabled) return;
@@ -1176,8 +1178,10 @@ function ReturnsReconditionScannerInner({
   }
   
   function handleScanSubmit() {
-    if (disabled || systemPaused) {
-      if (systemPaused) {
+    if (disabled || effectiveGlobalPause) {
+      if (manualGlobalPause) {
+        setBoardRuntimeFeedback({ tone: "warning", message: "Pausa global activa. Solo Lead/creador puede quitarla." });
+      } else if (systemPaused) {
         setBoardRuntimeFeedback({ tone: "warning", message: `Sistema pausado automáticamente por horario (${TARIMA_PAUSE_WINDOW_LABEL}, ${TARIMA_PAUSE_TIMEZONE}).` });
       }
       return;
@@ -1398,8 +1402,8 @@ function ReturnsReconditionScannerInner({
     <section className="returns-scan-shell board-pdf-hide">
       {activeTarima && canControlTarimaWorkflow ? (
         <div className="returns-scan-global-top">
-          <span className="chip primary">Workflow global tarima</span>
-          <div className="row-actions compact board-workflow-actions" aria-label="Workflow global tarima">
+          <span className="chip primary">Tarima</span>
+          <div className="row-actions compact board-workflow-actions" aria-label="Workflow tarima">
             <button
               type="button"
               className="board-action-button start icon-only"
@@ -1440,7 +1444,12 @@ function ReturnsReconditionScannerInner({
           <p>{activeTarima ? `Flujo: ${activeTarima.flowType === "reacondicionado" ? "Reacondicionado" : "Devolución"}` : "Escanea un código para crear tarima"}</p>
         </div>
         <div className="saved-board-list">
-          {systemPaused && (
+          {manualGlobalPause ? (
+            <span className="chip" style={{ background: "#fee2e2", color: "#991b1b" }}>
+              ⏸ Pausa global activa
+            </span>
+          ) : null}
+          {!manualGlobalPause && systemPaused && (
             <span
               className="chip"
               style={{ background: "#fee2e2", color: "#991b1b" }}
@@ -1482,8 +1491,8 @@ function ReturnsReconditionScannerInner({
               handleScanSubmit();
             }
           }}
-          placeholder={disabled ? "Vista histórica en solo lectura" : systemPaused ? "Pausa global por jornada" : tarimaWorkflowBlocked ? "Workflow de tarima en pausa/finalizado" : "Escanea o escribe código (auto-registro)"}
-          disabled={disabled || systemPaused || tarimaWorkflowBlocked || lotModalOpen || tarimaModalOpen || boxModalOpen}
+          placeholder={disabled ? "Vista histórica en solo lectura" : effectiveGlobalPause ? "Pausa global activa" : tarimaWorkflowBlocked ? "Workflow de tarima en pausa/finalizado" : "Escanea o escribe código (auto-registro)"}
+          disabled={disabled || effectiveGlobalPause || tarimaWorkflowBlocked || lotModalOpen || tarimaModalOpen || boxModalOpen}
         />
       </div>
 
