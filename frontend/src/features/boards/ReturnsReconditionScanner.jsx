@@ -696,9 +696,8 @@ function ReturnsReconditionScannerInner({
   }
 
   const closedForTarima = useMemo(() => {
-    if (!boardId) return [];
-    return completedBoxes.filter((box) => box.boardId === boardId);
-  }, [boardId, completedBoxes]);
+    return Array.isArray(completedBoxes) ? completedBoxes : [];
+  }, [completedBoxes]);
 
   const tarimaDisplayedTotalPieces = useMemo(() => {
     const openPieces = Number(activeTarima?.totalPieces || 0);
