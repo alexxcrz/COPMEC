@@ -342,6 +342,37 @@ function ReturnsReconditionScannerInner({
   }, [activeTarima, effectiveGlobalPause]);
 
   useEffect(() => {
+    if (!activeTarima) return;
+    if (resolveTarimaWorkflowStatus(activeTarima) !== TARIMA_STATUS_RUNNING) return;
+    if (activeTarima.pausedAt) return;
+
+    if (effectiveGlobalPause) {
+      if (activeTarima.globalPausedAt) return;
+      const nowIso = new Date().toISOString();
+      setActiveTarima((current) => {
+        if (!current || current.globalPausedAt || resolveTarimaWorkflowStatus(current) !== TARIMA_STATUS_RUNNING || current.pausedAt) return current;
+        return {
+          ...current,
+          globalPausedAt: nowIso,
+        };
+      });
+      return;
+    }
+
+    if (!activeTarima.globalPausedAt) return;
+    const nowIso = new Date().toISOString();
+    setActiveTarima((current) => {
+      if (!current || !current.globalPausedAt) return current;
+      const delta = Math.max(0, new Date(nowIso).getTime() - new Date(current.globalPausedAt).getTime());
+      return {
+        ...current,
+        globalPausedAt: null,
+        globalPausedAccumulatedMs: Number(current.globalPausedAccumulatedMs || 0) + delta,
+      };
+    });
+  }, [effectiveGlobalPause, activeTarima]);
+
+  useEffect(() => {
     if (disabled) return;
     scanRef.current?.focus();
   }, [activeBox, disabled, lotModalOpen]);
@@ -440,17 +471,21 @@ function ReturnsReconditionScannerInner({
     ? (() => {
       const startedAtMs = new Date(activeTarima.startedAt).getTime();
       const pausedAccumulatedMs = Number(activeTarima.pausedAccumulatedMs || 0);
+      const globalPausedAccumulatedMs = Number(activeTarima.globalPausedAccumulatedMs || 0);
       if (activeTarima.pausedAt) {
         const pausedSnapshotMs = Number(activeTarima.pausedElapsedMs);
         if (Number.isFinite(pausedSnapshotMs) && pausedSnapshotMs >= 0) {
           return pausedSnapshotMs;
         }
-        return Math.max(0, new Date(activeTarima.pausedAt).getTime() - startedAtMs - pausedAccumulatedMs);
+        return Math.max(0, new Date(activeTarima.pausedAt).getTime() - startedAtMs - pausedAccumulatedMs - globalPausedAccumulatedMs);
+      }
+      if (activeTarima.globalPausedAt) {
+        return Math.max(0, new Date(activeTarima.globalPausedAt).getTime() - startedAtMs - pausedAccumulatedMs - globalPausedAccumulatedMs);
       }
       if (tarimaStatus === TARIMA_STATUS_FINISHED && activeTarima.stoppedAt) {
-        return Math.max(0, new Date(activeTarima.stoppedAt).getTime() - startedAtMs - pausedAccumulatedMs);
+        return Math.max(0, new Date(activeTarima.stoppedAt).getTime() - startedAtMs - pausedAccumulatedMs - globalPausedAccumulatedMs);
       }
-      return Math.max(0, nowTick - startedAtMs - pausedAccumulatedMs);
+      return Math.max(0, nowTick - startedAtMs - pausedAccumulatedMs - globalPausedAccumulatedMs);
     })()
     : 0;
   const tarimaWorkflowBlocked = tarimaStatus === TARIMA_STATUS_PAUSED || tarimaStatus === TARIMA_STATUS_FINISHED;
@@ -531,6 +566,8 @@ function ReturnsReconditionScannerInner({
         pausedAccumulatedMs: Number(parsed?.pausedAccumulatedMs || 0),
         pausedAt: parsed?.pausedAt || null,
         pausedElapsedMs: Number.isFinite(Number(parsed?.pausedElapsedMs)) ? Number(parsed?.pausedElapsedMs) : null,
+        globalPausedAccumulatedMs: Number(parsed?.globalPausedAccumulatedMs || 0),
+        globalPausedAt: parsed?.globalPausedAt || null,
       };
       setActiveTarima(normalizedTarima);
       if (normalizedTarima.boxes && normalizedTarima.boxes.length > 0) {
@@ -710,6 +747,8 @@ function ReturnsReconditionScannerInner({
       pausedAccumulatedMs: 0,
       pausedAt: null,
       pausedElapsedMs: null,
+      globalPausedAccumulatedMs: 0,
+      globalPausedAt: null,
       recovered: true,
     };
 
@@ -1296,6 +1335,8 @@ function ReturnsReconditionScannerInner({
       pausedAccumulatedMs: 0,
       pausedAt: null,
       pausedElapsedMs: null,
+      globalPausedAccumulatedMs: 0,
+      globalPausedAt: null,
     };
     setCompletedBoxes([]);
     setExpandedClosedBoxes(new Set());
