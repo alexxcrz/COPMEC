@@ -22,6 +22,36 @@ export function setSoundPref(id) {
   localStorage.setItem(SOUND_PREF_KEY, id);
 }
 
+let audioGestureUnlocked = false;
+let audioUnlockListenersBound = false;
+
+function detachAudioUnlockListeners() {
+  if (!audioUnlockListenersBound) return;
+  document.removeEventListener("click", handleAudioUnlockGesture);
+  document.removeEventListener("pointerdown", handleAudioUnlockGesture);
+  document.removeEventListener("keydown", handleAudioUnlockGesture);
+  document.removeEventListener("touchstart", handleAudioUnlockGesture);
+  audioUnlockListenersBound = false;
+}
+
+function handleAudioUnlockGesture() {
+  audioGestureUnlocked = true;
+  detachAudioUnlockListeners();
+}
+
+export function ensureAudioGestureUnlock() {
+  if (audioGestureUnlocked) return true;
+  if (typeof document === "undefined") return false;
+  if (!audioUnlockListenersBound) {
+    document.addEventListener("click", handleAudioUnlockGesture, { once: true });
+    document.addEventListener("pointerdown", handleAudioUnlockGesture, { once: true });
+    document.addEventListener("keydown", handleAudioUnlockGesture, { once: true });
+    document.addEventListener("touchstart", handleAudioUnlockGesture, { once: true });
+    audioUnlockListenersBound = true;
+  }
+  return audioGestureUnlocked;
+}
+
 function getCtx() {
   try {
     return new (window.AudioContext || window.webkitAudioContext)();
@@ -184,6 +214,7 @@ const PLAYERS = {
 };
 
 export function playNotificationSound(id, options = {}) {
+  if (!ensureAudioGestureUnlock()) return false;
   const soundId = id || getSoundPref();
   const player = PLAYERS[soundId];
   const volume = clampVolume(options.volume ?? 1);

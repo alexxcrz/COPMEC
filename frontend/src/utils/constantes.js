@@ -29,6 +29,7 @@ export const PAGE_INVENTORY = "inventory";
 export const PAGE_USERS = "users";
 export const PAGE_BIBLIOTECA = "biblioteca";
 export const PAGE_INCIDENCIAS = "incidencias";
+export const PAGE_SYSTEM_SETTINGS = "systemSettings";
 export const PAGE_NOT_FOUND = "404";
 
 export const PAGE_ROUTE_SLUGS = {
@@ -42,6 +43,7 @@ export const PAGE_ROUTE_SLUGS = {
   [PAGE_USERS]: "administrador",
   [PAGE_BIBLIOTECA]: "biblioteca",
   [PAGE_INCIDENCIAS]: "incidencias",
+  [PAGE_SYSTEM_SETTINGS]: "configuracion-sistema",
   [PAGE_NOT_FOUND]: "404",
 };
 
@@ -67,6 +69,8 @@ export const PAGE_ROUTE_ALIASES = {
   [PAGE_BIBLIOTECA]: PAGE_BIBLIOTECA,
   incidencias: PAGE_INCIDENCIAS,
   [PAGE_INCIDENCIAS]: PAGE_INCIDENCIAS,
+  "configuracion-sistema": PAGE_SYSTEM_SETTINGS,
+  [PAGE_SYSTEM_SETTINGS]: PAGE_SYSTEM_SETTINGS,
   [PAGE_NOT_FOUND]: PAGE_NOT_FOUND,
 };
 
@@ -587,6 +591,7 @@ export const CLEANING_SITE_OPTIONS = [
   { value: "C1", label: "C1" },
   { value: "C2", label: "C2" },
   { value: "C3", label: "C3 principal" },
+  { value: "P", label: "P" },
 ];
 
 export const DEFAULT_CLEANING_SITE = "C3";
@@ -595,7 +600,7 @@ export const BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE = "cleaningSite";
 export const BOARD_OPERATIONAL_CONTEXT_CUSTOM = "custom";
 export const BOARD_OPERATIONAL_CONTEXT_OPTIONS = [
   { value: BOARD_OPERATIONAL_CONTEXT_NONE, label: "Sin contexto operativo" },
-  { value: BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE, label: "Sede de limpieza C1/C2/C3" },
+  { value: BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE, label: "Sede de limpieza C1/C2/C3/P" },
   { value: BOARD_OPERATIONAL_CONTEXT_CUSTOM, label: "Estación, nave u opciones manuales" },
 ];
 
@@ -608,6 +613,7 @@ export const NAV_ITEMS = [
   { id: PAGE_INVENTORY,      label: "Inventario",          icon: Package,         group: "Producción", roles: [ROLE_LEAD, ROLE_SR] },
   { id: PAGE_BIBLIOTECA,     label: "Biblioteca",          icon: BookOpen,        group: "Recursos",   roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
   { id: PAGE_INCIDENCIAS,    label: "Incidencias",         icon: OctagonAlert,    group: "Recursos",   roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
+  { id: PAGE_SYSTEM_SETTINGS,label: "Configuración",       icon: PieChart,        group: "Recursos",   roles: [ROLE_LEAD, ROLE_SR] },
   { id: PAGE_USERS,          label: "Players",             icon: Users,           group: "Equipo",     roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
 ];
 
@@ -658,6 +664,7 @@ export const ACTION_DEFINITIONS = [
   { id: "viewProcessAudits",       label: "Ver auditorías de procesos",               category: "Auditorías",          defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
   { id: "manageProcessAudits",     label: "Gestionar auditorías de procesos",         category: "Auditorías",          defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
   { id: "manageProcessAuditTemplates", label: "Gestionar plantillas de auditoría",    category: "Auditorías",          defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "manageSystemSettings",    label: "Configurar parámetros globales del sistema", category: "Configuración",      defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "deleteWeekActivity",      label: "Eliminar actividades de semana",            category: "Operación semanal",   defaultRoles: [ROLE_LEAD] },
 ];
 
@@ -684,6 +691,7 @@ export const PAGE_ACTION_GROUPS = {
   [PAGE_USERS]: ["createUsers", "editUsers", "deleteUsers", "resetPasswords", "managePermissions"],
   [PAGE_BIBLIOTECA]: ["uploadBiblioteca", "deleteBiblioteca"],
   [PAGE_INCIDENCIAS]: ["createIncidencia", "editIncidencia", "deleteIncidencia"],
+  [PAGE_SYSTEM_SETTINGS]: ["manageSystemSettings"],
 };
 
 export const PERMISSION_PRESETS = [
@@ -713,7 +721,7 @@ export const RESPONSIBLE_VISUALS = {
   default: { accent: "#60a5fa", soft: "#3b82f6", badge: "#4f8adf" },
 };
 
-export const ALL_PAGES = [PAGE_DASHBOARD, PAGE_CUSTOM_BOARDS, PAGE_BOARD, PAGE_HISTORY, PAGE_PROCESS_AUDITS, PAGE_INVENTORY, PAGE_USERS, PAGE_BIBLIOTECA, PAGE_INCIDENCIAS];
+export const ALL_PAGES = [PAGE_DASHBOARD, PAGE_CUSTOM_BOARDS, PAGE_BOARD, PAGE_HISTORY, PAGE_PROCESS_AUDITS, PAGE_INVENTORY, PAGE_USERS, PAGE_BIBLIOTECA, PAGE_INCIDENCIAS, PAGE_SYSTEM_SETTINGS];
 export const ALL_ACTION_IDS = ACTION_DEFINITIONS.map((item) => item.id);
 
 export const ROLE_PERMISSION_MATRIX = {

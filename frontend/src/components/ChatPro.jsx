@@ -5,7 +5,7 @@ import "./ChatPro.css";
 function ReunionesPerfilUsuario() { return null; }
 
 import { useAlert } from "./AlertModal";
-import { NOTIFICATION_SOUNDS, playNotificationSound } from "../utils/notificationSounds";
+import { NOTIFICATION_SOUNDS, playNotificationSound, ensureAudioGestureUnlock } from "../utils/notificationSounds";
 // COPMEC: removed getServerUrl
 // COPMEC: removed ReunionesPerfilUsuario
 
@@ -579,6 +579,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   // ctx fresco cada vez, sin async/await, sin estado compartido.
   const playCallSound = (tipo) => {
     try {
+      if (!ensureAudioGestureUnlock()) return;
       const configuredVolume = Math.min(1, Math.max(0, Number(audioSettings.callVolume ?? 1)));
       const volume = configuredVolume <= 0 ? 1 : configuredVolume;
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -2334,22 +2335,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
   // ── Pre-calentar AudioContext en primer gesto de usuario ──────────────────
   useEffect(() => {
-    const warmUp = () => {
-      try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        ctx.resume().then(() => ctx.close()).catch(() => {});
-      } catch {}
-    };
-    document.addEventListener("click", warmUp, { once: true });
-    document.addEventListener("pointerdown", warmUp, { once: true });
-    document.addEventListener("keydown", warmUp, { once: true });
-    document.addEventListener("touchstart", warmUp, { once: true });
-    return () => {
-      document.removeEventListener("click", warmUp);
-      document.removeEventListener("pointerdown", warmUp);
-      document.removeEventListener("keydown", warmUp);
-      document.removeEventListener("touchstart", warmUp);
-    };
+    ensureAudioGestureUnlock();
+    return undefined;
   }, []);
 
   // ── Ringtone al recibir llamada entrante ──────────────────────────────────

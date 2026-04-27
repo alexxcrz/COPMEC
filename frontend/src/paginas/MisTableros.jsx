@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import ReturnsReconditionScanner from "../features/boards/ReturnsReconditionScanner.jsx";
 import { BoardEditableInventoryPropertyInput, BoardEvidenceCell, BoardMultiSelectDetailCell } from "../components/BoardRuntimeFieldCells.jsx";
-import { resolveInventoryPropertySourceFieldId } from "../utils/utilidades.jsx";
+import { normalizeSystemOperationalSettings, resolveInventoryPropertySourceFieldId } from "../utils/utilidades.jsx";
 
 const EDITABLE_INVENTORY_PROPERTIES = new Set(["lot", "expiry", "label"]);
 
@@ -118,6 +118,7 @@ export default function MisTableros({ contexto }) {
     LayoutDashboard,
     ROLE_JR,
     formatDate,
+    formatTime,
   } = contexto;
 
   function normalizeTimeInput24h(value, strict = false) {
@@ -215,15 +216,20 @@ export default function MisTableros({ contexto }) {
     : (label, required = false) => `${label}${required ? " *" : ""}`;
   const boardView = selectedCustomBoardDisplay || selectedCustomBoard;
   const isBoardOwner = Boolean(selectedCustomBoard && currentUser && (currentUser.role === "Lead" || selectedCustomBoard.createdById === currentUser.id || selectedCustomBoard.ownerId === currentUser.id));
-  const [manualGlobalPause, setManualGlobalPause] = useState(false);
-  const [globalForceActive, setGlobalForceActive] = useState(false);
+  const [selectedWeekdayFilter, setSelectedWeekdayFilter] = useState("auto");
+  const [currentWeekdayOffset, setCurrentWeekdayOffset] = useState(() => {
+    const today = new Date();
+    const jsDay = today.getDay();
+    return jsDay === 0 ? 6 : jsDay - 1;
+  });
   const [columnResizing, setColumnResizing] = useState({ isResizing: false, columnToken: null, startX: 0, startWidth: 0 });
   const [columnWidthsOverride, setColumnWidthsOverride] = useState({});
   const columnWidthsOverrideRef = useRef({});
-  const selectedBoardId = String(selectedCustomBoard?.id || "default");
-  const globalPauseStorageKey = `copmec_global_pause:${selectedBoardId}`;
-  const globalForceStorageKey = `copmec_global_force:${selectedBoardId}`;
   const boardColumns = boardView ? getOrderedBoardColumns(boardView, isBoardOwner) : [];
+  const systemOperationalSettings = normalizeSystemOperationalSettings(state?.system?.operational);
+  const systemPauseControl = systemOperationalSettings.pauseControl;
+  const manualGlobalPause = Boolean(systemPauseControl?.globalPauseEnabled);
+  const globalForceActive = Boolean(systemPauseControl?.forceGlobalPause);
   const boardOperationalContextType = String(boardView?.settings?.operationalContextType || "none");
   const boardOperationalContextLabel = String(boardView?.settings?.operationalContextLabel || "").trim()
     || (boardOperationalContextType === "cleaningSite" ? "Sede de limpieza" : "Ubicación operativa");
@@ -238,56 +244,10 @@ export default function MisTableros({ contexto }) {
   const boardDescriptionText = String(boardView?.description || "").toLowerCase();
   const boardLooksCleaning = [boardNameText, boardCategoryText, boardDescriptionText].some((text) => text.includes("limp"));
   const boardLooksReturnsRecondition = [boardNameText, boardCategoryText, boardDescriptionText].some((text) => /(devol|reacond|maquila)/.test(text));
-  const normalizedRole = String(currentUser?.role || "").trim().toLowerCase();
-  const canControlGlobalPause = Boolean(
-    boardLooksReturnsRecondition
-    && currentUser
-    && (
-      normalizedRole === "lead"
-      || normalizedRole === "lider"
-      || normalizedRole === "líder"
-      || currentUser?.id === boardView?.createdById
-      || currentUser?.id === boardView?.ownerId
-    )
-  );
   const isCleaningRelatedBoard = boardOperationalContextType === "cleaningSite" || boardLooksCleaning;
   const visibleBoardColumns = boardLooksReturnsRecondition
     ? boardColumns.filter((column) => column.kind === "field")
     : boardColumns;
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(globalPauseStorageKey);
-      setManualGlobalPause(raw === "1");
-    } catch {
-      setManualGlobalPause(false);
-    }
-  }, [globalPauseStorageKey]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(globalPauseStorageKey, manualGlobalPause ? "1" : "0");
-    } catch {
-      // Ignore localStorage errors.
-    }
-  }, [globalPauseStorageKey, manualGlobalPause]);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(globalForceStorageKey);
-      setGlobalForceActive(raw === "1");
-    } catch {
-      setGlobalForceActive(false);
-    }
-  }, [globalForceStorageKey]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(globalForceStorageKey, globalForceActive ? "1" : "0");
-    } catch {
-      // Ignore localStorage errors.
-    }
-  }, [globalForceStorageKey, globalForceActive]);
 
   // Compute available cleaning naves from inventory items that have activity consumptions
   const cleaningNaveOptions = (() => {
@@ -300,8 +260,43 @@ export default function MisTableros({ contexto }) {
   const showCleaningNaveSelector = isCleaningRelatedBoard;
   const effectiveCleaningNaves = (cleaningNaveOptions.length > 0)
     ? cleaningNaveOptions
-    : ["C1", "C2", "C3"];
+    : ["C1", "C2", "C3", "P"];
   const cleaningNaveValue = boardOperationalContextValue || effectiveCleaningNaves[0] || "C3";
+  const effectiveWeekKey = String(
+    (isHistoricalCustomBoardView
+      ? selectedCustomBoardSnapshot?.weekKey
+      : state?.boardWeeklyCycle?.activeWeekKey) || "",
+  ).trim();
+  const weekScheduleByNave = systemOperationalSettings.naveWeekSchedules?.[effectiveWeekKey] || null;
+  const allowedWeekdaysForNave = showCleaningNaveSelector
+    ? (Array.isArray(weekScheduleByNave?.[cleaningNaveValue]) ? weekScheduleByNave[cleaningNaveValue] : [])
+    : [];
+  const weekdayOptions = [
+    { value: "auto", label: "Auto (hoy)" },
+    { value: "0", label: "L" },
+    { value: "1", label: "M" },
+    { value: "2", label: "M" },
+    { value: "3", label: "J" },
+    { value: "4", label: "V" },
+    { value: "5", label: "S" },
+  ];
+  const effectiveWeekdayOffset = selectedWeekdayFilter === "auto"
+    ? currentWeekdayOffset
+    : Number(selectedWeekdayFilter);
+  const weekdayAllowedBySystemSchedule = !showCleaningNaveSelector
+    || !allowedWeekdaysForNave.length
+    || allowedWeekdaysForNave.includes(effectiveWeekdayOffset);
+  const effectiveCatalogCleaningSite = showCleaningNaveSelector ? cleaningNaveValue : "";
+
+  useEffect(() => {
+    const timer = globalThis.setInterval(() => {
+      const now = new Date();
+      const jsDay = now.getDay();
+      const nextOffset = jsDay === 0 ? 6 : jsDay - 1;
+      setCurrentWeekdayOffset((current) => (current === nextOffset ? current : nextOffset));
+    }, 60000);
+    return () => globalThis.clearInterval(timer);
+  }, []);
 
   // Handlers para redimensionamiento de columnas
   const getColumnMinWidth = (column) => {
@@ -398,14 +393,39 @@ export default function MisTableros({ contexto }) {
     return getAuxColumnStyle(column.id);
   };
 
+  const activityListField = (boardView?.fields || []).find((field) => field?.type === "select" && field?.optionSource === "catalogByCategory") || null;
+  const activityOptionNames = activityListField
+    ? new Set(
+      (weekdayAllowedBySystemSchedule
+        ? buildSelectOptions(activityListField, state, {
+            weekdayOffset: effectiveWeekdayOffset,
+            cleaningSite: effectiveCatalogCleaningSite,
+          })
+        : [])
+        .map((option) => String(option.value || "").trim().toLowerCase())
+        .filter(Boolean),
+    )
+    : null;
+  const visibleRows = (boardView?.rows || []).filter((row) => {
+    if (!activityListField || !activityOptionNames) return true;
+    const activityValue = String(row?.values?.[activityListField.id] || "").trim().toLowerCase();
+    if (!activityValue) return true;
+    return activityOptionNames.has(activityValue);
+  });
+  const visibleBoardMetrics = {
+    totalRows: visibleRows.length,
+    running: visibleRows.filter((row) => row.status === STATUS_RUNNING).length,
+    completed: visibleRows.filter((row) => row.status === STATUS_FINISHED).length,
+  };
+
   return (
     <section className="admin-page-layout mis-tableros-shell">
       {selectedCustomBoard ? (
         <>
           <div className="inventory-stat-grid custom-board-stat-grid">
-            <StatTile label="Filas" value={customBoardMetrics?.totalRows || 0} className="custom-board-stat-tile" />
-            <StatTile label="En curso" value={customBoardMetrics?.running || 0} tone="soft" className="custom-board-stat-tile" />
-            <StatTile label="Terminadas" value={customBoardMetrics?.completed || 0} tone="success" className="custom-board-stat-tile" />
+            <StatTile label="Filas" value={visibleBoardMetrics.totalRows} className="custom-board-stat-tile" />
+            <StatTile label="En curso" value={visibleBoardMetrics.running} tone="soft" className="custom-board-stat-tile" />
+            <StatTile label="Terminadas" value={visibleBoardMetrics.completed} tone="success" className="custom-board-stat-tile" />
           </div>
 
           <article className="surface-card full-width table-card admin-surface-card board-pdf-root" data-board-pdf-root="selected">
@@ -451,6 +471,12 @@ export default function MisTableros({ contexto }) {
                       </select>
                     </label>
                   ) : null}
+                  <label className="board-top-select min-width">
+                    <span>Día</span>
+                    <select value={selectedWeekdayFilter} onChange={(event) => setSelectedWeekdayFilter(event.target.value)}>
+                      {weekdayOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </select>
+                  </label>
                 </div>
                 {!showCleaningNaveSelector && boardOperationalContextType !== "none" ? (
                   <label className="board-top-select min-width">
@@ -502,54 +528,6 @@ export default function MisTableros({ contexto }) {
               </div>
             </div>
 
-            {boardLooksReturnsRecondition ? (
-              <div className="board-global-pause-top board-pdf-hide">
-                <div className="saved-board-list">
-                  <span className="chip primary">Global</span>
-                  <span className="chip" style={manualGlobalPause ? { background: "#fee2e2", color: "#991b1b" } : { background: "#ecfdf3", color: "#166534" }}>
-                    {manualGlobalPause ? "Pausa global activa" : "Global activo"}
-                  </span>
-                  {globalForceActive ? (
-                    <span className="chip" style={{ background: "#fff7ed", color: "#9a3412" }}>Horas extra activas</span>
-                  ) : null}
-                </div>
-                {canControlGlobalPause ? (
-                  <div className="row-actions compact board-workflow-actions" aria-label="Control global">
-                    <button
-                      type="button"
-                      className="board-action-button start icon-only"
-                      title="Quitar pausa global"
-                      aria-label="Quitar pausa global"
-                      onClick={() => {
-                        setManualGlobalPause(false);
-                        setGlobalForceActive(true);
-                        setBoardRuntimeFeedback({ tone: "success", message: "Global iniciado para horas extra." });
-                      }}
-                      disabled={globalForceActive && !manualGlobalPause}
-                    >
-                      <Play size={13} />
-                    </button>
-                    <button
-                      type="button"
-                      className="board-action-button pause icon-only"
-                      title="Activar pausa global"
-                      aria-label="Activar pausa global"
-                      onClick={() => {
-                        setManualGlobalPause(true);
-                        setGlobalForceActive(false);
-                        setBoardRuntimeFeedback({ tone: "warning", message: "Pausa global activada." });
-                      }}
-                      disabled={manualGlobalPause}
-                    >
-                      <PauseCircle size={13} />
-                    </button>
-                  </div>
-                ) : (
-                  <span className="subtle-line">Solo Lead o creador pueden cambiar pausa global.</span>
-                )}
-              </div>
-            ) : null}
-
             <div className="board-meta-inline board-meta-inline-header">
               <span>Creó · {userMap.get(boardView?.createdById)?.name || "N/A"}</span>
               <span>Player principal · {userMap.get(boardView?.ownerId)?.name || "N/A"}</span>
@@ -557,6 +535,7 @@ export default function MisTableros({ contexto }) {
               {boardOperationalContextType !== "none" && boardOperationalContextValue ? <span>{boardOperationalContextLabel} · {boardOperationalContextValue}</span> : null}
               {isHistoricalCustomBoardView ? <span>Corte · {formatDate(selectedCustomBoardSnapshot?.startDate)} - {formatDate(selectedCustomBoardSnapshot?.endDate)}</span> : null}
             </div>
+            {!weekdayAllowedBySystemSchedule && showCleaningNaveSelector ? <p className="validation-text">La nave {cleaningNaveValue} no tiene actividades configuradas para este día en la semana seleccionada.</p> : null}
             {isHistoricalCustomBoardView ? <p className="subtle-line">Vista histórica en solo lectura. El tablero activo ya quedó limpio para la semana actual.</p> : null}
             <p className="required-legend"><span className="required-mark" aria-hidden="true">*</span> obligatorio</p>
 
@@ -619,7 +598,7 @@ export default function MisTableros({ contexto }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {(boardView?.rows || []).map((row) => {
+                  {visibleRows.map((row) => {
                     const rowCaptureEnabled = !isHistoricalCustomBoardView && canEditBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions);
                     const rowWorkflowEnabled = !isHistoricalCustomBoardView && canOperateBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions);
                     const canDeleteBoardRows = Boolean(selectedBoardActionPermissions.deleteBoardRow);
@@ -650,6 +629,7 @@ export default function MisTableros({ contexto }) {
                                       setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo actualizar el responsable de la fila." });
                                     });
                                   }} disabled={!rowFieldEditable} style={{ width: "100%" }}>
+                                    <option value="">Sin asignar</option>
                                     {visibleUsers.filter((user) => user.isActive).map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
                                   </select>
                                 </td>
@@ -745,7 +725,12 @@ export default function MisTableros({ contexto }) {
                             }
                             : undefined;
                           const isBoardActivityListField = field.type === "select" && field.optionSource === "catalogByCategory";
-                          const options = buildSelectOptions(field, state);
+                          const options = isBoardActivityListField && !weekdayAllowedBySystemSchedule
+                            ? []
+                            : buildSelectOptions(field, state, {
+                              weekdayOffset: effectiveWeekdayOffset,
+                              cleaningSite: effectiveCatalogCleaningSite,
+                            });
 
                           if (field.type === "inventoryLookup") {
                             return (
@@ -831,14 +816,40 @@ export default function MisTableros({ contexto }) {
 
                           if (field.type === "time") {
                             const rawTimeValue = String(row.values?.[field.id] || "");
+                            const normalizedTimeLabel = String(field.label || "")
+                              .normalize("NFD")
+                              .replace(/[\u0300-\u036f]/g, "")
+                              .toLowerCase()
+                              .trim();
+                            const isStartTimeField = normalizedTimeLabel.includes("inicio") || normalizedTimeLabel.includes("start");
+                            const isEndTimeField = normalizedTimeLabel.includes("fin") || normalizedTimeLabel.includes("final") || normalizedTimeLabel.includes("end");
+                            const effectiveNowMs = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : now;
+                            const startTimeMs = row.startTime ? new Date(row.startTime).getTime() : NaN;
+                            const hasStartTimeMs = Number.isFinite(startTimeMs);
+                            const projectedEndMs = hasStartTimeMs
+                              ? startTimeMs + (Math.max(0, getElapsedSeconds(row, effectiveNowMs)) * 1000)
+                              : NaN;
+
+                            let displayTimeValue = normalizeTimeInput24h(rawTimeValue, false);
+                            if (isStartTimeField && hasStartTimeMs) {
+                              displayTimeValue = formatTime(startTimeMs);
+                            } else if (isEndTimeField && row.status === STATUS_FINISHED && row.endTime) {
+                              displayTimeValue = formatTime(row.endTime);
+                            } else if (isEndTimeField && hasStartTimeMs && Number.isFinite(projectedEndMs)) {
+                              displayTimeValue = formatTime(projectedEndMs);
+                            }
+
+                            const isAutoManagedTimeField = isStartTimeField || isEndTimeField;
+                            const timeFieldEditable = rowFieldEditable && !isAutoManagedTimeField;
                             return (
                               <td key={field.id} style={columnStyle}>
                                 <input
                                   type="text"
                                   inputMode="numeric"
-                                  value={normalizeTimeInput24h(rawTimeValue, false)}
+                                  value={displayTimeValue}
                                   onChange={(event) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, normalizeTimeInput24h(event.target.value, false))}
                                   onBlur={(event) => {
+                                    if (!timeFieldEditable) return;
                                     const normalizedValue = normalizeTimeInput24h(event.target.value, true);
                                     if (normalizedValue && normalizedValue !== rawTimeValue) {
                                       updateBoardRowValue(selectedCustomBoard.id, row.id, field, normalizedValue);
@@ -847,7 +858,7 @@ export default function MisTableros({ contexto }) {
                                   placeholder={field.placeholder || "HH:mm"}
                                   style={controlStyle}
                                   title={field.helpText || field.label}
-                                  disabled={!rowFieldEditable}
+                                  disabled={!timeFieldEditable}
                                 />
                               </td>
                             );
@@ -892,7 +903,7 @@ export default function MisTableros({ contexto }) {
                           if (field.type === "user") {
                             return (
                               <td key={field.id} style={columnStyle}>
-                                <select value={row.values?.[field.id] || row.responsibleId || ""} onChange={(event) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, event.target.value)} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable}>
+                                <select value={row.values?.[field.id] || ""} onChange={(event) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, event.target.value)} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable}>
                                   <option value="">Seleccionar player...</option>
                                   {visibleUsers.filter((user) => user.isActive).map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
                                 </select>
@@ -1025,10 +1036,10 @@ export default function MisTableros({ contexto }) {
                       </tr>
                     );
                   })}
-                  {!(boardView?.rows || []).length ? (
+                  {!visibleRows.length ? (
                     <tr>
                       <td colSpan={visibleBoardColumns.length || 1}>
-                        <span className="subtle-line">{isHistoricalCustomBoardView ? "No hubo filas registradas en esa semana para este tablero." : "Este tablero aún no tiene filas."}</span>
+                        <span className="subtle-line">{isHistoricalCustomBoardView ? "No hubo filas registradas en esa semana para este tablero." : "No hay actividades para el día y nave seleccionados."}</span>
                       </td>
                     </tr>
                   ) : null}

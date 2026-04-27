@@ -22,7 +22,7 @@ const DEFAULT_CLEANING_SITE = "C3";
 const BOARD_OPERATIONAL_CONTEXT_NONE = "none";
 const BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE = "cleaningSite";
 const BOARD_OPERATIONAL_CONTEXT_CUSTOM = "custom";
-const BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE_OPTIONS = ["C1", "C2", "C3"];
+const BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE_OPTIONS = ["C1", "C2", "C3", "P"];
 const INVENTORY_SYSTEM_COLUMNS = Object.freeze([
   { id: "invcol-base-lote", domain: "base", label: "Lote", key: "lote", createdAt: "1970-01-01T00:00:00.000Z", isSystem: true },
   { id: "invcol-base-caducidad", domain: "base", label: "Caducidad", key: "caducidad", createdAt: "1970-01-01T00:00:00.000Z", isSystem: true },
@@ -44,6 +44,7 @@ const PAGE_PERMISSIONS = {
   users: [ROLE_LEAD, ROLE_SR, ROLE_SSR],
   biblioteca: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
   incidencias: [ROLE_LEAD, ROLE_SR, ROLE_SSR],
+  systemSettings: [ROLE_LEAD, ROLE_SR],
 };
 
 const ACTION_PERMISSIONS = {
@@ -93,6 +94,7 @@ const ACTION_PERMISSIONS = {
   viewProcessAudits:       [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
   manageProcessAudits:     [ROLE_LEAD, ROLE_SR, ROLE_SSR],
   manageProcessAuditTemplates: [ROLE_LEAD, ROLE_SR],
+  manageSystemSettings:    [ROLE_LEAD, ROLE_SR],
 };
 
 function normalizeRole(role) {
@@ -246,6 +248,88 @@ function normalizeBoardOperationalContextValue(value, contextType = BOARD_OPERAT
   const trimmedValue = String(value || "").trim();
   if (!contextOptions.length) return trimmedValue;
   return contextOptions.includes(trimmedValue) ? trimmedValue : contextOptions[0] || "";
+}
+
+const SYSTEM_OPERATIONAL_NAVE_KEYS = ["C1", "C2", "C3", "P"];
+const SYSTEM_OPERATIONAL_DEFAULT_PAUSE_REASONS = [
+  { id: "material", label: "Falta de material", enabled: true, affectsTimer: false, authorizedMinutes: 10 },
+  { id: "operativa", label: "Detención operativa", enabled: true, affectsTimer: true, authorizedMinutes: 0 },
+  { id: "calidad", label: "Ajuste de calidad", enabled: true, affectsTimer: false, authorizedMinutes: 5 },
+];
+
+function normalizeWeekdayOffsets(value) {
+  const source = Array.isArray(value) ? value : [];
+  const unique = new Set();
+  source.forEach((entry) => {
+    const numeric = Number(entry);
+    if (!Number.isInteger(numeric)) return;
+    if (numeric < 0 || numeric > 5) return;
+    unique.add(numeric);
+  });
+  return Array.from(unique).sort((left, right) => left - right);
+}
+
+function normalizeSystemNaveWeekSchedule(value) {
+  const source = value && typeof value === "object" ? value : EMPTY_OBJECT;
+  return SYSTEM_OPERATIONAL_NAVE_KEYS.reduce((accumulator, nave) => {
+    accumulator[nave] = normalizeWeekdayOffsets(source[nave]);
+    return accumulator;
+  }, {});
+}
+
+function normalizeSystemNaveWeekSchedules(value) {
+  const source = value && typeof value === "object" ? value : EMPTY_OBJECT;
+  const normalized = {};
+  Object.entries(source).forEach(([weekKey, schedule]) => {
+    const normalizedWeekKey = String(weekKey || "").trim();
+    if (!normalizedWeekKey) return;
+    normalized[normalizedWeekKey] = normalizeSystemNaveWeekSchedule(schedule);
+  });
+  return normalized;
+}
+
+function normalizeSystemPauseReasonEntry(value, fallback = null) {
+  const source = value && typeof value === "object" ? value : EMPTY_OBJECT;
+  const fallbackSource = fallback && typeof fallback === "object" ? fallback : EMPTY_OBJECT;
+  const fallbackId = String(fallbackSource.id || "").trim();
+  const normalizedId = String(source.id || fallbackId || "").trim() || makeId("pause-rule");
+  const normalizedLabel = String(source.label || fallbackSource.label || "").trim() || "Pausa";
+  const authorizedMinutesValue = Number(source.authorizedMinutes ?? fallbackSource.authorizedMinutes ?? 0);
+  return {
+    id: normalizedId,
+    label: normalizedLabel,
+    enabled: Boolean(source.enabled ?? fallbackSource.enabled ?? true),
+    affectsTimer: Boolean(source.affectsTimer ?? fallbackSource.affectsTimer ?? false),
+    authorizedMinutes: Number.isFinite(authorizedMinutesValue) ? Math.max(0, Math.round(authorizedMinutesValue)) : 0,
+  };
+}
+
+function normalizeSystemPauseControl(value) {
+  const source = value && typeof value === "object" ? value : EMPTY_OBJECT;
+  const fallbackReasons = SYSTEM_OPERATIONAL_DEFAULT_PAUSE_REASONS.map((reason) => normalizeSystemPauseReasonEntry(reason, reason));
+  const reasonsSource = Array.isArray(source.reasons) ? source.reasons : fallbackReasons;
+  const seen = new Set();
+  const reasons = reasonsSource
+    .map((reason, index) => normalizeSystemPauseReasonEntry(reason, fallbackReasons[index] || null))
+    .filter((reason) => {
+      const key = String(reason.id || "").trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  return {
+    globalPauseEnabled: Boolean(source.globalPauseEnabled),
+    forceGlobalPause: Boolean(source.forceGlobalPause),
+    reasons: reasons.length ? reasons : fallbackReasons,
+  };
+}
+
+function normalizeSystemOperationalSettings(value) {
+  const source = value && typeof value === "object" ? value : EMPTY_OBJECT;
+  return {
+    naveWeekSchedules: normalizeSystemNaveWeekSchedules(source.naveWeekSchedules),
+    pauseControl: normalizeSystemPauseControl(source.pauseControl),
+  };
 }
 
 function withDefaultBoardSettings(settings) {
@@ -577,6 +661,7 @@ function normalizeCleaningSite(value, fallback = DEFAULT_CLEANING_SITE) {
   if (key === "c1") return "C1";
   if (key === "c2") return "C2";
   if (["c3", "principal", "main", "default"].includes(key)) return "C3";
+  if (["p", "patio"].includes(key)) return "P";
   return fallback;
 }
 
@@ -898,6 +983,7 @@ function normalizeState(state, previousState = null) {
       masterBootstrapEnabled: state.system?.masterBootstrapEnabled ?? !users.some((user) => normalizeRole(user.role) === ROLE_LEAD),
       masterUsername: "Maestro",
       ...(state.system ?? EMPTY_OBJECT),
+      operational: normalizeSystemOperationalSettings(state.system?.operational),
     },
     users: users.map((user) => {
       const role = normalizeRole(user.role);
@@ -1243,6 +1329,7 @@ function buildSampleState() {
     system: {
       masterBootstrapEnabled: true,
       masterUsername: "Maestro",
+      operational: normalizeSystemOperationalSettings(null),
     },
     currentUserId: null,
     users: [],
@@ -1604,6 +1691,34 @@ export function createWarehouseWeekFromCatalog() {
     weeks: current.weeks.map((item) => ({ ...item, isActive: false })).concat(week),
     activities: current.activities.concat(newActivities),
   });
+}
+
+export function updateWarehouseSystemOperationalSettings(auth, patch = {}) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) {
+    return { ok: false, reason: "auth_required" };
+  }
+
+  const current = getRawWarehouseState();
+  if (!canUserDoWarehouseAction(currentUser, "manageSystemSettings", current.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const currentOperational = normalizeSystemOperationalSettings(current.system?.operational);
+  const nextOperational = normalizeSystemOperationalSettings({
+    ...currentOperational,
+    ...(patch && typeof patch === "object" ? patch : EMPTY_OBJECT),
+  });
+
+  const nextState = {
+    ...current,
+    system: {
+      ...(current.system ?? EMPTY_OBJECT),
+      operational: nextOperational,
+    },
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState), operational: nextOperational };
 }
 
 export function deleteWarehouseWeek(auth, weekId) {
@@ -3176,12 +3291,15 @@ export function removeProcessAuditEvidence(auth, auditId, evidenceId) {
 }
 
 function sanitizeCatalogItemDraft(payload = {}, existingId = null) {
+  const frequency = normalizeCatalogFrequency(payload.frequency);
   return {
     id: existingId || payload.id || makeId("cat"),
     name: String(payload.name || "").trim(),
     timeLimitMinutes: Number(payload.timeLimitMinutes || 0),
     isMandatory: Boolean(payload.isMandatory),
-    frequency: normalizeCatalogFrequency(payload.frequency),
+    frequency,
+    scheduledDays: normalizeCatalogScheduledDays(payload.scheduledDays, frequency),
+    cleaningSites: normalizeCatalogCleaningSites(payload.cleaningSites),
     category: normalizeCatalogCategory(payload.category),
     isDeleted: Boolean(payload.isDeleted),
   };
@@ -3192,11 +3310,35 @@ function normalizeCatalogCategory(value) {
   return normalizedValue || "General";
 }
 
+function normalizeCatalogWeekdayOffset(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  const rounded = Math.trunc(numeric);
+  return rounded >= 0 && rounded <= 6 ? rounded : null;
+}
+
 function normalizeCatalogFrequency(value) {
   const normalizedValue = String(value || "").trim();
   return ["daily", "every2days", "every3days", "weekdays", "twiceWeek", "threeTimesWeek", "fourTimesWeek", "fiveTimesWeek", "sixTimesWeek", "weekly"].includes(normalizedValue)
     ? normalizedValue
     : "weekly";
+}
+
+function normalizeCatalogScheduledDays(value, fallbackFrequency = "weekly") {
+  const fromArray = Array.isArray(value)
+    ? value.map((entry) => normalizeCatalogWeekdayOffset(entry)).filter((entry) => entry !== null)
+    : [];
+  const unique = [...new Set(fromArray)].sort((a, b) => a - b);
+  if (unique.length) return unique;
+  return [...getCatalogFrequencyDayOffsets(fallbackFrequency)];
+}
+
+function normalizeCatalogCleaningSites(value) {
+  const validSites = new Set(BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE_OPTIONS.map((entry) => String(entry || "").trim().toUpperCase()));
+  const fromArray = Array.isArray(value)
+    ? value.map((entry) => String(entry || "").trim().toUpperCase()).filter((entry) => validSites.has(entry))
+    : [];
+  return [...new Set(fromArray)];
 }
 
 function getCatalogFrequencyDayOffsets(value) {
@@ -3216,7 +3358,8 @@ function getCatalogFrequencyDayOffsets(value) {
 }
 
 function buildActivitiesForCatalogItem(weekId, item, weekStart, responsibleId) {
-  return getCatalogFrequencyDayOffsets(item.frequency).map((dayOffset) => ({
+  const scheduledDays = normalizeCatalogScheduledDays(item?.scheduledDays, item?.frequency);
+  return scheduledDays.map((dayOffset) => ({
     id: makeId("act"),
     weekId,
     catalogActivityId: item.id,
@@ -3805,6 +3948,14 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
     return { ok: false, reason: "row_not_found" };
   }
 
+  const patchKeys = Object.keys(patch || {});
+  const isIdempotentStatusPatch = patchKeys.length === 1
+    && hasOwn(patch, "status")
+    && String(patch.status || "").trim() === String(row.status || "").trim();
+  if (isIdempotentStatusPatch) {
+    return { ok: true, state: currentState, row };
+  }
+
   const isWorkflowPatch = hasOwn(patch, "status") || hasOwn(patch, "lastPauseReason");
   const allowed = isWorkflowPatch
     ? canOperateWarehouseBoardRow(currentUser, board, row, currentState.permissions)
@@ -3815,6 +3966,30 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
 
   const nowIso = new Date().toISOString();
   const nowTime = new Date(nowIso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false });
+  const resolvePauseRule = (reason) => {
+    const normalizedReason = normalizeKey(reason);
+    const configuredReasons = Array.isArray(currentState.system?.operational?.pauseControl?.reasons)
+      ? currentState.system.operational.pauseControl.reasons
+      : [];
+    if (!normalizedReason || configuredReasons.length === 0) return null;
+    return configuredReasons.find((entry) => {
+      if (!entry || !entry.enabled) return false;
+      const byId = normalizeKey(entry.id) === normalizedReason;
+      const byLabel = normalizeKey(entry.label) === normalizedReason;
+      const byContains = normalizeKey(entry.label).includes(normalizedReason) || normalizedReason.includes(normalizeKey(entry.label));
+      return byId || byLabel || byContains;
+    }) || null;
+  };
+  const computePauseCompensationSeconds = (targetRow, resumeIso) => {
+    if (!targetRow?.pauseStartedAt) return 0;
+    const pauseStartedMs = new Date(targetRow.pauseStartedAt).getTime();
+    const resumedMs = new Date(resumeIso).getTime();
+    if (!Number.isFinite(pauseStartedMs) || !Number.isFinite(resumedMs)) return 0;
+    const totalPauseSeconds = Math.max(0, Math.round((resumedMs - pauseStartedMs) / 1000));
+    const authorizedSeconds = Math.max(0, Number(targetRow.pauseAuthorizedSeconds || 0));
+    if (targetRow.pauseAffectsTimer) return totalPauseSeconds;
+    return Math.max(0, totalPauseSeconds - authorizedSeconds);
+  };
   const normalizedValuesPatch = {
     ...(patch.values ?? EMPTY_OBJECT),
   };
@@ -3833,6 +4008,9 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
 
   if (hasOwn(patch, "status")) {
     if (patch.status === "En curso") {
+      const pauseCompensationSeconds = row.status === "Pausado"
+        ? computePauseCompensationSeconds(row, nowIso)
+        : 0;
       (board.fields || []).forEach((field) => {
         if (field.type !== "time") return;
         const normalizedLabel = normalizeKey(field.label || "");
@@ -3844,12 +4022,27 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
       nextRow.status = patch.status;
       nextRow.startTime = nextRow.startTime || nowIso;
       nextRow.endTime = row.status === "Terminado" ? null : nextRow.endTime;
+      nextRow.accumulatedSeconds = Math.max(0, Number(row.accumulatedSeconds || 0) + pauseCompensationSeconds);
       nextRow.lastResumedAt = nowIso;
+      nextRow.pauseStartedAt = null;
+      nextRow.pauseAffectsTimer = false;
+      nextRow.pauseAuthorizedSeconds = 0;
     } else if (patch.status === "Pausado") {
+      const pauseReason = String(patch.lastPauseReason || row.lastPauseReason || "").trim();
+      const pauseRule = resolvePauseRule(pauseReason);
+      const pauseAuthorizedMinutes = Number(pauseRule?.authorizedMinutes || 0);
       nextRow.status = patch.status;
       nextRow.accumulatedSeconds = updateElapsedForFinish(row, nowIso);
       nextRow.lastResumedAt = null;
+      nextRow.pauseStartedAt = nowIso;
+      nextRow.pauseAffectsTimer = Boolean(pauseRule?.affectsTimer);
+      nextRow.pauseAuthorizedSeconds = Number.isFinite(pauseAuthorizedMinutes)
+        ? Math.max(0, Math.round(pauseAuthorizedMinutes * 60))
+        : 0;
     } else if (patch.status === "Terminado") {
+      const pauseCompensationSeconds = row.status === "Pausado"
+        ? computePauseCompensationSeconds(row, nowIso)
+        : 0;
       (board.fields || []).forEach((field) => {
         if (field.type !== "time") return;
         const normalizedLabel = normalizeKey(field.label || "");
@@ -3859,8 +4052,11 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
       });
       nextRow.status = patch.status;
       nextRow.endTime = nowIso;
-      nextRow.accumulatedSeconds = updateElapsedForFinish(row, nowIso);
+      nextRow.accumulatedSeconds = updateElapsedForFinish(row, nowIso) + pauseCompensationSeconds;
       nextRow.lastResumedAt = null;
+      nextRow.pauseStartedAt = null;
+      nextRow.pauseAffectsTimer = false;
+      nextRow.pauseAuthorizedSeconds = 0;
     } else {
       nextRow.status = patch.status;
     }
@@ -3929,8 +4125,13 @@ export function deleteWarehouseBoardRow(auth, boardId, rowId) {
 
   const currentState = getRawWarehouseState();
   const { boardIndex, board, row } = findBoardAndRow(currentState, boardId, rowId);
-  if (!board || !row) {
-    return { ok: false, reason: "row_not_found" };
+  if (!board) {
+    return { ok: false, reason: "board_not_found" };
+  }
+
+  if (!row) {
+    // Idempotent delete: if row was already removed, sync current state instead of failing.
+    return { ok: true, state: replaceWarehouseState(currentState) };
   }
   if (row.status === "Terminado" || !canEditWarehouseBoardRow(currentUser, board, row, currentState.permissions)) {
     return { ok: false, reason: "forbidden" };

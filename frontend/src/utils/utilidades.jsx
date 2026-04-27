@@ -253,6 +253,7 @@ export function normalizeCleaningSite(value, fallback = DEFAULT_CLEANING_SITE) {
   if (key === "c1") return "C1";
   if (key === "c2") return "C2";
   if (["c3", "principal", "main", "default"].includes(key)) return "C3";
+  if (["p", "patio"].includes(key)) return "P";
   return fallback;
 }
 
@@ -1007,14 +1008,61 @@ export function normalizeActivityFrequency(value) {
   return ACTIVITY_FREQUENCY_LABELS[normalizedValue] ? normalizedValue : "weekly";
 }
 
+function normalizeWeekdayOffset(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  const rounded = Math.trunc(numeric);
+  return rounded >= 0 && rounded <= 6 ? rounded : null;
+}
+
+export function normalizeCatalogScheduledDays(value, fallbackFrequency = "weekly") {
+  const fromArray = Array.isArray(value)
+    ? value.map((entry) => normalizeWeekdayOffset(entry)).filter((entry) => entry !== null)
+    : [];
+  const unique = [...new Set(fromArray)].sort((a, b) => a - b);
+  if (unique.length) return unique;
+  return [...(ACTIVITY_FREQUENCY_DAY_OFFSETS[normalizeActivityFrequency(fallbackFrequency)] || ACTIVITY_FREQUENCY_DAY_OFFSETS.weekly || [0])];
+}
+
+export function normalizeCatalogCleaningSites(value) {
+  const validSites = new Set((CLEANING_SITE_OPTIONS || []).map((entry) => String(entry.value || "").trim()).filter(Boolean));
+  const fromArray = Array.isArray(value)
+    ? value.map((entry) => String(entry || "").trim().toUpperCase()).filter((entry) => validSites.has(entry))
+    : [];
+  return [...new Set(fromArray)];
+}
+
+export function getCurrentWeekdayOffset(now = new Date()) {
+  const jsDay = now.getDay();
+  return jsDay === 0 ? 6 : jsDay - 1;
+}
+
+export function isCatalogItemScheduledForDay(item, dayOffset) {
+  const normalizedDay = normalizeWeekdayOffset(dayOffset);
+  if (normalizedDay === null) return true;
+  const scheduledDays = normalizeCatalogScheduledDays(item?.scheduledDays, item?.frequency);
+  return scheduledDays.includes(normalizedDay);
+}
+
+export function isCatalogItemAvailableForCleaningSite(item, cleaningSite) {
+  const normalizedSite = String(cleaningSite || "").trim().toUpperCase();
+  if (!normalizedSite) return true;
+  const allowedSites = normalizeCatalogCleaningSites(item?.cleaningSites);
+  if (!allowedSites.length) return true;
+  return allowedSites.includes(normalizedSite);
+}
+
 export function getActivityFrequencyLabel(value) {
   return ACTIVITY_FREQUENCY_LABELS[normalizeActivityFrequency(value)] || ACTIVITY_FREQUENCY_LABELS.weekly;
 }
 
 export function normalizeCatalogItemRecord(item = {}) {
+  const frequency = normalizeActivityFrequency(item.frequency);
   return {
     ...item,
-    frequency: normalizeActivityFrequency(item.frequency),
+    frequency,
+    scheduledDays: normalizeCatalogScheduledDays(item.scheduledDays, frequency),
+    cleaningSites: normalizeCatalogCleaningSites(item.cleaningSites),
     category: String(item.category || "General").trim() || "General",
   };
 }
@@ -3005,7 +3053,7 @@ export function toSelectOption(value, group = "") {
   };
 }
 
-export function buildSelectOptions(field, state) {
+export function buildSelectOptions(field, state, context = {}) {
   if (field.optionSource === "users") {
     return state.users
       .filter((user) => user.isActive)
@@ -3022,9 +3070,15 @@ export function buildSelectOptions(field, state) {
   if (field.optionSource === "catalogByCategory") {
     const selectedCategory = String(field.optionCatalogCategory || "").trim();
     const candidates = state.catalog.filter((item) => !item.isDeleted);
-    const filtered = selectedCategory
+    const filteredByCategory = selectedCategory
       ? candidates.filter((item) => String(item.category || "General").trim() === selectedCategory)
       : candidates;
+    const hasDayFilter = Number.isFinite(Number(context?.weekdayOffset));
+    const weekdayOffset = hasDayFilter ? Number(context.weekdayOffset) : null;
+    const cleaningSite = String(context?.cleaningSite || "").trim().toUpperCase();
+    const filtered = filteredByCategory
+      .filter((item) => isCatalogItemScheduledForDay(item, weekdayOffset))
+      .filter((item) => isCatalogItemAvailableForCleaningSite(item, cleaningSite));
     return filtered.map((item) => ({ value: item.name, label: item.name, group: item.category || "General" }));
   }
   if (field.optionSource === "status") {
@@ -3055,6 +3109,80 @@ export function getElapsedSeconds(activity, now) {
   }
   const delta = Math.max(0, Math.floor((now - new Date(activity.lastResumedAt).getTime()) / 1000));
   return (activity.accumulatedSeconds || 0) + delta;
+}
+
+const SYSTEM_OPERATIONAL_NAVE_KEYS = ["C1", "C2", "C3", "P"];
+
+function normalizeWeekdayOffsetsList(value) {
+  const source = Array.isArray(value) ? value : [];
+  const unique = new Set();
+  source.forEach((entry) => {
+    const numeric = Number(entry);
+    if (!Number.isInteger(numeric)) return;
+    if (numeric < 0 || numeric > 5) return;
+    unique.add(numeric);
+  });
+  return Array.from(unique).sort((left, right) => left - right);
+}
+
+function normalizeSystemNaveWeekSchedule(value) {
+  const source = value && typeof value === "object" ? value : EMPTY_OBJECT;
+  return SYSTEM_OPERATIONAL_NAVE_KEYS.reduce((accumulator, nave) => {
+    accumulator[nave] = normalizeWeekdayOffsetsList(source[nave]);
+    return accumulator;
+  }, {});
+}
+
+function normalizeSystemNaveWeekSchedules(value) {
+  const source = value && typeof value === "object" ? value : EMPTY_OBJECT;
+  const normalized = {};
+  Object.entries(source).forEach(([weekKey, schedule]) => {
+    const normalizedWeekKey = String(weekKey || "").trim();
+    if (!normalizedWeekKey) return;
+    normalized[normalizedWeekKey] = normalizeSystemNaveWeekSchedule(schedule);
+  });
+  return normalized;
+}
+
+function normalizeSystemPauseReason(reason, fallback = EMPTY_OBJECT) {
+  const source = reason && typeof reason === "object" ? reason : EMPTY_OBJECT;
+  const fallbackSource = fallback && typeof fallback === "object" ? fallback : EMPTY_OBJECT;
+  const numericMinutes = Number(source.authorizedMinutes ?? fallbackSource.authorizedMinutes ?? 0);
+  return {
+    id: String(source.id || fallbackSource.id || makeId("pause-rule")).trim(),
+    label: String(source.label || fallbackSource.label || "Pausa").trim() || "Pausa",
+    enabled: Boolean(source.enabled ?? fallbackSource.enabled ?? true),
+    affectsTimer: Boolean(source.affectsTimer ?? fallbackSource.affectsTimer ?? false),
+    authorizedMinutes: Number.isFinite(numericMinutes) ? Math.max(0, Math.round(numericMinutes)) : 0,
+  };
+}
+
+export function normalizeSystemOperationalSettings(value) {
+  const source = value && typeof value === "object" ? value : EMPTY_OBJECT;
+  const defaultReasons = [
+    { id: "material", label: "Falta de material", enabled: true, affectsTimer: false, authorizedMinutes: 10 },
+    { id: "operativa", label: "Detención operativa", enabled: true, affectsTimer: true, authorizedMinutes: 0 },
+    { id: "calidad", label: "Ajuste de calidad", enabled: true, affectsTimer: false, authorizedMinutes: 5 },
+  ];
+  const incomingReasons = Array.isArray(source.pauseControl?.reasons) ? source.pauseControl.reasons : defaultReasons;
+  const seen = new Set();
+  const normalizedReasons = incomingReasons
+    .map((reason, index) => normalizeSystemPauseReason(reason, defaultReasons[index] || EMPTY_OBJECT))
+    .filter((reason) => {
+      const key = String(reason.id || "").toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+  return {
+    naveWeekSchedules: normalizeSystemNaveWeekSchedules(source.naveWeekSchedules),
+    pauseControl: {
+      globalPauseEnabled: Boolean(source.pauseControl?.globalPauseEnabled),
+      forceGlobalPause: Boolean(source.pauseControl?.forceGlobalPause),
+      reasons: normalizedReasons.length ? normalizedReasons : defaultReasons.map((entry) => normalizeSystemPauseReason(entry, entry)),
+    },
+  };
 }
 
 export function buildDemoUsers() {
@@ -3161,6 +3289,7 @@ export function buildSampleState() {
     system: {
       masterBootstrapEnabled: false,
       masterUsername: MASTER_USERNAME,
+      operational: normalizeSystemOperationalSettings(null),
     },
     currentUserId: null,
     areaCatalog: [...DEFAULT_AREA_OPTIONS],
@@ -3238,8 +3367,10 @@ export function buildNormalizedWarehouseState(parsed, sampleState, users, normal
   return {
     ...parsed,
     system: {
+      ...(parsed.system || EMPTY_OBJECT),
       masterBootstrapEnabled: parsed.system?.masterBootstrapEnabled ?? !hasLeadUser(users),
       masterUsername: MASTER_USERNAME,
+      operational: normalizeSystemOperationalSettings(parsed.system?.operational),
     },
     users,
     areaCatalog: buildAreaCatalog(users, parsed.areaCatalog),

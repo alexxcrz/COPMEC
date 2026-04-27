@@ -47,6 +47,7 @@ import GestionUsuarios from "./paginas/GestionUsuarios";
 import HistorialSemanas from "./paginas/HistorialSemanas";
 import AuditoriasProcesos from "./paginas/AuditoriasProcesosCompact";
 import MisTableros from "./paginas/MisTableros";
+import ConfiguracionSistema from "./paginas/ConfiguracionSistema";
 import PaginaNoEncontrada from "./paginas/PaginaNoEncontrada";
 import PanelIndicadores from "./paginas/PanelIndicadores";
 import TablerosCreados from "./paginas/TablerosCreados";
@@ -120,6 +121,7 @@ import {
   PAGE_BOARD, PAGE_CUSTOM_BOARDS, PAGE_ADMIN, PAGE_DASHBOARD, PAGE_HISTORY, PAGE_PROCESS_AUDITS,
 
   PAGE_INVENTORY, PAGE_USERS, PAGE_BIBLIOTECA, PAGE_INCIDENCIAS, PAGE_NOT_FOUND,
+  PAGE_SYSTEM_SETTINGS,
 
   PAGE_ROUTE_SLUGS, PAGE_ROUTE_ALIASES, EMPTY_LOGIN_DIRECTORY,
 
@@ -234,6 +236,7 @@ import {
   buildRouteQuery, buildRoutePath, normalizeAdminTab,
 
   normalizeActivityFrequency, getActivityFrequencyLabel,
+  normalizeCatalogScheduledDays, normalizeCatalogCleaningSites,
 
   normalizeCatalogItemRecord, buildWeekActivitiesFromCatalogItem,
 
@@ -353,6 +356,29 @@ import { AlertModalProvider } from "./components/AlertModal.jsx";
 
 const INITIAL_ROUTE_STATE = getInitialRouteState();
 const HIDDEN_BASE_TEMPLATES_KEY = "copmec-hidden-base-templates";
+const CATALOG_WEEKDAY_OPTIONS = [
+  { value: 0, short: "L", label: "Lunes" },
+  { value: 1, short: "M", label: "Martes" },
+  { value: 2, short: "M", label: "Miercoles" },
+  { value: 3, short: "J", label: "Jueves" },
+  { value: 4, short: "V", label: "Viernes" },
+  { value: 5, short: "S", label: "Sabado" },
+];
+
+function createEmptyCatalogModalState() {
+  return {
+    open: false,
+    mode: "create",
+    id: null,
+    name: "",
+    limit: "",
+    mandatory: "true",
+    frequency: "weekly",
+    category: "General",
+    scheduledDays: [0, 1, 2, 3, 4, 5],
+    cleaningSites: [],
+  };
+}
 
 
 function App() { // NOSONAR
@@ -396,7 +422,7 @@ function App() { // NOSONAR
   const [pauseState, setPauseState] = useState({ open: false, activityId: null, reason: "", error: "", completed: false, continueReady: false });
   const [boardPauseState, setBoardPauseState] = useState({ open: false, boardId: null, rowId: null, reason: "", error: "", completed: false, continueReady: false });
   const [pieceDeductionModal, setPieceDeductionModal] = useState({ open: false, boardId: null, rowId: null, items: [] });
-  const [catalogModal, setCatalogModal] = useState({ open: false, mode: "create", id: null, name: "", limit: "", mandatory: "true", frequency: "weekly", category: "General" });
+  const [catalogModal, setCatalogModal] = useState(() => createEmptyCatalogModalState());
   const [editWeekId, setEditWeekId] = useState(null);
   const [editWeekActivityId, setEditWeekActivityId] = useState("");
   const [historyPauseActivityId, setHistoryPauseActivityId] = useState(null);
@@ -1056,7 +1082,7 @@ function App() { // NOSONAR
     });
 
     const boardRecords = dashboardVisibleControlBoards.flatMap((board) => (board.rows || []).map((row) => {
-      const responsibleUser = userMap.get(row.responsibleId || board.ownerId);
+      const responsibleUser = userMap.get(row.responsibleId);
       const durationSeconds = getElapsedSeconds(row, now);
       const totalElapsedSeconds = row.startTime
         ? Math.max(durationSeconds, Math.floor((now - new Date(row.startTime).getTime()) / 1000))
@@ -1070,9 +1096,9 @@ function App() { // NOSONAR
         sourceLabel: "Tablero operativo",
         label: board.name,
         boardName: board.name,
-        responsibleId: row.responsibleId || board.ownerId || "",
-        responsibleName: responsibleUser?.name || userMap.get(board.ownerId)?.name || "Sin player",
-        area: getUserArea(responsibleUser) || getUserArea(userMap.get(board.ownerId)) || "Sin área",
+        responsibleId: row.responsibleId || "",
+        responsibleName: responsibleUser?.name || "Sin player",
+        area: getUserArea(responsibleUser) || "Sin área",
         occurredAt: row.endTime || row.createdAt || row.startTime || row.lastResumedAt,
         status: row.status || STATUS_PENDING,
         durationSeconds,
@@ -1086,7 +1112,7 @@ function App() { // NOSONAR
     }));
 
     const historicalBoardRecords = dashboardVisibleBoardHistorySnapshots.flatMap((snapshot) => (snapshot.rows || []).map((row) => {
-      const responsibleUser = userMap.get(row.responsibleId || snapshot.ownerId);
+      const responsibleUser = userMap.get(row.responsibleId);
       const durationSeconds = getElapsedSeconds(row, now);
       const totalElapsedSeconds = row.startTime
         ? Math.max(durationSeconds, Math.floor((now - new Date(row.startTime).getTime()) / 1000))
@@ -1099,9 +1125,9 @@ function App() { // NOSONAR
         sourceLabel: "Histórico de tablero",
         label: snapshot.boardName,
         boardName: snapshot.boardName,
-        responsibleId: row.responsibleId || snapshot.ownerId || "",
-        responsibleName: responsibleUser?.name || userMap.get(snapshot.ownerId)?.name || "Sin player",
-        area: getUserArea(responsibleUser) || getUserArea(userMap.get(snapshot.ownerId)) || "Sin área",
+        responsibleId: row.responsibleId || "",
+        responsibleName: responsibleUser?.name || "Sin player",
+        area: getUserArea(responsibleUser) || "Sin área",
         occurredAt: row.endTime || row.createdAt || row.startTime || row.lastResumedAt || snapshot.archivedAt,
         status: row.status || STATUS_PENDING,
         durationSeconds,
@@ -2960,18 +2986,19 @@ function App() { // NOSONAR
 
   function openCatalogCreate(preferredCategory = "General") {
     const normalizedCategory = String(preferredCategory || "General").trim() || "General";
-    setCatalogModal({ open: true, mode: "create", id: null, name: "", limit: "", mandatory: "true", frequency: "weekly", category: normalizedCategory });
+    setCatalogModal({ ...createEmptyCatalogModalState(), open: true, mode: "create", category: normalizedCategory });
   }
 
   function exportCatalogToCsv() {
     const items = state.catalog.filter((item) => !item.isDeleted);
     if (!items.length) return;
-    const header = ["nombre", "lista", "frecuencia", "tiempo_limite_min", "tipo"].join(",");
+    const header = ["nombre", "lista", "dias", "naves", "tiempo_limite_min", "tipo"].join(",");
     const rows = items.map((item) =>
       [
         `"${String(item.name || "").replace(/"/g, '""')}"`,
         `"${String(item.category || "General").replace(/"/g, '""')}"`,
-        item.frequency || "weekly",
+        `"${normalizeCatalogScheduledDays(item.scheduledDays, item.frequency).join(";")}"`,
+        `"${normalizeCatalogCleaningSites(item.cleaningSites).join(";")}"`,
         String(item.timeLimitMinutes || 0),
         item.isMandatory ? "Obligatoria" : "Ocasional",
       ].join(","),
@@ -2995,6 +3022,8 @@ function App() { // NOSONAR
     const headers = headerLine.split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
     const nameIdx = headers.findIndex((h) => h.includes("nombre") || h === "name");
     const catIdx = headers.findIndex((h) => h.includes("lista") || h.includes("categoria") || h.includes("category"));
+    const daysIdx = headers.findIndex((h) => h.includes("dias") || h.includes("días") || h === "days");
+    const sitesIdx = headers.findIndex((h) => h.includes("naves") || h.includes("sedes") || h.includes("sites"));
     const freqIdx = headers.findIndex((h) => h.includes("frecuencia") || h === "frequency");
     const limitIdx = headers.findIndex((h) => h.includes("tiempo") || h.includes("limit") || h.includes("min"));
     const typeIdx = headers.findIndex((h) => h.includes("tipo") || h === "type" || h.includes("mandatory"));
@@ -3023,10 +3052,35 @@ function App() { // NOSONAR
       const category = catIdx >= 0 ? String(cols[catIdx] || "General").trim() || "General" : "General";
       const rawFreq = freqIdx >= 0 ? String(cols[freqIdx] || "weekly").trim().toLowerCase() : "weekly";
       const frequency = validFrequencies.has(rawFreq) ? rawFreq : (freqByLabel[rawFreq] || "weekly");
+      const rawDays = daysIdx >= 0 ? String(cols[daysIdx] || "") : "";
+      const scheduledDays = rawDays
+        ? normalizeCatalogScheduledDays(
+          rawDays
+            .split(/[;|,\s]+/)
+            .map((entry) => entry.trim())
+            .filter(Boolean)
+            .map((entry) => {
+              const normalized = entry.toLowerCase();
+              if (normalized === "l" || normalized === "lun" || normalized === "lunes") return 0;
+              if (normalized === "m" || normalized === "mar" || normalized === "martes") return 1;
+              if (normalized === "x" || normalized === "mie" || normalized === "miércoles" || normalized === "miercoles") return 2;
+              if (normalized === "j" || normalized === "jue" || normalized === "jueves") return 3;
+              if (normalized === "v" || normalized === "vie" || normalized === "viernes") return 4;
+              if (normalized === "s" || normalized === "sab" || normalized === "sábado" || normalized === "sabado") return 5;
+              if (normalized === "d" || normalized === "dom" || normalized === "domingo") return 6;
+              const numeric = Number(normalized);
+              return Number.isFinite(numeric) ? numeric : null;
+            })
+            .filter((entry) => entry !== null),
+          frequency,
+        )
+        : normalizeCatalogScheduledDays([], frequency);
+      const rawSites = sitesIdx >= 0 ? String(cols[sitesIdx] || "") : "";
+      const cleaningSites = normalizeCatalogCleaningSites(rawSites.split(/[;|,\s]+/).map((entry) => entry.trim()).filter(Boolean));
       const timeLimitMinutes = Math.max(0, Number(limitIdx >= 0 ? cols[limitIdx] : 0) || 0);
       const rawType = typeIdx >= 0 ? String(cols[typeIdx] || "").trim().toLowerCase() : "";
       const isMandatory = rawType === "obligatoria" || rawType === "true" || rawType === "1";
-      return { name, category, frequency, timeLimitMinutes: timeLimitMinutes || 30, isMandatory, isDeleted: false };
+      return { name, category, frequency, scheduledDays, cleaningSites, timeLimitMinutes: timeLimitMinutes || 30, isMandatory, isDeleted: false };
     }).filter(Boolean);
 
     if (!items.length) return;
@@ -3051,6 +3105,7 @@ function App() { // NOSONAR
 
   function openCatalogEdit(item) {
     setCatalogModal({
+      ...createEmptyCatalogModalState(),
       open: true,
       mode: "edit",
       id: item.id,
@@ -3059,6 +3114,8 @@ function App() { // NOSONAR
       mandatory: String(item.isMandatory),
       frequency: normalizeActivityFrequency(item.frequency),
       category: String(item.category || "General").trim() || "General",
+      scheduledDays: normalizeCatalogScheduledDays(item.scheduledDays, item.frequency),
+      cleaningSites: normalizeCatalogCleaningSites(item.cleaningSites),
     });
   }
 
@@ -3068,6 +3125,8 @@ function App() { // NOSONAR
       timeLimitMinutes: Number(catalogModal.limit || 0),
       isMandatory: catalogModal.mandatory === "true",
       frequency: normalizeActivityFrequency(catalogModal.frequency),
+      scheduledDays: normalizeCatalogScheduledDays(catalogModal.scheduledDays, catalogModal.frequency),
+      cleaningSites: normalizeCatalogCleaningSites(catalogModal.cleaningSites),
       category: String(catalogModal.category || "General").trim() || "General",
       isDeleted: false,
     };
@@ -3083,7 +3142,7 @@ function App() { // NOSONAR
         },
       );
       applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
-      setCatalogModal({ open: false, mode: "create", id: null, name: "", limit: "", mandatory: "true", frequency: "weekly", category: "General" });
+      setCatalogModal(createEmptyCatalogModalState());
     } catch {
       // Keep modal open if the save fails.
     }
@@ -3463,6 +3522,15 @@ function App() { // NOSONAR
     } catch {
       // silencioso
     }
+  }
+
+  async function updateSystemOperationalSettings(patch = {}) {
+    const result = await requestJson("/warehouse/system/operational", {
+      method: "PATCH",
+      body: JSON.stringify(patch || {}),
+    });
+    applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+    return result;
   }
 
   function addDraftColumn() {
@@ -4628,6 +4696,22 @@ function App() { // NOSONAR
       setDeleteBoardRowState({ open: false, boardId: null, rowId: null });
       setBoardRuntimeFeedback({ tone: "success", message: "La fila fue eliminada del tablero." });
     }).catch((error) => {
+      if (error?.status === 404) {
+        // Another device/process may have already removed this row.
+        setState((current) => ({
+          ...current,
+          controlBoards: (current.controlBoards || []).map((controlBoard) => {
+            if (controlBoard.id !== boardId) return controlBoard;
+            return {
+              ...controlBoard,
+              rows: (controlBoard.rows || []).filter((boardRow) => boardRow.id !== rowId),
+            };
+          }),
+        }));
+        setDeleteBoardRowState({ open: false, boardId: null, rowId: null });
+        setBoardRuntimeFeedback({ tone: "warning", message: "La fila ya no existía. Se actualizó la vista." });
+        return;
+      }
       setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo eliminar la fila." });
     });
   }
@@ -5879,6 +5963,7 @@ function App() { // NOSONAR
     openEditRoleModal,
     submitRoleModal,
     handleDeleteCustomRole,
+    updateSystemOperationalSettings,
     setRoleModalOpen,
     Users,
     visibleControlBoards,
@@ -6024,6 +6109,7 @@ function App() { // NOSONAR
         {page === PAGE_USERS ? <GestionUsuarios contexto={paginasContexto} /> : null}
         {page === PAGE_BIBLIOTECA ? <BibliotecaPage currentUser={currentUser} canUpload={actionPermissions.uploadBiblioteca} canDelete={actionPermissions.deleteBiblioteca} /> : null}
         {page === PAGE_INCIDENCIAS ? <GestionIncidencias contexto={paginasContexto} /> : null}
+        {page === PAGE_SYSTEM_SETTINGS ? <ConfiguracionSistema contexto={paginasContexto} /> : null}
         {page === PAGE_NOT_FOUND ? <PaginaNoEncontrada contexto={paginasContexto} /> : null}
       </section>
 
@@ -6125,8 +6211,8 @@ function App() { // NOSONAR
         </div>
       </Modal>
 
-      <Modal open={catalogModal.open} title={catalogModal.mode === "create" ? "Nueva actividad" : "Editar actividad"} confirmLabel={catalogModal.mode === "create" ? "Guardar" : "Guardar cambios"} cancelLabel="Cancelar" onClose={() => setCatalogModal({ open: false, mode: "create", id: null, name: "", limit: "", mandatory: "true", frequency: "weekly", category: "General" })} onConfirm={submitCatalogModal}>
-        <div className="modal-form-grid">
+      <Modal className="modal-wide catalog-activity-modal" open={catalogModal.open} title={catalogModal.mode === "create" ? "Nueva actividad" : "Editar actividad"} confirmLabel={catalogModal.mode === "create" ? "Guardar" : "Guardar cambios"} cancelLabel="Cancelar" onClose={() => setCatalogModal(createEmptyCatalogModalState())} onConfirm={submitCatalogModal}>
+        <div className="modal-form-grid catalog-activity-modal-grid">
           <label className="app-modal-field">
             <span>Lista de actividades</span>
             <input value={catalogModal.category} onChange={(event) => setCatalogModal((current) => ({ ...current, category: event.target.value }))} placeholder="Ej: Limpieza, Seguridad, Producción" />
@@ -6135,7 +6221,7 @@ function App() { // NOSONAR
             <span>Nombre de la actividad</span>
             <input value={catalogModal.name} onChange={(event) => setCatalogModal((current) => ({ ...current, name: event.target.value }))} />
           </label>
-          <label className="app-modal-field">
+          <label className="app-modal-field catalog-activity-limit-field">
             <span>Tiempo límite (minutos)</span>
             <input type="number" value={catalogModal.limit} onChange={(event) => setCatalogModal((current) => ({ ...current, limit: event.target.value }))} />
           </label>
@@ -6146,11 +6232,57 @@ function App() { // NOSONAR
               <option value="false">Ocasional</option>
             </select>
           </label>
-          <label className="app-modal-field">
-            <span>Frecuencia</span>
-            <select value={catalogModal.frequency} onChange={(event) => setCatalogModal((current) => ({ ...current, frequency: event.target.value }))}>
-              {ACTIVITY_FREQUENCY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
+          <label className="app-modal-field catalog-activity-chip-field">
+            <span>Dias de ejecucion</span>
+            <div className="catalog-activity-chip-row">
+              {CATALOG_WEEKDAY_OPTIONS.map((option) => {
+                const isActive = (catalogModal.scheduledDays || []).includes(option.value);
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setCatalogModal((current) => {
+                      const currentDays = normalizeCatalogScheduledDays(current.scheduledDays, current.frequency);
+                      const hasDay = currentDays.includes(option.value);
+                      const nextDays = hasDay
+                        ? currentDays.filter((day) => day !== option.value)
+                        : currentDays.concat([option.value]).sort((a, b) => a - b);
+                      return { ...current, scheduledDays: nextDays };
+                    })}
+                    className={`catalog-day-chip ${isActive ? "active" : ""}`.trim()}
+                    title={option.label}
+                  >
+                    {option.short}
+                  </button>
+                );
+              })}
+            </div>
+          </label>
+          <label className="app-modal-field catalog-activity-chip-field">
+            <span>Naves (opcional, vacio = todas)</span>
+            <div className="catalog-activity-chip-row">
+              {CLEANING_SITE_OPTIONS.map((site) => {
+                const siteValue = String(site.value || "").trim().toUpperCase();
+                const isActive = (catalogModal.cleaningSites || []).includes(siteValue);
+                return (
+                  <button
+                    key={siteValue}
+                    type="button"
+                    onClick={() => setCatalogModal((current) => {
+                      const currentSites = normalizeCatalogCleaningSites(current.cleaningSites);
+                      const hasSite = currentSites.includes(siteValue);
+                      const nextSites = hasSite
+                        ? currentSites.filter((entry) => entry !== siteValue)
+                        : currentSites.concat([siteValue]).sort();
+                      return { ...current, cleaningSites: nextSites };
+                    })}
+                    className={`catalog-site-chip ${isActive ? "active" : ""}`.trim()}
+                  >
+                    {site.label}
+                  </button>
+                );
+              })}
+            </div>
           </label>
         </div>
       </Modal>

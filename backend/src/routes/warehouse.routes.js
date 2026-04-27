@@ -58,6 +58,7 @@ import {
   deleteProcessAuditTemplate,
   createProcessAudit,
   updateProcessAudit,
+  updateWarehouseSystemOperationalSettings,
   deleteProcessAudit,
   resetProcessAuditStats,
   addProcessAuditEvidence,
@@ -132,6 +133,20 @@ warehouseRouter.post("/dashboard/reset-data", requireWarehouseAction("manageWeek
     revision: result.state?.revision,
   });
   res.json({ ok: true, data: { state: result.state } });
+});
+
+warehouseRouter.patch("/system/operational", requireWarehouseAction("manageSystemSettings"), (req, res) => {
+  const result = updateWarehouseSystemOperationalSettings(req.auth, req.body || {});
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "forbidden" ? 403 : 400;
+    res.status(status).json({ ok: false, message: "No fue posible actualizar la configuración del sistema." });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_system_operational_updated", req, {
+    revision: result.state?.revision,
+  });
+  res.json({ ok: true, data: { state: result.state, operational: result.operational } });
 });
 
 warehouseRouter.post("/boards", requireWarehouseAction("saveBoard"), (req, res) => {
@@ -833,7 +848,7 @@ warehouseRouter.patch("/boards/:boardId/rows/:rowId", (req, res) => {
 warehouseRouter.delete("/boards/:boardId/rows/:rowId", (req, res) => {
   const result = deleteWarehouseBoardRow(req.auth, req.params.boardId, req.params.rowId);
   if (!result.ok) {
-    const status = result.reason === "auth_required" ? 401 : result.reason === "row_not_found" ? 404 : 403;
+    const status = result.reason === "auth_required" ? 401 : result.reason === "row_not_found" || result.reason === "board_not_found" ? 404 : 403;
     res.status(status).json({ ok: false, message: "No fue posible eliminar la fila solicitada." });
     return;
   }

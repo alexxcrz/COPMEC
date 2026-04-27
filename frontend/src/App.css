@@ -6187,6 +6187,43 @@ tbody tr:hover {
   grid-column: 1 / -1;
 }
 
+.catalog-activity-modal-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.catalog-activity-chip-field {
+  min-width: 0;
+}
+
+.catalog-activity-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.catalog-day-chip,
+.catalog-site-chip {
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid #cfd8d6;
+  background: #ffffff;
+  color: #244040;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 0.7rem;
+  min-width: 2.25rem;
+  max-width: 100%;
+}
+
+.catalog-day-chip.active,
+.catalog-site-chip.active {
+  border-color: #15803d;
+  background: #ecfdf3;
+  color: #166534;
+}
+
 .user-modal-grid {
   display: grid;
   gap: 0.7rem;
@@ -10662,11 +10699,6 @@ tbody tr:hover {
     word-break: normal;
   }
 
-  .board-runtime-table .board-pdf-hide,
-  .board-preview-table .board-pdf-hide {
-    display: none;
-  }
-
   .board-meta-inline {
     gap: 0.4rem;
   }
@@ -10940,6 +10972,10 @@ body {
     min-height: 2.08rem;
     font-size: 0.82rem;
   }
+
+  .catalog-activity-modal-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
 }
 
 @media (max-width: 430px) {
@@ -10996,6 +11032,106 @@ body {
 .chat-profile-hero-subtitle,
 .chat-preview-link-subtitle {
   display: none !important;
+}
+
+.system-config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.68rem;
+}
+
+.system-config-card {
+  border: 1px solid #d5dfdc;
+  border-radius: 1rem;
+  padding: 0.56rem;
+  display: grid;
+  gap: 0.4rem;
+  background: #ffffff;
+}
+
+.system-config-pause-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.system-config-pause-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.system-config-pause-row {
+  border: 1px solid #d5dfdc;
+  border-radius: 1rem;
+  padding: 0.56rem;
+  display: grid;
+  gap: 0.46rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  background: #ffffff;
+}
+
+@media (max-width: 900px) {
+  .system-config-grid,
+  .system-config-pause-row,
+  .system-config-pause-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Catalog activity modal: force stable layout over global compact overrides */
+.sicfla-modal.catalog-activity-modal {
+  width: min(100%, 540px);
+}
+
+.sicfla-modal.catalog-activity-modal .modal-form-grid.catalog-activity-modal-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 0.24rem;
+}
+
+.sicfla-modal.catalog-activity-modal .catalog-activity-chip-field {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.sicfla-modal.catalog-activity-modal .catalog-activity-limit-field {
+  grid-column: 1 / 2;
+}
+
+.sicfla-modal.catalog-activity-modal .app-modal-field > input,
+.sicfla-modal.catalog-activity-modal .app-modal-field > select {
+  width: 50%;
+  min-width: 0;
+  justify-self: start;
+}
+
+.sicfla-modal.catalog-activity-modal .app-modal-field {
+  gap: 0.16rem;
+}
+
+.sicfla-modal.catalog-activity-modal .catalog-activity-chip-field > span {
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.sicfla-modal.catalog-activity-modal .catalog-activity-chip-row {
+  width: 100%;
+  min-width: 0;
+  overflow: visible;
+}
+
+@media (max-width: 900px) {
+  .sicfla-modal.catalog-activity-modal .modal-form-grid.catalog-activity-modal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .sicfla-modal.catalog-activity-modal .modal-form-grid.catalog-activity-modal-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .sicfla-modal.catalog-activity-modal .app-modal-field > input,
+  .sicfla-modal.catalog-activity-modal .app-modal-field > select {
+    width: 100%;
+  }
 }
 
 /* =======================================================

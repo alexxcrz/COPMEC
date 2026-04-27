@@ -102,6 +102,36 @@ function safeParseLotHistory(value) {
   }
 }
 
+function buildLotHistoryEntryKey(entry) {
+  const lot = String(entry?.lot || "").trim();
+  const expiry = normalizeExpiryInput(entry?.expiry);
+  const etiqueta = String(entry?.etiqueta || "").trim();
+  return `${normalizeKey(lot)}::${expiry}::${normalizeKey(etiqueta)}`;
+}
+
+function mergeLotHistoryEntries(...sources) {
+  const merged = [];
+  const seen = new Set();
+  sources.forEach((source) => {
+    (Array.isArray(source) ? source : []).forEach((entry) => {
+      const lot = String(entry?.lot || "").trim();
+      const expiry = normalizeExpiryInput(entry?.expiry);
+      if (!lot || !expiry) return;
+      const etiqueta = String(entry?.etiqueta || "").trim();
+      const key = buildLotHistoryEntryKey({ lot, expiry, etiqueta });
+      if (seen.has(key)) return;
+      seen.add(key);
+      merged.push({
+        lot,
+        expiry,
+        etiqueta,
+        updatedAt: String(entry?.updatedAt || "").trim(),
+      });
+    });
+  });
+  return merged;
+}
+
 async function toDataUrl(url) {
   const response = await fetch(url);
   const blob = await response.blob();
@@ -232,8 +262,10 @@ function ReturnsReconditionScannerInner({
   const [pendingAutoCaptureData, setPendingAutoCaptureData] = useState(null);
   
   const [tarimaForm, setTarimaForm] = useState({ tarimaNumber: "", flowType: "devolucion" });
-  const [boxForm, setBoxForm] = useState({ boxNumber: "", targetPieces: 50, lot: "", expiry: "", etiqueta: "" });
+  const [boxForm, setBoxForm] = useState({ boxNumber: "", targetPieces: 50, lot: "", expiry: "", etiqueta: "", selectedLotKey: "" });
   const [lotForm, setLotForm] = useState({ lot: "", expiry: "", etiqueta: "", pieces: 1, selectedLotKey: "" });
+  const [lotHistoryVersion, setLotHistoryVersion] = useState(0);
+  const lotHistoryMemoryRef = useRef(new Map());
   
   const [nowTick, setNowTick] = useState(() => Date.now());
   const effectiveGlobalPause = Boolean(manualGlobalPause || (systemPaused && !globalForceActive));
@@ -498,9 +530,34 @@ function ReturnsReconditionScannerInner({
     () => new Map((boardView?.fields || []).map((field) => [normalizeKey(field.label), field])),
     [boardView?.fields],
   );
+  const boardRowsById = useMemo(
+    () => new Map((boardView?.rows || []).map((row) => [row.id, row])),
+    [boardView?.rows],
+  );
 
   const boardId = boardView?.id || "";
   const activeBoxStorageKey = `${ACTIVE_BOX_STORAGE_PREFIX}:${boardId || "default"}`;
+
+  useEffect(() => {
+    const memory = new Map();
+    (inventoryItems || []).forEach((item) => {
+      const itemId = String(item?.id || "").trim();
+      if (!itemId) return;
+      memory.set(itemId, safeParseLotHistory(item?.customFields?.lotesCaducidades));
+    });
+    lotHistoryMemoryRef.current = memory;
+    setLotHistoryVersion((current) => current + 1);
+  }, [inventoryItems]);
+
+  function getItemLotHistory(item) {
+    const itemId = String(item?.id || "").trim();
+    if (!itemId) return [];
+    const fromItem = safeParseLotHistory(item?.customFields?.lotesCaducidades);
+    const fromMemory = Array.isArray(lotHistoryMemoryRef.current.get(itemId))
+      ? lotHistoryMemoryRef.current.get(itemId)
+      : [];
+    return mergeLotHistoryEntries(fromMemory, fromItem);
+  }
 
   const pendingLotOptions = useMemo(() => {
     if (!pendingItem) return [];
@@ -522,11 +579,7 @@ function ReturnsReconditionScannerInner({
     (Array.isArray(product?.lots) ? product.lots : []).forEach(pushEntry);
     getItemLotHistory(pendingItem).forEach(pushEntry);
     return merged;
-  }, [pendingItem, activeBox]);
-
-  function getItemLotHistory(item) {
-    return safeParseLotHistory(item?.customFields?.lotesCaducidades);
-  }
+  }, [pendingItem, activeBox, lotHistoryVersion]);
 
   useEffect(() => {
     if (!pendingAutoCaptureData || !activeBox) return;
@@ -545,7 +598,15 @@ function ReturnsReconditionScannerInner({
 
   useEffect(() => {
     if (!boxModalOpen) return;
-    setBoxForm((current) => ({ ...current, lot: "", expiry: "", etiqueta: "" }));
+    const historyEntry = pendingItem ? getItemLotHistory(pendingItem)[0] : null;
+    const selectedLotKey = historyEntry ? buildLotHistoryEntryKey(historyEntry) : "";
+    setBoxForm((current) => ({
+      ...current,
+      lot: historyEntry?.lot || "",
+      expiry: historyEntry?.expiry || "",
+      etiqueta: historyEntry?.etiqueta || "",
+      selectedLotKey,
+    }));
   }, [boxModalOpen, pendingItem?.id]);
 
   // Cargar tarima desde localStorage al montar
@@ -986,17 +1047,30 @@ function ReturnsReconditionScannerInner({
   async function persistLotHistory(item, lot, expiry, etiqueta = "") {
     const normalizedExpiry = normalizeExpiryInput(expiry);
     const normalizedEtiqueta = String(etiqueta || "").trim();
-    if (!item?.id || !lot || !normalizedExpiry) return;
+    const itemId = String(item?.id || "").trim();
+    const normalizedLot = String(lot || "").trim();
+    if (!itemId || !normalizedLot || !normalizedExpiry) return;
+
     const current = getItemLotHistory(item);
-    const duplicate = current.some((entry) => normalizeKey(entry.lot) === normalizeKey(lot) && normalizeExpiryInput(entry.expiry) === normalizedExpiry && String(entry?.etiqueta || "").trim() === normalizedEtiqueta);
+    const entryToStore = {
+      lot: normalizedLot,
+      expiry: normalizedExpiry,
+      etiqueta: normalizedEtiqueta,
+      updatedAt: new Date().toISOString(),
+    };
+    const duplicate = current.some((entry) => buildLotHistoryEntryKey(entry) === buildLotHistoryEntryKey(entryToStore));
     if (duplicate) return;
 
-    const next = [{ lot, expiry: normalizedExpiry, etiqueta: normalizedEtiqueta, updatedAt: new Date().toISOString() }, ...current].slice(0, 300);
+    const next = mergeLotHistoryEntries([entryToStore], current).slice(0, 300);
+    lotHistoryMemoryRef.current.set(itemId, next);
+    setLotHistoryVersion((value) => value + 1);
+
+    const latestItem = inventoryMapById.get(itemId) || item;
     const payload = {
-      ...item,
+      ...latestItem,
       customFields: {
-        ...(item.customFields || {}),
-        lote: lot,
+        ...(latestItem.customFields || {}),
+        lote: normalizedLot,
         caducidad: normalizedExpiry,
         etiqueta: normalizedEtiqueta,
         lotesCaducidades: JSON.stringify(next),
@@ -1006,7 +1080,7 @@ function ReturnsReconditionScannerInner({
     // localStorage.setItem(`${ACTIVE_TARIMA_STORAGE_PREFIX}:${boardId}`, JSON.stringify(activeTarima));
 
     try {
-      const result = await requestJson(`/warehouse/inventory/${item.id}`, {
+      const result = await requestJson(`/warehouse/inventory/${itemId}`, {
         method: "PATCH",
         body: JSON.stringify(payload),
       });
@@ -1015,6 +1089,8 @@ function ReturnsReconditionScannerInner({
         applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
       }
     } catch (error) {
+      lotHistoryMemoryRef.current.set(itemId, current);
+      setLotHistoryVersion((value) => value + 1);
       setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo guardar lote/caducidad en inventario." });
     }
   }
@@ -1069,15 +1145,20 @@ function ReturnsReconditionScannerInner({
 
   async function updateBoardDetailRow(rowId, box, item, product, status = "") {
     if (!boardId || !rowId) return rowId;
-    const patchedState = await requestJson(`/warehouse/boards/${boardId}/rows/${rowId}`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        ...(status ? { status } : {}),
-        values: buildBoardRowValues(box, item, product),
-      }),
-    });
-    applyRemoteWarehouseState(patchedState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
-    return rowId;
+    try {
+      const patchedState = await requestJson(`/warehouse/boards/${boardId}/rows/${rowId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          ...(status ? { status } : {}),
+          values: buildBoardRowValues(box, item, product),
+        }),
+      });
+      applyRemoteWarehouseState(patchedState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      return rowId;
+    } catch (error) {
+      if (error?.status === 404) return "";
+      throw error;
+    }
   }
 
   async function closeBoardWorkflowRows(box) {
@@ -1086,11 +1167,17 @@ function ReturnsReconditionScannerInner({
     if (!rowIds.length) return;
 
     for (const rowId of rowIds) {
-      const patchedState = await requestJson(`/warehouse/boards/${boardId}/rows/${rowId}`, {
-        method: "PATCH",
-        body: JSON.stringify({ status: "Terminado" }),
-      });
-      applyRemoteWarehouseState(patchedState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      const currentRow = boardRowsById.get(rowId);
+      if (currentRow?.status === TARIMA_STATUS_FINISHED) continue;
+      try {
+        const patchedState = await requestJson(`/warehouse/boards/${boardId}/rows/${rowId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: "Terminado" }),
+        });
+        applyRemoteWarehouseState(patchedState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      } catch (error) {
+        if (error?.status !== 404) throw error;
+      }
     }
   }
 
@@ -1477,7 +1564,7 @@ function ReturnsReconditionScannerInner({
     setActiveTarima(newTarima);
     setTarimaModalOpen(false);
     setTarimaForm({ tarimaNumber: "", flowType: "devolucion" });
-    setBoxForm({ boxNumber: "", targetPieces: 50, lot: "", expiry: "", etiqueta: "" });
+    setBoxForm({ boxNumber: "", targetPieces: 50, lot: "", expiry: "", etiqueta: "", selectedLotKey: "" });
     setBoardRuntimeFeedback({ tone: "success", message: `Tarima ${tarimaForm.tarimaNumber} iniciada.` });
     setBoxModalOpen(true);
   }
@@ -1534,7 +1621,7 @@ function ReturnsReconditionScannerInner({
       });
     }
     setBoxModalOpen(false);
-    setBoxForm({ boxNumber: "", targetPieces: 50, lot: "", expiry: "", etiqueta: "" });
+    setBoxForm({ boxNumber: "", targetPieces: 50, lot: "", expiry: "", etiqueta: "", selectedLotKey: "" });
     setBoardRuntimeFeedback({ tone: "success", message: `Caja ${boxForm.boxNumber} agregada.` });
   }
   
@@ -2159,7 +2246,7 @@ function ReturnsReconditionScannerInner({
         onClose={() => {
           setBoxModalOpen(false);
           setPendingItem(null);
-          setBoxForm({ boxNumber: "", targetPieces: 50, lot: "", expiry: "", etiqueta: "" });
+          setBoxForm({ boxNumber: "", targetPieces: 50, lot: "", expiry: "", etiqueta: "", selectedLotKey: "" });
         }}
         onConfirm={addNewBoxToTarima}
       >
@@ -2202,11 +2289,42 @@ function ReturnsReconditionScannerInner({
           </label>
           {pendingItem ? (
             <>
+              <label className="app-modal-field" style={{ gridColumn: "1 / -1" }}>
+                <span>Lotes guardados</span>
+                <select
+                  value={boxForm.selectedLotKey || ""}
+                  onChange={(event) => {
+                    const selectedKey = String(event.target.value || "");
+                    if (selectedKey === "__new__") {
+                      setBoxForm((current) => ({ ...current, selectedLotKey: "", lot: "", expiry: "", etiqueta: "" }));
+                      return;
+                    }
+                    const selected = pendingLotOptions.find((entry) => entry.key === selectedKey);
+                    if (!selected) {
+                      setBoxForm((current) => ({ ...current, selectedLotKey: "" }));
+                      return;
+                    }
+                    setBoxForm((current) => ({
+                      ...current,
+                      selectedLotKey: selected.key,
+                      lot: selected.lot,
+                      expiry: selected.expiry,
+                      etiqueta: selected.etiqueta || "",
+                    }));
+                  }}
+                >
+                  <option value="">Selecciona un lote guardado</option>
+                  {pendingLotOptions.map((entry) => (
+                    <option key={entry.key} value={entry.key}>{entry.label}</option>
+                  ))}
+                  <option value="__new__">Nuevo lote...</option>
+                </select>
+              </label>
               <label className="app-modal-field">
                 <span>Lote</span>
                 <input
                   value={boxForm.lot}
-                  onChange={(event) => setBoxForm((current) => ({ ...current, lot: event.target.value }))}
+                  onChange={(event) => setBoxForm((current) => ({ ...current, selectedLotKey: "", lot: event.target.value }))}
                   placeholder="Ej: L2304A"
                 />
               </label>
@@ -2214,7 +2332,7 @@ function ReturnsReconditionScannerInner({
                 <span>Caducidad</span>
                 <input
                   value={boxForm.expiry}
-                  onChange={(event) => setBoxForm((current) => ({ ...current, expiry: normalizeExpiryInput(event.target.value) }))}
+                  onChange={(event) => setBoxForm((current) => ({ ...current, selectedLotKey: "", expiry: normalizeExpiryInput(event.target.value) }))}
                   placeholder="Ej: AGO-2026"
                   style={{ textTransform: "uppercase" }}
                 />
@@ -2223,7 +2341,7 @@ function ReturnsReconditionScannerInner({
                 <span>Etiqueta</span>
                 <input
                   value={boxForm.etiqueta}
-                  onChange={(event) => setBoxForm((current) => ({ ...current, etiqueta: event.target.value }))}
+                  onChange={(event) => setBoxForm((current) => ({ ...current, selectedLotKey: "", etiqueta: event.target.value }))}
                   placeholder="Ej: ETQ-001"
                 />
               </label>
@@ -2289,6 +2407,10 @@ function ReturnsReconditionScannerInner({
               value={lotForm.selectedLotKey}
               onChange={(event) => {
                 const selectedKey = String(event.target.value || "");
+                if (selectedKey === "__new__") {
+                  setLotForm((current) => ({ ...current, selectedLotKey: "", lot: "", expiry: "", etiqueta: "" }));
+                  return;
+                }
                 const selected = pendingLotOptions.find((entry) => entry.key === selectedKey);
                 if (!selected) {
                   setLotForm((current) => ({ ...current, selectedLotKey: "" }));
@@ -2307,6 +2429,7 @@ function ReturnsReconditionScannerInner({
               {pendingLotOptions.map((entry) => (
                 <option key={entry.key} value={entry.key}>{entry.label}</option>
               ))}
+              <option value="__new__">Nuevo lote...</option>
             </select>
           </label>
           <label className="app-modal-field">
