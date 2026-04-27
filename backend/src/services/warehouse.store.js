@@ -2206,9 +2206,58 @@ function getBoardFieldDefaultValue(field, currentUserId) {
   return "";
 }
 
-function updateElapsedForFinish(row, nowIso) {
+function getEffectiveOperationalNowMs(nowIso, pauseControl) {
+  let effectiveNow = new Date(nowIso).getTime();
+  if (!Number.isFinite(effectiveNow)) {
+    effectiveNow = Date.now();
+  }
+  if (pauseControl?.globalPauseEnabled && pauseControl?.globalPauseActivatedAt) {
+    const pausedAt = new Date(pauseControl.globalPauseActivatedAt).getTime();
+    if (!Number.isNaN(pausedAt)) {
+      effectiveNow = Math.min(effectiveNow, pausedAt);
+    }
+  }
+  return effectiveNow;
+}
+
+function calcWorkSeconds(fromMs, toMs, startHour, endHour) {
+  if (toMs <= fromMs) return 0;
+  if (startHour >= endHour) {
+    return Math.max(0, Math.floor((toMs - fromMs) / 1000));
+  }
+  const msPerHour = 3600000;
+  let total = 0;
+  const fromDate = new Date(fromMs);
+  const startOfDay = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+  let dayStart = startOfDay.getTime();
+  while (dayStart < toMs) {
+    const windowOpen = dayStart + (startHour * msPerHour);
+    const windowClose = dayStart + (endHour * msPerHour);
+    const overlapStart = Math.max(fromMs, windowOpen);
+    const overlapEnd = Math.min(toMs, windowClose);
+    if (overlapEnd > overlapStart) {
+      total += Math.floor((overlapEnd - overlapStart) / 1000);
+    }
+    dayStart += 86400000;
+  }
+  return total;
+}
+
+function getOperationalElapsedSeconds(startIso, nowIso, pauseControl) {
+  if (!startIso) return 0;
+  const startMs = new Date(startIso).getTime();
+  if (!Number.isFinite(startMs)) return 0;
+  const effectiveNow = getEffectiveOperationalNowMs(nowIso, pauseControl);
+  const workHours = pauseControl?.workHours;
+  if (workHours && typeof workHours.startHour === "number" && typeof workHours.endHour === "number") {
+    return calcWorkSeconds(startMs, effectiveNow, workHours.startHour, workHours.endHour);
+  }
+  return Math.max(0, Math.floor((effectiveNow - startMs) / 1000));
+}
+
+function updateElapsedForFinish(row, nowIso, pauseControl) {
   if (!row?.lastResumedAt) return Number(row?.accumulatedSeconds || 0);
-  return Math.max(0, Number(row?.accumulatedSeconds || 0) + Math.floor((new Date(nowIso) - new Date(row.lastResumedAt)) / 1000));
+  return Math.max(0, Number(row?.accumulatedSeconds || 0) + getOperationalElapsedSeconds(row.lastResumedAt, nowIso, pauseControl));
 }
 
 function findBoardAndRow(currentState, boardId, rowId = null) {
@@ -4014,6 +4063,8 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
   }
 
   const currentState = getRawWarehouseState();
+  const operationalSettings = normalizeSystemOperationalSettings(currentState.system?.operational);
+  const pauseControl = operationalSettings.pauseControl;
   const { boardIndex, rowIndex, board, row } = findBoardAndRow(currentState, boardId, rowId);
   if (!board || !row) {
     return { ok: false, reason: "row_not_found" };
@@ -4106,7 +4157,7 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
       const pauseRule = resolvePauseRule(pauseReason);
       const pauseAuthorizedMinutes = Number(pauseRule?.authorizedMinutes || 0);
       nextRow.status = patch.status;
-      nextRow.accumulatedSeconds = updateElapsedForFinish(row, nowIso);
+      nextRow.accumulatedSeconds = updateElapsedForFinish(row, nowIso, pauseControl);
       nextRow.lastResumedAt = null;
       nextRow.pauseStartedAt = nowIso;
       nextRow.pauseAffectsTimer = Boolean(pauseRule?.affectsTimer);
@@ -4126,7 +4177,7 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
       });
       nextRow.status = patch.status;
       nextRow.endTime = nowIso;
-      nextRow.accumulatedSeconds = updateElapsedForFinish(row, nowIso) + pauseCompensationSeconds;
+      nextRow.accumulatedSeconds = updateElapsedForFinish(row, nowIso, pauseControl) + pauseCompensationSeconds;
       nextRow.lastResumedAt = null;
       nextRow.pauseStartedAt = null;
       nextRow.pauseAffectsTimer = false;

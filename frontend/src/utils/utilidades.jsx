@@ -3129,18 +3129,40 @@ function calcWorkSeconds(fromMs, toMs, startHour, endHour) {
   return total;
 }
 
+export function getEffectiveOperationalNow(now, pauseState) {
+  let effectiveNow = typeof now === "number" ? now : Number(now);
+  if (!Number.isFinite(effectiveNow)) {
+    effectiveNow = new Date(now).getTime();
+  }
+  if (!Number.isFinite(effectiveNow)) {
+    effectiveNow = Date.now();
+  }
+  if (pauseState?.globalPauseEnabled && pauseState?.globalPauseActivatedAt) {
+    const pausedAt = new Date(pauseState.globalPauseActivatedAt).getTime();
+    if (!isNaN(pausedAt)) effectiveNow = Math.min(effectiveNow, pausedAt);
+  }
+  return effectiveNow;
+}
+
+export function getOperationalElapsedSeconds(startTime, now, pauseState) {
+  if (!startTime) return 0;
+  const startMs = new Date(startTime).getTime();
+  if (!Number.isFinite(startMs)) return 0;
+  const effectiveNow = getEffectiveOperationalNow(now, pauseState);
+  const workHours = pauseState?.workHours;
+  if (workHours && typeof workHours.startHour === "number" && typeof workHours.endHour === "number") {
+    return calcWorkSeconds(startMs, effectiveNow, workHours.startHour, workHours.endHour);
+  }
+  return Math.max(0, Math.floor((effectiveNow - startMs) / 1000));
+}
+
 export function getElapsedSeconds(activity, now, pauseState) {
   if (!activity) return 0;
   if (activity.status !== STATUS_RUNNING || !activity.lastResumedAt) {
     return activity.accumulatedSeconds || 0;
   }
   const resumedMs = new Date(activity.lastResumedAt).getTime();
-  // Cap now at pause activation time if global pause is on
-  let effectiveNow = typeof now === "number" ? now : Number(now);
-  if (pauseState?.globalPauseEnabled && pauseState?.globalPauseActivatedAt) {
-    const pausedAt = new Date(pauseState.globalPauseActivatedAt).getTime();
-    if (!isNaN(pausedAt)) effectiveNow = Math.min(effectiveNow, pausedAt);
-  }
+  const effectiveNow = getEffectiveOperationalNow(now, pauseState);
   const workHours = pauseState?.workHours;
   let delta;
   if (workHours && typeof workHours.startHour === "number" && typeof workHours.endHour === "number") {

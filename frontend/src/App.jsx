@@ -330,7 +330,7 @@ import {
 
   toSelectOption, buildSelectOptions, getWeekName, getActivityLabel,
 
-  getTimeLimitMinutes, getElapsedSeconds,
+  getTimeLimitMinutes, getElapsedSeconds, getOperationalElapsedSeconds,
 
   buildDemoUsers, buildSampleState, normalizeBoardRowValues, normalizeControlBoard,
 
@@ -497,6 +497,11 @@ function App() { // NOSONAR
   const [syncStatus, setSyncStatus] = useState("Conectando");
   const [securityEvents, setSecurityEvents] = useState([]);
   const [securityEventsStatus, setSecurityEventsStatus] = useState("idle");
+  const operationalPauseState = useMemo(() => ({
+    globalPauseEnabled: Boolean(state?.system?.operational?.pauseControl?.globalPauseEnabled),
+    globalPauseActivatedAt: state?.system?.operational?.pauseControl?.globalPauseActivatedAt || null,
+    workHours: state?.system?.operational?.pauseControl?.workHours || { startHour: 8, endHour: 16 },
+  }), [state?.system?.operational]);
   const sessionRole = normalizeRole(state.users.find((user) => user.id === sessionUserId)?.role);
   const antiCaptureEnabled = import.meta.env.PROD && sessionRole !== ROLE_LEAD;
   const [isDemoMode, setIsDemoMode] = useState(false);
@@ -1058,7 +1063,7 @@ function App() { // NOSONAR
     const activityRecords = visibleDashboardActivities.map((activity) => {
       const responsibleUser = userMap.get(activity.responsibleId);
       const pauseSummary = activityPauseSummaryMap.get(activity.id) || { count: 0, totalSeconds: 0, reasons: [] };
-      const durationSeconds = getElapsedSeconds(activity, now);
+      const durationSeconds = getElapsedSeconds(activity, now, operationalPauseState);
       const limitMinutes = getTimeLimitMinutes(activity, catalogMap);
       return {
         id: `activity-${activity.id}`,
@@ -1083,9 +1088,9 @@ function App() { // NOSONAR
 
     const boardRecords = dashboardVisibleControlBoards.flatMap((board) => (board.rows || []).map((row) => {
       const responsibleUser = userMap.get(row.responsibleId);
-      const durationSeconds = getElapsedSeconds(row, now);
+      const durationSeconds = getElapsedSeconds(row, now, operationalPauseState);
       const totalElapsedSeconds = row.startTime
-        ? Math.max(durationSeconds, Math.floor((now - new Date(row.startTime).getTime()) / 1000))
+        ? Math.max(durationSeconds, getOperationalElapsedSeconds(row.startTime, now, operationalPauseState))
         : durationSeconds;
       const pauseSeconds = Math.max(0, totalElapsedSeconds - durationSeconds);
       return {
@@ -1113,9 +1118,9 @@ function App() { // NOSONAR
 
     const historicalBoardRecords = dashboardVisibleBoardHistorySnapshots.flatMap((snapshot) => (snapshot.rows || []).map((row) => {
       const responsibleUser = userMap.get(row.responsibleId);
-      const durationSeconds = getElapsedSeconds(row, now);
+      const durationSeconds = getElapsedSeconds(row, now, operationalPauseState);
       const totalElapsedSeconds = row.startTime
-        ? Math.max(durationSeconds, Math.floor((now - new Date(row.startTime).getTime()) / 1000))
+        ? Math.max(durationSeconds, getOperationalElapsedSeconds(row.startTime, now, operationalPauseState))
         : durationSeconds;
       const pauseSeconds = Math.max(0, totalElapsedSeconds - durationSeconds);
       return {
@@ -1141,7 +1146,7 @@ function App() { // NOSONAR
     }));
 
     return activityRecords.concat(boardRecords, historicalBoardRecords).filter((record) => Boolean(record.occurredAt));
-  }, [activityPauseSummaryMap, catalogMap, dashboardVisibleBoardHistorySnapshots, dashboardVisibleControlBoards, now, state.activities, userMap, visibleDashboardActivities]);
+  }, [activityPauseSummaryMap, catalogMap, dashboardVisibleBoardHistorySnapshots, dashboardVisibleControlBoards, now, operationalPauseState, state.activities, userMap, visibleDashboardActivities]);
 
   const dateFilteredDashboardRecords = useMemo(() => {
     const startDate = getDashboardFilterStartDate(dashboardFilters.startDate);
@@ -2792,7 +2797,7 @@ function App() { // NOSONAR
     const completed = rows.filter((row) => row.status === STATUS_FINISHED).length;
     const running = rows.filter((row) => row.status === STATUS_RUNNING).length;
     const paused = rows.filter((row) => row.status === STATUS_PAUSED).length;
-    const totalSeconds = rows.reduce((sum, row) => sum + getElapsedSeconds(row, now), 0);
+    const totalSeconds = rows.reduce((sum, row) => sum + getElapsedSeconds(row, now, operationalPauseState), 0);
     return {
       totalRows: rows.length,
       completed,
@@ -2800,7 +2805,7 @@ function App() { // NOSONAR
       paused,
       averageMinutes: rows.length ? totalSeconds / rows.length / 60 : 0,
     };
-  }, [now, selectedCustomBoardDisplay]);
+  }, [now, operationalPauseState, selectedCustomBoardDisplay]);
 
   const dashboardResponsibleRows = useMemo(() => {
     const max = Math.max(...rankingByUser.map((item) => item.averageMinutes), 1);
@@ -4791,9 +4796,9 @@ function App() { // NOSONAR
 
       if (board.settings?.showDates !== false) {
         const snapshotNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : Date.now();
-        const prodSecs = getElapsedSeconds(row, snapshotNow);
+        const prodSecs = getElapsedSeconds(row, snapshotNow, operationalPauseState);
         const totalSecs = row.startTime
-          ? Math.max(prodSecs, Math.floor((snapshotNow - new Date(row.startTime).getTime()) / 1000))
+          ? Math.max(prodSecs, getOperationalElapsedSeconds(row.startTime, snapshotNow, operationalPauseState))
           : prodSecs;
         const pauseSecs = Math.max(0, totalSecs - prodSecs);
         const efficiencyPct = totalSecs > 0 ? Math.round((prodSecs / totalSecs) * 100) : (row.startTime ? 100 : 0);
@@ -5027,7 +5032,7 @@ function App() { // NOSONAR
       }
 
       if (column.id === "time") {
-        return formatDurationClock(getElapsedSeconds(row, Date.now()));
+        return formatDurationClock(getElapsedSeconds(row, Date.now(), operationalPauseState));
       }
 
       if (column.id === "createdAt") {
@@ -6159,9 +6164,9 @@ function App() { // NOSONAR
             const finBoard = boardFinishConfirm.boardId ? (state.controlBoards || []).find((b) => b.id === boardFinishConfirm.boardId) : null;
             const finRow = finBoard?.rows?.find((r) => r.id === boardFinishConfirm.rowId) || null;
             if (!finRow) return null;
-            const productionSecs = getElapsedSeconds(finRow, now);
+            const productionSecs = getElapsedSeconds(finRow, now, operationalPauseState);
             const totalSecs = finRow.startTime
-              ? Math.max(productionSecs, Math.floor((now - new Date(finRow.startTime).getTime()) / 1000))
+              ? Math.max(productionSecs, getOperationalElapsedSeconds(finRow.startTime, now, operationalPauseState))
               : productionSecs;
             const pauseSecs = Math.max(0, totalSecs - productionSecs);
             const efficiency = totalSecs > 0 ? Math.round((productionSecs / totalSecs) * 100) : 100;

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import ReturnsReconditionScanner from "../features/boards/ReturnsReconditionScanner.jsx";
 import { BoardEditableInventoryPropertyInput, BoardEvidenceCell, BoardMultiSelectDetailCell } from "../components/BoardRuntimeFieldCells.jsx";
-import { normalizeSystemOperationalSettings, resolveInventoryPropertySourceFieldId } from "../utils/utilidades.jsx";
+import { getOperationalElapsedSeconds, normalizeSystemOperationalSettings, resolveInventoryPropertySourceFieldId } from "../utils/utilidades.jsx";
 
 const EDITABLE_INVENTORY_PROPERTIES = new Set(["lot", "expiry", "label"]);
 
@@ -657,7 +657,7 @@ export default function MisTableros({ contexto }) {
                               const effectiveNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : now;
                               const prodSecs = getElapsedSeconds(row, effectiveNow, pauseState);
                               const totalSecs = row.startTime
-                                ? Math.max(prodSecs, Math.floor((effectiveNow - new Date(row.startTime).getTime()) / 1000))
+                                ? Math.max(prodSecs, getOperationalElapsedSeconds(row.startTime, effectiveNow, pauseState))
                                 : 0;
                               return <td key={`${row.id}-${column.token}`} style={getEffectiveColumnWidth(column)}>{formatDurationClock(totalSecs)}</td>;
                             }
@@ -666,7 +666,7 @@ export default function MisTableros({ contexto }) {
                               const effectiveNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : now;
                               const prodSecs = getElapsedSeconds(row, effectiveNow, pauseState);
                               const totalSecs = row.startTime
-                                ? Math.max(prodSecs, Math.floor((effectiveNow - new Date(row.startTime).getTime()) / 1000))
+                                ? Math.max(prodSecs, getOperationalElapsedSeconds(row.startTime, effectiveNow, pauseState))
                                 : prodSecs;
                               const pct = totalSecs > 0 ? Math.round((prodSecs / totalSecs) * 100) : (row.startTime ? 100 : 0);
                               const color = pct >= 80 ? "#16a34a" : pct >= 50 ? "#15803d" : "#dc2626";
