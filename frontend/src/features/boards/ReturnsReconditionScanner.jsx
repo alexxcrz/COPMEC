@@ -1905,9 +1905,18 @@ function ReturnsReconditionScannerInner({
       >
         <div className="returns-scan-modal-grid">
           {pendingItem ? (
-            <div className="returns-scan-history" style={{ marginBottom: "0.4rem" }}>
+            <div className="returns-scan-history" style={{ marginBottom: "0.4rem", gridColumn: "1 / -1" }}>
               <strong>Producto</strong>
-              <p className="subtle-line" style={{ marginTop: "0.28rem" }}>
+              <p
+                className="subtle-line"
+                style={{
+                  marginTop: "0.28rem",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+                title={`${pendingItem.code || "-"} - ${pendingItem.name || "-"} - ${pendingItem.presentation || "-"}`}
+              >
                 {`${pendingItem.code || "-"} - ${pendingItem.name || "-"} - ${pendingItem.presentation || "-"}`}
               </p>
             </div>
