@@ -1497,7 +1497,7 @@ function ReturnsReconditionScannerInner({
       </div>
 
       {/* Cajas de Tarima - TODO EN UN CONTENEDOR */}
-      {activeTarima && (activeTarima.boxes || []).length > 0 ? (
+      {activeTarima ? (
         <div className="returns-scan-tarima-container">
           <div className="returns-scan-tarima-header">
             <div>
@@ -1506,6 +1506,20 @@ function ReturnsReconditionScannerInner({
                 Total acumulado: {tarimaDisplayedTotalPieces} pzas · {tarimaDisplayedBoxCount} cajas · Workflow tarima: {tarimaStatus} · Tiempo: {formatElapsedMs(Math.max(0, tarimaElapsedMs))}
               </p>
             </div>
+            {canControlTarimaWorkflow ? (
+              <div className="row-actions compact board-workflow-actions">
+                <button
+                  type="button"
+                  className="board-action-button finish"
+                  title="Cerrar tarima"
+                  aria-label="Cerrar tarima"
+                  onClick={() => { void finishActiveTarimaManually(); }}
+                  disabled={!canFinishGlobalWorkflow}
+                >
+                  Cerrar tarima
+                </button>
+              </div>
+            ) : null}
           </div>
 
           {closedForTarima.length ? (
@@ -1725,7 +1739,7 @@ function ReturnsReconditionScannerInner({
                     )}
                   </article>
                 );
-              }) : <p className="subtle-line">Crea la primera caja escaneando un producto.</p>;
+              }) : <p className="subtle-line">Sin cajas activas. Las cajas cerradas permanecen arriba en pestañas.</p>;
             })()}
           </div>
         </div>
