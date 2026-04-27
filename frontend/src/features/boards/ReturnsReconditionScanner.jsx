@@ -1906,11 +1906,10 @@ function ReturnsReconditionScannerInner({
         <div className="returns-scan-modal-grid">
           {pendingItem ? (
             <div className="returns-scan-history" style={{ marginBottom: "0.4rem" }}>
-              <strong>Producto: {pendingItem.name || "-"}</strong>
-              <div className="saved-board-list" style={{ marginTop: "0.25rem" }}>
-                <span className="chip">Código: {pendingItem.code || "-"}</span>
-                <span className="chip">Presentación: {pendingItem.presentation || "-"}</span>
-              </div>
+              <strong>Producto</strong>
+              <p className="subtle-line" style={{ marginTop: "0.28rem" }}>
+                {`${pendingItem.code || "-"} - ${pendingItem.name || "-"} - ${pendingItem.presentation || "-"}`}
+              </p>
             </div>
           ) : null}
           <label className="app-modal-field">
