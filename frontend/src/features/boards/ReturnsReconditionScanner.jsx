@@ -205,6 +205,7 @@ function ReturnsReconditionScannerInner({
   const [lotModalOpen, setLotModalOpen] = useState(false);
   const [tarimaPauseState, setTarimaPauseState] = useState({ open: false, reason: "", error: "" });
   const [pausedReminderOpen, setPausedReminderOpen] = useState(false);
+  const [pendingAutoCaptureItemId, setPendingAutoCaptureItemId] = useState(null);
   
   const [tarimaForm, setTarimaForm] = useState({ tarimaNumber: "", flowType: "devolucion" });
   const [boxForm, setBoxForm] = useState({ boxNumber: "", targetPieces: 50 });
@@ -466,6 +467,25 @@ function ReturnsReconditionScannerInner({
   function getItemLotHistory(item) {
     return safeParseLotHistory(item?.customFields?.lotesCaducidades);
   }
+
+  useEffect(() => {
+    if (!pendingAutoCaptureItemId || !activeBox) return;
+    const item = inventoryMapById.get(pendingAutoCaptureItemId) || null;
+    setPendingAutoCaptureItemId(null);
+    if (!item) return;
+
+    const history = getItemLotHistory(item);
+    const preferred = history[0] || null;
+    if (preferred?.lot && preferred?.expiry) {
+      void commitLotEntry(item, preferred.lot, preferred.expiry, 1, { closeModal: false, successMode: "auto" });
+      setPendingItem(null);
+      setBoardRuntimeFeedback({ tone: "success", message: `Caja creada. Se agregó automáticamente +1 pieza de ${item.code}.` });
+      return;
+    }
+
+    openLotModalForItem(item, activeBox?.products?.[item.id] || null);
+    setBoardRuntimeFeedback({ tone: "warning", message: "Caja creada. Captura lote/caducidad para registrar la pieza escaneada." });
+  }, [pendingAutoCaptureItemId, activeBox, inventoryMapById]);
 
   // Cargar tarima desde localStorage al montar
   useEffect(() => {
@@ -1258,6 +1278,9 @@ function ReturnsReconditionScannerInner({
     };
     setActiveTarima(updatedTarima);
     setActiveBoxId(newBox.id);
+    if (pendingItem?.id) {
+      setPendingAutoCaptureItemId(pendingItem.id);
+    }
     setBoxModalOpen(false);
     setBoxForm({ boxNumber: "", targetPieces: 50 });
     setBoardRuntimeFeedback({ tone: "success", message: `Caja ${boxForm.boxNumber} agregada.` });
@@ -1867,6 +1890,17 @@ function ReturnsReconditionScannerInner({
         onConfirm={addNewBoxToTarima}
       >
         <div className="returns-scan-modal-grid">
+          {pendingItem ? (
+            <div className="returns-scan-history" style={{ marginBottom: "0.4rem" }}>
+              <strong>Producto escaneado</strong>
+              <div className="saved-board-list" style={{ marginTop: "0.25rem" }}>
+                <span className="chip">Código: {pendingItem.code || "-"}</span>
+                <span className="chip">Producto: {pendingItem.name || "-"}</span>
+                <span className="chip">Presentación: {pendingItem.presentation || "-"}</span>
+                <span className="chip primary">Al crear caja se agrega +1 pieza</span>
+              </div>
+            </div>
+          ) : null}
           <label className="app-modal-field">
             <span>Número de Caja</span>
             <input value={boxForm.boxNumber} onChange={(event) => setBoxForm((current) => ({ ...current, boxNumber: event.target.value }))} placeholder="Ej: CAJ-001" />
