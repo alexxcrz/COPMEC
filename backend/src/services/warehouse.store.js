@@ -3943,7 +3943,10 @@ export function canEditWarehouseBoardRow(user, board, row, permissions, actionId
   if (!user || !board || !row) return false;
   if (!canManageWarehouseBoard(user, board)) return false;
   if (!canUserDoWarehouseAction(user, actionId, permissions)) return false;
-  return row.status !== "Terminado";
+  if (row.status === "Terminado") {
+    return canUserDoWarehouseAction(user, "editFinishedBoardRow", permissions);
+  }
+  return true;
 }
 
 export function canOperateWarehouseBoardRow(user, board, row, permissions) {
@@ -3960,6 +3963,9 @@ export function createWarehouseBoardRow(auth, boardId) {
   const { boardIndex, board } = findBoardAndRow(currentState, boardId);
   if (!board) {
     return { ok: false, reason: "board_not_found" };
+  }
+  if (currentState.system?.operational?.pauseControl?.globalPauseEnabled) {
+    return { ok: false, reason: "global_pause_active" };
   }
   if (!canManageWarehouseBoard(currentUser, board) || !canUserDoWarehouseAction(currentUser, "createBoardRow", currentState.permissions)) {
     return { ok: false, reason: "forbidden" };
@@ -4002,6 +4008,9 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
     && String(patch.status || "").trim() === String(row.status || "").trim();
   if (isIdempotentStatusPatch) {
     return { ok: true, state: currentState, row };
+  }
+  if (currentState.system?.operational?.pauseControl?.globalPauseEnabled) {
+    return { ok: false, reason: "global_pause_active" };
   }
 
   const isWorkflowPatch = hasOwn(patch, "status") || hasOwn(patch, "lastPauseReason");

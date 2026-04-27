@@ -833,7 +833,13 @@ warehouseRouter.post("/boards/:boardId/rows/bulk", (req, res) => {
 warehouseRouter.post("/boards/:boardId/rows", (req, res) => {
   const result = createWarehouseBoardRow(req.auth, req.params.boardId);
   if (!result.ok) {
-    const status = result.reason === "auth_required" ? 401 : result.reason === "board_not_found" ? 404 : 403;
+    const status = result.reason === "auth_required"
+      ? 401
+      : result.reason === "board_not_found"
+        ? 404
+        : result.reason === "global_pause_active"
+          ? 423
+          : 403;
     res.status(status).json({ ok: false, message: "No fue posible crear la fila solicitada." });
     return;
   }
@@ -849,7 +855,13 @@ warehouseRouter.post("/boards/:boardId/rows", (req, res) => {
 warehouseRouter.patch("/boards/:boardId/rows/:rowId", (req, res) => {
   const result = patchWarehouseBoardRow(req.auth, req.params.boardId, req.params.rowId, req.body || {});
   if (!result.ok) {
-    const status = result.reason === "auth_required" ? 401 : result.reason === "row_not_found" ? 404 : 403;
+    const status = result.reason === "auth_required"
+      ? 401
+      : result.reason === "row_not_found"
+        ? 404
+        : result.reason === "global_pause_active"
+          ? 423
+          : 403;
     res.status(status).json({ ok: false, message: "No fue posible actualizar la fila solicitada." });
     return;
   }

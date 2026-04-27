@@ -1,5 +1,5 @@
 {
-  "revision": 2532,
+  "revision": 2545,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro"
@@ -9447,7 +9447,11 @@
         "operationalContextValue": "Revisión",
         "columnWidths": {
           "fld-tfrpbe0m": 147,
-          "fld-0dkj3b5x": 124
+          "fld-0dkj3b5x": 96,
+          "fld-m7ncgvx9": 100,
+          "fld-2poaolyx": 93,
+          "fld-k2bb0z18": 134,
+          "fld-qsz13t42": 113
         }
       },
       "fields": [
@@ -9939,6 +9943,38 @@
           "accumulatedSeconds": 0,
           "lastResumedAt": null,
           "createdAt": "2026-04-27T15:09:36.477Z"
+        },
+        {
+          "id": "row-ea3bfa5667c2",
+          "values": {
+            "fld-0mdfs1q6": "2026-04-27",
+            "fld-qsz13t42": "",
+            "fld-qb54r8d9": "",
+            "fld-tfrpbe0m": "inv-3s48ng1m",
+            "fld-0dkj3b5x": "789456",
+            "fld-m7ncgvx9": "",
+            "fld-2poaolyx": "",
+            "fld-k2bb0z18": "",
+            "fld-sf0ku94c": 0,
+            "fld-kxjv1tti": "",
+            "fld-w7l359e5": "",
+            "fld-t4lc3uib": "",
+            "fld-fxcbxxhm": 0,
+            "fld-wfufcb0c": 0,
+            "fld-6p7nqzmd": "",
+            "fld-uev2k1ab": "",
+            "fld-3qiexh33": 0,
+            "fld-98i7zceh": "",
+            "fld-dgx50xpd": "",
+            "fld-c7zlre4d": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-27T18:03:08.976Z"
         }
       ],
       "permissions": {
@@ -10622,7 +10658,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-27T17:50:11.079Z",
+  "updatedAt": "2026-04-27T18:03:27.054Z",
   "permissions": {
     "pages": {
       "index": {

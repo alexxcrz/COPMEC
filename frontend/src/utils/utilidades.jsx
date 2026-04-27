@@ -3037,7 +3037,10 @@ export function canEditBoardRowRecord(user, board, row, permissions, actionId = 
   if (!user || !board || !row) return false;
   if (!canDoBoardAction(user, board)) return false;
   if (!canDoAction(user, actionId, permissions)) return false;
-  return row.status !== STATUS_FINISHED;
+  if (row.status === STATUS_FINISHED) {
+    return canDoAction(user, "editFinishedBoardRow", permissions);
+  }
+  return true;
 }
 
 export function canOperateBoardRowRecord(user, board, row, permissions) {

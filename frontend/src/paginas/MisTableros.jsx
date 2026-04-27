@@ -230,6 +230,7 @@ export default function MisTableros({ contexto }) {
   const systemPauseControl = systemOperationalSettings.pauseControl;
   const manualGlobalPause = Boolean(systemPauseControl?.globalPauseEnabled);
   const globalForceActive = Boolean(systemPauseControl?.forceGlobalPause);
+  const globalPauseLocked = manualGlobalPause;
   const boardOperationalContextType = String(boardView?.settings?.operationalContextType || "none");
   const boardOperationalContextLabel = String(boardView?.settings?.operationalContextLabel || "").trim()
     || (boardOperationalContextType === "cleaningSite" ? "Sede de limpieza" : "Ubicación operativa");
@@ -471,7 +472,7 @@ export default function MisTableros({ contexto }) {
                       </select>
                     </label>
                   ) : null}
-                  <label className="board-top-select min-width">
+                  <label className="board-top-select min-width board-day-select-inline">
                     <span>Día</span>
                     <select value={selectedWeekdayFilter} onChange={(event) => setSelectedWeekdayFilter(event.target.value)}>
                       {weekdayOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
@@ -497,7 +498,7 @@ export default function MisTableros({ contexto }) {
                     title="Nueva fila"
                     aria-label="Nueva fila"
                     onClick={() => createBoardRow(selectedCustomBoard.id)}
-                    disabled={isHistoricalCustomBoardView || !selectedBoardActionPermissions.createBoardRow}
+                    disabled={isHistoricalCustomBoardView || globalPauseLocked || !selectedBoardActionPermissions.createBoardRow}
                   >
                     <Plus size={16} />
                   </button>
@@ -535,6 +536,7 @@ export default function MisTableros({ contexto }) {
               {boardOperationalContextType !== "none" && boardOperationalContextValue ? <span>{boardOperationalContextLabel} · {boardOperationalContextValue}</span> : null}
               {isHistoricalCustomBoardView ? <span>Corte · {formatDate(selectedCustomBoardSnapshot?.startDate)} - {formatDate(selectedCustomBoardSnapshot?.endDate)}</span> : null}
             </div>
+            {globalPauseLocked ? <p className="validation-text">Pausa global activa. Las filas quedan bloqueadas hasta reanudar en Configuración del sistema.</p> : null}
             {!weekdayAllowedBySystemSchedule && showCleaningNaveSelector ? <p className="validation-text">La nave {cleaningNaveValue} no tiene actividades configuradas para este día en la semana seleccionada.</p> : null}
             {isHistoricalCustomBoardView ? <p className="subtle-line">Vista histórica en solo lectura. El tablero activo ya quedó limpio para la semana actual.</p> : null}
             <p className="required-legend"><span className="required-mark" aria-hidden="true">*</span> obligatorio</p>
@@ -599,11 +601,12 @@ export default function MisTableros({ contexto }) {
                 </thead>
                 <tbody>
                   {visibleRows.map((row) => {
-                    const rowCaptureEnabled = !isHistoricalCustomBoardView && canEditBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions);
-                    const rowWorkflowEnabled = !isHistoricalCustomBoardView && canOperateBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions);
+                    const rowCaptureEnabled = !isHistoricalCustomBoardView && !globalPauseLocked && canEditBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions);
+                    const rowWorkflowEnabled = !isHistoricalCustomBoardView && !globalPauseLocked && canOperateBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions);
                     const canDeleteBoardRows = Boolean(selectedBoardActionPermissions.deleteBoardRow);
                     const rowDeleteEnabled = canDeleteBoardRows
                       && !isHistoricalCustomBoardView
+                      && !globalPauseLocked
                       && row.status !== STATUS_FINISHED
                       && canEditBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions);
                     const isFinishedRow = row.status === STATUS_FINISHED;

@@ -2892,12 +2892,16 @@ html {
 
 .mis-tableros-shell .custom-board-toolbar-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: flex-end;
-  justify-content: flex-start;
+  justify-content: flex-end;
   gap: 0.55rem;
-  width: auto;
+  width: 100%;
   max-width: 100%;
+  margin-left: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .mis-tableros-shell .custom-board-toolbar-actions .board-top-select,
@@ -2915,27 +2919,57 @@ html {
 .mis-tableros-shell .board-context-inline-filters {
   width: auto;
   max-width: none;
-  flex: 0 1 auto;
-  grid-template-columns: repeat(2, minmax(170px, 240px));
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  gap: 0.55rem;
+}
+
+.mis-tableros-shell .board-context-inline-filters .board-week-select-inline {
+  min-width: 130px;
+  max-width: 180px;
+}
+
+.mis-tableros-shell .board-context-inline-filters .board-cleaning-site-select-inline,
+.mis-tableros-shell .board-context-inline-filters .board-day-select-inline {
+  min-width: 110px;
+  max-width: 120px;
 }
 
 @media (max-width: 900px) {
   .mis-tableros-shell .custom-board-toolbar-actions {
     width: 100%;
-    align-items: stretch;
+    align-items: flex-end;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
   }
 
   .mis-tableros-shell .custom-board-toolbar-actions .board-top-select,
   .mis-tableros-shell .custom-board-toolbar-actions .board-top-select.min-width,
   .mis-tableros-shell .custom-board-toolbar-actions .min-width {
-    width: 100%;
-    min-width: 0;
-    max-width: none;
+    width: auto;
+    min-width: 170px;
+    max-width: 240px;
   }
 
   .mis-tableros-shell .board-context-inline-filters {
-    width: 100%;
-    grid-template-columns: 1fr;
+    width: auto;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    gap: 0.55rem;
+  }
+
+  .mis-tableros-shell .board-context-inline-filters .board-week-select-inline {
+    min-width: 130px;
+    max-width: 180px;
+  }
+
+  .mis-tableros-shell .board-context-inline-filters .board-cleaning-site-select-inline,
+  .mis-tableros-shell .board-context-inline-filters .board-day-select-inline {
+    min-width: 110px;
+    max-width: 120px;
   }
 }
 

@@ -1,5 +1,5 @@
 {
-  "revision": 2521,
+  "revision": 2557,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro"
@@ -77,6 +77,10 @@
       "timeLimitMinutes": 50,
       "isMandatory": true,
       "frequency": "weekly",
+      "scheduledDays": [
+        0
+      ],
+      "cleaningSites": [],
       "category": "General",
       "isDeleted": true
     },
@@ -86,6 +90,10 @@
       "timeLimitMinutes": 40,
       "isMandatory": true,
       "frequency": "weekly",
+      "scheduledDays": [
+        0
+      ],
+      "cleaningSites": [],
       "category": "General",
       "isDeleted": true
     },
@@ -95,6 +103,10 @@
       "timeLimitMinutes": 75,
       "isMandatory": true,
       "frequency": "weekly",
+      "scheduledDays": [
+        0
+      ],
+      "cleaningSites": [],
       "category": "General",
       "isDeleted": true
     },
@@ -104,6 +116,10 @@
       "timeLimitMinutes": 50,
       "isMandatory": true,
       "frequency": "weekly",
+      "scheduledDays": [
+        0
+      ],
+      "cleaningSites": [],
       "category": "General",
       "isDeleted": true
     },
@@ -113,6 +129,10 @@
       "timeLimitMinutes": 50,
       "isMandatory": true,
       "frequency": "weekly",
+      "scheduledDays": [
+        0
+      ],
+      "cleaningSites": [],
       "category": "General",
       "isDeleted": true
     },
@@ -122,6 +142,13 @@
       "timeLimitMinutes": 65,
       "isMandatory": false,
       "frequency": "every2days",
+      "scheduledDays": [
+        0,
+        2,
+        4,
+        6
+      ],
+      "cleaningSites": [],
       "category": "Limpieza",
       "isDeleted": false
     },
@@ -131,6 +158,16 @@
       "timeLimitMinutes": 60,
       "isMandatory": true,
       "frequency": "daily",
+      "scheduledDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "cleaningSites": [],
       "category": "Limpieza",
       "isDeleted": false
     },
@@ -140,6 +177,20 @@
       "timeLimitMinutes": 70,
       "isMandatory": true,
       "frequency": "daily",
+      "scheduledDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "cleaningSites": [
+        "C1",
+        "C2",
+        "C3"
+      ],
       "category": "Limpieza",
       "isDeleted": false
     },
@@ -149,6 +200,13 @@
       "timeLimitMinutes": 90,
       "isMandatory": false,
       "frequency": "every2days",
+      "scheduledDays": [
+        0,
+        2,
+        4,
+        6
+      ],
+      "cleaningSites": [],
       "category": "Limpieza",
       "isDeleted": false
     },
@@ -158,6 +216,10 @@
       "timeLimitMinutes": 40,
       "isMandatory": false,
       "frequency": "weekly",
+      "scheduledDays": [
+        0
+      ],
+      "cleaningSites": [],
       "category": "Limpieza",
       "isDeleted": false
     },
@@ -167,6 +229,13 @@
       "timeLimitMinutes": 20,
       "isMandatory": false,
       "frequency": "every2days",
+      "scheduledDays": [
+        0,
+        2,
+        4,
+        6
+      ],
+      "cleaningSites": [],
       "category": "Limpieza",
       "isDeleted": false
     },
@@ -176,6 +245,13 @@
       "timeLimitMinutes": 60,
       "isMandatory": false,
       "frequency": "every2days",
+      "scheduledDays": [
+        0,
+        2,
+        4,
+        6
+      ],
+      "cleaningSites": [],
       "category": "Limpieza",
       "isDeleted": false
     },
@@ -185,6 +261,16 @@
       "timeLimitMinutes": 60,
       "isMandatory": true,
       "frequency": "daily",
+      "scheduledDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "cleaningSites": [],
       "category": "Limpieza",
       "isDeleted": false
     },
@@ -194,6 +280,16 @@
       "timeLimitMinutes": 35,
       "isMandatory": true,
       "frequency": "daily",
+      "scheduledDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "cleaningSites": [],
       "category": "Limpieza",
       "isDeleted": false
     },
@@ -203,6 +299,13 @@
       "timeLimitMinutes": 35,
       "isMandatory": false,
       "frequency": "every2days",
+      "scheduledDays": [
+        0,
+        2,
+        4,
+        6
+      ],
+      "cleaningSites": [],
       "category": "Limpieza",
       "isDeleted": false
     },
@@ -212,6 +315,16 @@
       "timeLimitMinutes": 30,
       "isMandatory": true,
       "frequency": "daily",
+      "scheduledDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "cleaningSites": [],
       "category": "Limpieza",
       "isDeleted": false
     },
@@ -221,6 +334,13 @@
       "timeLimitMinutes": 35,
       "isMandatory": false,
       "frequency": "every2days",
+      "scheduledDays": [
+        0,
+        2,
+        4,
+        6
+      ],
+      "cleaningSites": [],
       "category": "Limpieza",
       "isDeleted": false
     },
@@ -230,6 +350,13 @@
       "timeLimitMinutes": 70,
       "isMandatory": false,
       "frequency": "every2days",
+      "scheduledDays": [
+        0,
+        2,
+        4,
+        6
+      ],
+      "cleaningSites": [],
       "category": "Limpieza",
       "isDeleted": false
     },
@@ -239,6 +366,10 @@
       "timeLimitMinutes": 50,
       "isMandatory": false,
       "frequency": "weekly",
+      "scheduledDays": [
+        0
+      ],
+      "cleaningSites": [],
       "category": "Limpieza",
       "isDeleted": false
     },
@@ -248,6 +379,13 @@
       "timeLimitMinutes": 30,
       "isMandatory": false,
       "frequency": "every2days",
+      "scheduledDays": [
+        0,
+        2,
+        4,
+        6
+      ],
+      "cleaningSites": [],
       "category": "Limpieza",
       "isDeleted": false
     },
@@ -257,6 +395,10 @@
       "timeLimitMinutes": 60,
       "isMandatory": false,
       "frequency": "weekly",
+      "scheduledDays": [
+        0
+      ],
+      "cleaningSites": [],
       "category": "Limpieza",
       "isDeleted": false
     },
@@ -266,6 +408,10 @@
       "timeLimitMinutes": 30,
       "isMandatory": false,
       "frequency": "weekly",
+      "scheduledDays": [
+        0
+      ],
+      "cleaningSites": [],
       "category": "Limpieza",
       "isDeleted": false
     },
@@ -275,6 +421,10 @@
       "timeLimitMinutes": 35,
       "isMandatory": false,
       "frequency": "weekly",
+      "scheduledDays": [
+        0
+      ],
+      "cleaningSites": [],
       "category": "Limpieza",
       "isDeleted": false
     }
@@ -9409,12 +9559,8 @@
         "columnOrder": [
           "fld-0mdfs1q6",
           "fld-qsz13t42",
-          "fld-2b8trc7c",
           "fld-qb54r8d9",
           "fld-tfrpbe0m",
-          "fld-932zc8ag",
-          "fld-upiat8bl",
-          "fld-mf9mt6b0",
           "fld-0dkj3b5x",
           "fld-m7ncgvx9",
           "fld-2poaolyx",
@@ -9430,8 +9576,6 @@
           "fld-3qiexh33",
           "fld-98i7zceh",
           "fld-dgx50xpd",
-          "fld-teh6yvlx",
-          "fld-knv8jyqo",
           "aux:status",
           "aux:time",
           "aux:totalTime",
@@ -9450,7 +9594,15 @@
         "operationalContextOptions": [
           "Revisión"
         ],
-        "operationalContextValue": "Revisión"
+        "operationalContextValue": "Revisión",
+        "columnWidths": {
+          "fld-tfrpbe0m": 147,
+          "fld-0dkj3b5x": 96,
+          "fld-m7ncgvx9": 100,
+          "fld-2poaolyx": 93,
+          "fld-k2bb0z18": 134,
+          "fld-qsz13t42": 113
+        }
       },
       "fields": [
         {
@@ -9498,28 +9650,6 @@
           "colorRules": []
         },
         {
-          "id": "fld-2b8trc7c",
-          "label": "Player",
-          "type": "user",
-          "optionSource": "manual",
-          "optionCatalogCategory": "",
-          "options": [],
-          "inventoryProperty": "code",
-          "sourceFieldId": null,
-          "formulaOperation": "add",
-          "formulaLeftFieldId": null,
-          "formulaRightFieldId": null,
-          "helpText": "Persona responsable de la revisión.",
-          "placeholder": "",
-          "defaultValue": "",
-          "width": "sm",
-          "widthPx": 90,
-          "required": false,
-          "groupName": "Control",
-          "groupColor": "#ede9fe",
-          "colorRules": []
-        },
-        {
           "id": "fld-qb54r8d9",
           "label": "Estación",
           "type": "text",
@@ -9559,77 +9689,6 @@
           "width": "lg",
           "widthPx": 210,
           "required": true,
-          "groupName": "Producto",
-          "groupColor": "#e0f2fe",
-          "colorRules": []
-        },
-        {
-          "id": "fld-932zc8ag",
-          "label": "Nombre",
-          "type": "inventoryProperty",
-          "optionSource": "manual",
-          "optionCatalogCategory": "",
-          "options": [],
-          "inventoryProperty": "name",
-          "sourceFieldId": "fld-tfrpbe0m",
-          "formulaOperation": "add",
-          "formulaLeftFieldId": null,
-          "formulaRightFieldId": null,
-          "helpText": "Nombre del producto tomado del inventario.",
-          "placeholder": "",
-          "defaultValue": "",
-          "width": "lg",
-          "widthPx": null,
-          "required": false,
-          "groupName": "Producto",
-          "groupColor": "#e0f2fe",
-          "colorRules": []
-        },
-        {
-          "id": "fld-upiat8bl",
-          "label": "Presentación",
-          "type": "inventoryProperty",
-          "optionSource": "manual",
-          "optionCatalogCategory": "",
-          "options": [],
-          "inventoryProperty": "presentation",
-          "sourceFieldId": "fld-tfrpbe0m",
-          "formulaOperation": "add",
-          "formulaLeftFieldId": null,
-          "formulaRightFieldId": null,
-          "helpText": "Presentación tomada del inventario.",
-          "placeholder": "",
-          "defaultValue": "",
-          "width": "md",
-          "widthPx": null,
-          "required": false,
-          "groupName": "Producto",
-          "groupColor": "#e0f2fe",
-          "colorRules": []
-        },
-        {
-          "id": "fld-mf9mt6b0",
-          "label": "Clasificación",
-          "type": "select",
-          "optionSource": "manual",
-          "optionCatalogCategory": "",
-          "options": [
-            "Buen estado",
-            "Merma",
-            "Cuarentena",
-            "Pendiente"
-          ],
-          "inventoryProperty": "code",
-          "sourceFieldId": null,
-          "formulaOperation": "add",
-          "formulaLeftFieldId": null,
-          "formulaRightFieldId": null,
-          "helpText": "Clasificación resultante del producto revisado.",
-          "placeholder": "",
-          "defaultValue": "",
-          "width": "sm",
-          "widthPx": null,
-          "required": false,
           "groupName": "Producto",
           "groupColor": "#e0f2fe",
           "colorRules": []
@@ -9972,50 +10031,6 @@
           "colorRules": []
         },
         {
-          "id": "fld-teh6yvlx",
-          "label": "Motivo de pausa",
-          "type": "textarea",
-          "optionSource": "manual",
-          "optionCatalogCategory": "",
-          "options": [],
-          "inventoryProperty": "code",
-          "sourceFieldId": null,
-          "formulaOperation": "add",
-          "formulaLeftFieldId": null,
-          "formulaRightFieldId": null,
-          "helpText": "Motivo de las pausas durante la revisión.",
-          "placeholder": "",
-          "defaultValue": "",
-          "width": "lg",
-          "widthPx": null,
-          "required": false,
-          "groupName": "Tiempo",
-          "groupColor": "#fee2e2",
-          "colorRules": []
-        },
-        {
-          "id": "fld-knv8jyqo",
-          "label": "Tiempo de pausa",
-          "type": "duration",
-          "optionSource": "manual",
-          "optionCatalogCategory": "",
-          "options": [],
-          "inventoryProperty": "code",
-          "sourceFieldId": null,
-          "formulaOperation": "add",
-          "formulaLeftFieldId": null,
-          "formulaRightFieldId": null,
-          "helpText": "Tiempo acumulado de pausa.",
-          "placeholder": "",
-          "defaultValue": "",
-          "width": "sm",
-          "widthPx": 120,
-          "required": false,
-          "groupName": "Tiempo",
-          "groupColor": "#fee2e2",
-          "colorRules": []
-        },
-        {
           "id": "fld-c7zlre4d",
           "label": "Observaciones",
           "type": "textarea",
@@ -10044,35 +10059,31 @@
           "values": {
             "fld-0mdfs1q6": "2026-04-27",
             "fld-qsz13t42": "1",
-            "fld-2b8trc7c": "usr-lead-nu7wt83h",
             "fld-qb54r8d9": "1",
             "fld-tfrpbe0m": "inv-3s48ng1m",
-            "fld-932zc8ag": "",
-            "fld-upiat8bl": "",
-            "fld-mf9mt6b0": "",
             "fld-0dkj3b5x": "123456",
-            "fld-m7ncgvx9": "",
+            "fld-m7ncgvx9": "123456",
             "fld-2poaolyx": "",
             "fld-k2bb0z18": "",
-            "fld-sf0ku94c": 0,
+            "fld-sf0ku94c": 40,
             "fld-kxjv1tti": "",
             "fld-w7l359e5": "",
             "fld-t4lc3uib": "",
             "fld-fxcbxxhm": 0,
             "fld-wfufcb0c": 0,
-            "fld-6p7nqzmd": [
+            "fld-6p7nqzmd": [],
+            "fld-uev2k1ab": [
               {
-                "option": "Lote borroso",
-                "label": "Lote borroso",
-                "detail": ""
+                "url": "/api/uploads/files/1777306873482_mercadopago_logo_icon_248494.png",
+                "thumbnailUrl": "/api/uploads/files/1777306873482_mercadopago_logo_icon_248494.png",
+                "mimeType": "image/png",
+                "name": "mercadopago_logo_icon_248494.png",
+                "publicId": ""
               }
             ],
-            "fld-uev2k1ab": "",
             "fld-3qiexh33": 0,
             "fld-98i7zceh": "",
             "fld-dgx50xpd": "",
-            "fld-teh6yvlx": "",
-            "fld-knv8jyqo": "",
             "fld-c7zlre4d": ""
           },
           "responsibleId": "usr-lead-nu7wt83h",
@@ -10082,6 +10093,38 @@
           "accumulatedSeconds": 0,
           "lastResumedAt": null,
           "createdAt": "2026-04-27T15:09:36.477Z"
+        },
+        {
+          "id": "row-ea3bfa5667c2",
+          "values": {
+            "fld-0mdfs1q6": "2026-04-27",
+            "fld-qsz13t42": "",
+            "fld-qb54r8d9": "",
+            "fld-tfrpbe0m": "inv-3s48ng1m",
+            "fld-0dkj3b5x": "",
+            "fld-m7ncgvx9": "",
+            "fld-2poaolyx": "",
+            "fld-k2bb0z18": "",
+            "fld-sf0ku94c": 0,
+            "fld-kxjv1tti": "",
+            "fld-w7l359e5": "",
+            "fld-t4lc3uib": "",
+            "fld-fxcbxxhm": 0,
+            "fld-wfufcb0c": 0,
+            "fld-6p7nqzmd": "",
+            "fld-uev2k1ab": "",
+            "fld-3qiexh33": 0,
+            "fld-98i7zceh": "",
+            "fld-dgx50xpd": "",
+            "fld-c7zlre4d": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-27T18:03:08.976Z"
         }
       ],
       "permissions": {
@@ -10765,7 +10808,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-27T15:50:24.213Z",
+  "updatedAt": "2026-04-27T19:16:15.735Z",
   "permissions": {
     "pages": {
       "index": {
