@@ -16,6 +16,40 @@ const TARIMA_STATUS_PENDING = "Pendiente";
 const TARIMA_STATUS_RUNNING = "En curso";
 const TARIMA_STATUS_PAUSED = "Pausado";
 const TARIMA_STATUS_FINISHED = "Terminado";
+const TARIMA_PAUSE_START_HOUR = (() => {
+  const raw = Number.parseInt(String(import.meta.env?.VITE_TARIMA_PAUSE_START_HOUR ?? "16"), 10);
+  if (!Number.isFinite(raw)) return 16;
+  return Math.min(23, Math.max(0, raw));
+})();
+const TARIMA_PAUSE_END_HOUR = (() => {
+  const raw = Number.parseInt(String(import.meta.env?.VITE_TARIMA_PAUSE_END_HOUR ?? "8"), 10);
+  if (!Number.isFinite(raw)) return 8;
+  return Math.min(23, Math.max(0, raw));
+})();
+const TARIMA_PAUSE_TIMEZONE = String(import.meta.env?.VITE_TARIMA_PAUSE_TIMEZONE || "America/Mexico_City").trim() || "America/Mexico_City";
+const TARIMA_PAUSE_WINDOW_LABEL = `${String(TARIMA_PAUSE_START_HOUR).padStart(2, "0")}:00-${String(TARIMA_PAUSE_END_HOUR).padStart(2, "0")}:00`;
+
+function getHourInTimeZone(dateValue, timeZone) {
+  try {
+    const hourPart = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hour: "2-digit",
+      hour12: false,
+    }).formatToParts(dateValue).find((part) => part.type === "hour");
+    const hour = Number.parseInt(String(hourPart?.value || "0"), 10);
+    if (!Number.isFinite(hour)) return null;
+    return Math.min(23, Math.max(0, hour));
+  } catch {
+    return null;
+  }
+}
+
+function isWithinPauseWindow(hour, startHour, endHour) {
+  if (!Number.isFinite(hour)) return false;
+  if (startHour === endHour) return true;
+  if (startHour < endHour) return hour >= startHour && hour < endHour;
+  return hour >= startHour || hour < endHour;
+}
 
 function resolveTarimaWorkflowStatus(tarima) {
   if (!tarima) return TARIMA_STATUS_PENDING;
@@ -182,13 +216,14 @@ function ReturnsReconditionScannerInner({
     return activeTarima.boxes?.find((b) => b.id === activeBoxId) || null;
   }, [activeTarima, activeBoxId]);
 
-  // Pausa automática por horario México (16:00-08:00)
+  // Pausa automática por horario configurable
   useEffect(() => {
     const checkPause = () => {
       const now = new Date();
-      const mexicoTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
-      const hours = mexicoTime.getHours();
-      const shouldPause = hours >= 16 || hours < 8;
+      const tzHour = getHourInTimeZone(now, TARIMA_PAUSE_TIMEZONE);
+      const localHour = now.getHours();
+      const effectiveHour = Number.isFinite(tzHour) ? tzHour : localHour;
+      const shouldPause = isWithinPauseWindow(effectiveHour, TARIMA_PAUSE_START_HOUR, TARIMA_PAUSE_END_HOUR);
       setSystemPaused(shouldPause);
     };
     checkPause();
@@ -1121,7 +1156,7 @@ function ReturnsReconditionScannerInner({
   function handleScanSubmit() {
     if (disabled || systemPaused) {
       if (systemPaused) {
-        setBoardRuntimeFeedback({ tone: "warning", message: "Sistema pausado automáticamente. Se reanudará a las 08:00 hrs México." });
+        setBoardRuntimeFeedback({ tone: "warning", message: `Sistema pausado automáticamente por horario (${TARIMA_PAUSE_WINDOW_LABEL}, ${TARIMA_PAUSE_TIMEZONE}).` });
       }
       return;
     }
@@ -1346,7 +1381,7 @@ function ReturnsReconditionScannerInner({
         </div>
         <div className="saved-board-list">
           {systemPaused && (
-            <span className="chip" style={{ background: "#fee2e2", color: "#991b1b" }}>⏸ Pausado automáticamente (16:00-08:00 hrs MX)</span>
+            <span className="chip" style={{ background: "#fee2e2", color: "#991b1b" }}>⏸ Pausado automáticamente ({TARIMA_PAUSE_WINDOW_LABEL} · {TARIMA_PAUSE_TIMEZONE})</span>
           )}
           {activeTarima && (
             <>
@@ -1419,7 +1454,7 @@ function ReturnsReconditionScannerInner({
               handleScanSubmit();
             }
           }}
-          placeholder={disabled ? "Vista histórica en solo lectura" : systemPaused ? "Sistema pausado (reanudar 08:00 hrs MX)" : tarimaWorkflowBlocked ? "Workflow de tarima en pausa/finalizado" : "Escanea o escribe código (auto-registro)"}
+          placeholder={disabled ? "Vista histórica en solo lectura" : systemPaused ? `Sistema pausado (${TARIMA_PAUSE_WINDOW_LABEL})` : tarimaWorkflowBlocked ? "Workflow de tarima en pausa/finalizado" : "Escanea o escribe código (auto-registro)"}
           disabled={disabled || systemPaused || tarimaWorkflowBlocked || lotModalOpen || tarimaModalOpen || boxModalOpen}
         />
       </div>

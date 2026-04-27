@@ -97,6 +97,11 @@ Variables adicionales disponibles:
 ## Variables de frontend
 
 - En local puedes definir `VITE_API_URL` o `VITE_API_BASE_URL` en tu archivo `.env` dentro de `frontend/` si quieres apuntar a otra API distinta de `localhost:4000`.
+- Horario de pausa automatica de tarima (frontend):
+  - `VITE_TARIMA_PAUSE_START_HOUR` (0-23, inicio de pausa)
+  - `VITE_TARIMA_PAUSE_END_HOUR` (0-23, fin de pausa)
+  - `VITE_TARIMA_PAUSE_TIMEZONE` (ejemplo: `America/Mexico_City`)
+- Referencia base: `frontend/.env.example`.
 
 ## Estado por fases
 
