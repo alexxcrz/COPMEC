@@ -352,6 +352,7 @@ import { AlertModalProvider } from "./components/AlertModal.jsx";
 
 
 const INITIAL_ROUTE_STATE = getInitialRouteState();
+const HIDDEN_BASE_TEMPLATES_KEY = "copmec-hidden-base-templates";
 
 
 function App() { // NOSONAR
@@ -421,6 +422,14 @@ function App() { // NOSONAR
   const [templateCategoryFilter, setTemplateCategoryFilter] = useState("Todas");
   const [templateEditorModal, setTemplateEditorModal] = useState({ open: false, id: null, name: "", description: "", category: "", visibilityType: "department", sharedDepartments: [], sharedUserIds: [] });
   const [templateDeleteModal, setTemplateDeleteModal] = useState({ open: false, id: null, name: "" });
+  const [hiddenBaseTemplateIds, setHiddenBaseTemplateIds] = useState(() => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(HIDDEN_BASE_TEMPLATES_KEY) || "[]");
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  });
   const [templatePreviewId, setTemplatePreviewId] = useState(null);
   const [componentStudioOpen, setComponentStudioOpen] = useState(false);
   const [editingDraftColumnId, setEditingDraftColumnId] = useState(null);
@@ -756,6 +765,10 @@ function App() { // NOSONAR
   useEffect(() => {
     localStorage.setItem(DASHBOARD_SECTIONS_KEY, JSON.stringify(dashboardSectionsOpen));
   }, [dashboardSectionsOpen]);
+
+  useEffect(() => {
+    localStorage.setItem(HIDDEN_BASE_TEMPLATES_KEY, JSON.stringify(hiddenBaseTemplateIds));
+  }, [hiddenBaseTemplateIds]);
 
   useEffect(() => {
     document.title = "COPMEC";
@@ -2620,10 +2633,11 @@ function App() { // NOSONAR
   }, [currentUser, normalizedPermissions, selectedCustomBoard]);
 
   const availableBoardTemplates = useMemo(() => {
-    if (!currentUser) return BOARD_TEMPLATES;
+    const visibleBaseTemplates = BOARD_TEMPLATES.filter((template) => !hiddenBaseTemplateIds.includes(template.id));
+    if (!currentUser) return visibleBaseTemplates;
     const sharedTemplates = (state.boardTemplates || []).filter((template) => canUserAccessTemplate(template, currentUser));
-    return BOARD_TEMPLATES.concat(sharedTemplates);
-  }, [currentUser, state.boardTemplates]);
+    return visibleBaseTemplates.concat(sharedTemplates);
+  }, [currentUser, hiddenBaseTemplateIds, state.boardTemplates]);
 
   const customTemplateIds = useMemo(
     () => new Set((state.boardTemplates || []).map((template) => template.id)),
@@ -3103,6 +3117,7 @@ function App() { // NOSONAR
   }
 
   function removeWeekActivity(activityId) {
+    if (!actionPermissions.deleteWeekActivity) return;
     setState((current) => ({
       ...current,
       activities: current.activities.filter((activity) => activity.id !== activityId),
@@ -3864,12 +3879,24 @@ function App() { // NOSONAR
   }
 
   function openDeleteBoardTemplateModal(template) {
-    if (!template || !actionPermissions.deleteTemplate || !customTemplateIds.has(template.id)) return;
+    if (!template || !actionPermissions.deleteTemplate) return;
     setTemplateDeleteModal({ open: true, id: template.id, name: template.name || "Plantilla" });
   }
 
   async function confirmDeleteBoardTemplate() {
     if (!templateDeleteModal.id || !actionPermissions.deleteTemplate) return;
+
+    if (!customTemplateIds.has(templateDeleteModal.id)) {
+      setHiddenBaseTemplateIds((current) => current.includes(templateDeleteModal.id)
+        ? current
+        : current.concat(templateDeleteModal.id));
+      if (templatePreviewId === templateDeleteModal.id) {
+        setTemplatePreviewId(null);
+      }
+      setControlBoardFeedback(`Plantilla ${templateDeleteModal.name} eliminada correctamente.`);
+      setTemplateDeleteModal({ open: false, id: null, name: "" });
+      return;
+    }
 
     try {
       const result = await requestJson(`/warehouse/templates/${templateDeleteModal.id}`, {
@@ -5212,6 +5239,11 @@ function App() { // NOSONAR
     const rawValue = values[field.id];
 
     if (field.type === "inventoryProperty") {
+      const rawInventoryOverride = values[field.id];
+      const allowManualInventoryValue = ["lot", "expiry", "label"].includes(field.inventoryProperty);
+      if (allowManualInventoryValue && rawInventoryOverride !== undefined && rawInventoryOverride !== null && String(rawInventoryOverride).trim()) {
+        return rawInventoryOverride;
+      }
       const resolvedSourceFieldId = resolveInventoryPropertySourceFieldId(boardFields, field.sourceFieldId, field.id);
       const lookupId = values[resolvedSourceFieldId];
       const inventoryItem = (state.inventoryItems || []).find((item) => item.id === lookupId);
@@ -5219,8 +5251,26 @@ function App() { // NOSONAR
     }
 
     if (field.type === "formula") {
-      const left = Number(values[field.formulaLeftFieldId] ?? getBoardFieldValue(board, row, boardFields.find((item) => item.id === field.formulaLeftFieldId)) ?? 0);
-      const right = Number(values[field.formulaRightFieldId] ?? getBoardFieldValue(board, row, boardFields.find((item) => item.id === field.formulaRightFieldId)) ?? 0);
+      const leftField = boardFields.find((item) => item.id === field.formulaLeftFieldId);
+      const rightField = boardFields.find((item) => item.id === field.formulaRightFieldId);
+      
+      let leftValue = 0;
+      if (leftField) {
+        const rawLeftValue = values[field.formulaLeftFieldId];
+        const hasValidLeftValue = rawLeftValue !== undefined && rawLeftValue !== null && String(rawLeftValue).trim() !== "";
+        leftValue = Number(hasValidLeftValue ? rawLeftValue : getBoardFieldValue(board, row, leftField)) || 0;
+      }
+      
+      let rightValue = 0;
+      if (rightField) {
+        const rawRightValue = values[field.formulaRightFieldId];
+        const hasValidRightValue = rawRightValue !== undefined && rawRightValue !== null && String(rawRightValue).trim() !== "";
+        rightValue = Number(hasValidRightValue ? rawRightValue : getBoardFieldValue(board, row, rightField)) || 0;
+      }
+      
+      const left = leftValue;
+      const right = rightValue;
+      
       if (field.formulaOperation === "subtract") return left - right;
       if (field.formulaOperation === "multiply") return left * right;
       if (field.formulaOperation === "divide") return right === 0 ? 0 : left / right;
@@ -6155,7 +6205,7 @@ function App() { // NOSONAR
                   <strong>{getActivityLabel(activity, catalogMap)}</strong>
                   <span>{activity.status}</span>
                 </div>
-                <button type="button" className="icon-button danger" onClick={() => removeWeekActivity(activity.id)}><Trash2 size={15} /> Quitar</button>
+                {actionPermissions.deleteWeekActivity ? <button type="button" className="icon-button danger" onClick={() => removeWeekActivity(activity.id)}><Trash2 size={15} /> Quitar</button> : null}
               </div>
             ))}
           </div>
@@ -6446,7 +6496,7 @@ function App() { // NOSONAR
         onPreviewTemplate={previewBoardTemplate}
         onApplyTemplate={applyBoardTemplate}
         onDeleteTemplate={actionPermissions.deleteTemplate ? openDeleteBoardTemplateModal : null}
-        canDeleteTemplate={(template) => customTemplateIds.has(template.id)}
+        canDeleteTemplate={() => true}
         selectedPreviewTemplate={selectedPreviewTemplate}
         onClearTemplatePreview={() => setTemplatePreviewId(null)}
         previewBoard={boardBuilderPreview}

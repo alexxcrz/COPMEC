@@ -642,6 +642,7 @@ export const ACTION_DEFINITIONS = [
   { id: "editTemplate",            label: "Editar plantillas",                        category: "Creador de tableros", defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "deleteTemplate",          label: "Eliminar plantillas",                      category: "Creador de tableros", defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "createBoardRow",          label: "Agregar filas en Mis tableros",            category: "Mis tableros",        defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
+  { id: "deleteBoardRow",          label: "Eliminar filas en Mis tableros",           category: "Mis tableros",        defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "editFinishedBoardRow",    label: "Editar filas terminadas",                  category: "Mis tableros",        defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
   { id: "boardWorkflow",           label: "Ejecutar flujo del tablero",               category: "Mis tableros",        defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
   { id: "duplicateBoard",          label: "Duplicar tablero vacío",                   category: "Tableros creados",    defaultRoles: [ROLE_LEAD, ROLE_SR] },
@@ -657,10 +658,12 @@ export const ACTION_DEFINITIONS = [
   { id: "viewProcessAudits",       label: "Ver auditorías de procesos",               category: "Auditorías",          defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
   { id: "manageProcessAudits",     label: "Gestionar auditorías de procesos",         category: "Auditorías",          defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
   { id: "manageProcessAuditTemplates", label: "Gestionar plantillas de auditoría",    category: "Auditorías",          defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "deleteWeekActivity",      label: "Eliminar actividades de semana",            category: "Operación semanal",   defaultRoles: [ROLE_LEAD] },
 ];
 
 export const BOARD_PERMISSION_ACTION_IDS = new Set([
   "createBoardRow",
+  "deleteBoardRow",
   "editFinishedBoardRow",
   "boardWorkflow",
   "exportBoardExcel",
@@ -671,9 +674,9 @@ export const BOARD_PERMISSION_ACTION_IDS = new Set([
 export const BOARD_PERMISSION_ACTIONS = ACTION_DEFINITIONS.filter((item) => BOARD_PERMISSION_ACTION_IDS.has(item.id));
 
 export const PAGE_ACTION_GROUPS = {
-  [PAGE_CUSTOM_BOARDS]: ["createBoardRow", "editFinishedBoardRow", "boardWorkflow", "exportBoardExcel", "previewBoardPdf", "exportBoardPdf"],
+  [PAGE_CUSTOM_BOARDS]: ["createBoardRow", "deleteBoardRow", "editFinishedBoardRow", "boardWorkflow", "exportBoardExcel", "previewBoardPdf", "exportBoardPdf"],
   [PAGE_DASHBOARD]: [],
-  [PAGE_BOARD]: ["createCatalog", "editCatalog", "deleteCatalog", "createBoard", "editBoard", "saveTemplate", "editTemplate", "deleteTemplate", "duplicateBoard", "duplicateBoardWithRows", "deleteBoard"],
+  [PAGE_BOARD]: ["createCatalog", "editCatalog", "deleteCatalog", "createBoard", "editBoard", "saveTemplate", "editTemplate", "deleteTemplate", "duplicateBoard", "duplicateBoardWithRows", "deleteBoard", "deleteWeekActivity"],
   [PAGE_ADMIN]: [],
   [PAGE_HISTORY]: [],
   [PAGE_PROCESS_AUDITS]: ["viewProcessAudits", "manageProcessAudits", "manageProcessAuditTemplates"],

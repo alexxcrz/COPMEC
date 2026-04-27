@@ -1,6 +1,50 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ReturnsReconditionScanner from "../features/boards/ReturnsReconditionScanner.jsx";
-import { BoardEvidenceCell, BoardMultiSelectDetailCell } from "../components/BoardRuntimeFieldCells.jsx";
+import { BoardEditableInventoryPropertyInput, BoardEvidenceCell, BoardMultiSelectDetailCell } from "../components/BoardRuntimeFieldCells.jsx";
+import { resolveInventoryPropertySourceFieldId } from "../utils/utilidades.jsx";
+
+const EDITABLE_INVENTORY_PROPERTIES = new Set(["lot", "expiry", "label"]);
+
+function parseInventoryLotHistory(rawValue) {
+  if (!rawValue) return [];
+  if (Array.isArray(rawValue)) return rawValue;
+  if (typeof rawValue !== "string") return [];
+  try {
+    const parsed = JSON.parse(rawValue);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function getInventoryPropertySuggestions(item, property, fallbackValue = "") {
+  const customFields = item?.customFields && typeof item.customFields === "object" ? item.customFields : {};
+  const lotHistory = parseInventoryLotHistory(customFields.lotesCaducidades);
+  const values = [];
+  if (property === "lot") {
+    values.push(customFields.lote);
+    lotHistory.forEach((entry) => values.push(entry?.lot));
+  } else if (property === "expiry") {
+    values.push(customFields.caducidad);
+    lotHistory.forEach((entry) => values.push(entry?.expiry));
+  } else if (property === "label") {
+    values.push(customFields.etiqueta);
+    lotHistory.forEach((entry) => values.push(entry?.etiqueta || entry?.label));
+  }
+
+  if (fallbackValue) values.push(fallbackValue);
+
+  const seen = new Set();
+  return values
+    .map((entry) => String(entry || "").trim())
+    .filter((entry) => {
+      if (!entry) return false;
+      const key = entry.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
 
 export default function MisTableros({ contexto }) {
   const {
@@ -173,6 +217,9 @@ export default function MisTableros({ contexto }) {
   const isBoardOwner = Boolean(selectedCustomBoard && currentUser && (currentUser.role === "Lead" || selectedCustomBoard.createdById === currentUser.id || selectedCustomBoard.ownerId === currentUser.id));
   const [manualGlobalPause, setManualGlobalPause] = useState(false);
   const [globalForceActive, setGlobalForceActive] = useState(false);
+  const [columnResizing, setColumnResizing] = useState({ isResizing: false, columnToken: null, startX: 0, startWidth: 0 });
+  const [columnWidthsOverride, setColumnWidthsOverride] = useState({});
+  const columnWidthsOverrideRef = useRef({});
   const selectedBoardId = String(selectedCustomBoard?.id || "default");
   const globalPauseStorageKey = `copmec_global_pause:${selectedBoardId}`;
   const globalForceStorageKey = `copmec_global_force:${selectedBoardId}`;
@@ -255,6 +302,101 @@ export default function MisTableros({ contexto }) {
     ? cleaningNaveOptions
     : ["C1", "C2", "C3"];
   const cleaningNaveValue = boardOperationalContextValue || effectiveCleaningNaves[0] || "C3";
+
+  // Handlers para redimensionamiento de columnas
+  const getColumnMinWidth = (column) => {
+    if (column.kind === "field") return 72;
+    const minWidthMap = { assignee: 90, status: 80, time: 80, totalTime: 80, efficiency: 76, workflow: 96 };
+    return minWidthMap[column.id] || 72;
+  };
+
+  const handleColumnResizeStart = (e, columnToken) => {
+    e.preventDefault();
+    const th = e.currentTarget.parentElement;
+    const rect = th.getBoundingClientRect();
+    setColumnResizing({
+      isResizing: true,
+      columnToken,
+      startX: e.clientX,
+      startWidth: rect.width,
+    });
+  };
+
+  useEffect(() => {
+    columnWidthsOverrideRef.current = columnWidthsOverride;
+  }, [columnWidthsOverride]);
+
+  useEffect(() => {
+    if (!columnResizing.isResizing) return;
+
+    const handleMouseMove = (e) => {
+      const diff = e.clientX - columnResizing.startX;
+      const newWidth = Math.max(getColumnMinWidth(visibleBoardColumns.find(c => c.token === columnResizing.columnToken)), columnResizing.startWidth + diff);
+      const nextWidths = {
+        ...columnWidthsOverrideRef.current,
+        [columnResizing.columnToken]: newWidth,
+      };
+      columnWidthsOverrideRef.current = nextWidths;
+      setColumnWidthsOverride(prev => ({
+        ...prev,
+        [columnResizing.columnToken]: newWidth,
+      }));
+    };
+
+    const handleMouseUp = async () => {
+      setColumnResizing({ isResizing: false, columnToken: null, startX: 0, startWidth: 0 });
+      
+      // Guardar los anchos personalizados en el board settings
+      const pendingWidths = columnWidthsOverrideRef.current;
+      if (selectedCustomBoard && Object.keys(pendingWidths).length > 0) {
+        try {
+          const response = await requestJson(`/warehouse/boards/${selectedCustomBoard.id}`, {
+            method: "PATCH",
+            body: JSON.stringify({
+              name: selectedCustomBoard.name,
+              description: selectedCustomBoard.description,
+              ownerId: selectedCustomBoard.ownerId,
+              visibilityType: selectedCustomBoard.visibilityType,
+              sharedDepartments: selectedCustomBoard.sharedDepartments,
+              accessUserIds: selectedCustomBoard.accessUserIds,
+              settings: {
+                ...(selectedCustomBoard.settings || {}),
+                columnWidths: {
+                  ...(selectedCustomBoard.settings?.columnWidths || {}),
+                  ...pendingWidths,
+                },
+              },
+              columns: Array.isArray(selectedCustomBoard.fields) ? selectedCustomBoard.fields : [],
+            }),
+          });
+          applyRemoteWarehouseState(response?.data?.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+          setBoardRuntimeFeedback({ tone: "success", message: "Ancho de columnas guardado." });
+        } catch (error) {
+          setBoardRuntimeFeedback({ tone: "danger", message: "No se pudieron guardar los anchos de columna" });
+        }
+      }
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [columnResizing, visibleBoardColumns]);
+
+  // Función para obtener el ancho efectivo de una columna
+  const getEffectiveColumnWidth = (column) => {
+    const transientWidth = Number(columnWidthsOverride[column.token] || 0);
+    const persistedWidth = Number(selectedCustomBoard?.settings?.columnWidths?.[column.token] || 0);
+    const resolvedWidth = transientWidth || persistedWidth;
+    if (Number.isFinite(resolvedWidth) && resolvedWidth > 0) {
+      return { minWidth: `${resolvedWidth}px`, width: `${resolvedWidth}px` };
+    }
+    if (column.kind === "field") return getFieldColumnStyle(column.field);
+    return getAuxColumnStyle(column.id);
+  };
 
   return (
     <section className="admin-page-layout mis-tableros-shell">
@@ -451,7 +593,7 @@ export default function MisTableros({ contexto }) {
                   ) : null}
                   <tr>
                     {visibleBoardColumns.map((column) => (
-                      <th key={column.token} className={column.kind !== "field" && column.id === "workflow" ? "board-pdf-hide" : ""} style={column.kind === "field" ? getFieldColumnStyle(column.field) : getAuxColumnStyle(column.id)} title={column.kind === "field" ? `${column.field.helpText || column.field.label}${column.field.required ? " · Obligatorio" : ""}` : column.label}>
+                      <th key={column.token} className={`${column.kind !== "field" && column.id === "workflow" ? "board-pdf-hide" : ""} ${columnResizing.columnToken === column.token ? "resizing" : ""}`} style={getEffectiveColumnWidth(column)} title={column.kind === "field" ? `${column.field.helpText || column.field.label}${column.field.required ? " · Obligatorio" : ""}` : column.label}>
                         {column.kind === "field"
                           ? formatFieldLabel(
                             boardLooksReturnsRecondition && String(column.field.label || "").trim().toLowerCase() === "tarima"
@@ -460,6 +602,18 @@ export default function MisTableros({ contexto }) {
                             column.field.required,
                           )
                           : column.label}
+                        <div
+                          onMouseDown={(e) => handleColumnResizeStart(e, column.token)}
+                          style={{
+                            position: "absolute",
+                            right: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: "8px",
+                            cursor: "col-resize",
+                            touchAction: "none",
+                          }}
+                        />
                       </th>
                     ))}
                   </tr>
@@ -468,7 +622,11 @@ export default function MisTableros({ contexto }) {
                   {(boardView?.rows || []).map((row) => {
                     const rowCaptureEnabled = !isHistoricalCustomBoardView && canEditBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions);
                     const rowWorkflowEnabled = !isHistoricalCustomBoardView && canOperateBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions);
-                    const rowDeleteEnabled = !isHistoricalCustomBoardView && row.status !== STATUS_FINISHED && canEditBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions);
+                    const canDeleteBoardRows = Boolean(selectedBoardActionPermissions.deleteBoardRow);
+                    const rowDeleteEnabled = canDeleteBoardRows
+                      && !isHistoricalCustomBoardView
+                      && row.status !== STATUS_FINISHED
+                      && canEditBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions);
                     const isFinishedRow = row.status === STATUS_FINISHED;
                     const rowFieldEditable = rowCaptureEnabled && !isFinishedRow;
                     const canStartRow = row.status === STATUS_PENDING || row.status === STATUS_PAUSED;
@@ -480,7 +638,7 @@ export default function MisTableros({ contexto }) {
                           if (column.kind !== "field") {
                             if (column.id === "assignee") {
                               return (
-                                <td key={`${row.id}-${column.token}`} style={getAuxColumnStyle(column.id)}>
+                                <td key={`${row.id}-${column.token}`} style={getEffectiveColumnWidth(column)}>
                                   <select value={row.responsibleId || ""} onChange={(event) => {
                                     if (!rowFieldEditable) return;
                                     requestJson(`/warehouse/boards/${selectedCustomBoard.id}/rows/${row.id}`, {
@@ -499,12 +657,12 @@ export default function MisTableros({ contexto }) {
                             }
 
                             if (column.id === "status") {
-                              return <td key={`${row.id}-${column.token}`} style={getAuxColumnStyle(column.id)}><StatusBadge status={row.status || STATUS_PENDING} /></td>;
+                              return <td key={`${row.id}-${column.token}`} style={getEffectiveColumnWidth(column)}><StatusBadge status={row.status || STATUS_PENDING} /></td>;
                             }
 
                             if (column.id === "time") {
                               const effectiveNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : now;
-                              return <td key={`${row.id}-${column.token}`} style={getAuxColumnStyle(column.id)}>{formatDurationClock(getElapsedSeconds(row, effectiveNow))}</td>;
+                              return <td key={`${row.id}-${column.token}`} style={getEffectiveColumnWidth(column)}>{formatDurationClock(getElapsedSeconds(row, effectiveNow))}</td>;
                             }
 
                             if (column.id === "totalTime") {
@@ -513,7 +671,7 @@ export default function MisTableros({ contexto }) {
                               const totalSecs = row.startTime
                                 ? Math.max(prodSecs, Math.floor((effectiveNow - new Date(row.startTime).getTime()) / 1000))
                                 : 0;
-                              return <td key={`${row.id}-${column.token}`} style={getAuxColumnStyle(column.id)}>{formatDurationClock(totalSecs)}</td>;
+                              return <td key={`${row.id}-${column.token}`} style={getEffectiveColumnWidth(column)}>{formatDurationClock(totalSecs)}</td>;
                             }
 
                             if (column.id === "efficiency") {
@@ -523,16 +681,16 @@ export default function MisTableros({ contexto }) {
                                 ? Math.max(prodSecs, Math.floor((effectiveNow - new Date(row.startTime).getTime()) / 1000))
                                 : prodSecs;
                               const pct = totalSecs > 0 ? Math.round((prodSecs / totalSecs) * 100) : (row.startTime ? 100 : 0);
-                              const color = pct >= 80 ? "#16a34a" : pct >= 50 ? "#d97706" : "#dc2626";
+                              const color = pct >= 80 ? "#16a34a" : pct >= 50 ? "#15803d" : "#dc2626";
                               return (
-                                <td key={`${row.id}-${column.token}`} style={getAuxColumnStyle(column.id)}>
+                                <td key={`${row.id}-${column.token}`} style={getEffectiveColumnWidth(column)}>
                                   <span style={{ color, fontWeight: 600 }}>{row.startTime ? `${pct}%` : "—"}</span>
                                 </td>
                               );
                             }
 
                             return (
-                              <td key={`${row.id}-${column.token}`} className="board-workflow-cell board-pdf-hide" style={getAuxColumnStyle(column.id)}>
+                              <td key={`${row.id}-${column.token}`} className="board-workflow-cell board-pdf-hide" style={getEffectiveColumnWidth(column)}>
                                 <div className="row-actions compact board-workflow-actions">
                                   {canStartRow ? (
                                     <button type="button" className="board-action-button start icon-only" title={row.status === STATUS_PAUSED ? "Reanudar" : "Iniciar"} aria-label={row.status === STATUS_PAUSED ? "Reanudar" : "Iniciar"} onClick={() => changeBoardRowStatus(selectedCustomBoard.id, row.id, STATUS_RUNNING)} disabled={!rowWorkflowEnabled}>
@@ -554,12 +712,14 @@ export default function MisTableros({ contexto }) {
                                       <Square size={13} />
                                     </button>
                                   ) : null}
-                                  <button type="button" className={`board-action-button delete icon-only ${rowDeleteEnabled ? "enabled" : "locked"}`.trim()} title={rowDeleteEnabled ? "Eliminar fila" : "Las filas terminadas no se pueden eliminar"} aria-label={rowDeleteEnabled ? "Eliminar fila" : "Las filas terminadas no se pueden eliminar"} onClick={() => {
-                                    if (!rowDeleteEnabled) return;
-                                    setDeleteBoardRowState({ open: true, boardId: selectedCustomBoard.id, rowId: row.id });
-                                  }} disabled={!rowDeleteEnabled}>
-                                    <Trash2 size={13} />
-                                  </button>
+                                  {canDeleteBoardRows ? (
+                                    <button type="button" className={`board-action-button delete icon-only ${rowDeleteEnabled ? "enabled" : "locked"}`.trim()} title={rowDeleteEnabled ? "Eliminar fila" : "Las filas terminadas no se pueden eliminar"} aria-label={rowDeleteEnabled ? "Eliminar fila" : "Las filas terminadas no se pueden eliminar"} onClick={() => {
+                                      if (!rowDeleteEnabled) return;
+                                      setDeleteBoardRowState({ open: true, boardId: selectedCustomBoard.id, rowId: row.id });
+                                    }} disabled={!rowDeleteEnabled}>
+                                      <Trash2 size={13} />
+                                    </button>
+                                  ) : null}
                                 </div>
                               </td>
                             );
@@ -568,9 +728,22 @@ export default function MisTableros({ contexto }) {
                           const field = column.field;
                           const value = getBoardFieldValue(boardView, row, field);
                           const rule = getFieldColorRule(field, value);
-                          const columnStyle = getFieldColumnStyle(field);
+                          const columnStyle = getEffectiveColumnWidth(column);
                           const controlStyle = { width: "100%" };
-                          const style = rule ? { ...getBoardFieldCellStyle(field), backgroundColor: rule.color, color: rule.textColor || "inherit", borderRadius: "0.75rem", padding: "0.45rem 0.6rem", display: "inline-flex" } : getBoardFieldCellStyle(field);
+                          const style = rule
+                            ? {
+                              backgroundColor: rule.color,
+                              color: rule.textColor || "inherit",
+                              borderRadius: "0.75rem",
+                              whiteSpace: "normal",
+                              overflowWrap: "anywhere",
+                              wordBreak: "break-word",
+                              padding: "0.45rem 0.6rem",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              maxWidth: "100%",
+                            }
+                            : undefined;
                           const isBoardActivityListField = field.type === "select" && field.optionSource === "catalogByCategory";
                           const options = buildSelectOptions(field, state);
 
@@ -737,7 +910,7 @@ export default function MisTableros({ contexto }) {
                                       key={star}
                                       type="button"
                                       onClick={() => rowFieldEditable && updateBoardRowValue(selectedCustomBoard.id, row.id, field, star)}
-                                      style={{ background: "none", border: "none", cursor: rowFieldEditable ? "pointer" : "default", fontSize: "16px", padding: "0", color: star <= ratingVal ? "#f59e0b" : "#d1d5db" }}
+                                      style={{ background: "none", border: "none", cursor: rowFieldEditable ? "pointer" : "default", fontSize: "16px", padding: "0", color: star <= ratingVal ? "#16a34a" : "#d1d5db" }}
                                       disabled={!rowFieldEditable}
                                       aria-label={`${star} estrella${star !== 1 ? "s" : ""}`}
                                     >★</button>
@@ -752,7 +925,7 @@ export default function MisTableros({ contexto }) {
                             const hasProgressValue = rawProgressValue !== "" && rawProgressValue !== null && rawProgressValue !== undefined;
                             const progVal = hasProgressValue ? Math.min(100, Math.max(0, Number(rawProgressValue))) : 0;
                             const progressInputValue = hasProgressValue ? progVal : "";
-                            const progColor = progVal >= 80 ? "#16a34a" : progVal >= 50 ? "#d97706" : "#dc2626";
+                            const progColor = progVal >= 80 ? "#16a34a" : progVal >= 50 ? "#15803d" : "#dc2626";
                             return (
                               <td key={field.id} style={columnStyle}>
                                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -819,6 +992,25 @@ export default function MisTableros({ contexto }) {
                                   disabled={!rowFieldEditable}
                                   label={field.label}
                                   onChange={(nextValue) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, nextValue)}
+                                />
+                              </td>
+                            );
+                          }
+
+                          if (field.type === "inventoryProperty" && EDITABLE_INVENTORY_PROPERTIES.has(field.inventoryProperty)) {
+                            const sourceFieldId = resolveInventoryPropertySourceFieldId(boardView?.fields || [], field.sourceFieldId, field.id);
+                            const selectedInventoryId = row.values?.[sourceFieldId] || "";
+                            const selectedInventoryItem = (state.inventoryItems || []).find((item) => item.id === selectedInventoryId) || null;
+                            const suggestions = getInventoryPropertySuggestions(selectedInventoryItem, field.inventoryProperty, value);
+                            return (
+                              <td key={field.id} style={columnStyle}>
+                                <BoardEditableInventoryPropertyInput
+                                  value={String(value || "")}
+                                  suggestions={suggestions}
+                                  onChange={(nextValue) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, nextValue)}
+                                  placeholder={field.placeholder || "Selecciona o escribe un valor"}
+                                  title={field.helpText || field.label}
+                                  disabled={!rowFieldEditable}
                                 />
                               </td>
                             );

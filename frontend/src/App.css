@@ -2271,7 +2271,7 @@ html {
 }
 
 .board-status-pill.running {
-  color: #f59e0b;
+  color: #16a34a;
 }
 
 .board-status-pill.paused {
@@ -2353,8 +2353,8 @@ html {
 .inventory-lookup-selected {
   min-height: 2.8rem;
   border-radius: 0.95rem;
-  border: 1px solid rgba(243, 176, 65, 0.5);
-  background: linear-gradient(180deg, #fffdf8 0%, #fff7e8 100%);
+  border: 1px solid rgba(22, 163, 74, 0.35);
+  background: linear-gradient(180deg, #f5fff8 0%, #ebfaef 100%);
   padding: 0.42rem 0.44rem 0.42rem 0.68rem;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -2381,7 +2381,7 @@ html {
 
 .inventory-lookup-selected-copy strong {
   font-size: 0.7rem;
-  color: #9b6a07;
+  color: #166534;
   letter-spacing: 0.04em;
 }
 
@@ -2389,10 +2389,9 @@ html {
   font-size: 0.79rem;
   line-height: 1.12;
   color: #17352d;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .inventory-lookup-selected-copy small {
@@ -2406,16 +2405,16 @@ html {
   border: 0;
   border-radius: 999px;
   background: #ffffff;
-  color: #9b6a07;
+  color: #166534;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 2px 10px rgba(120, 86, 16, 0.12);
+  box-shadow: 0 2px 10px rgba(22, 101, 52, 0.16);
 }
 
 .inventory-lookup-clear:hover {
-  background: #fff3d6;
+  background: #ecfdf3;
 }
 
 .inventory-lookup-dropdown {
@@ -2464,10 +2463,9 @@ html {
   font-size: 0.8rem;
   line-height: 1.12;
   color: #54606f;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .inventory-lookup-option small {
@@ -2511,13 +2509,13 @@ html {
 }
 
 .board-state-chip.en-curso {
-  background: #fff6e8;
-  color: #d48a1a;
+  background: #edfcef;
+  color: #1f8f4a;
 }
 
 .board-state-chip.pausado {
-  background: #fff4ea;
-  color: #e07a2f;
+  background: #edfcef;
+  color: #278f53;
 }
 
 .board-state-chip.terminado {
@@ -3480,9 +3478,9 @@ tbody tr:hover {
 }
 
 .status-badge.en-curso {
-  background: #fff9ea;
-  border-color: #f3d58f;
-  color: #d18b12;
+  background: #edfcef;
+  border-color: #bfe7c5;
+  color: #25af57;
 }
 
 .status-badge.pendiente {
@@ -3492,9 +3490,27 @@ tbody tr:hover {
 }
 
 .status-badge.pausado {
-  background: #fff4ea;
-  border-color: #f5c39a;
-  color: #e58a3a;
+  background: #edfcef;
+  border-color: #bfe7c5;
+  color: #25af57;
+}
+
+.board-runtime-table td,
+.board-runtime-table th,
+.board-runtime-table td span,
+.board-runtime-table th span,
+.board-runtime-table td p,
+.board-runtime-table th p,
+.inventory-lookup-selected-copy strong,
+.inventory-lookup-selected-copy span,
+.inventory-lookup-selected-copy small,
+.inventory-lookup-option strong,
+.inventory-lookup-option span,
+.inventory-lookup-option small {
+  text-overflow: clip !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
 }
 
 .status-badge.terminado {
@@ -5443,6 +5459,57 @@ tbody tr:hover {
   table-layout: fixed;
 }
 
+/* Estilos para redimensionamiento de columnas y text wrapping */
+.board-runtime-table th,
+.board-runtime-table td {
+  position: relative;
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.board-runtime-table td input,
+.board-runtime-table td select,
+.board-runtime-table td textarea {
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.board-runtime-table th {
+  user-select: none;
+  padding-right: 0;
+}
+
+.board-runtime-table th:last-child {
+  padding-right: 0.75rem;
+}
+
+.board-runtime-table th:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(to right, transparent 0%, rgba(3, 33, 33, 0.1) 50%, transparent 100%);
+  cursor: col-resize;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.board-runtime-table th:not(:last-child):hover::after {
+  opacity: 1;
+}
+
+.board-runtime-table th.resizing::after {
+  background: rgba(3, 33, 33, 0.3);
+  opacity: 1;
+}
+
+.board-runtime-table td {
+  vertical-align: middle;
+}
+
 .board-preview-field-heading {
   cursor: grab;
   position: relative;
@@ -6184,9 +6251,9 @@ tbody tr:hover {
     justify-content: space-between;
     gap: 1rem;
     padding: 0.6rem 1.25rem;
-    background: #fef3c7;
-    border-bottom: 1px solid #fcd34d;
-    color: #92400e;
+    background: #ecfdf3;
+    border-bottom: 1px solid #86efac;
+    color: #166534;
     font-size: 0.85rem;
     flex-wrap: wrap;
   }
@@ -6194,16 +6261,16 @@ tbody tr:hover {
   .demo-mode-banner-exit {
     padding: 0.3rem 0.9rem;
     border-radius: 0.75rem;
-    border: 1px solid #f59e0b;
-    background: #fffbeb;
-    color: #92400e;
+    border: 1px solid #16a34a;
+    background: #f0fdf4;
+    color: #166534;
     cursor: pointer;
     font-size: 0.8rem;
     white-space: nowrap;
   }
 
   .demo-mode-banner-exit:hover {
-    background: #fef3c7;
+    background: #dcfce7;
   }
 
   display: flex;
@@ -7926,7 +7993,7 @@ tbody tr:hover {
 }
 
 .dashboard-pareto-fill.cumulative {
-  background: linear-gradient(90deg, #f59e0b 0%, #ef4444 100%);
+  background: linear-gradient(90deg, #16a34a 0%, #ef4444 100%);
 }
 
 .dashboard-cause-card {
@@ -10567,8 +10634,6 @@ tbody tr:hover {
     table-layout: fixed;
   }
 
-  .board-runtime-table th,
-  .board-runtime-table td,
   .board-table-clean th,
   .board-table-clean td,
   .board-preview-table th,
@@ -10581,6 +10646,20 @@ tbody tr:hover {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .board-runtime-table th,
+  .board-runtime-table td {
+    min-width: 0 !important;
+    width: auto !important;
+    max-width: none;
+    padding: 0.54rem 0.5rem;
+    font-size: 0.78rem;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: normal;
+    word-break: normal;
   }
 
   .board-runtime-table .board-pdf-hide,

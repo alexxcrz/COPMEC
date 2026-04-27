@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Image as ImageIcon, Plus, Upload } from "lucide-react";
+import { createPortal } from "react-dom";
 import { Modal } from "./Modal";
 import { uploadFileToCloudinary } from "../services/upload.service";
 import { normalizeBoardEvidenceValue, normalizeBoardMultiSelectDetailValue } from "../utils/utilidades.jsx";
@@ -32,15 +33,15 @@ export function BoardMultiSelectDetailCell({ field, value, options, disabled, on
   }
 
   return (
-    <div style={{ display: "grid", gap: "0.3rem", minWidth: 0 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "0.18rem", minWidth: 0 }}>
       {(options || []).map((option) => {
         const optionValue = String(option.value || "").trim();
         const selectedItem = selectedMap.get(optionValue) || null;
         const isSelected = Boolean(selectedItem);
         return (
-          <div key={optionValue} style={{ border: "1px solid rgba(162,170,181,0.28)", borderRadius: "0.8rem", padding: "0.35rem 0.45rem", display: "grid", gap: "0.3rem", background: isSelected ? "rgba(3,33,33,0.04)" : "#fff" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: "0.45rem", fontSize: "0.8rem", fontWeight: 600, color: "#244040" }}>
-              <input type="checkbox" checked={isSelected} onChange={() => handleToggleOption(option)} disabled={disabled} />
+          <div key={optionValue} style={{ border: "1px solid rgba(162,170,181,0.16)", borderRadius: "0.55rem", padding: "0.16rem 0.24rem", display: "grid", gap: "0.12rem", background: isSelected ? "rgba(3,33,33,0.03)" : "#fff" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "0.24rem", fontSize: "0.66rem", fontWeight: 600, color: "#244040", lineHeight: 1.1 }}>
+              <input type="checkbox" checked={isSelected} onChange={() => handleToggleOption(option)} disabled={disabled} style={{ width: "14px", height: "14px", margin: 0 }} />
               <span>{option.label || optionValue}</span>
             </label>
             {isSelected ? (
@@ -51,12 +52,160 @@ export function BoardMultiSelectDetailCell({ field, value, options, disabled, on
                 onChange={(event) => handleDetailChange(option, event.target.value)}
                 placeholder={field.placeholder || "Dato adicional"}
                 disabled={disabled}
-                style={{ width: "100%" }}
+                style={{ width: "100%", minHeight: "24px", fontSize: "0.66rem", padding: "0.16rem 0.3rem", borderRadius: "0.46rem" }}
               />
             ) : null}
           </div>
         );
       })}
+    </div>
+  );
+}
+
+export function BoardEditableInventoryPropertyInput({ value, suggestions, disabled, placeholder, title, onChange }) {
+  const rootRef = useRef(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [dropdownStyle, setDropdownStyle] = useState(null);
+  const normalizedValue = String(value || "");
+  const normalizedSuggestions = useMemo(
+    () => (Array.isArray(suggestions) ? suggestions.map((item) => String(item || "").trim()).filter(Boolean) : []),
+    [suggestions],
+  );
+
+  useEffect(() => {
+    function handlePointerDown(event) {
+      if (!rootRef.current?.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen || !rootRef.current) return undefined;
+
+    function updateDropdownPosition() {
+      const rect = rootRef.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      const estimatedHeight = Math.min(240, Math.max(56, normalizedSuggestions.length * 36 + 18));
+      const viewportSpaceBelow = globalThis.innerHeight - rect.bottom;
+      const shouldOpenAbove = viewportSpaceBelow < estimatedHeight && rect.top > estimatedHeight;
+
+      setDropdownStyle({
+        position: "fixed",
+        left: rect.left,
+        width: rect.width,
+        top: shouldOpenAbove ? Math.max(12, rect.top - estimatedHeight - 6) : rect.bottom + 6,
+      });
+    }
+
+    updateDropdownPosition();
+    globalThis.addEventListener("resize", updateDropdownPosition);
+    globalThis.addEventListener("scroll", updateDropdownPosition, true);
+    return () => {
+      globalThis.removeEventListener("resize", updateDropdownPosition);
+      globalThis.removeEventListener("scroll", updateDropdownPosition, true);
+    };
+  }, [isOpen, normalizedSuggestions.length]);
+
+  return (
+    <div ref={rootRef} style={{ position: "relative", minWidth: 0 }}>
+      <input
+        type="text"
+        value={normalizedValue}
+        onFocus={() => !disabled && normalizedSuggestions.length && setIsOpen(true)}
+        onChange={(event) => {
+          onChange(event.target.value);
+          if (!disabled && normalizedSuggestions.length) {
+            setIsOpen(true);
+          }
+        }}
+        placeholder={placeholder}
+        title={title}
+        disabled={disabled}
+        style={{ width: "100%", paddingRight: normalizedSuggestions.length ? "2rem" : undefined }}
+      />
+      {normalizedSuggestions.length ? (
+        <button
+          type="button"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => !disabled && setIsOpen((current) => !current)}
+          disabled={disabled}
+          aria-label="Mostrar opciones"
+          title="Mostrar opciones"
+          style={{
+            position: "absolute",
+            right: "0.38rem",
+            top: "50%",
+            transform: "translateY(-50%)",
+            border: "none",
+            background: "transparent",
+            color: "#5c6f74",
+            fontSize: "0.82rem",
+            lineHeight: 1,
+            cursor: disabled ? "default" : "pointer",
+            padding: 0,
+          }}
+        >
+          ▼
+        </button>
+      ) : null}
+      {isOpen && normalizedSuggestions.length && dropdownStyle ? createPortal(
+        <div
+          style={{
+            ...dropdownStyle,
+            zIndex: 60,
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 1fr)",
+            gap: "0.22rem",
+            maxHeight: "7.6rem",
+            overflowY: "auto",
+            padding: "0.32rem",
+            border: "1px solid rgba(162,170,181,0.28)",
+            borderRadius: "0.7rem",
+            background: "#ffffff",
+            boxShadow: "0 12px 24px rgba(3, 33, 33, 0.12)",
+          }}
+        >
+          {normalizedSuggestions.map((option) => {
+            const isActive = option === normalizedValue;
+            return (
+              <button
+                key={option}
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  onChange(option);
+                  setIsOpen(false);
+                }}
+                style={{
+                  minHeight: "2rem",
+                  borderRadius: "0.58rem",
+                  border: isActive ? "1px solid #15803d" : "1px solid rgba(162,170,181,0.22)",
+                  background: isActive ? "rgba(22, 163, 74, 0.1)" : "#f9fbfb",
+                  color: "#244040",
+                  fontSize: "0.72rem",
+                  fontWeight: isActive ? 700 : 600,
+                  lineHeight: 1.15,
+                  padding: "0.32rem 0.46rem",
+                  textAlign: "left",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+                title={option}
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>,
+        document.body,
+      ) : null}
     </div>
   );
 }
@@ -153,13 +302,13 @@ export function BoardEvidenceCell({ value, disabled, onChange, label }) {
           disabled={disabled || uploading}
           style={{
             width: "100%",
-            minHeight: "96px",
-            borderRadius: "1rem",
+            minHeight: "78px",
+            borderRadius: "0.82rem",
             border: "1px dashed rgba(22,89,71,0.32)",
             background: "#fff",
-            padding: "0.45rem",
+            padding: "0.34rem",
             display: "grid",
-            gap: "0.35rem",
+            gap: "0.28rem",
             alignContent: displayItems.length ? "start" : "center",
             cursor: disabled ? "default" : "pointer",
             overflow: "hidden",
@@ -167,9 +316,16 @@ export function BoardEvidenceCell({ value, disabled, onChange, label }) {
           title={disabled ? label || "Evidencias" : "Agregar evidencias"}
         >
           {displayItems.length ? (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "0.35rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "0.26rem" }}>
               {displayItems.slice(0, 4).map((item, index) => {
-                const previewStyle = { width: "100%", height: "62px", borderRadius: "0.7rem", objectFit: "cover", background: "#f3f5f8" };
+                const previewStyle = {
+                  width: "100%",
+                  height: "48px",
+                  borderRadius: "0.55rem",
+                  objectFit: "contain",
+                  background: "#f3f5f8",
+                  padding: "0.18rem",
+                };
                 const evidenceIndex = evidences.findIndex((evidence) => evidence.url === item.url && evidence.name === item.name);
                 return (
                   <div key={`${item.url}-${item.name}-${index}`} style={{ position: "relative" }}>
