@@ -1219,14 +1219,17 @@ function ReturnsReconditionScannerInner({
     if (!canControlTarimaWorkflow) return;
     if (!activeTarima) return;
     const allBoxes = activeTarima.boxes || [];
-    if (allBoxes.length === 0) {
+    const hasClosedBoxes = (closedForTarima || []).length > 0;
+    if (allBoxes.length === 0 && !hasClosedBoxes) {
       setBoardRuntimeFeedback({ tone: "danger", message: "No hay cajas en esta tarima." });
       return;
     }
-    
+
+    let generatedFromOpenBoxes = false;
     // Generar PDF consolidado de tarima
     for (const box of allBoxes) {
       if (Object.keys(box.products || {}).length > 0) {
+        generatedFromOpenBoxes = true;
         await closeCurrentBox({
           ...box,
           products: Object.values(box.products || {}),
@@ -1237,7 +1240,12 @@ function ReturnsReconditionScannerInner({
     // Marcar tarima como cerrada
     setActiveTarima((current) => (current ? { ...current, closedAt: new Date().toISOString(), stoppedAt: new Date().toISOString(), workflowStatus: TARIMA_STATUS_FINISHED } : null));
     setActiveBoxId(null);
-    setBoardRuntimeFeedback({ tone: "success", message: `Tarima ${activeTarima.tarimaNumber} cerrada completamente. PDF consolidado generado.` });
+    setBoardRuntimeFeedback({
+      tone: "success",
+      message: generatedFromOpenBoxes
+        ? `Tarima ${activeTarima.tarimaNumber} cerrada completamente. PDF consolidado generado.`
+        : `Tarima ${activeTarima.tarimaNumber} cerrada con cajas previamente terminadas.`,
+    });
   }
 
   function getPreferredLotFromProduct(product) {
