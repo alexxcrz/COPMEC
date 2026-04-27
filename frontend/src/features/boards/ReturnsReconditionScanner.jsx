@@ -205,10 +205,10 @@ function ReturnsReconditionScannerInner({
   const [lotModalOpen, setLotModalOpen] = useState(false);
   const [tarimaPauseState, setTarimaPauseState] = useState({ open: false, reason: "", error: "" });
   const [pausedReminderOpen, setPausedReminderOpen] = useState(false);
-  const [pendingAutoCaptureItemId, setPendingAutoCaptureItemId] = useState(null);
+  const [pendingAutoCaptureData, setPendingAutoCaptureData] = useState(null);
   
   const [tarimaForm, setTarimaForm] = useState({ tarimaNumber: "", flowType: "devolucion" });
-  const [boxForm, setBoxForm] = useState({ boxNumber: "", targetPieces: 50 });
+  const [boxForm, setBoxForm] = useState({ boxNumber: "", targetPieces: 50, lot: "", expiry: "" });
   const [lotForm, setLotForm] = useState({ lot: "", expiry: "", pieces: 1, selectedLotKey: "" });
   
   const [nowTick, setNowTick] = useState(() => Date.now());
@@ -469,23 +469,20 @@ function ReturnsReconditionScannerInner({
   }
 
   useEffect(() => {
-    if (!pendingAutoCaptureItemId || !activeBox) return;
-    const item = inventoryMapById.get(pendingAutoCaptureItemId) || null;
-    setPendingAutoCaptureItemId(null);
+    if (!pendingAutoCaptureData || !activeBox) return;
+    const item = inventoryMapById.get(pendingAutoCaptureData.itemId) || null;
+    setPendingAutoCaptureData(null);
     if (!item) return;
 
-    const history = getItemLotHistory(item);
-    const preferred = history[0] || null;
-    if (preferred?.lot && preferred?.expiry) {
-      void commitLotEntry(item, preferred.lot, preferred.expiry, 1, { closeModal: false, successMode: "auto" });
-      setPendingItem(null);
-      setBoardRuntimeFeedback({ tone: "success", message: `Caja creada. Se agregó automáticamente +1 pieza de ${item.code}.` });
-      return;
-    }
+    void commitLotEntry(item, pendingAutoCaptureData.lot, pendingAutoCaptureData.expiry, 1, { closeModal: false, successMode: "auto" });
+    setPendingItem(null);
+    setBoardRuntimeFeedback({ tone: "success", message: `Caja creada. Se agregó +1 pieza de ${item.code} con lote/caducidad.` });
+  }, [pendingAutoCaptureData, activeBox, inventoryMapById]);
 
-    openLotModalForItem(item, activeBox?.products?.[item.id] || null);
-    setBoardRuntimeFeedback({ tone: "warning", message: "Caja creada. Captura lote/caducidad para registrar la pieza escaneada." });
-  }, [pendingAutoCaptureItemId, activeBox, inventoryMapById]);
+  useEffect(() => {
+    if (!boxModalOpen) return;
+    setBoxForm((current) => ({ ...current, lot: "", expiry: "" }));
+  }, [boxModalOpen, pendingItem?.id]);
 
   // Cargar tarima desde localStorage al montar
   useEffect(() => {
@@ -1244,6 +1241,7 @@ function ReturnsReconditionScannerInner({
     setActiveTarima(newTarima);
     setTarimaModalOpen(false);
     setTarimaForm({ tarimaNumber: "", flowType: "devolucion" });
+    setBoxForm({ boxNumber: "", targetPieces: 50, lot: "", expiry: "" });
     setBoardRuntimeFeedback({ tone: "success", message: `Tarima ${tarimaForm.tarimaNumber} iniciada.` });
     setBoxModalOpen(true);
   }
@@ -1257,6 +1255,14 @@ function ReturnsReconditionScannerInner({
     if (!boxForm.boxNumber) {
       setBoardRuntimeFeedback({ tone: "danger", message: "Ingresa número de caja." });
       return;
+    }
+    if (pendingItem) {
+      const lot = String(boxForm.lot || "").trim();
+      const expiry = normalizeExpiryInput(boxForm.expiry);
+      if (!lot || !expiry) {
+        setBoardRuntimeFeedback({ tone: "danger", message: "Captura lote y caducidad para registrar la pieza escaneada." });
+        return;
+      }
     }
     const newBox = {
       id: `box-${Date.now()}`,
@@ -1279,10 +1285,14 @@ function ReturnsReconditionScannerInner({
     setActiveTarima(updatedTarima);
     setActiveBoxId(newBox.id);
     if (pendingItem?.id) {
-      setPendingAutoCaptureItemId(pendingItem.id);
+      setPendingAutoCaptureData({
+        itemId: pendingItem.id,
+        lot: String(boxForm.lot || "").trim(),
+        expiry: normalizeExpiryInput(boxForm.expiry),
+      });
     }
     setBoxModalOpen(false);
-    setBoxForm({ boxNumber: "", targetPieces: 50 });
+    setBoxForm({ boxNumber: "", targetPieces: 50, lot: "", expiry: "" });
     setBoardRuntimeFeedback({ tone: "success", message: `Caja ${boxForm.boxNumber} agregada.` });
   }
   
@@ -1886,18 +1896,20 @@ function ReturnsReconditionScannerInner({
         title="Nueva Caja"
         confirmLabel="Agregar Caja"
         cancelLabel="Cancelar"
-        onClose={() => { setBoxModalOpen(false); setPendingItem(null); }}
+        onClose={() => {
+          setBoxModalOpen(false);
+          setPendingItem(null);
+          setBoxForm({ boxNumber: "", targetPieces: 50, lot: "", expiry: "" });
+        }}
         onConfirm={addNewBoxToTarima}
       >
         <div className="returns-scan-modal-grid">
           {pendingItem ? (
             <div className="returns-scan-history" style={{ marginBottom: "0.4rem" }}>
-              <strong>Producto escaneado</strong>
+              <strong>Producto: {pendingItem.name || "-"}</strong>
               <div className="saved-board-list" style={{ marginTop: "0.25rem" }}>
                 <span className="chip">Código: {pendingItem.code || "-"}</span>
-                <span className="chip">Producto: {pendingItem.name || "-"}</span>
                 <span className="chip">Presentación: {pendingItem.presentation || "-"}</span>
-                <span className="chip primary">Al crear caja se agrega +1 pieza</span>
               </div>
             </div>
           ) : null}
@@ -1920,6 +1932,27 @@ function ReturnsReconditionScannerInner({
               }}
             />
           </label>
+          {pendingItem ? (
+            <>
+              <label className="app-modal-field">
+                <span>Lote</span>
+                <input
+                  value={boxForm.lot}
+                  onChange={(event) => setBoxForm((current) => ({ ...current, lot: event.target.value }))}
+                  placeholder="Ej: L2304A"
+                />
+              </label>
+              <label className="app-modal-field">
+                <span>Caducidad</span>
+                <input
+                  value={boxForm.expiry}
+                  onChange={(event) => setBoxForm((current) => ({ ...current, expiry: normalizeExpiryInput(event.target.value) }))}
+                  placeholder="Ej: AGO-2026"
+                  style={{ textTransform: "uppercase" }}
+                />
+              </label>
+            </>
+          ) : null}
         </div>
       </Modal>
 
