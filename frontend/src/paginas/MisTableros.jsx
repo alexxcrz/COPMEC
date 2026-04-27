@@ -185,7 +185,9 @@ export default function MisTableros({ contexto }) {
   const boardLooksCleaning = [boardNameText, boardCategoryText, boardDescriptionText].some((text) => text.includes("limp"));
   const boardLooksReturnsRecondition = [boardNameText, boardCategoryText, boardDescriptionText].some((text) => /(devol|reacond|maquila)/.test(text));
   const isCleaningRelatedBoard = boardOperationalContextType === "cleaningSite" || boardLooksCleaning;
-  const visibleBoardColumns = boardColumns;
+  const visibleBoardColumns = boardLooksReturnsRecondition
+    ? boardColumns.filter((column) => column.kind === "field")
+    : boardColumns;
 
   // Compute available cleaning naves from inventory items that have activity consumptions
   const cleaningNaveOptions = (() => {

@@ -1396,6 +1396,44 @@ function ReturnsReconditionScannerInner({
 
   return (
     <section className="returns-scan-shell board-pdf-hide">
+      {activeTarima && canControlTarimaWorkflow ? (
+        <div className="returns-scan-global-top">
+          <span className="chip primary">Workflow global tarima</span>
+          <div className="row-actions compact board-workflow-actions" aria-label="Workflow global tarima">
+            <button
+              type="button"
+              className="board-action-button start icon-only"
+              title="Iniciar/Reanudar"
+              aria-label="Iniciar/Reanudar"
+              onClick={startTarimaWorkflow}
+              disabled={!canStartGlobalWorkflow}
+            >
+              <Play size={13} />
+            </button>
+            <button
+              type="button"
+              className="board-action-button pause icon-only"
+              title="Pausar"
+              aria-label="Pausar"
+              onClick={pauseTarimaWorkflow}
+              disabled={!canPauseGlobalWorkflow}
+            >
+              <PauseCircle size={13} />
+            </button>
+            <button
+              type="button"
+              className="board-action-button finish icon-only"
+              title="Finalizar"
+              aria-label="Finalizar"
+              onClick={() => { void finishActiveTarimaManually(); }}
+              disabled={!canFinishGlobalWorkflow}
+            >
+              <Square size={13} />
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="returns-scan-head">
         <div>
           <h4>Modo escaneo · {activeTarima ? `Tarima ${activeTarima.tarimaNumber}` : "Inicio escaneo"}</h4>
@@ -1419,40 +1457,6 @@ function ReturnsReconditionScannerInner({
                 <span className="chip primary">Total acumulado: {tarimaDisplayedTotalPieces}</span>
                 <span className="chip" style={tarimaStatusColor}>Workflow tarima: {tarimaStatus}</span>
                 <span className="chip">Tiempo tarima: {formatElapsedMs(Math.max(0, tarimaElapsedMs))}</span>
-                {canControlTarimaWorkflow ? (
-                  <div className="row-actions compact board-workflow-actions returns-scan-workflow-inline" aria-label="Workflow general tarima">
-                    <button
-                      type="button"
-                      className="board-action-button start icon-only"
-                      title="Iniciar/Reanudar"
-                      aria-label="Iniciar/Reanudar"
-                      onClick={startTarimaWorkflow}
-                      disabled={!canStartGlobalWorkflow}
-                    >
-                      <Play size={13} />
-                    </button>
-                    <button
-                      type="button"
-                      className="board-action-button pause icon-only"
-                      title="Pausar"
-                      aria-label="Pausar"
-                      onClick={pauseTarimaWorkflow}
-                      disabled={!canPauseGlobalWorkflow}
-                    >
-                      <PauseCircle size={13} />
-                    </button>
-                    <button
-                      type="button"
-                      className="board-action-button finish icon-only"
-                      title="Finalizar"
-                      aria-label="Finalizar"
-                      onClick={() => { void finishActiveTarimaManually(); }}
-                      disabled={!canFinishGlobalWorkflow}
-                    >
-                      <Square size={13} />
-                    </button>
-                  </div>
-                ) : null}
               </div>
               {activeBox ? (
                 <div className="returns-scan-head-meta-row">

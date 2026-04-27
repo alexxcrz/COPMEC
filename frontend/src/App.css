@@ -5602,6 +5602,18 @@ tbody tr:hover {
   background: linear-gradient(180deg, rgba(249, 253, 251, 0.98) 0%, rgba(242, 249, 246, 0.98) 100%);
 }
 
+.returns-scan-global-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.42rem 0.5rem;
+  border: 1px solid rgba(49, 90, 168, 0.22);
+  border-radius: 0.9rem;
+  background: linear-gradient(180deg, rgba(238, 244, 255, 0.9) 0%, rgba(233, 241, 255, 0.9) 100%);
+}
+
 .returns-scan-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
