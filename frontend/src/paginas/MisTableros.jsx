@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import ReturnsReconditionScanner from "../features/boards/ReturnsReconditionScanner.jsx";
+import { BoardEvidenceCell, BoardMultiSelectDetailCell } from "../components/BoardRuntimeFieldCells.jsx";
 
 export default function MisTableros({ contexto }) {
   const {
@@ -614,6 +615,20 @@ export default function MisTableros({ contexto }) {
                             );
                           }
 
+                          if (field.type === "multiSelectDetail") {
+                            return (
+                              <td key={field.id} style={columnStyle}>
+                                <BoardMultiSelectDetailCell
+                                  field={field}
+                                  value={value}
+                                  options={options}
+                                  disabled={!rowFieldEditable}
+                                  onChange={(nextValue) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, nextValue)}
+                                />
+                              </td>
+                            );
+                          }
+
                           if (["number", "currency", "percentage"].includes(field.type)) {
                             return (
                               <td key={field.id} style={columnStyle}>
@@ -791,6 +806,19 @@ export default function MisTableros({ contexto }) {
                                   style={controlStyle}
                                   title={field.helpText || field.label}
                                   disabled={!rowFieldEditable}
+                                />
+                              </td>
+                            );
+                          }
+
+                          if (field.type === "evidenceGallery") {
+                            return (
+                              <td key={field.id} style={columnStyle}>
+                                <BoardEvidenceCell
+                                  value={value}
+                                  disabled={!rowFieldEditable}
+                                  label={field.label}
+                                  onChange={(nextValue) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, nextValue)}
                                 />
                               </td>
                             );

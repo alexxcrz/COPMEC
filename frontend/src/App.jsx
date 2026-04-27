@@ -271,7 +271,7 @@ import {
 
   formatInventoryLookupLabel, isInventoryLookupFieldType, getInventoryLookupSourceFields,
 
-  resolveInventoryPropertySourceFieldId, getInventoryBundleEditableFields,
+  resolveInventoryPropertySourceFieldId, resolveInventoryPropertyValue, getInventoryBundleEditableFields,
 
   inferInventoryBundleFieldType, isBoardActivityListField, getBoardFieldDisplayType,
 
@@ -964,6 +964,7 @@ function App() { // NOSONAR
     return leads[0]?.id || null;
   }, [state.users]);
   const isRootLead = Boolean(currentUser?.id && currentUser.id === rootLeadId);
+  const canManageDashboardState = normalizeRole(currentUser?.role) === ROLE_LEAD;
   const managedUserIds = useMemo(
     () => (currentUser ? getManagedUserIds(state.users, currentUser.id) : new Set()),
     [currentUser, state.users],
@@ -2211,9 +2212,9 @@ function App() { // NOSONAR
     setAreaDeleteModal({ open: true, areaName, label: label || areaName, error: "", submitting: false });
   }
 
-  // ── Dashboard hard-reset (solo root Lead) ────────────────────────────────
+  // ── Dashboard hard-reset (solo Lead) ─────────────────────────────────────
   async function hardResetDashboard() {
-    if (!isRootLead) return;
+    if (!canManageDashboardState) return;
     const result = await requestJson("/warehouse/dashboard/reset-data", { method: "POST" });
     applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
     setDashboardFilters({ periodType: "week", periodKey: "all", responsibleId: "all", area: "all", source: "all", startDate: "", endDate: "" });
@@ -2221,15 +2222,15 @@ function App() { // NOSONAR
     pushAppToast("Dashboard reiniciado en todo el sistema.", "success");
   }
 
-  // ── Demo Mode (solo root Lead) ────────────────────────────────────────────
+  // ── Demo Mode (solo Lead) ─────────────────────────────────────────────────
   function activateDemoMode() {
-    if (!isRootLead || isDemoMode) return;
+    if (!canManageDashboardState || isDemoMode) return;
     preDemoStateRef.current = JSON.parse(JSON.stringify(state));
     setIsDemoMode(true);
   }
 
   async function deactivateDemoMode() {
-    if (!isRootLead || !isDemoMode) return;
+    if (!canManageDashboardState || !isDemoMode) return;
     const snapshot = preDemoStateRef.current;
     preDemoStateRef.current = null;
     setIsDemoMode(false);
@@ -5214,7 +5215,7 @@ function App() { // NOSONAR
       const resolvedSourceFieldId = resolveInventoryPropertySourceFieldId(boardFields, field.sourceFieldId, field.id);
       const lookupId = values[resolvedSourceFieldId];
       const inventoryItem = (state.inventoryItems || []).find((item) => item.id === lookupId);
-      return inventoryItem?.[field.inventoryProperty] ?? "";
+      return resolveInventoryPropertyValue(inventoryItem, field.inventoryProperty);
     }
 
     if (field.type === "formula") {
@@ -5343,14 +5344,17 @@ function App() { // NOSONAR
   const inventorySystemColumnSuggestions = useMemo(() => {
     const lots = new Set();
     const expiries = new Set();
+    const etiquetas = new Set();
 
     allInventoryItems
       .filter((item) => normalizeInventoryDomain(item.domain) === normalizeInventoryDomain(inventoryModal.domain))
       .forEach((item) => {
         const lotValue = String(item?.customFields?.lote || "").trim();
         const expiryValue = String(item?.customFields?.caducidad || "").trim();
+        const etiquetaValue = String(item?.customFields?.etiqueta || "").trim();
         if (lotValue) lots.add(lotValue);
         if (expiryValue) expiries.add(expiryValue);
+        if (etiquetaValue) etiquetas.add(etiquetaValue);
 
         try {
           const history = JSON.parse(String(item?.customFields?.lotesCaducidades || "[]"));
@@ -5358,8 +5362,10 @@ function App() { // NOSONAR
           history.forEach((entry) => {
             const lot = String(entry?.lot || "").trim();
             const expiry = String(entry?.expiry || "").trim();
+            const etiqueta = String(entry?.etiqueta || "").trim();
             if (lot) lots.add(lot);
             if (expiry) expiries.add(expiry);
+            if (etiqueta) etiquetas.add(etiqueta);
           });
         } catch {
           // Ignorar historiales corruptos para no romper el modal.
@@ -5369,6 +5375,7 @@ function App() { // NOSONAR
     return {
       lote: Array.from(lots).sort((a, b) => a.localeCompare(b, "es-MX")),
       caducidad: Array.from(expiries).sort((a, b) => a.localeCompare(b, "es-MX")),
+      etiqueta: Array.from(etiquetas).sort((a, b) => a.localeCompare(b, "es-MX")),
     };
   }, [allInventoryItems, inventoryModal.domain]);
   const shouldShowTransferTargetEmptyState = !hasOrderTransferTargets;
@@ -6711,7 +6718,15 @@ function App() { // NOSONAR
             <label key={column.id} className="app-modal-field">
               <span>{column.label}</span>
               <input
-                list={column.key === "lote" ? "inventory-system-lote-options" : column.key === "caducidad" ? "inventory-system-caducidad-options" : undefined}
+                list={
+                  column.key === "lote"
+                    ? "inventory-system-lote-options"
+                    : column.key === "caducidad"
+                      ? "inventory-system-caducidad-options"
+                      : column.key === "etiqueta"
+                        ? "inventory-system-etiqueta-options"
+                        : undefined
+                }
                 value={inventoryModal.customFields?.[column.key] || ""}
                 onChange={(event) => setInventoryModal((current) => ({
                   ...current,
@@ -6729,6 +6744,9 @@ function App() { // NOSONAR
           </datalist>
           <datalist id="inventory-system-caducidad-options">
             {inventorySystemColumnSuggestions.caducidad.map((option) => <option key={option} value={option} />)}
+          </datalist>
+          <datalist id="inventory-system-etiqueta-options">
+            {inventorySystemColumnSuggestions.etiqueta.map((option) => <option key={option} value={option} />)}
           </datalist>
           {shouldShowCleaningLinkFields ? (
             <>

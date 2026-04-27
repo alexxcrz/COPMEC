@@ -1,5 +1,5 @@
 {
-  "revision": 2451,
+  "revision": 2493,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro"
@@ -339,8 +339,8 @@
       "activityConsumptions": [],
       "consumptionPerStart": 0,
       "customFields": {
-        "lote": "123456",
-        "caducidad": "0812365"
+        "lote": "1234566789",
+        "caducidad": "12/12/2028"
       }
     },
     {
@@ -611,7 +611,10 @@
       "activityCatalogIds": [],
       "activityConsumptions": [],
       "consumptionPerStart": 0,
-      "customFields": {}
+      "customFields": {
+        "lote": "123456",
+        "caducidad": "021218"
+      }
     },
     {
       "id": "inv-4z3iipat",
@@ -9594,16 +9597,54 @@
             "fld-288qq5dv": "inv-uedj3bs4",
             "fld-84knvz2z": "123456",
             "fld-3iisyp99": "0812365",
-            "fld-zapc1vgv": 6,
+            "fld-zapc1vgv": 10,
+            "fld-dnlcoahj": 50
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Terminado",
+          "startTime": "2026-04-26T15:47:53.389Z",
+          "endTime": "2026-04-26T21:21:29.054Z",
+          "accumulatedSeconds": 20015,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-26T15:47:52.569Z"
+        },
+        {
+          "id": "row-129a220beb66",
+          "values": {
+            "fld-tdbazfyz": "2",
+            "fld-pqyzdboh": "Devolución",
+            "fld-288qq5dv": "inv-un8aclfa",
+            "fld-84knvz2z": "123456",
+            "fld-3iisyp99": "021218",
+            "fld-zapc1vgv": 1,
+            "fld-dnlcoahj": 168
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Terminado",
+          "startTime": "2026-04-26T19:50:59.671Z",
+          "endTime": "2026-04-27T02:51:23.977Z",
+          "accumulatedSeconds": 25224,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-26T19:50:58.732Z"
+        },
+        {
+          "id": "row-2e04865a8a20",
+          "values": {
+            "fld-tdbazfyz": "1",
+            "fld-pqyzdboh": "Devolución",
+            "fld-288qq5dv": "inv-uedj3bs4",
+            "fld-84knvz2z": "1234566789",
+            "fld-3iisyp99": "12/12/2028",
+            "fld-zapc1vgv": 13,
             "fld-dnlcoahj": 50
           },
           "responsibleId": "usr-lead-nu7wt83h",
           "status": "En curso",
-          "startTime": "2026-04-26T15:47:53.389Z",
+          "startTime": "2026-04-27T03:22:37.264Z",
           "endTime": null,
           "accumulatedSeconds": 0,
-          "lastResumedAt": "2026-04-26T15:47:53.389Z",
-          "createdAt": "2026-04-26T15:47:52.569Z"
+          "lastResumedAt": "2026-04-27T03:22:37.264Z",
+          "createdAt": "2026-04-27T03:22:36.903Z"
         }
       ],
       "permissions": {
@@ -9903,7 +9944,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-26T15:48:21.086Z",
+  "updatedAt": "2026-04-27T03:23:19.568Z",
   "permissions": {
     "pages": {
       "index": {

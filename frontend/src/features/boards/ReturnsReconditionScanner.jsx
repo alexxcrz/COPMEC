@@ -93,6 +93,7 @@ function safeParseLotHistory(value) {
       .map((entry) => ({
         lot: String(entry?.lot || "").trim(),
         expiry: normalizeExpiryInput(entry?.expiry),
+        etiqueta: String(entry?.etiqueta || "").trim(),
         updatedAt: String(entry?.updatedAt || "").trim(),
       }))
       .filter((entry) => entry.lot && entry.expiry);
@@ -231,8 +232,8 @@ function ReturnsReconditionScannerInner({
   const [pendingAutoCaptureData, setPendingAutoCaptureData] = useState(null);
   
   const [tarimaForm, setTarimaForm] = useState({ tarimaNumber: "", flowType: "devolucion" });
-  const [boxForm, setBoxForm] = useState({ boxNumber: "", targetPieces: 50, lot: "", expiry: "" });
-  const [lotForm, setLotForm] = useState({ lot: "", expiry: "", pieces: 1, selectedLotKey: "" });
+  const [boxForm, setBoxForm] = useState({ boxNumber: "", targetPieces: 50, lot: "", expiry: "", etiqueta: "" });
+  const [lotForm, setLotForm] = useState({ lot: "", expiry: "", etiqueta: "", pieces: 1, selectedLotKey: "" });
   
   const [nowTick, setNowTick] = useState(() => Date.now());
   const effectiveGlobalPause = Boolean(manualGlobalPause || (systemPaused && !globalForceActive));
@@ -511,10 +512,11 @@ function ReturnsReconditionScannerInner({
       const lot = String(entry?.lot || "").trim();
       const expiry = normalizeExpiryInput(entry?.expiry);
       if (!lot || !expiry) return;
-      const key = `${normalizeKey(lot)}::${expiry}`;
+      const etiqueta = String(entry?.etiqueta || "").trim();
+      const key = `${normalizeKey(lot)}::${expiry}::${normalizeKey(etiqueta)}`;
       if (knownKeys.has(key)) return;
       knownKeys.add(key);
-      merged.push({ key, lot, expiry, label: `${lot} · ${expiry}` });
+      merged.push({ key, lot, expiry, etiqueta, label: etiqueta ? `${lot} · ${expiry} · ${etiqueta}` : `${lot} · ${expiry}` });
     };
 
     (Array.isArray(product?.lots) ? product.lots : []).forEach(pushEntry);
@@ -532,14 +534,18 @@ function ReturnsReconditionScannerInner({
     setPendingAutoCaptureData(null);
     if (!item) return;
 
-    void commitLotEntry(item, pendingAutoCaptureData.lot, pendingAutoCaptureData.expiry, 1, { closeModal: false, successMode: "auto" });
+    void commitLotEntry(item, pendingAutoCaptureData.lot, pendingAutoCaptureData.expiry, 1, {
+      closeModal: false,
+      successMode: "auto",
+      etiqueta: pendingAutoCaptureData.etiqueta || "",
+    });
     setPendingItem(null);
     setBoardRuntimeFeedback({ tone: "success", message: `Caja creada. Se agregó +1 pieza de ${item.code} con lote/caducidad.` });
   }, [pendingAutoCaptureData, activeBox, inventoryMapById]);
 
   useEffect(() => {
     if (!boxModalOpen) return;
-    setBoxForm((current) => ({ ...current, lot: "", expiry: "" }));
+    setBoxForm((current) => ({ ...current, lot: "", expiry: "", etiqueta: "" }));
   }, [boxModalOpen, pendingItem?.id]);
 
   // Cargar tarima desde localStorage al montar
@@ -661,6 +667,7 @@ function ReturnsReconditionScannerInner({
     const fieldProducto = boardFieldMap.get("producto");
     const fieldLote = boardFieldMap.get("lote");
     const fieldCaducidad = boardFieldMap.get("caducidad");
+    const fieldEtiqueta = boardFieldMap.get("etiqueta");
     const fieldPiezas = boardFieldMap.get("piezas");
     const fieldMeta = boardFieldMap.get("meta de caja");
 
@@ -696,13 +703,15 @@ function ReturnsReconditionScannerInner({
       const pieces = Math.max(0, Number(values[fieldPiezas?.id] || 0));
       const lotSummary = String(values[fieldLote?.id] || "").split("|").map((v) => String(v || "").trim()).filter(Boolean);
       const expirySummary = String(values[fieldCaducidad?.id] || "").split("|").map((v) => normalizeExpiryInput(v)).filter(Boolean);
+      const etiquetaSummary = String(values[fieldEtiqueta?.id] || "").split("|").map((v) => String(v || "").trim()).filter(Boolean);
       const lots = lotSummary.length
         ? lotSummary.map((lot, lotIndex) => ({
           lot,
           expiry: expirySummary[lotIndex] || expirySummary[0] || "-",
+          etiqueta: etiquetaSummary[lotIndex] || etiquetaSummary[0] || "",
           pieces: lotIndex === 0 ? pieces : 0,
         }))
-        : [{ lot: "-", expiry: "-", pieces }];
+        : [{ lot: "-", expiry: "-", etiqueta: "", pieces }];
 
       box.products[item.id] = {
         itemId: item.id,
@@ -806,6 +815,7 @@ function ReturnsReconditionScannerInner({
     const fieldProducto = boardFieldMap.get("producto");
     const fieldLote = boardFieldMap.get("lote");
     const fieldCaducidad = boardFieldMap.get("caducidad");
+    const fieldEtiqueta = boardFieldMap.get("etiqueta");
     const fieldPiezas = boardFieldMap.get("piezas");
     const fieldMeta = boardFieldMap.get("meta de caja");
 
@@ -842,13 +852,15 @@ function ReturnsReconditionScannerInner({
       const pieces = Math.max(0, Number(values[fieldPiezas?.id] || 0));
       const lotSummary = String(values[fieldLote?.id] || "").split("|").map((value) => String(value || "").trim()).filter(Boolean);
       const expirySummary = String(values[fieldCaducidad?.id] || "").split("|").map((value) => normalizeExpiryInput(value)).filter(Boolean);
+      const etiquetaSummary = String(values[fieldEtiqueta?.id] || "").split("|").map((value) => String(value || "").trim()).filter(Boolean);
       const lots = lotSummary.length
         ? lotSummary.map((lot, lotIndex) => ({
           lot,
           expiry: expirySummary[lotIndex] || expirySummary[0] || "-",
+          etiqueta: etiquetaSummary[lotIndex] || etiquetaSummary[0] || "",
           pieces: lotIndex === 0 ? pieces : 0,
         }))
-        : [{ lot: "-", expiry: "-", pieces }];
+        : [{ lot: "-", expiry: "-", etiqueta: "", pieces }];
 
       box.products[item.id] = {
         itemId: item.id,
@@ -971,20 +983,22 @@ function ReturnsReconditionScannerInner({
     return () => globalThis.clearTimeout(timer);
   }, [lotModalOpen, lotForm.lot, lotForm.expiry, pendingItem?.id, pendingItem?.code, pendingLotOptions]);
 
-  async function persistLotHistory(item, lot, expiry) {
+  async function persistLotHistory(item, lot, expiry, etiqueta = "") {
     const normalizedExpiry = normalizeExpiryInput(expiry);
+    const normalizedEtiqueta = String(etiqueta || "").trim();
     if (!item?.id || !lot || !normalizedExpiry) return;
     const current = getItemLotHistory(item);
-    const duplicate = current.some((entry) => normalizeKey(entry.lot) === normalizeKey(lot) && normalizeExpiryInput(entry.expiry) === normalizedExpiry);
+    const duplicate = current.some((entry) => normalizeKey(entry.lot) === normalizeKey(lot) && normalizeExpiryInput(entry.expiry) === normalizedExpiry && String(entry?.etiqueta || "").trim() === normalizedEtiqueta);
     if (duplicate) return;
 
-    const next = [{ lot, expiry: normalizedExpiry, updatedAt: new Date().toISOString() }, ...current].slice(0, 300);
+    const next = [{ lot, expiry: normalizedExpiry, etiqueta: normalizedEtiqueta, updatedAt: new Date().toISOString() }, ...current].slice(0, 300);
     const payload = {
       ...item,
       customFields: {
         ...(item.customFields || {}),
         lote: lot,
         caducidad: normalizedExpiry,
+        etiqueta: normalizedEtiqueta,
         lotesCaducidades: JSON.stringify(next),
       },
     };
@@ -1011,11 +1025,13 @@ function ReturnsReconditionScannerInner({
     const fieldProducto = boardFieldMap.get("producto");
     const fieldLote = boardFieldMap.get("lote");
     const fieldCaducidad = boardFieldMap.get("caducidad");
+    const fieldEtiqueta = boardFieldMap.get("etiqueta");
     const fieldPiezas = boardFieldMap.get("piezas");
     const fieldMeta = boardFieldMap.get("meta de caja");
     const lots = Array.isArray(product?.lots) ? product.lots : [];
     const lotSummary = lots.map((entry) => String(entry?.lot || "").trim()).filter(Boolean).join(" | ");
     const expirySummary = lots.map((entry) => normalizeExpiryInput(entry?.expiry)).filter(Boolean).join(" | ");
+    const etiquetaSummary = lots.map((entry) => String(entry?.etiqueta || "").trim()).filter(Boolean).join(" | ");
 
     return {
       ...(fieldTarima ? { [fieldTarima.id]: box.palletNumber } : {}),
@@ -1023,6 +1039,7 @@ function ReturnsReconditionScannerInner({
       ...(fieldProducto ? { [fieldProducto.id]: item.id } : {}),
       ...(fieldLote ? { [fieldLote.id]: lotSummary } : {}),
       ...(fieldCaducidad ? { [fieldCaducidad.id]: expirySummary } : {}),
+      ...(fieldEtiqueta ? { [fieldEtiqueta.id]: etiquetaSummary } : {}),
       ...(fieldPiezas ? { [fieldPiezas.id]: Number(product?.totalPieces || 0) } : {}),
       ...(fieldMeta ? { [fieldMeta.id]: box.targetPieces } : {}),
     };
@@ -1135,6 +1152,7 @@ function ReturnsReconditionScannerInner({
             presentation: product.presentation || "-",
             lot: "-",
             expiry: "-",
+            etiqueta: "-",
             pieces: String(product.totalPieces),
           });
           return;
@@ -1147,6 +1165,7 @@ function ReturnsReconditionScannerInner({
             presentation: index === 0 ? product.presentation || "-" : "",
             lot: lot.lot,
             expiry: lot.expiry,
+            etiqueta: lot.etiqueta || "-",
             pieces: String(lot.pieces),
           });
         });
@@ -1154,7 +1173,7 @@ function ReturnsReconditionScannerInner({
 
       autoTable(doc, {
         startY: y,
-        head: [["QR", "Código", "Nombre", "Presentación", "Lote", "Caducidad", "Piezas"]],
+        head: [["QR", "Código", "Nombre", "Presentación", "Lote", "Caducidad", "Etiqueta", "Piezas"]],
         body: rows,
         columns: [
           { header: "QR", dataKey: "qrDataUrl" },
@@ -1163,17 +1182,19 @@ function ReturnsReconditionScannerInner({
           { header: "Presentación", dataKey: "presentation" },
           { header: "Lote", dataKey: "lot" },
           { header: "Caducidad", dataKey: "expiry" },
+          { header: "Etiqueta", dataKey: "etiqueta" },
           { header: "Piezas", dataKey: "pieces" },
         ],
         styles: { fontSize: 8, cellPadding: 4, valign: "middle" },
         headStyles: { fillColor: [3, 33, 33] },
         columnStyles: {
           qrDataUrl: { cellWidth: 56, minCellHeight: 44 },
-          code: { cellWidth: 90 },
-          name: { cellWidth: 190 },
-          presentation: { cellWidth: 110 },
-          lot: { cellWidth: 100 },
-          expiry: { cellWidth: 95 },
+          code: { cellWidth: 80 },
+          name: { cellWidth: 176 },
+          presentation: { cellWidth: 96 },
+          lot: { cellWidth: 86 },
+          expiry: { cellWidth: 84 },
+          etiqueta: { cellWidth: 82 },
           pieces: { cellWidth: 60, halign: "right" },
         },
         didParseCell: (data) => {
@@ -1199,7 +1220,104 @@ function ReturnsReconditionScannerInner({
     }
   }
 
-  async function closeCurrentBox(box) {
+  async function exportTarimaPdf(tarima, boxes) {
+    try {
+      const [{ jsPDF }, autoTableModule] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
+      const autoTable = autoTableModule.default || autoTableModule;
+      const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+      const marginX = 40;
+      let y = 48;
+
+      const safeBoxes = (Array.isArray(boxes) ? boxes : [])
+        .filter(Boolean)
+        .sort((a, b) => String(a?.palletNumber || "").localeCompare(String(b?.palletNumber || ""), undefined, { numeric: true }));
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(15);
+      doc.text(`${boardLabel} · Tarima ${tarima?.tarimaNumber || "-"}`, marginX, y);
+      y += 18;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.text(`Flujo: ${tarima?.flowType === "reacondicionado" ? "Reacondicionado" : "Devolución"}`, marginX, y);
+      y += 13;
+      doc.text(`Cajas incluidas: ${safeBoxes.length} · Piezas totales: ${safeBoxes.reduce((acc, box) => acc + Number(box?.totalPieces || 0), 0)}`, marginX, y);
+      y += 18;
+
+      for (let boxIndex = 0; boxIndex < safeBoxes.length; boxIndex += 1) {
+        const box = safeBoxes[boxIndex];
+        const products = Array.isArray(box?.products) ? box.products : Object.values(box?.products || {});
+        const rows = [];
+
+        products.forEach((product) => {
+          const lots = Array.isArray(product?.lots) ? product.lots : [];
+          if (!lots.length) {
+            rows.push([
+              String(product?.code || ""),
+              String(product?.name || ""),
+              String(product?.presentation || "-"),
+              "-",
+              "-",
+              "-",
+              String(product?.totalPieces || 0),
+            ]);
+            return;
+          }
+
+          lots.forEach((lot, lotIndex) => {
+            rows.push([
+              lotIndex === 0 ? String(product?.code || "") : "",
+              lotIndex === 0 ? String(product?.name || "") : "",
+              lotIndex === 0 ? String(product?.presentation || "-") : "",
+              String(lot?.lot || "-"),
+              String(lot?.expiry || "-"),
+              String(lot?.etiqueta || "-"),
+              String(lot?.pieces ?? 0),
+            ]);
+          });
+        });
+
+        if (y > 470) {
+          doc.addPage();
+          y = 48;
+        }
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text(`Caja ${box?.palletNumber || boxIndex + 1}`, marginX, y);
+        y += 14;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.text(`Meta: ${Number(box?.targetPieces || 0)} · Reales: ${Number(box?.totalPieces || 0)} · Revisó: ${String(box?.reviewerName || "N/A")}`, marginX, y);
+        y += 10;
+
+        autoTable(doc, {
+          startY: y,
+          head: [["Código", "Nombre", "Presentación", "Lote", "Caducidad", "Etiqueta", "Piezas"]],
+          body: rows,
+          styles: { fontSize: 8, cellPadding: 4, valign: "middle" },
+          headStyles: { fillColor: [3, 33, 33] },
+          columnStyles: {
+            0: { cellWidth: 82 },
+            1: { cellWidth: 180 },
+            2: { cellWidth: 100 },
+            3: { cellWidth: 96 },
+            4: { cellWidth: 92 },
+            5: { cellWidth: 90 },
+            6: { cellWidth: 60, halign: "right" },
+          },
+        });
+
+        y = (doc.lastAutoTable?.finalY || y) + 20;
+      }
+
+      const blob = doc.output("blob");
+      await printPdfBlob(blob);
+    } catch (error) {
+      setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo generar el PDF consolidado de la tarima." });
+    }
+  }
+
+  async function closeCurrentBox(box, options = {}) {
     const payload = {
       ...box,
       boardId,
@@ -1237,7 +1355,10 @@ function ReturnsReconditionScannerInner({
     });
     
     setActiveBoxId(nextActiveBoxId);
-    await exportClosedBoxPdf(payload);
+    if (!options?.skipPdf) {
+      await exportClosedBoxPdf(payload);
+    }
+    return payload;
   }
 
   async function finishActiveBoxManually() {
@@ -1265,15 +1386,25 @@ function ReturnsReconditionScannerInner({
     }
 
     let generatedFromOpenBoxes = false;
-    // Generar PDF consolidado de tarima
+    const newlyClosedBoxes = [];
     for (const box of allBoxes) {
       if (Object.keys(box.products || {}).length > 0) {
         generatedFromOpenBoxes = true;
-        await closeCurrentBox({
+        const closedPayload = await closeCurrentBox({
           ...box,
           products: Object.values(box.products || {}),
-        });
+        }, { skipPdf: true });
+        if (closedPayload) newlyClosedBoxes.push(closedPayload);
       }
+    }
+
+    const previouslyClosedBoxes = (closedForTarima || []).map((box) => ({
+      ...box,
+      products: Array.isArray(box?.products) ? box.products : Object.values(box?.products || {}),
+    }));
+    const allClosedBoxesForPdf = [...previouslyClosedBoxes, ...newlyClosedBoxes];
+    if (allClosedBoxesForPdf.length) {
+      await exportTarimaPdf(activeTarima, allClosedBoxesForPdf);
     }
     
     // Marcar tarima como cerrada
@@ -1292,8 +1423,10 @@ function ReturnsReconditionScannerInner({
     if (!lots.length) return null;
     const preferredKey = String(product?.lastLotKey || "").trim();
     if (preferredKey) {
-      const matched = lots.find((entry) => `${normalizeKey(entry.lot)}::${normalizeExpiryInput(entry.expiry)}` === preferredKey);
+      const matched = lots.find((entry) => `${normalizeKey(entry.lot)}::${normalizeExpiryInput(entry.expiry)}::${normalizeKey(entry?.etiqueta || "")}` === preferredKey);
       if (matched) return matched;
+      const matchedLegacy = lots.find((entry) => `${normalizeKey(entry.lot)}::${normalizeExpiryInput(entry.expiry)}` === preferredKey);
+      if (matchedLegacy) return matchedLegacy;
     }
     return lots[lots.length - 1] || lots[0] || null;
   }
@@ -1301,11 +1434,12 @@ function ReturnsReconditionScannerInner({
   function openLotModalForItem(item, product = null) {
     const history = getItemLotHistory(item);
     const preferredLot = getPreferredLotFromProduct(product);
-    const selectedLotKey = preferredLot ? `${normalizeKey(preferredLot.lot)}::${normalizeExpiryInput(preferredLot.expiry)}` : "";
+    const selectedLotKey = preferredLot ? `${normalizeKey(preferredLot.lot)}::${normalizeExpiryInput(preferredLot.expiry)}::${normalizeKey(preferredLot?.etiqueta || "")}` : "";
     setPendingItem(item);
     setLotForm({
       lot: preferredLot?.lot || history[0]?.lot || "",
       expiry: preferredLot?.expiry || history[0]?.expiry || "",
+      etiqueta: preferredLot?.etiqueta || history[0]?.etiqueta || "",
       pieces: 1,
       selectedLotKey,
     });
@@ -1343,7 +1477,7 @@ function ReturnsReconditionScannerInner({
     setActiveTarima(newTarima);
     setTarimaModalOpen(false);
     setTarimaForm({ tarimaNumber: "", flowType: "devolucion" });
-    setBoxForm({ boxNumber: "", targetPieces: 50, lot: "", expiry: "" });
+    setBoxForm({ boxNumber: "", targetPieces: 50, lot: "", expiry: "", etiqueta: "" });
     setBoardRuntimeFeedback({ tone: "success", message: `Tarima ${tarimaForm.tarimaNumber} iniciada.` });
     setBoxModalOpen(true);
   }
@@ -1361,8 +1495,13 @@ function ReturnsReconditionScannerInner({
     if (pendingItem) {
       const lot = String(boxForm.lot || "").trim();
       const expiry = normalizeExpiryInput(boxForm.expiry);
+      const etiqueta = String(boxForm.etiqueta || "").trim();
       if (!lot || !expiry) {
         setBoardRuntimeFeedback({ tone: "danger", message: "Captura lote y caducidad para registrar la pieza escaneada." });
+        return;
+      }
+      if (!etiqueta) {
+        setBoardRuntimeFeedback({ tone: "danger", message: "Captura etiqueta para registrar la pieza escaneada." });
         return;
       }
     }
@@ -1391,10 +1530,11 @@ function ReturnsReconditionScannerInner({
         itemId: pendingItem.id,
         lot: String(boxForm.lot || "").trim(),
         expiry: normalizeExpiryInput(boxForm.expiry),
+        etiqueta: String(boxForm.etiqueta || "").trim(),
       });
     }
     setBoxModalOpen(false);
-    setBoxForm({ boxNumber: "", targetPieces: 50, lot: "", expiry: "" });
+    setBoxForm({ boxNumber: "", targetPieces: 50, lot: "", expiry: "", etiqueta: "" });
     setBoardRuntimeFeedback({ tone: "success", message: `Caja ${boxForm.boxNumber} agregada.` });
   }
   
@@ -1438,7 +1578,11 @@ function ReturnsReconditionScannerInner({
     const isDoubleScanSameProduct = Boolean(preferredLot) && activeBox.lastScannedItemId === found.id;
 
     if (isDoubleScanSameProduct) {
-      void commitLotEntry(found, preferredLot.lot, preferredLot.expiry, 1, { closeModal: false, successMode: "auto" });
+      void commitLotEntry(found, preferredLot.lot, preferredLot.expiry, 1, {
+        closeModal: false,
+        successMode: "auto",
+        etiqueta: preferredLot?.etiqueta || "",
+      });
       return;
     }
     
@@ -1471,8 +1615,13 @@ function ReturnsReconditionScannerInner({
     if (!activeBox || !itemRef) return;
     const lot = String(lotValue || "").trim();
     const expiry = normalizeExpiryInput(expiryValue);
+    const etiqueta = String(options.etiqueta || lotForm.etiqueta || "").trim();
     const pieces = Math.max(1, Number(piecesValue || 0));
     if (!lot || !expiry || !pieces) return;
+    if (!etiqueta) {
+      setBoardRuntimeFeedback({ tone: "danger", message: "Captura etiqueta para registrar la pieza." });
+      return;
+    }
 
     const item = inventoryMapById.get(itemRef.id) || itemRef;
     const currentProduct = activeBox.products[item.id] || {
@@ -1488,19 +1637,19 @@ function ReturnsReconditionScannerInner({
       tarimaId: activeTarima?.id || null,
     };
 
-    const lotIndex = currentProduct.lots.findIndex((entry) => normalizeKey(entry.lot) === normalizeKey(lot) && normalizeExpiryInput(entry.expiry) === expiry);
+    const lotIndex = currentProduct.lots.findIndex((entry) => normalizeKey(entry.lot) === normalizeKey(lot) && normalizeExpiryInput(entry.expiry) === expiry && String(entry?.etiqueta || "").trim() === etiqueta);
     const nextLots = [...currentProduct.lots];
     if (lotIndex >= 0) {
       nextLots[lotIndex] = { ...nextLots[lotIndex], pieces: Number(nextLots[lotIndex].pieces || 0) + pieces };
     } else {
-      nextLots.push({ lot, expiry, pieces });
+      nextLots.push({ lot, expiry, etiqueta, pieces });
     }
 
     const nextProduct = {
       ...currentProduct,
       totalPieces: Number(currentProduct.totalPieces || 0) + pieces,
       lots: nextLots,
-      lastLotKey: `${normalizeKey(lot)}::${expiry}`,
+      lastLotKey: `${normalizeKey(lot)}::${expiry}::${normalizeKey(etiqueta)}`,
     };
 
     const nextProducts = {
@@ -1553,7 +1702,7 @@ function ReturnsReconditionScannerInner({
       setLotModalOpen(false);
       setPendingItem(null);
     }
-    persistLotHistory(item, lot, expiry);
+    persistLotHistory(item, lot, expiry, etiqueta);
 
     // Auto-collapse product if it reached its target
     if (nextProduct.totalPieces >= nextProduct.targetPieces) {
@@ -1577,7 +1726,11 @@ function ReturnsReconditionScannerInner({
 
   async function registerScannedItemLot() {
     if (!pendingItem) return;
-    await commitLotEntry(pendingItem, lotForm.lot, lotForm.expiry, lotForm.pieces, { closeModal: true, successMode: "manual" });
+    await commitLotEntry(pendingItem, lotForm.lot, lotForm.expiry, lotForm.pieces, {
+      closeModal: true,
+      successMode: "manual",
+      etiqueta: lotForm.etiqueta,
+    });
   }
 
   async function tryAutoAddPendingCode(scannedText) {
@@ -1591,15 +1744,20 @@ function ReturnsReconditionScannerInner({
       ? String(fallback?.lot || "").trim()
       : lotToUseRaw;
     const expiryToUse = normalizeExpiryInput(lotForm.expiry || fallback?.expiry || "");
+    const etiquetaToUse = String(lotForm.etiqueta || fallback?.etiqueta || "").trim();
 
-    if (!lotToUse || !expiryToUse) {
-      setBoardRuntimeFeedback({ tone: "danger", message: "Primero selecciona o captura lote y caducidad para auto-agregar por escaneo." });
+    if (!lotToUse || !expiryToUse || !etiquetaToUse) {
+      setBoardRuntimeFeedback({ tone: "danger", message: "Primero selecciona o captura lote, caducidad y etiqueta para auto-agregar por escaneo." });
       return true;
     }
 
     modalAutoCommitRef.current = true;
     try {
-      await commitLotEntry(pendingItem, lotToUse, expiryToUse, 1, { closeModal: true, successMode: "auto" });
+      await commitLotEntry(pendingItem, lotToUse, expiryToUse, 1, {
+        closeModal: true,
+        successMode: "auto",
+        etiqueta: etiquetaToUse,
+      });
     } finally {
       modalAutoCommitRef.current = false;
     }
@@ -2001,7 +2159,7 @@ function ReturnsReconditionScannerInner({
         onClose={() => {
           setBoxModalOpen(false);
           setPendingItem(null);
-          setBoxForm({ boxNumber: "", targetPieces: 50, lot: "", expiry: "" });
+          setBoxForm({ boxNumber: "", targetPieces: 50, lot: "", expiry: "", etiqueta: "" });
         }}
         onConfirm={addNewBoxToTarima}
       >
@@ -2059,6 +2217,14 @@ function ReturnsReconditionScannerInner({
                   onChange={(event) => setBoxForm((current) => ({ ...current, expiry: normalizeExpiryInput(event.target.value) }))}
                   placeholder="Ej: AGO-2026"
                   style={{ textTransform: "uppercase" }}
+                />
+              </label>
+              <label className="app-modal-field">
+                <span>Etiqueta</span>
+                <input
+                  value={boxForm.etiqueta}
+                  onChange={(event) => setBoxForm((current) => ({ ...current, etiqueta: event.target.value }))}
+                  placeholder="Ej: ETQ-001"
                 />
               </label>
             </>
@@ -2133,6 +2299,7 @@ function ReturnsReconditionScannerInner({
                   selectedLotKey: selected.key,
                   lot: selected.lot,
                   expiry: selected.expiry,
+                  etiqueta: selected.etiqueta || "",
                 }));
               }}
             >
@@ -2167,6 +2334,14 @@ function ReturnsReconditionScannerInner({
             />
           </label>
           <label className="app-modal-field">
+            <span>Etiqueta</span>
+            <input
+              value={lotForm.etiqueta}
+              onChange={(event) => setLotForm((current) => ({ ...current, selectedLotKey: "", etiqueta: event.target.value }))}
+              placeholder="Ej: ETQ-001"
+            />
+          </label>
+          <label className="app-modal-field">
             <span>Piezas</span>
             <input
               type="number"
@@ -2188,12 +2363,12 @@ function ReturnsReconditionScannerInner({
             <div className="saved-board-list">
               {getItemLotHistory(pendingItem).length ? getItemLotHistory(pendingItem).slice(0, 8).map((entry) => (
                 <button
-                  key={`${entry.lot}-${entry.expiry}`}
+                  key={`${entry.lot}-${entry.expiry}-${entry.etiqueta || ""}`}
                   type="button"
                   className="chip"
-                  onClick={() => setLotForm((current) => ({ ...current, lot: entry.lot, expiry: normalizeExpiryInput(entry.expiry) }))}
+                  onClick={() => setLotForm((current) => ({ ...current, lot: entry.lot, expiry: normalizeExpiryInput(entry.expiry), etiqueta: String(entry?.etiqueta || "") }))}
                 >
-                  {entry.lot} · {entry.expiry}
+                  {entry.lot} · {entry.expiry}{entry?.etiqueta ? ` · ${entry.etiqueta}` : ""}
                 </button>
               )) : <span className="chip">Sin historial todavía</span>}
             </div>

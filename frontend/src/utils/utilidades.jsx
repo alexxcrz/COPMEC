@@ -164,6 +164,7 @@ export function normalizeInventoryDomain(value) {
 const INVENTORY_SYSTEM_COLUMNS = Object.freeze([
   { id: "invcol-base-lote", domain: INVENTORY_DOMAIN_BASE, label: "Lote", key: "lote", createdAt: "1970-01-01T00:00:00.000Z", isSystem: true },
   { id: "invcol-base-caducidad", domain: INVENTORY_DOMAIN_BASE, label: "Caducidad", key: "caducidad", createdAt: "1970-01-01T00:00:00.000Z", isSystem: true },
+  { id: "invcol-base-etiqueta", domain: INVENTORY_DOMAIN_BASE, label: "Etiqueta", key: "etiqueta", createdAt: "1970-01-01T00:00:00.000Z", isSystem: true },
 ]);
 
 export function mergeInventoryColumnsWithSystem(columns = []) {
@@ -1603,6 +1604,39 @@ export function resolveInventoryPropertySourceFieldId(fields = [], preferredSour
   return sourceFields.at(-1)?.id || "";
 }
 
+function parseInventoryLotHistory(rawValue) {
+  if (!rawValue) return [];
+  if (Array.isArray(rawValue)) return rawValue;
+  if (typeof rawValue !== "string") return [];
+  try {
+    const parsed = JSON.parse(rawValue);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function resolveInventoryPropertyValue(item, property) {
+  const normalizedItem = item && typeof item === "object" ? item : null;
+  if (!normalizedItem) return "";
+
+  const customFields = normalizedItem.customFields && typeof normalizedItem.customFields === "object"
+    ? normalizedItem.customFields
+    : EMPTY_OBJECT;
+  const latestLotRecord = parseInventoryLotHistory(customFields.lotesCaducidades)[0] || null;
+
+  switch (property) {
+    case "lot":
+      return customFields.lote ?? latestLotRecord?.lot ?? "";
+    case "expiry":
+      return customFields.caducidad ?? latestLotRecord?.expiry ?? "";
+    case "label":
+      return customFields.etiqueta ?? latestLotRecord?.etiqueta ?? latestLotRecord?.label ?? "";
+    default:
+      return normalizedItem?.[property] ?? "";
+  }
+}
+
 export function getInventoryBundleEditableFields(fields, lookupFieldId) {
   return (fields || []).filter((field) => field.bundleParentId === lookupFieldId && field.bundleType === INVENTORY_LOOKUP_LOGISTICS_FIELD);
 }
@@ -1861,6 +1895,27 @@ export function getTextPreviewSeedValue(field, variant) {
 export function getTypedPreviewSeedValue(field, currentUserId, sampleInventory, variant) {
   if (isBoardActivityListField(field)) return variant === 0 ? "Actividad 1" : "Actividad 2";
   if (isInventoryLookupFieldType(field.type)) return sampleInventory?.id || "preview-inventory";
+  if (field.type === "multiSelectDetail") {
+    const firstOption = field.options?.[0] || "Opción 1";
+    const secondOption = field.options?.[1] || field.options?.[0] || "Opción 2";
+    if (variant === 0) {
+      return [{ option: firstOption, label: firstOption, detail: "3" }];
+    }
+    return [
+      { option: firstOption, label: firstOption, detail: "2" },
+      { option: secondOption, label: secondOption, detail: "1" },
+    ];
+  }
+  if (field.type === "evidenceGallery") {
+    return [
+      {
+        url: "https://placehold.co/640x480/png",
+        thumbnailUrl: "https://placehold.co/320x240/png",
+        mimeType: "image/png",
+        name: variant === 0 ? "evidencia-1.png" : "evidencia-2.png",
+      },
+    ];
+  }
 
   if (["number", "currency", "percentage"].includes(field.type)) {
     return variant === 0 ? 12 : 18;
@@ -1898,7 +1953,7 @@ export function buildPreviewRowValues(fields, currentUserId, inventoryItems, var
     const resolvedSourceFieldId = resolveInventoryPropertySourceFieldId(fields, field.sourceFieldId, field.id);
     const lookupId = values[resolvedSourceFieldId];
     const selectedInventory = (inventoryItems || []).find((item) => item.id === lookupId) || sampleInventory;
-    values[field.id] = selectedInventory?.[field.inventoryProperty] ?? "Auto";
+    values[field.id] = resolveInventoryPropertyValue(selectedInventory, field.inventoryProperty) || "Auto";
   });
 
   fields.forEach((field) => {
@@ -1986,6 +2041,13 @@ export function getTypedBoardPreviewValue(value, field, userMap, inventoryItems)
     const inventoryItem = (inventoryItems || []).find((item) => item.id === value);
     return inventoryItem ? `${inventoryItem.name} · ${inventoryItem.presentation}` : "Producto vinculado";
   }
+  if (field.type === "multiSelectDetail") {
+    return formatBoardMultiSelectDetailValue(value) || "Sin selección";
+  }
+  if (field.type === "evidenceGallery") {
+    const evidences = normalizeBoardEvidenceValue(value);
+    return evidences.length ? `${evidences.length} evidencia(s)` : "Sin evidencia";
+  }
 
   switch (field.type) {
     case "user":
@@ -2010,6 +2072,38 @@ export function formatBoardPreviewValue(value, field, userMap, inventoryItems) {
     return field.placeholder || "Sin captura";
   }
   return String(value);
+}
+
+export function normalizeBoardMultiSelectDetailValue(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item) => item && typeof item === "object")
+    .map((item) => ({
+      option: String(item.option || "").trim(),
+      label: String(item.label || item.option || "").trim(),
+      detail: String(item.detail || "").trim(),
+    }))
+    .filter((item) => item.option);
+}
+
+export function formatBoardMultiSelectDetailValue(value) {
+  return normalizeBoardMultiSelectDetailValue(value)
+    .map((item) => (item.detail ? `${item.label || item.option}: ${item.detail}` : (item.label || item.option)))
+    .join(" | ");
+}
+
+export function normalizeBoardEvidenceValue(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item) => item && typeof item === "object")
+    .map((item) => ({
+      url: String(item.url || "").trim(),
+      thumbnailUrl: String(item.thumbnailUrl || item.thumbUrl || item.url || "").trim(),
+      mimeType: String(item.mimeType || "").trim(),
+      name: String(item.name || "").trim(),
+      publicId: String(item.publicId || "").trim(),
+    }))
+    .filter((item) => item.url);
 }
 
 export function getBoardFieldTypeDescription(type) {
@@ -2154,6 +2248,12 @@ export function getTemplateFieldDetail(field) {
       ? `Opciones: ${(field.options || []).join(", ") || "Sin opciones"}`
       : `Fuente: ${OPTION_SOURCE_TYPES.find((item) => item.value === field.optionSource)?.label || "Catálogo"}`;
   }
+  if (field.type === "multiSelectDetail") {
+    return `Selección múltiple: ${(field.options || []).join(", ") || "Sin opciones"}`;
+  }
+  if (field.type === "evidenceGallery") {
+    return "Miniaturas con carga de foto/video y vista previa en modal.";
+  }
   if (field.type === "inventoryProperty") {
     return `Dato: ${INVENTORY_PROPERTIES.find((item) => item.value === field.inventoryProperty)?.label || field.inventoryProperty}`;
   }
@@ -2173,6 +2273,8 @@ export function isBoardFieldValueFilled(value, fieldType) {
   if (["number", "currency", "percentage", "rating", "progress", "counter"].includes(fieldType)) return value !== "" && value !== null && value !== undefined && Number.isFinite(Number(value));
   if (fieldType === "boolean") return value === "Si" || value === "No";
   if (fieldType === "formula") return value !== null && value !== undefined;
+  if (fieldType === "multiSelectDetail") return normalizeBoardMultiSelectDetailValue(value).length > 0;
+  if (fieldType === "evidenceGallery") return normalizeBoardEvidenceValue(value).length > 0;
   return String(value ?? "").trim() !== "";
 }
 
@@ -2549,6 +2651,12 @@ export function formatBoardExportFieldValue(field, value, inventoryItems, userMa
   if (field.type === "inventoryLookup") {
     const inventoryItem = (inventoryItems || []).find((item) => item.id === value);
     return inventoryItem ? `${inventoryItem.name} · ${inventoryItem.presentation}` : "";
+  }
+  if (field.type === "multiSelectDetail") {
+    return formatBoardMultiSelectDetailValue(value);
+  }
+  if (field.type === "evidenceGallery") {
+    return normalizeBoardEvidenceValue(value).map((item) => item.name || item.url).join(", ");
   }
   if (field.type === "user") {
     return userMap.get(value)?.name || "";
