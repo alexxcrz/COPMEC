@@ -464,8 +464,8 @@ function App() { // NOSONAR
   const [inventoryActionsMenuOpen, setInventoryActionsMenuOpen] = useState(false);
   const [inventorySearch, setInventorySearch] = useState("");
   const [dashboardFilters, setDashboardFilters] = useState({ periodType: "week", periodKey: "all", responsibleId: "all", area: "all", source: "all", startDate: "", endDate: "" });
-  const [pauseState, setPauseState] = useState({ open: false, activityId: null, reason: "", error: "", completed: false, continueReady: false });
-  const [boardPauseState, setBoardPauseState] = useState({ open: false, boardId: null, rowId: null, reason: "", error: "", completed: false, continueReady: false });
+  const [pauseState, setPauseState] = useState({ open: false, activityId: null, reason: "", customReason: "", error: "", completed: false, continueReady: false, pauseLogId: null });
+  const [boardPauseState, setBoardPauseState] = useState({ open: false, boardId: null, rowId: null, reason: "", customReason: "", error: "", completed: false, continueReady: false });
   const [pieceDeductionModal, setPieceDeductionModal] = useState({ open: false, boardId: null, rowId: null, items: [] });
   const [catalogModal, setCatalogModal] = useState(() => createEmptyCatalogModalState());
   const [editWeekId, setEditWeekId] = useState(null);
@@ -547,6 +547,22 @@ function App() { // NOSONAR
     globalPauseActivatedAt: state?.system?.operational?.pauseControl?.globalPauseActivatedAt || null,
     workHours: state?.system?.operational?.pauseControl?.workHours || { startHour: 8, endHour: 16 },
   }), [state?.system?.operational]);
+  const pauseReasonOptions = useMemo(() => {
+    const source = Array.isArray(state?.system?.operational?.pauseControl?.reasons)
+      ? state.system.operational.pauseControl.reasons
+      : [];
+    const seen = new Set();
+    const labels = source
+      .filter((entry) => entry?.enabled !== false)
+      .map((entry) => String(entry?.label || "").trim())
+      .filter((label) => {
+        const key = label.toLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    return labels.length ? labels : ["Falta de material", "Detención operativa", "Ajuste de calidad"];
+  }, [state?.system?.operational?.pauseControl?.reasons]);
   const sessionRole = normalizeRole(state.users.find((user) => user.id === sessionUserId)?.role);
   const antiCaptureEnabled = import.meta.env.PROD && sessionRole !== ROLE_LEAD;
   const [isDemoMode, setIsDemoMode] = useState(false);
@@ -3131,6 +3147,30 @@ function App() { // NOSONAR
     setProfileModalOpen(false);
   }, [isForcedPasswordChange]);
 
+  useEffect(() => {
+    if (!pauseState.open || pauseState.completed || pauseState.reason || !pauseReasonOptions.length) return;
+    setPauseState((current) => (
+      current.open && !current.completed && !current.reason
+        ? { ...current, reason: pauseReasonOptions[0] }
+        : current
+    ));
+  }, [pauseState.open, pauseState.completed, pauseState.reason, pauseReasonOptions]);
+
+  useEffect(() => {
+    if (!boardPauseState.open || boardPauseState.completed || boardPauseState.reason || !pauseReasonOptions.length) return;
+    setBoardPauseState((current) => (
+      current.open && !current.completed && !current.reason
+        ? { ...current, reason: pauseReasonOptions[0] }
+        : current
+    ));
+  }, [boardPauseState.open, boardPauseState.completed, boardPauseState.reason, pauseReasonOptions]);
+
+  function resolvePauseReasonValue(pauseEntry) {
+    const customReason = String(pauseEntry?.customReason || "").trim();
+    if (customReason) return customReason;
+    return String(pauseEntry?.reason || "").trim();
+  }
+
   function invalidateClientSession(message) {
     clearSessionExpiredHandler();
     localStorage.removeItem(SESSION_STORAGE_KEY);
@@ -3159,11 +3199,12 @@ function App() { // NOSONAR
         }),
       }));
       if (pauseContinueTimerRef.current) clearTimeout(pauseContinueTimerRef.current);
-      setPauseState({ open: false, activityId: null, reason: "", error: "", completed: false, continueReady: false, pauseLogId: null });
+      setPauseState({ open: false, activityId: null, reason: "", customReason: "", error: "", completed: false, continueReady: false, pauseLogId: null });
       return;
     }
 
-    if (!pauseState.reason.trim()) {
+    const pauseReasonValue = resolvePauseReasonValue(pauseState);
+    if (!pauseReasonValue) {
       setPauseState((current) => ({ ...current, error: "El motivo es obligatorio para poder pausar." }));
       return;
     }
@@ -3185,7 +3226,7 @@ function App() { // NOSONAR
       pauseLogs: current.pauseLogs.concat({
         id: pauseLogId,
         weekActivityId: pauseState.activityId,
-        pauseReason: pauseState.reason.trim(),
+        pauseReason: pauseReasonValue,
         pausedAt: nowIso,
         resumedAt: null,
         pauseDurationSeconds: 0,
@@ -3210,7 +3251,16 @@ function App() { // NOSONAR
     const board = (state.controlBoards || []).find((item) => item.id === boardId);
     const row = board?.rows?.find((item) => item.id === rowId);
     if (!board || !row || !canOperateBoardRowRecord(currentUser, board, row, normalizedPermissions) || row.status !== STATUS_RUNNING) return;
-    setBoardPauseState({ open: true, boardId, rowId, reason: "", error: "", completed: false, continueReady: false });
+    setBoardPauseState({
+      open: true,
+      boardId,
+      rowId,
+      reason: pauseReasonOptions[0] || "",
+      customReason: "",
+      error: "",
+      completed: false,
+      continueReady: false,
+    });
   }
 
   function handleConfirmBoardPause() {
@@ -3224,11 +3274,12 @@ function App() { // NOSONAR
         applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
       }).catch(() => {});
       if (boardPauseContinueTimerRef.current) clearTimeout(boardPauseContinueTimerRef.current);
-      setBoardPauseState({ open: false, boardId: null, rowId: null, reason: "", error: "", completed: false, continueReady: false });
+      setBoardPauseState({ open: false, boardId: null, rowId: null, reason: "", customReason: "", error: "", completed: false, continueReady: false });
       return;
     }
 
-    if (!boardPauseState.reason.trim()) {
+    const boardPauseReasonValue = resolvePauseReasonValue(boardPauseState);
+    if (!boardPauseReasonValue) {
       setBoardPauseState((current) => ({ ...current, error: "El motivo es obligatorio para poder pausar." }));
       return;
     }
@@ -3237,7 +3288,7 @@ function App() { // NOSONAR
       method: "PATCH",
       body: JSON.stringify({
         status: STATUS_PAUSED,
-        lastPauseReason: boardPauseState.reason.trim(),
+        lastPauseReason: boardPauseReasonValue,
       }),
     }).then((remoteState) => {
       applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
@@ -6402,7 +6453,7 @@ function App() { // NOSONAR
         {page === PAGE_NOT_FOUND ? <PaginaNoEncontrada contexto={paginasContexto} /> : null}
       </section>
 
-      <Modal open={pauseState.open} title="Actividad en pausa" confirmLabel={pauseState.completed ? (pauseState.continueReady ? "Continuar" : "Espera un momento...") : "Confirmar pausa"} cancelLabel="Cancelar" hideCancel={pauseState.completed} confirmDisabled={pauseState.completed && !pauseState.continueReady} onClose={() => { if (pauseContinueTimerRef.current) clearTimeout(pauseContinueTimerRef.current); setPauseState({ open: false, activityId: null, reason: "", error: "", completed: false, continueReady: false, pauseLogId: null }); }} onConfirm={handleConfirmPause}>
+      <Modal open={pauseState.open} title="Actividad en pausa" confirmLabel={pauseState.completed ? (pauseState.continueReady ? "Continuar" : "Espera un momento...") : "Confirmar pausa"} cancelLabel="Cancelar" hideCancel={pauseState.completed} confirmDisabled={pauseState.completed && !pauseState.continueReady} onClose={() => { if (pauseContinueTimerRef.current) clearTimeout(pauseContinueTimerRef.current); setPauseState({ open: false, activityId: null, reason: "", customReason: "", error: "", completed: false, continueReady: false, pauseLogId: null }); }} onConfirm={handleConfirmPause}>
         <div className="modal-form-grid">
           {pauseState.completed ? (
             <>
@@ -6413,16 +6464,22 @@ function App() { // NOSONAR
             <>
               <label className="app-modal-field">
                 <span>Motivo de pausa</span>
-                <input value={pauseState.reason} onChange={(event) => setPauseState((current) => ({ ...current, reason: event.target.value, error: "" }))} placeholder="Describe por qué se detiene la actividad" />
+                <select value={pauseState.reason} onChange={(event) => setPauseState((current) => ({ ...current, reason: event.target.value, error: "" }))}>
+                  {pauseReasonOptions.map((optionLabel) => <option key={optionLabel} value={optionLabel}>{optionLabel}</option>)}
+                </select>
+              </label>
+              <label className="app-modal-field">
+                <span>Otra</span>
+                <input value={pauseState.customReason} onChange={(event) => setPauseState((current) => ({ ...current, customReason: event.target.value, error: "" }))} placeholder="Especifica el motivo" />
               </label>
               {pauseState.error ? <p className="validation-text">{pauseState.error}</p> : null}
-              <p className="modal-footnote">El motivo es obligatorio para poder pausar.</p>
+              <p className="modal-footnote">Selecciona un motivo de la lista o captura uno en "Otra".</p>
             </>
           )}
         </div>
       </Modal>
 
-      <Modal open={boardPauseState.open} title="Pausar fila" confirmLabel={boardPauseState.completed ? (boardPauseState.continueReady ? "Continuar" : "Espera un momento...") : "Confirmar pausa"} cancelLabel="Cancelar" hideCancel={boardPauseState.completed} confirmDisabled={boardPauseState.completed && !boardPauseState.continueReady} onClose={() => { if (boardPauseContinueTimerRef.current) clearTimeout(boardPauseContinueTimerRef.current); setBoardPauseState({ open: false, boardId: null, rowId: null, reason: "", error: "", completed: false, continueReady: false }); }} onConfirm={handleConfirmBoardPause}>
+      <Modal open={boardPauseState.open} title="Pausar fila" confirmLabel={boardPauseState.completed ? (boardPauseState.continueReady ? "Continuar" : "Espera un momento...") : "Confirmar pausa"} cancelLabel="Cancelar" hideCancel={boardPauseState.completed} confirmDisabled={boardPauseState.completed && !boardPauseState.continueReady} onClose={() => { if (boardPauseContinueTimerRef.current) clearTimeout(boardPauseContinueTimerRef.current); setBoardPauseState({ open: false, boardId: null, rowId: null, reason: "", customReason: "", error: "", completed: false, continueReady: false }); }} onConfirm={handleConfirmBoardPause}>
         <div className="modal-form-grid">
           {boardPauseState.completed ? (
             <>
@@ -6433,10 +6490,16 @@ function App() { // NOSONAR
             <>
               <label className="app-modal-field">
                 <span>Motivo de pausa</span>
-                <input value={boardPauseState.reason} onChange={(event) => setBoardPauseState((current) => ({ ...current, reason: event.target.value, error: "" }))} placeholder="Describe por qué se detiene la fila" />
+                <select value={boardPauseState.reason} onChange={(event) => setBoardPauseState((current) => ({ ...current, reason: event.target.value, error: "" }))}>
+                  {pauseReasonOptions.map((optionLabel) => <option key={optionLabel} value={optionLabel}>{optionLabel}</option>)}
+                </select>
+              </label>
+              <label className="app-modal-field">
+                <span>Otra</span>
+                <input value={boardPauseState.customReason} onChange={(event) => setBoardPauseState((current) => ({ ...current, customReason: event.target.value, error: "" }))} placeholder="Especifica el motivo" />
               </label>
               {boardPauseState.error ? <p className="validation-text">{boardPauseState.error}</p> : null}
-              <p className="modal-footnote">La fila solo se pausa si capturas un motivo.</p>
+              <p className="modal-footnote">Selecciona un motivo de la lista o captura uno en "Otra".</p>
             </>
           )}
         </div>
@@ -6528,32 +6591,6 @@ function App() { // NOSONAR
             </select>
           </label>
           <label className="app-modal-field catalog-activity-chip-field">
-            <span>Dias de ejecucion</span>
-            <div className="catalog-activity-chip-row">
-              {CATALOG_WEEKDAY_OPTIONS.map((option) => {
-                const isActive = (catalogModal.scheduledDays || []).includes(option.value);
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setCatalogModal((current) => {
-                      const currentDays = normalizeCatalogScheduledDays(current.scheduledDays, current.frequency);
-                      const hasDay = currentDays.includes(option.value);
-                      const nextDays = hasDay
-                        ? currentDays.filter((day) => day !== option.value)
-                        : currentDays.concat([option.value]).sort((a, b) => a - b);
-                      return { ...current, scheduledDays: nextDays };
-                    })}
-                    className={`catalog-day-chip ${isActive ? "active" : ""}`.trim()}
-                    title={option.label}
-                  >
-                    {option.short}
-                  </button>
-                );
-              })}
-            </div>
-          </label>
-          <label className="app-modal-field catalog-activity-chip-field">
             <span>Naves (opcional, vacio = todas)</span>
             <div className="catalog-activity-chip-row">
               {CLEANING_SITE_OPTIONS.map((site) => {
@@ -6587,7 +6624,7 @@ function App() { // NOSONAR
           </label>
           <label className="app-modal-field catalog-activity-chip-field">
             <span>Dias por nave</span>
-            <div className="modal-form-grid">
+            <div className="modal-form-grid catalog-days-by-site-grid">
               {(catalogModal.cleaningSites || []).length ? (catalogModal.cleaningSites || []).map((siteValue) => {
                 const siteLabel = CLEANING_SITE_OPTIONS.find((site) => String(site.value || "").trim().toUpperCase() === siteValue)?.label || siteValue;
                 const siteDays = normalizeCatalogScheduledDaysBySite(catalogModal.scheduledDaysBySite, normalizeCatalogScheduledDays(catalogModal.scheduledDays, catalogModal.frequency))[siteValue]

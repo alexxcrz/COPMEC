@@ -590,7 +590,7 @@ export const INVENTORY_MOVEMENT_OPTIONS = [
 export const CLEANING_SITE_OPTIONS = [
   { value: "C1", label: "C1" },
   { value: "C2", label: "C2" },
-  { value: "C3", label: "C3 principal" },
+  { value: "C3", label: "C3" },
   { value: "P", label: "P" },
 ];
 
