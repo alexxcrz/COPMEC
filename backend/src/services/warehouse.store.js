@@ -350,11 +350,18 @@ function withDefaultBoardSettings(settings) {
     showAssignee: true,
     showDates: true,
     ...resolvedSettings,
+    ownerArea: normalizeBoardOwnerArea(resolvedSettings?.ownerArea),
     operationalContextType,
     operationalContextLabel: normalizeBoardOperationalContextLabel(resolvedSettings?.operationalContextLabel, operationalContextType),
     operationalContextOptions,
     operationalContextValue: normalizeBoardOperationalContextValue(resolvedSettings?.operationalContextValue, operationalContextType, operationalContextOptions),
   };
+}
+
+function normalizeBoardOwnerArea(areaValue) {
+  const normalized = normalizeAreaOption(areaValue);
+  if (!normalized || normalized === "SIN AREA") return "";
+  return normalizeAreaOption(splitAreaAndSubArea(normalized).area || normalized);
 }
 
 function normalizeInventoryTransferTargets(targets, fallbackUnitLabel = "pzas") {
@@ -448,8 +455,11 @@ function normalizeBoardWeeklyCycle(cycle, referenceDate = new Date()) {
 }
 
 function cloneBoardRowSnapshot(row) {
+  const responsibleIds = normalizeBoardResponsibleIds(row?.responsibleIds, row?.responsibleId);
   return {
     ...row,
+    responsibleId: responsibleIds[0] || "",
+    responsibleIds,
     values: { ...(row?.values ?? EMPTY_OBJECT) },
   };
 }
@@ -1803,6 +1813,7 @@ export function canManageWarehouseBoard(user, board) {
   if (!user || !board) return false;
   const normalizedRole = normalizeRole(user.role);
   if (normalizedRole === ROLE_LEAD) return true;
+  if (!doesBoardMatchWarehouseUserArea(board, user)) return false;
   if (board.createdById === user.id || board.ownerId === user.id) return true;
   if (board.visibilityType === "users" && (board.accessUserIds || []).includes(user.id)) return true;
   if (board.visibilityType === "all") return true;
@@ -2376,7 +2387,8 @@ function remapBoardRowValues(row, previousFields, nextFields, fallbackResponsibl
 }
 
 function createBoardRowRecord(fields, responsibleId, partial = {}) {
-  const effectiveResponsibleId = partial?.responsibleId || responsibleId || "";
+  const responsibleIds = normalizeBoardResponsibleIds(partial?.responsibleIds, partial?.responsibleId || responsibleId);
+  const effectiveResponsibleId = responsibleIds[0] || "";
   const baseValues = (fields || []).reduce((accumulator, field) => {
     accumulator[field.id] = getBoardFieldDefaultValue(field, effectiveResponsibleId);
     return accumulator;
@@ -2389,6 +2401,7 @@ function createBoardRowRecord(fields, responsibleId, partial = {}) {
       ...(partial?.values ?? EMPTY_OBJECT),
     },
     responsibleId: effectiveResponsibleId,
+    responsibleIds,
     status: partial?.status || "Pendiente",
     startTime: partial?.startTime ?? null,
     endTime: partial?.endTime ?? null,
@@ -2528,6 +2541,15 @@ function normalizeBoardAccessUserIds(entries = [], ownerId = "") {
     .filter((entry) => entry && entry !== ownerId)));
 }
 
+function normalizeBoardResponsibleIds(entries = [], fallbackResponsibleId = "") {
+  const normalized = Array.from(new Set((Array.isArray(entries) ? entries : [])
+    .map((entry) => String(entry || "").trim())
+    .filter(Boolean)));
+  if (normalized.length) return normalized;
+  const fallbackId = String(fallbackResponsibleId || "").trim();
+  return fallbackId ? [fallbackId] : [];
+}
+
 function resolveBoardVisibilitySnapshot(board, ownerId = "") {
   const visibilityType = normalizeBoardVisibilityType(board?.visibilityType);
   return {
@@ -2535,6 +2557,14 @@ function resolveBoardVisibilitySnapshot(board, ownerId = "") {
     sharedDepartments: visibilityType === "department" ? normalizeBoardSharedDepartments(board?.sharedDepartments) : [],
     accessUserIds: visibilityType === "users" ? normalizeBoardAccessUserIds(board?.accessUserIds, ownerId) : [],
   };
+}
+
+function doesBoardMatchWarehouseUserArea(board, user) {
+  if (!board || !user) return false;
+  const ownerArea = normalizeBoardOwnerArea(board?.settings?.ownerArea || board?.ownerArea || "");
+  if (!ownerArea) return true;
+  const userArea = normalizeBoardOwnerArea(user?.department || user?.area || "");
+  return Boolean(userArea) && userArea === ownerArea;
 }
 
 function buildAreaCatalogEntries(users = [], catalog = []) {
@@ -4145,7 +4175,7 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
     if (!Number.isFinite(pauseStartedMs) || !Number.isFinite(resumedMs)) return 0;
     const totalPauseSeconds = Math.max(0, Math.round((resumedMs - pauseStartedMs) / 1000));
     const authorizedSeconds = Math.max(0, Number(targetRow.pauseAuthorizedSeconds || 0));
-    if (targetRow.pauseAffectsTimer) return totalPauseSeconds;
+    if (!targetRow.pauseAffectsTimer) return 0;
     return Math.max(0, totalPauseSeconds - authorizedSeconds);
   };
   const normalizedValuesPatch = {
@@ -4160,8 +4190,14 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
     },
   };
 
-  if (hasOwn(patch, "responsibleId")) {
-    nextRow.responsibleId = patch.responsibleId || "";
+  if (hasOwn(patch, "responsibleIds")) {
+    const responsibleIds = normalizeBoardResponsibleIds(patch.responsibleIds, "");
+    nextRow.responsibleIds = responsibleIds;
+    nextRow.responsibleId = responsibleIds[0] || "";
+  } else if (hasOwn(patch, "responsibleId")) {
+    const responsibleIds = normalizeBoardResponsibleIds([], patch.responsibleId || "");
+    nextRow.responsibleIds = responsibleIds;
+    nextRow.responsibleId = responsibleIds[0] || "";
   }
 
   if (hasOwn(patch, "status")) {

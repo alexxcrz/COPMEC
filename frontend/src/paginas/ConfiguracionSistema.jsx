@@ -381,6 +381,11 @@ export default function ConfiguracionSistema({ contexto }) {
           ))}
         </div>
 
+        <p className="subtle-line" style={{ marginTop: 6 }}>
+          Definición: cuando <strong>Afecta contador</strong> está desactivado, la pausa no suma tiempo productivo.
+          Si está activado, los <strong>Minutos autorizados</strong> se descuentan antes de penalizar.
+        </p>
+
         <div className="row-actions compact">
           <button type="button" className="icon-button" onClick={addPauseReason} disabled={!canManageSystemSettings}>
             Agregar motivo

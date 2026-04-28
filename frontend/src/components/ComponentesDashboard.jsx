@@ -59,21 +59,20 @@ export function InventoryStockBar({ current, minimum, unitLabel = "pzas", target
   );
 }
 
-export function DashboardKpiCard({ title, value, subtitle, tone, icon: Icon }) {
+export function DashboardKpiCard({ title, value, valueMeta, subtitle, tone, icon: Icon }) {
   const palette = KPI_STYLES[tone] || KPI_STYLES.cyan;
-  // Allow multiline value (for min + hours)
-  const valueLines = String(value).split(/\n|<br\s*\/>/);
   return (
     <article className="dashboard-kpi-card">
       <div className="dashboard-kpi-head">
         <div className="dashboard-kpi-icon" style={{ backgroundColor: palette.iconBg, color: palette.iconColor }}>
-          <Icon size={18} strokeWidth={2.1} />
+          <Icon size={14} strokeWidth={2.1} />
         </div>
       </div>
       <span>{title}</span>
-      <strong style={{ whiteSpace: 'pre-line' }}>{valueLines.map((line, i) => (
-        <span key={i} style={i > 0 ? { fontSize: '0.95em', color: '#4b5563', display: 'block', lineHeight: 1.1 } : {}}>{line}</span>
-      ))}</strong>
+      <strong>
+        {value}
+        {valueMeta ? <span className="dashboard-kpi-value-meta">{valueMeta}</span> : null}
+      </strong>
     </article>
   );
 }

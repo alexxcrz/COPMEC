@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import ReturnsReconditionScanner from "../features/boards/ReturnsReconditionScanner.jsx";
 import { BoardEditableInventoryPropertyInput, BoardEvidenceCell, BoardMultiSelectDetailCell } from "../components/BoardRuntimeFieldCells.jsx";
-import { getOperationalElapsedSeconds, normalizeSystemOperationalSettings, resolveInventoryPropertySourceFieldId } from "../utils/utilidades.jsx";
+import {
+  formatBoardRowAssigneeLabel,
+  getBoardRowResponsibleIds,
+  getOperationalElapsedSeconds,
+  normalizeSystemOperationalSettings,
+  resolveInventoryPropertySourceFieldId,
+} from "../utils/utilidades.jsx";
 
 const EDITABLE_INVENTORY_PROPERTIES = new Set(["lot", "expiry", "label"]);
 
@@ -216,6 +222,7 @@ export default function MisTableros({ contexto }) {
     : (label, required = false) => `${label}${required ? " *" : ""}`;
   const boardView = selectedCustomBoardDisplay || selectedCustomBoard;
   const isBoardOwner = Boolean(selectedCustomBoard && currentUser && (currentUser.role === "Lead" || selectedCustomBoard.createdById === currentUser.id || selectedCustomBoard.ownerId === currentUser.id));
+  const [openAssigneeMenuRowId, setOpenAssigneeMenuRowId] = useState("");
   const [selectedWeekdayFilter, setSelectedWeekdayFilter] = useState("auto");
   const [currentWeekdayOffset, setCurrentWeekdayOffset] = useState(() => {
     const today = new Date();
@@ -225,6 +232,7 @@ export default function MisTableros({ contexto }) {
   const [columnResizing, setColumnResizing] = useState({ isResizing: false, columnToken: null, startX: 0, startWidth: 0 });
   const [columnWidthsOverride, setColumnWidthsOverride] = useState({});
   const columnWidthsOverrideRef = useRef({});
+  const assigneeMenuRef = useRef(null);
   const boardColumns = boardView ? getOrderedBoardColumns(boardView, isBoardOwner) : [];
   const systemOperationalSettings = normalizeSystemOperationalSettings(state?.system?.operational);
   const systemPauseControl = systemOperationalSettings.pauseControl;
@@ -304,6 +312,19 @@ export default function MisTableros({ contexto }) {
     }, 60000);
     return () => globalThis.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!openAssigneeMenuRowId) return undefined;
+
+    function handlePointerDown(event) {
+      if (!assigneeMenuRef.current?.contains(event.target)) {
+        setOpenAssigneeMenuRowId("");
+      }
+    }
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => window.removeEventListener("pointerdown", handlePointerDown);
+  }, [openAssigneeMenuRowId]);
 
   // Handlers para redimensionamiento de columnas
   const getColumnMinWidth = (column) => {
@@ -419,6 +440,44 @@ export default function MisTableros({ contexto }) {
     if (!activityValue) return true;
     return activityOptionNames.has(activityValue);
   });
+
+  function updateRowResponsibleAssignments(rowId, nextResponsibleIds) {
+    if (!selectedCustomBoard) return;
+
+    const normalizedResponsibleIds = Array.from(new Set((Array.isArray(nextResponsibleIds) ? nextResponsibleIds : [])
+      .map((userId) => String(userId || "").trim())
+      .filter(Boolean)));
+    const nextResponsibleId = normalizedResponsibleIds[0] || "";
+
+    setState((current) => ({
+      ...current,
+      controlBoards: (current.controlBoards || []).map((board) => (
+        board.id !== selectedCustomBoard.id
+          ? board
+          : {
+              ...board,
+              rows: (board.rows || []).map((row) => (
+                row.id !== rowId
+                  ? row
+                  : {
+                      ...row,
+                      responsibleId: nextResponsibleId,
+                      responsibleIds: normalizedResponsibleIds,
+                    }
+              )),
+            }
+      )),
+    }));
+
+    requestJson(`/warehouse/boards/${selectedCustomBoard.id}/rows/${rowId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ responsibleIds: normalizedResponsibleIds }),
+    }).then((remoteState) => {
+      applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+    }).catch((error) => {
+      setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo actualizar el responsable de la fila." });
+    });
+  }
   const visibleBoardMetrics = {
     totalRows: visibleRows.length,
     running: visibleRows.filter((row) => row.status === STATUS_RUNNING).length,
@@ -620,6 +679,10 @@ export default function MisTableros({ contexto }) {
                     const canStartRow = row.status === STATUS_PENDING || row.status === STATUS_PAUSED;
                     const canPauseRow = row.status === STATUS_RUNNING;
                     const canFinishRow = row.status === STATUS_RUNNING;
+                    const rowResponsibleIds = getBoardRowResponsibleIds(row);
+                    const assigneeDisplayLabel = formatBoardRowAssigneeLabel(row, userMap, { useInitialsForMultiple: true });
+                    const assigneeFullLabel = formatBoardRowAssigneeLabel(row, userMap);
+                    const assigneeMenuOpen = openAssigneeMenuRowId === row.id;
                     return (
                       <tr key={row.id}>
                         {visibleBoardColumns.map((column) => {
@@ -627,20 +690,74 @@ export default function MisTableros({ contexto }) {
                             if (column.id === "assignee") {
                               return (
                                 <td key={`${row.id}-${column.token}`} style={getEffectiveColumnWidth(column)}>
-                                  <select value={row.responsibleId || ""} onChange={(event) => {
-                                    if (!rowFieldEditable) return;
-                                    requestJson(`/warehouse/boards/${selectedCustomBoard.id}/rows/${row.id}`, {
-                                      method: "PATCH",
-                                      body: JSON.stringify({ responsibleId: event.target.value }),
-                                    }).then((remoteState) => {
-                                      applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
-                                    }).catch((error) => {
-                                      setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo actualizar el responsable de la fila." });
-                                    });
-                                  }} disabled={!rowFieldEditable} style={{ width: "100%" }}>
-                                    <option value="">Sin asignar</option>
-                                    {visibleUsers.filter((user) => user.isActive).map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
-                                  </select>
+                                  <div ref={assigneeMenuOpen ? assigneeMenuRef : null} style={{ position: "relative" }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => rowFieldEditable && setOpenAssigneeMenuRowId((current) => current === row.id ? "" : row.id)}
+                                      disabled={!rowFieldEditable}
+                                      title={assigneeFullLabel}
+                                      style={{
+                                        width: "100%",
+                                        minHeight: "2.2rem",
+                                        padding: "0.4rem 0.55rem",
+                                        borderRadius: "0.8rem",
+                                        border: "1px solid rgba(148, 163, 184, 0.45)",
+                                        background: "#fff",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "space-between",
+                                        gap: "0.5rem",
+                                        cursor: rowFieldEditable ? "pointer" : "default",
+                                      }}
+                                    >
+                                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{assigneeDisplayLabel}</span>
+                                      <span aria-hidden="true">▾</span>
+                                    </button>
+                                    {assigneeMenuOpen ? (
+                                      <div
+                                        style={{
+                                          position: "absolute",
+                                          top: "calc(100% + 0.35rem)",
+                                          left: 0,
+                                          zIndex: 20,
+                                          minWidth: "15rem",
+                                          maxWidth: "18rem",
+                                          padding: "0.5rem",
+                                          borderRadius: "0.9rem",
+                                          border: "1px solid rgba(148, 163, 184, 0.25)",
+                                          background: "#ffffff",
+                                          boxShadow: "0 14px 28px rgba(15, 23, 42, 0.14)",
+                                          display: "grid",
+                                          gap: "0.35rem",
+                                        }}
+                                      >
+                                        <div style={{ display: "grid", gap: "0.25rem", maxHeight: "12rem", overflowY: "auto" }}>
+                                          {visibleUsers.filter((user) => user.isActive).map((user) => {
+                                            const checked = rowResponsibleIds.includes(user.id);
+                                            return (
+                                              <label key={user.id} style={{ display: "flex", alignItems: "center", gap: "0.45rem", fontSize: "0.78rem", color: "#244040" }}>
+                                                <input
+                                                  type="checkbox"
+                                                  checked={checked}
+                                                  onChange={() => updateRowResponsibleAssignments(
+                                                    row.id,
+                                                    checked
+                                                      ? rowResponsibleIds.filter((userId) => userId !== user.id)
+                                                      : rowResponsibleIds.concat(user.id),
+                                                  )}
+                                                />
+                                                <span>{user.name}</span>
+                                              </label>
+                                            );
+                                          })}
+                                        </div>
+                                        <div style={{ display: "flex", justifyContent: "space-between", gap: "0.5rem" }}>
+                                          <button type="button" className="icon-button" onClick={() => updateRowResponsibleAssignments(row.id, [])}>Limpiar</button>
+                                          <button type="button" className="primary-button" onClick={() => setOpenAssigneeMenuRowId("")}>Cerrar</button>
+                                        </div>
+                                      </div>
+                                    ) : null}
+                                  </div>
                                 </td>
                               );
                             }
@@ -832,20 +949,14 @@ export default function MisTableros({ contexto }) {
                               .trim();
                             const isStartTimeField = normalizedTimeLabel.includes("inicio") || normalizedTimeLabel.includes("start");
                             const isEndTimeField = normalizedTimeLabel.includes("fin") || normalizedTimeLabel.includes("final") || normalizedTimeLabel.includes("end");
-                            const effectiveNowMs = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : now;
                             const startTimeMs = row.startTime ? new Date(row.startTime).getTime() : NaN;
                             const hasStartTimeMs = Number.isFinite(startTimeMs);
-                            const projectedEndMs = hasStartTimeMs
-                              ? startTimeMs + (Math.max(0, getElapsedSeconds(row, effectiveNowMs, pauseState)) * 1000)
-                              : NaN;
 
                             let displayTimeValue = normalizeTimeInput24h(rawTimeValue, false);
                             if (isStartTimeField && hasStartTimeMs) {
                               displayTimeValue = formatTime(startTimeMs);
                             } else if (isEndTimeField && row.status === STATUS_FINISHED && row.endTime) {
                               displayTimeValue = formatTime(row.endTime);
-                            } else if (isEndTimeField && hasStartTimeMs && Number.isFinite(projectedEndMs)) {
-                              displayTimeValue = formatTime(projectedEndMs);
                             }
 
                             const isAutoManagedTimeField = isStartTimeField || isEndTimeField;

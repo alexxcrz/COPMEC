@@ -1,5 +1,5 @@
 {
-  "revision": 2561,
+  "revision": 2577,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro",
@@ -7,7 +7,7 @@
       "naveWeekSchedules": {},
       "pauseControl": {
         "globalPauseEnabled": false,
-        "forceGlobalPause": false,
+        "forceGlobalPause": true,
         "reasons": [
           {
             "id": "material",
@@ -30,7 +30,12 @@
             "affectsTimer": false,
             "authorizedMinutes": 5
           }
-        ]
+        ],
+        "workHours": {
+          "startHour": 8,
+          "endHour": 16
+        },
+        "globalPauseActivatedAt": null
       }
     }
   },
@@ -110,8 +115,10 @@
       "scheduledDays": [
         0
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "General",
+      "area": "General",
       "isDeleted": true
     },
     {
@@ -123,8 +130,10 @@
       "scheduledDays": [
         0
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "General",
+      "area": "General",
       "isDeleted": true
     },
     {
@@ -136,8 +145,10 @@
       "scheduledDays": [
         0
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "General",
+      "area": "General",
       "isDeleted": true
     },
     {
@@ -149,8 +160,10 @@
       "scheduledDays": [
         0
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "General",
+      "area": "General",
       "isDeleted": true
     },
     {
@@ -162,8 +175,10 @@
       "scheduledDays": [
         0
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "General",
+      "area": "General",
       "isDeleted": true
     },
     {
@@ -178,8 +193,10 @@
         4,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -197,8 +214,10 @@
         5,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -216,12 +235,14 @@
         5,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [
         "C1",
         "C2",
         "C3"
       ],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -236,8 +257,10 @@
         4,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -249,8 +272,10 @@
       "scheduledDays": [
         0
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -265,8 +290,10 @@
         4,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -281,8 +308,10 @@
         4,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -300,8 +329,10 @@
         5,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -319,8 +350,10 @@
         5,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -335,8 +368,10 @@
         4,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -354,8 +389,10 @@
         5,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -370,8 +407,10 @@
         4,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -386,8 +425,10 @@
         4,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -399,8 +440,10 @@
       "scheduledDays": [
         0
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -415,8 +458,10 @@
         4,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -428,8 +473,10 @@
       "scheduledDays": [
         0
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -441,8 +488,10 @@
       "scheduledDays": [
         0
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -454,8 +503,10 @@
       "scheduledDays": [
         0
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     }
   ],
@@ -9632,7 +9683,8 @@
           "fld-2poaolyx": 93,
           "fld-k2bb0z18": 134,
           "fld-qsz13t42": 113
-        }
+        },
+        "ownerArea": "INVENTARIO"
       },
       "fields": [
         {
@@ -10117,44 +10169,15 @@
             "fld-c7zlre4d": ""
           },
           "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
           "status": "Pendiente",
           "startTime": null,
           "endTime": null,
           "accumulatedSeconds": 0,
           "lastResumedAt": null,
           "createdAt": "2026-04-27T15:09:36.477Z"
-        },
-        {
-          "id": "row-ea3bfa5667c2",
-          "values": {
-            "fld-0mdfs1q6": "2026-04-27",
-            "fld-qsz13t42": "",
-            "fld-qb54r8d9": "",
-            "fld-tfrpbe0m": "inv-3s48ng1m",
-            "fld-0dkj3b5x": "",
-            "fld-m7ncgvx9": "",
-            "fld-2poaolyx": "",
-            "fld-k2bb0z18": "",
-            "fld-sf0ku94c": 0,
-            "fld-kxjv1tti": "",
-            "fld-w7l359e5": "",
-            "fld-t4lc3uib": "",
-            "fld-fxcbxxhm": 0,
-            "fld-wfufcb0c": 0,
-            "fld-6p7nqzmd": "",
-            "fld-uev2k1ab": "",
-            "fld-3qiexh33": 0,
-            "fld-98i7zceh": "",
-            "fld-dgx50xpd": "",
-            "fld-c7zlre4d": ""
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Pendiente",
-          "startTime": null,
-          "endTime": null,
-          "accumulatedSeconds": 0,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-27T18:03:08.976Z"
         }
       ],
       "permissions": {
@@ -10280,7 +10303,8 @@
           "Devolución",
           "Reacondicionado"
         ],
-        "operationalContextValue": "Devolución"
+        "operationalContextValue": "Devolución",
+        "ownerArea": ""
       },
       "fields": [
         {
@@ -10664,7 +10688,8 @@
         "operationalContextType": "none",
         "operationalContextLabel": "",
         "operationalContextOptions": [],
-        "operationalContextValue": ""
+        "operationalContextValue": "",
+        "ownerArea": ""
       },
       "fields": [
         {
@@ -10756,7 +10781,43 @@
           "colorRules": []
         }
       ],
-      "rows": [],
+      "rows": [
+        {
+          "id": "row-e871979ad87a",
+          "values": {
+            "fld-pjabusyf": "Piso de Produccíon",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-28T12:59:27.930Z"
+        },
+        {
+          "id": "row-4feee0c75655",
+          "values": {
+            "fld-pjabusyf": "Inspeccíon General de Naves",
+            "fld-x1jzjoxm": "06:59",
+            "fld-gtp4zz3s": "07:00",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Terminado",
+          "startTime": "2026-04-28T12:59:36.578Z",
+          "endTime": "2026-04-28T13:00:18.631Z",
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-28T12:59:28.968Z",
+          "pauseStartedAt": null,
+          "pauseAffectsTimer": false,
+          "pauseAuthorizedSeconds": 0
+        }
+      ],
       "permissions": {
         "isEnabled": false,
         "visibility": {
@@ -10838,7 +10899,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-27T21:43:03.124Z",
+  "updatedAt": "2026-04-28T19:30:45.832Z",
   "permissions": {
     "pages": {
       "index": {
@@ -12117,7 +12178,8 @@
         "operationalContextType": "none",
         "operationalContextLabel": "",
         "operationalContextOptions": [],
-        "operationalContextValue": ""
+        "operationalContextValue": "",
+        "ownerArea": ""
       },
       "fields": [
         {
@@ -12301,7 +12363,10 @@
           "endTime": "2026-04-16T17:15:28.705Z",
           "accumulatedSeconds": 17,
           "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.55Z"
+          "createdAt": "2026-04-14T14:27:45.55Z",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ]
         },
         {
           "id": "row-ckz6uh2u",
@@ -12318,7 +12383,10 @@
           "accumulatedSeconds": 17,
           "lastResumedAt": null,
           "createdAt": "2026-04-14T14:27:45.55Z",
-          "lastPauseReason": "baño"
+          "lastPauseReason": "baño",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ]
         },
         {
           "id": "row-lkvcv67c",
@@ -12335,7 +12403,10 @@
           "accumulatedSeconds": 18,
           "lastResumedAt": null,
           "createdAt": "2026-04-14T14:27:45.55Z",
-          "lastPauseReason": "baño"
+          "lastPauseReason": "baño",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ]
         },
         {
           "id": "row-q8qik4ng",
@@ -12351,7 +12422,10 @@
           "endTime": "2026-04-16T21:55:44.795Z",
           "accumulatedSeconds": 22,
           "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.55Z"
+          "createdAt": "2026-04-14T14:27:45.55Z",
+          "responsibleIds": [
+            "usr-a2hd8qtb"
+          ]
         },
         {
           "id": "row-gozinm3q",
@@ -12367,7 +12441,10 @@
           "endTime": "2026-04-18T17:45:12.440Z",
           "accumulatedSeconds": 5,
           "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.55Z"
+          "createdAt": "2026-04-14T14:27:45.55Z",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ]
         },
         {
           "id": "row-py812kmv",
@@ -12383,7 +12460,10 @@
           "endTime": null,
           "accumulatedSeconds": 0,
           "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.55Z"
+          "createdAt": "2026-04-14T14:27:45.55Z",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ]
         },
         {
           "id": "row-tedc9w0f",
@@ -12399,7 +12479,10 @@
           "endTime": null,
           "accumulatedSeconds": 0,
           "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.55Z"
+          "createdAt": "2026-04-14T14:27:45.55Z",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ]
         },
         {
           "id": "row-q3eox6z9",
@@ -12415,7 +12498,10 @@
           "endTime": null,
           "accumulatedSeconds": 0,
           "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.55Z"
+          "createdAt": "2026-04-14T14:27:45.55Z",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ]
         },
         {
           "id": "row-464q54x6",
@@ -12431,7 +12517,10 @@
           "endTime": null,
           "accumulatedSeconds": 0,
           "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.551Z"
+          "createdAt": "2026-04-14T14:27:45.551Z",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ]
         },
         {
           "id": "row-aoo9ocpd",
@@ -12447,7 +12536,10 @@
           "endTime": null,
           "accumulatedSeconds": 0,
           "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.551Z"
+          "createdAt": "2026-04-14T14:27:45.551Z",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ]
         },
         {
           "id": "row-db6s1t17",
@@ -12463,7 +12555,10 @@
           "endTime": null,
           "accumulatedSeconds": 0,
           "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.551Z"
+          "createdAt": "2026-04-14T14:27:45.551Z",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ]
         },
         {
           "id": "row-n8vwfrdt",
@@ -12479,7 +12574,10 @@
           "endTime": null,
           "accumulatedSeconds": 0,
           "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.551Z"
+          "createdAt": "2026-04-14T14:27:45.551Z",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ]
         },
         {
           "id": "row-1h1sbzfi",
@@ -12495,7 +12593,10 @@
           "endTime": null,
           "accumulatedSeconds": 0,
           "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.551Z"
+          "createdAt": "2026-04-14T14:27:45.551Z",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ]
         },
         {
           "id": "row-c7a5b0n5",
@@ -12511,7 +12612,10 @@
           "endTime": null,
           "accumulatedSeconds": 0,
           "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.551Z"
+          "createdAt": "2026-04-14T14:27:45.551Z",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ]
         },
         {
           "id": "row-01nrp6hi",
@@ -12527,7 +12631,10 @@
           "endTime": null,
           "accumulatedSeconds": 0,
           "lastResumedAt": null,
-          "createdAt": "2026-04-14T14:27:45.551Z"
+          "createdAt": "2026-04-14T14:27:45.551Z",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ]
         },
         {
           "id": "row-f7c62ffda718",
@@ -12543,7 +12650,10 @@
           "endTime": null,
           "accumulatedSeconds": 0,
           "lastResumedAt": null,
-          "createdAt": "2026-04-18T17:45:43.033Z"
+          "createdAt": "2026-04-18T17:45:43.033Z",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ]
         },
         {
           "id": "row-c5bcb892c0cd",
@@ -12559,7 +12669,10 @@
           "endTime": null,
           "accumulatedSeconds": 0,
           "lastResumedAt": null,
-          "createdAt": "2026-04-18T17:45:47.770Z"
+          "createdAt": "2026-04-18T17:45:47.770Z",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ]
         },
         {
           "id": "row-fabeb808cb7a",
@@ -12575,7 +12688,10 @@
           "endTime": null,
           "accumulatedSeconds": 0,
           "lastResumedAt": null,
-          "createdAt": "2026-04-18T17:45:56.733Z"
+          "createdAt": "2026-04-18T17:45:56.733Z",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ]
         }
       ]
     },
@@ -12634,7 +12750,8 @@
           "Devolución",
           "Reacondicionado"
         ],
-        "operationalContextValue": "Devolución"
+        "operationalContextValue": "Devolución",
+        "ownerArea": ""
       },
       "fields": [
         {
@@ -12911,7 +13028,10 @@
           "endTime": "2026-04-25T17:58:49.682Z",
           "accumulatedSeconds": 1071,
           "lastResumedAt": null,
-          "createdAt": "2026-04-25T17:12:38.641Z"
+          "createdAt": "2026-04-25T17:12:38.641Z",
+          "responsibleIds": [
+            "usr-a2hd8qtb"
+          ]
         }
       ]
     },
@@ -12970,7 +13090,8 @@
         "operationalContextType": "none",
         "operationalContextLabel": "",
         "operationalContextOptions": [],
-        "operationalContextValue": ""
+        "operationalContextValue": "",
+        "ownerArea": ""
       },
       "fields": [
         {

@@ -722,6 +722,8 @@ export function BoardBuilderModal({
     reorderBoardColumnOrderTokens,
     renderBoardFieldLabel,
     sortBoardFieldsByColumnOrder,
+    getAreaRoot,
+    normalizeAreaOption,
   } = contextoConstructor;
 
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
@@ -743,8 +745,30 @@ export function BoardBuilderModal({
   const activeUsers = visibleUsers.filter((user) => user.isActive);
   const availableOperationalUsers = activeUsers.filter((user) => user.id !== draft.ownerId);
   const normalizedDepartmentOptions = Array.from(new Set((departmentOptions || []).map((option) => String(option || "").trim()).filter(Boolean)));
+  const normalizeArea = (value) => {
+    const normalized = typeof normalizeAreaOption === "function" ? normalizeAreaOption(value) : String(value || "").trim().toUpperCase();
+    return normalized === "SIN AREA" ? "" : normalized;
+  };
+  const getAreaRootSafe = (value) => {
+    if (typeof getAreaRoot === "function") {
+      return getAreaRoot(value);
+    }
+    const normalized = normalizeArea(value);
+    if (!normalized) return "";
+    return normalized.split("/")[0]?.trim() || "";
+  };
+  const boardAreaOptions = Array.from(new Set(normalizedDepartmentOptions
+    .map((option) => normalizeArea(getAreaRootSafe(option) || option))
+    .filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b));
   const filteredOperationalUsers = availableOperationalUsers.filter((user) => user.name.toLowerCase().includes(accessSearch.trim().toLowerCase()));
   const visibilityType = String(draft.visibilityType || "users");
+  const ownerAreaByUserId = (userId) => {
+    const areaValue = userMap.get(userId)?.area || userMap.get(userId)?.department || "";
+    return normalizeArea(getAreaRootSafe(areaValue) || areaValue);
+  };
+  const selectedBoardArea = normalizeArea(draft.settings?.ownerArea || "");
+  const fallbackBoardArea = ownerAreaByUserId(draft.ownerId || currentUser?.id || "") || boardAreaOptions[0] || "";
   const ownerName = userMap.get(draft.ownerId)?.name || currentUser?.name || "Sin player";
   const selectedPlayersLabel = draft.accessUserIds?.length
     ? `${draft.accessUserIds.length + 1} players con acceso`
@@ -795,6 +819,20 @@ export function BoardBuilderModal({
   const currentBuilderTabIndex = Math.max(0, builderTabs.indexOf(builderTab));
   const hasBuilderPrev = currentBuilderTabIndex > 0;
   const hasBuilderNext = currentBuilderTabIndex < builderTabs.length - 1;
+
+  function getPreviewAssigneeLabel(row) {
+    const responsibleIds = Array.from(new Set((Array.isArray(row?.responsibleIds) ? row.responsibleIds : [])
+      .map((userId) => String(userId || "").trim())
+      .filter(Boolean)));
+    const fallbackResponsibleId = String(row?.responsibleId || "").trim();
+    if (!responsibleIds.length && fallbackResponsibleId) responsibleIds.push(fallbackResponsibleId);
+    const names = responsibleIds.map((userId) => userMap.get(userId)?.name || "").filter(Boolean);
+    if (!names.length) return currentUser?.name || "Player";
+    if (names.length === 1) return names[0];
+    return names
+      .map((name) => String(name || "").trim().split(/\s+/).filter(Boolean).slice(0, 3).map((part) => `${part.charAt(0).toUpperCase()}.`).join(""))
+      .join(" ");
+  }
 
   function getTemplateOperationalContext(template) {
     const templateSettings = template?.settings && typeof template.settings === "object" ? template.settings : {};
@@ -860,6 +898,18 @@ export function BoardBuilderModal({
     return () => window.removeEventListener("pointerdown", handlePointerDown);
   }, [accessMenuOpen, draft.accessUserIds]);
 
+  useEffect(() => {
+    if (!open) return;
+    if (selectedBoardArea || !fallbackBoardArea) return;
+    onChange((current) => ({
+      ...current,
+      settings: {
+        ...current.settings,
+        ownerArea: fallbackBoardArea,
+      },
+    }));
+  }, [fallbackBoardArea, onChange, open, selectedBoardArea]);
+
   function handleTogglePendingAccess(userId) {
     setPendingAccessUserIds((current) => current.includes(userId)
       ? current.filter((item) => item !== userId)
@@ -875,10 +925,15 @@ export function BoardBuilderModal({
   }
 
   function handleOwnerChange(nextOwnerId) {
+    const nextOwnerArea = ownerAreaByUserId(nextOwnerId);
     onChange((current) => ({
       ...current,
       ownerId: nextOwnerId,
       accessUserIds: (current.accessUserIds || []).filter((userId) => userId !== nextOwnerId),
+      settings: {
+        ...current.settings,
+        ownerArea: normalizeArea(current.settings?.ownerArea || "") || nextOwnerArea,
+      },
     }));
   }
 
@@ -1218,6 +1273,22 @@ export function BoardBuilderModal({
                 <span>Player principal</span>
                 <select value={draft.ownerId || currentUser?.id || ""} onChange={(event) => handleOwnerChange(event.target.value)}>
                   {activeUsers.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
+                </select>
+              </label>
+              <label className="app-modal-field board-preview-edit-field board-preview-owner-field">
+                <span>Area duena del tablero<span className="required-mark" aria-hidden="true"> *</span></span>
+                <select
+                  value={selectedBoardArea}
+                  onChange={(event) => onChange((current) => ({
+                    ...current,
+                    settings: {
+                      ...current.settings,
+                      ownerArea: normalizeArea(event.target.value),
+                    },
+                  }))}
+                >
+                  <option value="">Selecciona un area</option>
+                  {boardAreaOptions.map((area) => <option key={area} value={area}>{area}</option>)}
                 </select>
               </label>
               <section className="board-preview-assignment-panel">
@@ -1560,7 +1631,7 @@ export function BoardBuilderModal({
                           if (column.kind === "field") {
                             return <td key={`${row.id}-${column.token}`} style={getPreviewCellStyle(column.field)}>{formatBoardPreviewValue(row.values?.[column.field.id], column.field, userMap, inventoryItems)}</td>;
                           }
-                          if (column.id === "assignee") return <td key={`${row.id}-${column.token}`} style={getPreviewAuxCellStyle(column.id)}>{userMap.get(row.responsibleId)?.name || currentUser?.name || "Player"}</td>;
+                          if (column.id === "assignee") return <td key={`${row.id}-${column.token}`} style={getPreviewAuxCellStyle(column.id)} title={getPreviewAssigneeLabel(row)}>{getPreviewAssigneeLabel(row)}</td>;
                           if (column.id === "status") return <td key={`${row.id}-${column.token}`} style={getPreviewAuxCellStyle(column.id)}><span className="chip">{row.status || STATUS_PENDING}</span></td>;
                           if (column.id === "time") return <td key={`${row.id}-${column.token}`} style={getPreviewAuxCellStyle(column.id)}>{row.accumulatedSeconds ? `${Math.round(row.accumulatedSeconds / 60)} min` : "0 min"}</td>;
                           if (column.id === "totalTime") return <td key={`${row.id}-${column.token}`} style={getPreviewAuxCellStyle(column.id)}>{"00:00:00"}</td>;

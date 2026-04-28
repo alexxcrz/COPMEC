@@ -1218,8 +1218,11 @@ export function withDefaultBoardSettings(settings) {
 }
 
 export function cloneBoardRowSnapshot(row) {
+  const responsibleIds = normalizeBoardResponsibleIds(row?.responsibleIds, row?.responsibleId);
   return {
     ...row,
+    responsibleId: responsibleIds[0] || "",
+    responsibleIds,
     values: { ...(row?.values ?? EMPTY_OBJECT) },
   };
 }
@@ -2187,6 +2190,46 @@ export function normalizeBoardMultiSelectDetailValue(value) {
     .filter((item) => item.option);
 }
 
+function buildBoardAssigneeInitials(name) {
+  return String(name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((part) => `${part.charAt(0).toUpperCase()}.`)
+    .join("");
+}
+
+export function normalizeBoardResponsibleIds(entries = [], fallbackResponsibleId = "") {
+  const normalized = Array.from(new Set((Array.isArray(entries) ? entries : [])
+    .map((entry) => String(entry || "").trim())
+    .filter(Boolean)));
+  if (normalized.length) return normalized;
+  const fallbackId = String(fallbackResponsibleId || "").trim();
+  return fallbackId ? [fallbackId] : [];
+}
+
+export function getBoardRowResponsibleIds(row) {
+  return normalizeBoardResponsibleIds(row?.responsibleIds, row?.responsibleId);
+}
+
+export function formatBoardRowAssigneeLabel(row, userMap, options = {}) {
+  const responsibleIds = getBoardRowResponsibleIds(row);
+  const names = responsibleIds
+    .map((userId) => userMap?.get?.(userId)?.name || "")
+    .filter(Boolean);
+
+  if (!names.length) {
+    return options.emptyLabel || "Sin asignar";
+  }
+
+  if (names.length === 1 || !options.useInitialsForMultiple) {
+    return names.join(", ");
+  }
+
+  return names.map((name) => buildBoardAssigneeInitials(name)).join(" ");
+}
+
 export function formatBoardMultiSelectDetailValue(value) {
   return normalizeBoardMultiSelectDetailValue(value)
     .map((item) => (item.detail ? `${item.label || item.option}: ${item.detail}` : (item.label || item.option)))
@@ -2960,6 +3003,14 @@ export function getNormalizedBoardVisibility(board) {
   };
 }
 
+export function doesBoardMatchUserArea(board, user) {
+  if (!board || !user) return false;
+  const ownerArea = normalizeBoardOwnerArea(board?.settings?.ownerArea || board?.ownerArea || "");
+  if (!ownerArea) return true;
+  const userAreaRoot = normalizeAreaOption(getAreaRoot(getUserArea(user)) || getUserArea(user));
+  return Boolean(userAreaRoot) && userAreaRoot === ownerArea;
+}
+
 export function getBoardAssignmentSummary(board, userMap) {
   const visibility = getNormalizedBoardVisibility(board);
   if (visibility.visibilityType === "all") {
@@ -3068,6 +3119,7 @@ export function canUserAccessTemplate(template, user) {
 export function canManageBoard(user, board) {
   if (!user || !board) return false;
   if (user.role === ROLE_LEAD) return true;
+  if (!doesBoardMatchUserArea(board, user)) return false;
   if (board.createdById === user.id || board.ownerId === user.id) return true;
   if (board.visibilityType === "users" && (board.accessUserIds || []).includes(user.id)) return true;
   if (board.visibilityType === "all") return true;
@@ -3464,6 +3516,8 @@ export function normalizeControlBoard(board, users, normalizedPermissions) {
     rows: Array.isArray(board.rows)
       ? board.rows.map((row) => ({
           ...row,
+          responsibleId: getBoardRowResponsibleIds(row)[0] || "",
+          responsibleIds: getBoardRowResponsibleIds(row),
           values: normalizeBoardRowValues(row, timeFieldIds),
         }))
       : [],

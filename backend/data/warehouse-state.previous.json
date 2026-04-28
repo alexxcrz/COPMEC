@@ -1,5 +1,5 @@
 {
-  "revision": 2560,
+  "revision": 2576,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro",
@@ -7,7 +7,7 @@
       "naveWeekSchedules": {},
       "pauseControl": {
         "globalPauseEnabled": false,
-        "forceGlobalPause": false,
+        "forceGlobalPause": true,
         "reasons": [
           {
             "id": "material",
@@ -30,7 +30,12 @@
             "affectsTimer": false,
             "authorizedMinutes": 5
           }
-        ]
+        ],
+        "workHours": {
+          "startHour": 8,
+          "endHour": 16
+        },
+        "globalPauseActivatedAt": null
       }
     }
   },
@@ -110,8 +115,10 @@
       "scheduledDays": [
         0
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "General",
+      "area": "General",
       "isDeleted": true
     },
     {
@@ -123,8 +130,10 @@
       "scheduledDays": [
         0
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "General",
+      "area": "General",
       "isDeleted": true
     },
     {
@@ -136,8 +145,10 @@
       "scheduledDays": [
         0
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "General",
+      "area": "General",
       "isDeleted": true
     },
     {
@@ -149,8 +160,10 @@
       "scheduledDays": [
         0
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "General",
+      "area": "General",
       "isDeleted": true
     },
     {
@@ -162,8 +175,10 @@
       "scheduledDays": [
         0
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "General",
+      "area": "General",
       "isDeleted": true
     },
     {
@@ -178,8 +193,10 @@
         4,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -197,8 +214,10 @@
         5,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -216,12 +235,14 @@
         5,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [
         "C1",
         "C2",
         "C3"
       ],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -236,8 +257,10 @@
         4,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -249,8 +272,10 @@
       "scheduledDays": [
         0
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -265,8 +290,10 @@
         4,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -281,8 +308,10 @@
         4,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -300,8 +329,10 @@
         5,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -319,8 +350,10 @@
         5,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -335,8 +368,10 @@
         4,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -354,8 +389,10 @@
         5,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -370,8 +407,10 @@
         4,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -386,8 +425,10 @@
         4,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -399,8 +440,10 @@
       "scheduledDays": [
         0
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -415,8 +458,10 @@
         4,
         6
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -428,8 +473,10 @@
       "scheduledDays": [
         0
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -441,8 +488,10 @@
       "scheduledDays": [
         0
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     },
     {
@@ -454,8 +503,10 @@
       "scheduledDays": [
         0
       ],
+      "scheduledDaysBySite": {},
       "cleaningSites": [],
       "category": "Limpieza",
+      "area": "Limpieza",
       "isDeleted": false
     }
   ],
@@ -10091,7 +10142,7 @@
             "fld-qsz13t42": "1",
             "fld-qb54r8d9": "1",
             "fld-tfrpbe0m": "inv-3s48ng1m",
-            "fld-0dkj3b5x": "123456",
+            "fld-0dkj3b5x": "fgdfgdfgdf",
             "fld-m7ncgvx9": "123456",
             "fld-2poaolyx": "",
             "fld-k2bb0z18": "",
@@ -10123,38 +10174,6 @@
           "accumulatedSeconds": 0,
           "lastResumedAt": null,
           "createdAt": "2026-04-27T15:09:36.477Z"
-        },
-        {
-          "id": "row-ea3bfa5667c2",
-          "values": {
-            "fld-0mdfs1q6": "2026-04-27",
-            "fld-qsz13t42": "",
-            "fld-qb54r8d9": "",
-            "fld-tfrpbe0m": "inv-3s48ng1m",
-            "fld-0dkj3b5x": "",
-            "fld-m7ncgvx9": "",
-            "fld-2poaolyx": "",
-            "fld-k2bb0z18": "",
-            "fld-sf0ku94c": 0,
-            "fld-kxjv1tti": "",
-            "fld-w7l359e5": "",
-            "fld-t4lc3uib": "",
-            "fld-fxcbxxhm": 0,
-            "fld-wfufcb0c": 0,
-            "fld-6p7nqzmd": "",
-            "fld-uev2k1ab": "",
-            "fld-3qiexh33": 0,
-            "fld-98i7zceh": "",
-            "fld-dgx50xpd": "",
-            "fld-c7zlre4d": ""
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Pendiente",
-          "startTime": null,
-          "endTime": null,
-          "accumulatedSeconds": 0,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-27T18:03:08.976Z"
         }
       ],
       "permissions": {
@@ -10756,7 +10775,43 @@
           "colorRules": []
         }
       ],
-      "rows": [],
+      "rows": [
+        {
+          "id": "row-e871979ad87a",
+          "values": {
+            "fld-pjabusyf": "Piso de Produccíon",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-28T12:59:27.930Z"
+        },
+        {
+          "id": "row-4feee0c75655",
+          "values": {
+            "fld-pjabusyf": "Inspeccíon General de Naves",
+            "fld-x1jzjoxm": "06:59",
+            "fld-gtp4zz3s": "07:00",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "status": "Terminado",
+          "startTime": "2026-04-28T12:59:36.578Z",
+          "endTime": "2026-04-28T13:00:18.631Z",
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "createdAt": "2026-04-28T12:59:28.968Z",
+          "pauseStartedAt": null,
+          "pauseAffectsTimer": false,
+          "pauseAuthorizedSeconds": 0
+        }
+      ],
       "permissions": {
         "isEnabled": false,
         "visibility": {
@@ -10838,7 +10893,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-27T21:31:36.013Z",
+  "updatedAt": "2026-04-28T16:33:27.899Z",
   "permissions": {
     "pages": {
       "index": {

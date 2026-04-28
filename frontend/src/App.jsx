@@ -311,6 +311,8 @@ import {
 
   buildBoardSavePayload, formatBoardExportFieldValue, downloadInventoryTemplateFile,
 
+  formatBoardRowAssigneeLabel,
+
   getResponsibleVisual, getRoleBadgeClass, normalizeRole, canCreateRole,
 
   supportsManagedPermissionOverrides, createUserModalState, getManagedUserIds, normalizeAreaOption,
@@ -563,6 +565,7 @@ function App() { // NOSONAR
       });
     return labels.length ? labels : ["Falta de material", "Detención operativa", "Ajuste de calidad"];
   }, [state?.system?.operational?.pauseControl?.reasons]);
+  const CUSTOM_PAUSE_REASON_VALUE = "__custom__";
   const sessionRole = normalizeRole(state.users.find((user) => user.id === sessionUserId)?.role);
   const antiCaptureEnabled = import.meta.env.PROD && sessionRole !== ROLE_LEAD;
   const [isDemoMode, setIsDemoMode] = useState(false);
@@ -582,6 +585,8 @@ function App() { // NOSONAR
   const globalCaptureShieldTimerRef = useRef(null);
   const boardCellSaveTimersRef = useRef(new Map());
   const boardCellSaveVersionRef = useRef(new Map());
+  const boardCellDraftValueRef = useRef(new Map());
+  const BOARD_CELL_DRAFT_TTL_MS = 4500;
 
   useEffect(() => () => {
     boardCellSaveTimersRef.current.forEach((timerId) => {
@@ -589,7 +594,66 @@ function App() { // NOSONAR
     });
     boardCellSaveTimersRef.current.clear();
     boardCellSaveVersionRef.current.clear();
+    boardCellDraftValueRef.current.clear();
   }, []);
+
+  function mergeRemoteStateWithBoardDrafts(remoteState) {
+    const normalizedState = normalizeWarehouseState(remoteState);
+    const nowMs = Date.now();
+    const activeDraftEntries = [];
+    boardCellDraftValueRef.current.forEach((entry, key) => {
+      if (!entry || typeof entry !== "object") {
+        boardCellDraftValueRef.current.delete(key);
+        return;
+      }
+      if (entry.expiresAtMs <= nowMs) {
+        boardCellDraftValueRef.current.delete(key);
+        return;
+      }
+      activeDraftEntries.push([key, entry]);
+    });
+
+    if (!activeDraftEntries.length) return normalizedState;
+
+    const controlBoards = Array.isArray(normalizedState.controlBoards)
+      ? normalizedState.controlBoards.map((board) => ({
+        ...board,
+        rows: Array.isArray(board.rows)
+          ? board.rows.map((row) => ({
+            ...row,
+            values: {
+              ...(row.values || {}),
+            },
+          }))
+          : [],
+      }))
+      : [];
+
+    const boardById = new Map(controlBoards.map((board) => [board.id, board]));
+    activeDraftEntries.forEach(([key, entry]) => {
+      const [boardId, rowId, fieldId] = String(key || "").split(":");
+      if (!boardId || !rowId || !fieldId) return;
+      const board = boardById.get(boardId);
+      if (!board) return;
+      const row = (board.rows || []).find((currentRow) => currentRow.id === rowId);
+      if (!row) return;
+      row.values[fieldId] = entry.value;
+    });
+
+    return {
+      ...normalizedState,
+      controlBoards,
+    };
+  }
+
+  function applyRemoteStatePreservingBoardDrafts(remoteState) {
+    skipNextSyncRef.current = true;
+    const mergedState = mergeRemoteStateWithBoardDrafts(remoteState);
+    setState(mergedState);
+    setLoginDirectory(buildLoginDirectoryFromState(mergedState));
+    setSyncStatus("Sincronizado");
+    return mergedState;
+  }
 
   function armGlobalCaptureShield(nextMs = 1600, notify = false) {
     if (!antiCaptureEnabled) return;
@@ -980,16 +1044,16 @@ function App() { // NOSONAR
       try {
         const payload = JSON.parse(event.data);
         if (payload.type !== "state" || !payload.state) return;
-        const normalizedState = normalizeWarehouseState(payload.state);
-        const nextSessionUser = normalizedState.users.find((user) => user.id === sessionUserId) || null;
+        const mergedState = mergeRemoteStateWithBoardDrafts(payload.state);
+        const nextSessionUser = mergedState.users.find((user) => user.id === sessionUserId) || null;
         const shouldRevalidateSession = Boolean(
           sessionUserId
           && sessionUserId !== BOOTSTRAP_MASTER_ID
           && (!nextSessionUser || Number(nextSessionUser.sessionVersion || 0) !== Number(sessionSnapshotRef.current.sessionVersion || 0)),
         );
         skipNextSyncRef.current = true;
-        setState(normalizedState);
-        setLoginDirectory(buildLoginDirectoryFromState(normalizedState));
+        setState(mergedState);
+        setLoginDirectory(buildLoginDirectoryFromState(mergedState));
         setSyncStatus("Sincronizado");
         if (shouldRevalidateSession) {
           requestJson("/auth/session").catch((error) => {
@@ -1158,6 +1222,12 @@ function App() { // NOSONAR
     }
 
     function resolveBoardAreaScope(board, responsibleUser) {
+      const explicitOwnerArea = normalizeAreaLabel(board?.settings?.ownerArea || board?.ownerArea || "");
+      if (explicitOwnerArea && explicitOwnerArea !== "Sin área") {
+        const primaryArea = getPrimaryArea(explicitOwnerArea);
+        return { primaryArea, areaScopes: [primaryArea] };
+      }
+
       const visibility = getNormalizedBoardVisibility(board);
       const scopedAreas = (visibility.sharedDepartments || [])
         .map((area) => getPrimaryArea(area))
@@ -1605,9 +1675,7 @@ function App() { // NOSONAR
   }, [dashboardVisibleControlBoards, filteredDashboardRecords]);
 
   const dashboardInventoryProductTimeRows = useMemo(() => {
-    const inventoryRecords = filteredDashboardRecords.filter(
-      (record) => record.source === "board" && String(record.area || "").toLowerCase().includes("inventario"),
-    );
+    const inventoryRecords = filteredDashboardRecords.filter((record) => record.source === "board");
     if (!inventoryRecords.length) return [];
 
     const boardMap = new Map((dashboardVisibleControlBoards || []).map((board) => [board.id, board]));
@@ -1634,12 +1702,36 @@ function App() { // NOSONAR
       if (ignoredTimeLabelKeywords.some((token) => normalizedLabel.includes(token))) return null;
 
       if (normalizedType === "time") {
-        const match = String(rawValue || "").trim().match(/^(\d{1,2}):(\d{2})$/);
-        if (!match) return null;
-        const hours = Number(match[1]);
-        const minutes = Number(match[2]);
-        if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
-        return hours * 60 + minutes;
+        const rawText = String(rawValue || "").trim();
+        if (!rawText) return null;
+
+        const hhmmssMatch = rawText.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
+        if (hhmmssMatch) {
+          const hours = Number(hhmmssMatch[1]);
+          const minutes = Number(hhmmssMatch[2]);
+          const seconds = Number(hhmmssMatch[3]);
+          if (!Number.isFinite(hours) || !Number.isFinite(minutes) || !Number.isFinite(seconds)) return null;
+          return (hours * 60) + minutes + (seconds / 60);
+        }
+
+        const hhmmMatch = rawText.match(/^(\d{1,2}):(\d{2})$/);
+        if (hhmmMatch) {
+          const hours = Number(hhmmMatch[1]);
+          const minutes = Number(hhmmMatch[2]);
+          if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+          return hours * 60 + minutes;
+        }
+
+        const numericMinutes = Number(rawText);
+        return Number.isFinite(numericMinutes) ? numericMinutes : null;
+      }
+
+      if (typeof rawValue === "string" && rawValue.includes(":")) {
+        const timeParts = rawValue.split(":").map((part) => Number(part));
+        if (timeParts.every((part) => Number.isFinite(part)) && (timeParts.length === 2 || timeParts.length === 3)) {
+          const [hours, minutes, seconds = 0] = timeParts;
+          return (hours * 60) + minutes + (seconds / 60);
+        }
       }
 
       const numeric = Number(rawValue);
@@ -1690,6 +1782,10 @@ function App() { // NOSONAR
       const row = (board.rows || []).find((entry) => entry.id === record.rawId);
       if (!row) return;
 
+      const fallbackTimeMinutes = Number.isFinite(Number(record.durationSeconds))
+        ? Math.max(0, Number(record.durationSeconds) / 60)
+        : null;
+
       let productValue = "";
       let productRawValue = "";
       let timeMinutes = null;
@@ -1701,11 +1797,17 @@ function App() { // NOSONAR
         const normalizedLabel = normalizeToken(fieldLabel);
         const rawValue = row.values?.[field.id];
 
-        if (!productValue && productKeywords.some((token) => normalizedLabel.includes(token))) {
-          const candidate = String(rawValue || "").trim();
-          if (candidate) {
-            productRawValue = candidate;
-            productValue = resolveProductDisplay(candidate);
+        const normalizedType = normalizeToken(field?.type || "");
+
+        if (!productValue && (
+          productKeywords.some((token) => normalizedLabel.includes(token))
+          || normalizedType.includes("inventorylookup")
+        )) {
+          const candidateValue = rawValue;
+          const candidateText = String(candidateValue || "").trim();
+          if (candidateValue && (typeof candidateValue === "object" || candidateText)) {
+            productRawValue = candidateText;
+            productValue = resolveProductDisplay(candidateValue);
           }
         }
 
@@ -1724,6 +1826,10 @@ function App() { // NOSONAR
           if (candidateTarima) tarimaValue = candidateTarima;
         }
       });
+
+      if (!Number.isFinite(timeMinutes) && Number.isFinite(fallbackTimeMinutes)) {
+        timeMinutes = fallbackTimeMinutes;
+      }
 
       if (!productValue || !Number.isFinite(timeMinutes)) return;
 
@@ -3166,7 +3272,9 @@ function App() { // NOSONAR
   }, [boardPauseState.open, boardPauseState.completed, boardPauseState.reason, pauseReasonOptions]);
 
   function resolvePauseReasonValue(pauseEntry) {
+    const isCustomReasonSelected = String(pauseEntry?.reason || "").trim() === CUSTOM_PAUSE_REASON_VALUE;
     const customReason = String(pauseEntry?.customReason || "").trim();
+    if (isCustomReasonSelected) return customReason;
     if (customReason) return customReason;
     return String(pauseEntry?.reason || "").trim();
   }
@@ -4340,11 +4448,23 @@ function App() { // NOSONAR
     return latestRemoteState;
   }
 
+  function resolveBoardOwnerAreaByUserId(userId) {
+    const responsibleUser = userMap.get(userId) || null;
+    const normalizedArea = normalizeAreaOption(getAreaRoot(getUserArea(responsibleUser)) || getUserArea(responsibleUser));
+    return normalizedArea && normalizedArea !== "SIN AREA" ? normalizedArea : "";
+  }
+
   async function saveControlBoard() {
     const isEditing = boardBuilderModal.mode === "edit" && boardBuilderModal.boardId;
     const hasPermission = isEditing ? actionPermissions.editBoard : actionPermissions.createBoard;
     if (!currentUser || !hasPermission || !controlBoardDraft.name.trim() || !controlBoardDraft.columns.length) {
       setControlBoardFeedback("Agrega nombre, dueño y al menos un campo para guardar el tablero.");
+      return;
+    }
+
+    const selectedBoardArea = normalizeAreaOption(controlBoardDraft.settings?.ownerArea || "");
+    if (!selectedBoardArea || selectedBoardArea === "SIN AREA") {
+      setControlBoardFeedback("Selecciona el area duena del tablero para evitar cruces de datos en indicadores.");
       return;
     }
 
@@ -4378,7 +4498,14 @@ function App() { // NOSONAR
       }
       setBoardBuilderModal({ open: false, mode: "create", boardId: null });
       setTemplatePreviewId(null);
-      setControlBoardDraft({ ...createEmptyBoardDraft(), ownerId: currentUser.id });
+      setControlBoardDraft({
+        ...createEmptyBoardDraft(),
+        ownerId: currentUser.id,
+        settings: {
+          ...withDefaultBoardSettings(createEmptyBoardDraft().settings),
+          ownerArea: resolveBoardOwnerAreaByUserId(currentUser.id),
+        },
+      });
       setBoardImportedRowsDraft([]);
       setExcelFormulaWizard({ open: false, items: [] });
       setControlBoardFeedback("");
@@ -4396,7 +4523,15 @@ function App() { // NOSONAR
   }
 
   function clearControlBoardDraft() {
-    setControlBoardDraft({ ...createEmptyBoardDraft(), ownerId: currentUser?.id || "" });
+    const ownerId = currentUser?.id || "";
+    setControlBoardDraft({
+      ...createEmptyBoardDraft(),
+      ownerId,
+      settings: {
+        ...withDefaultBoardSettings(createEmptyBoardDraft().settings),
+        ownerArea: resolveBoardOwnerAreaByUserId(ownerId),
+      },
+    });
     setBoardImportedRowsDraft([]);
     setExcelFormulaWizard({ open: false, items: [] });
     setEditingDraftColumnId(null);
@@ -4405,7 +4540,15 @@ function App() { // NOSONAR
   }
 
   function openCreateBoardBuilder() {
-    setControlBoardDraft({ ...createEmptyBoardDraft(), ownerId: currentUser?.id || "" });
+    const ownerId = currentUser?.id || "";
+    setControlBoardDraft({
+      ...createEmptyBoardDraft(),
+      ownerId,
+      settings: {
+        ...withDefaultBoardSettings(createEmptyBoardDraft().settings),
+        ownerArea: resolveBoardOwnerAreaByUserId(ownerId),
+      },
+    });
     setBoardImportedRowsDraft([]);
     setExcelFormulaWizard({ open: false, items: [] });
     setBoardBuilderModal({ open: true, mode: "create", boardId: null });
@@ -4416,7 +4559,18 @@ function App() { // NOSONAR
 
   function openEditBoardBuilder(board) {
     if (!actionPermissions.editBoard || !canEditBoard(currentUser, board)) return;
-    setControlBoardDraft(createBoardDraftFromBoard(board));
+    const boardDraft = createBoardDraftFromBoard(board);
+    const explicitBoardArea = normalizeAreaOption(boardDraft.settings?.ownerArea || "");
+    const ownerArea = explicitBoardArea && explicitBoardArea !== "SIN AREA"
+      ? explicitBoardArea
+      : resolveBoardOwnerAreaByUserId(boardDraft.ownerId || board?.ownerId || "");
+    setControlBoardDraft({
+      ...boardDraft,
+      settings: {
+        ...boardDraft.settings,
+        ownerArea,
+      },
+    });
     setBoardImportedRowsDraft([]);
     setExcelFormulaWizard({ open: false, items: [] });
     setBoardBuilderModal({ open: true, mode: "edit", boardId: board.id });
@@ -5083,6 +5237,10 @@ function App() { // NOSONAR
     }));
 
     const saveKey = `${boardId}:${rowId}:${field.id}`;
+    boardCellDraftValueRef.current.set(saveKey, {
+      value: rawValue,
+      expiresAtMs: Date.now() + BOARD_CELL_DRAFT_TTL_MS,
+    });
     const lastVersion = Number(boardCellSaveVersionRef.current.get(saveKey) || 0);
     const nextVersion = lastVersion + 1;
     boardCellSaveVersionRef.current.set(saveKey, nextVersion);
@@ -5093,6 +5251,7 @@ function App() { // NOSONAR
     }
 
     const timerId = globalThis.setTimeout(() => {
+      boardCellSaveTimersRef.current.delete(saveKey);
       requestJson(`/warehouse/boards/${boardId}/rows/${rowId}`, {
         method: "PATCH",
         body: JSON.stringify({
@@ -5103,7 +5262,11 @@ function App() { // NOSONAR
       }).then((remoteState) => {
         // If a newer keystroke for this same cell exists, ignore this stale response.
         if (boardCellSaveVersionRef.current.get(saveKey) !== nextVersion) return;
-        applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+        boardCellDraftValueRef.current.set(saveKey, {
+          value: rawValue,
+          expiresAtMs: Date.now() + 800,
+        });
+        applyRemoteStatePreservingBoardDrafts(remoteState);
       }).catch((error) => {
         if (boardCellSaveVersionRef.current.get(saveKey) !== nextVersion) return;
         setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo actualizar la fila." });
@@ -5124,7 +5287,7 @@ function App() { // NOSONAR
       });
 
       if (board.settings?.showAssignee !== false) {
-        exportRow.Player = userMap.get(row.responsibleId)?.name || "";
+        exportRow.Player = formatBoardRowAssigneeLabel(row, userMap, { emptyLabel: "" });
       }
 
       exportRow.Estado = row.status || STATUS_PENDING;
@@ -5359,7 +5522,7 @@ function App() { // NOSONAR
       }
 
       if (column.id === "assignee") {
-        return userMap.get(row.responsibleId)?.name || "";
+        return formatBoardRowAssigneeLabel(row, userMap, { emptyLabel: "" });
       }
 
       if (column.id === "status") {
@@ -5897,6 +6060,8 @@ function App() { // NOSONAR
     reorderBoardColumnOrderTokens,
     renderBoardFieldLabel,
     sortBoardFieldsByColumnOrder,
+    getAreaRoot,
+    normalizeAreaOption,
   };
 
   const paginasContexto = {
@@ -6466,14 +6631,17 @@ function App() { // NOSONAR
                 <span>Motivo de pausa</span>
                 <select value={pauseState.reason} onChange={(event) => setPauseState((current) => ({ ...current, reason: event.target.value, error: "" }))}>
                   {pauseReasonOptions.map((optionLabel) => <option key={optionLabel} value={optionLabel}>{optionLabel}</option>)}
+                  <option value={CUSTOM_PAUSE_REASON_VALUE}>Otro (especificar)</option>
                 </select>
               </label>
-              <label className="app-modal-field">
-                <span>Otra</span>
-                <input value={pauseState.customReason} onChange={(event) => setPauseState((current) => ({ ...current, customReason: event.target.value, error: "" }))} placeholder="Especifica el motivo" />
-              </label>
+              {pauseState.reason === CUSTOM_PAUSE_REASON_VALUE ? (
+                <label className="app-modal-field">
+                  <span>Otro motivo</span>
+                  <input value={pauseState.customReason} onChange={(event) => setPauseState((current) => ({ ...current, customReason: event.target.value, error: "" }))} placeholder="Especifica el motivo" />
+                </label>
+              ) : null}
               {pauseState.error ? <p className="validation-text">{pauseState.error}</p> : null}
-              <p className="modal-footnote">Selecciona un motivo de la lista o captura uno en "Otra".</p>
+              <p className="modal-footnote">Selecciona un motivo configurado o usa "Otro (especificar)" para capturar uno personalizado.</p>
             </>
           )}
         </div>
@@ -6492,14 +6660,17 @@ function App() { // NOSONAR
                 <span>Motivo de pausa</span>
                 <select value={boardPauseState.reason} onChange={(event) => setBoardPauseState((current) => ({ ...current, reason: event.target.value, error: "" }))}>
                   {pauseReasonOptions.map((optionLabel) => <option key={optionLabel} value={optionLabel}>{optionLabel}</option>)}
+                  <option value={CUSTOM_PAUSE_REASON_VALUE}>Otro (especificar)</option>
                 </select>
               </label>
-              <label className="app-modal-field">
-                <span>Otra</span>
-                <input value={boardPauseState.customReason} onChange={(event) => setBoardPauseState((current) => ({ ...current, customReason: event.target.value, error: "" }))} placeholder="Especifica el motivo" />
-              </label>
+              {boardPauseState.reason === CUSTOM_PAUSE_REASON_VALUE ? (
+                <label className="app-modal-field">
+                  <span>Otro motivo</span>
+                  <input value={boardPauseState.customReason} onChange={(event) => setBoardPauseState((current) => ({ ...current, customReason: event.target.value, error: "" }))} placeholder="Especifica el motivo" />
+                </label>
+              ) : null}
               {boardPauseState.error ? <p className="validation-text">{boardPauseState.error}</p> : null}
-              <p className="modal-footnote">Selecciona un motivo de la lista o captura uno en "Otra".</p>
+              <p className="modal-footnote">Selecciona un motivo configurado o usa "Otro (especificar)" para capturar uno personalizado.</p>
             </>
           )}
         </div>
