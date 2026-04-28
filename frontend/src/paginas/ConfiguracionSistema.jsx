@@ -123,6 +123,7 @@ export default function ConfiguracionSistema({ contexto }) {
 
   async function handleQuickGlobalPauseToggle(nextValues) {
     if (!canManageSystemSettings) return;
+    const previousPauseControl = pauseDraft;
     const nextPauseControl = {
       ...pauseDraft,
       ...nextValues,
@@ -130,8 +131,9 @@ export default function ConfiguracionSistema({ contexto }) {
     setPauseDraft(nextPauseControl);
     try {
       await updateSystemOperationalSettings({ pauseControl: nextPauseControl });
-      pushAppToast(nextPauseControl.globalPauseEnabled ? "Pausa global activada." : "Global iniciado para horas extra.", "success");
+      pushAppToast(nextPauseControl.globalPauseEnabled ? "Pausa global activada." : "Pausa global desactivada.", "success");
     } catch (error) {
+      setPauseDraft(previousPauseControl);
       pushAppToast(error?.message || "No se pudo actualizar la pausa global.", "danger");
     }
   }
@@ -295,8 +297,8 @@ export default function ConfiguracionSistema({ contexto }) {
               className="board-action-button start icon-only"
               title="Quitar pausa global"
               aria-label="Quitar pausa global"
-              onClick={() => void handleQuickGlobalPauseToggle({ globalPauseEnabled: false, forceGlobalPause: true })}
-              disabled={!canManageSystemSettings || (pauseDraft?.forceGlobalPause && !pauseDraft?.globalPauseEnabled)}
+              onClick={() => void handleQuickGlobalPauseToggle({ globalPauseEnabled: false, forceGlobalPause: false })}
+              disabled={!canManageSystemSettings || !pauseDraft?.globalPauseEnabled}
             >
               <Play size={13} />
             </button>
