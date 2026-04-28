@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth, requireWarehouseAction, requireWarehouseStateWriteAccess } from "../middleware/auth.middleware.js";
 import { auditSecurityEvent } from "../services/security-events.service.js";
+import { buildOperationalAnalyticsFromLocalState } from "../services/warehouse.analytics.local.js";
 import {
   addWarehouseArea,
   createWarehouseCatalogItem,
@@ -71,6 +72,21 @@ export const warehouseRouter = Router();
 
 warehouseRouter.get("/state", (_req, res) => {
   res.json(getWarehouseState());
+});
+
+warehouseRouter.get("/analytics/operational", requireAuth, (req, res) => {
+  try {
+    const state = getWarehouseState();
+    const analytics = buildOperationalAnalyticsFromLocalState(state, {
+      now: req.query?.now || undefined,
+    });
+    res.json({ ok: true, data: analytics });
+  } catch (error) {
+    auditSecurityEvent("warehouse_operational_analytics_failed", req, {
+      message: String(error?.message || "analytics_error"),
+    });
+    res.status(500).json({ ok: false, message: "No fue posible construir la analítica operativa local." });
+  }
 });
 
 warehouseRouter.put("/state", requireWarehouseStateWriteAccess, (req, res) => {
