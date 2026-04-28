@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import ReturnsReconditionScanner from "../features/boards/ReturnsReconditionScanner.jsx";
 import { BoardEditableInventoryPropertyInput, BoardEvidenceCell, BoardMultiSelectDetailCell } from "../components/BoardRuntimeFieldCells.jsx";
 import {
@@ -233,6 +234,8 @@ export default function MisTableros({ contexto }) {
   const [columnWidthsOverride, setColumnWidthsOverride] = useState({});
   const columnWidthsOverrideRef = useRef({});
   const assigneeMenuRef = useRef(null);
+  const assigneeTriggerRef = useRef(null);
+  const [assigneeMenuPosition, setAssigneeMenuPosition] = useState(null);
   const boardColumns = boardView ? getOrderedBoardColumns(boardView, isBoardOwner) : [];
   const systemOperationalSettings = normalizeSystemOperationalSettings(state?.system?.operational);
   const systemPauseControl = systemOperationalSettings.pauseControl;
@@ -317,13 +320,50 @@ export default function MisTableros({ contexto }) {
     if (!openAssigneeMenuRowId) return undefined;
 
     function handlePointerDown(event) {
-      if (!assigneeMenuRef.current?.contains(event.target)) {
+      const clickedInsideMenu = assigneeMenuRef.current?.contains(event.target);
+      const clickedTrigger = assigneeTriggerRef.current?.contains(event.target);
+      if (!clickedInsideMenu && !clickedTrigger) {
         setOpenAssigneeMenuRowId("");
       }
     }
 
     window.addEventListener("pointerdown", handlePointerDown);
     return () => window.removeEventListener("pointerdown", handlePointerDown);
+  }, [openAssigneeMenuRowId]);
+
+  useEffect(() => {
+    if (!openAssigneeMenuRowId) {
+      setAssigneeMenuPosition(null);
+      return undefined;
+    }
+
+    function updateMenuPosition() {
+      const triggerElement = assigneeTriggerRef.current;
+      if (!triggerElement) return;
+      const rect = triggerElement.getBoundingClientRect();
+      const activeUsersCount = visibleUsers.filter((user) => user.isActive).length;
+      const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1280;
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 800;
+      const maxWidth = Math.max(220, Math.min(304, viewportWidth - 16));
+      const left = Math.min(Math.max(8, rect.right - maxWidth), Math.max(8, viewportWidth - maxWidth - 8));
+      const estimatedListHeight = Math.min(184, (activeUsersCount * 30) + 12);
+      const estimatedMenuHeight = 44 + estimatedListHeight + 48;
+      const spaceBelow = Math.max(0, viewportHeight - rect.bottom - 8);
+      const spaceAbove = Math.max(0, rect.top - 8);
+      const shouldOpenUp = spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
+      const top = shouldOpenUp
+        ? Math.max(8, rect.top - estimatedMenuHeight - 6)
+        : Math.min(viewportHeight - estimatedMenuHeight - 8, rect.bottom + 6);
+      setAssigneeMenuPosition({ top, left, width: maxWidth, openUp: shouldOpenUp });
+    }
+
+    updateMenuPosition();
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+    return () => {
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+    };
   }, [openAssigneeMenuRowId]);
 
   // Handlers para redimensionamiento de columnas
@@ -690,73 +730,62 @@ export default function MisTableros({ contexto }) {
                             if (column.id === "assignee") {
                               return (
                                 <td key={`${row.id}-${column.token}`} style={getEffectiveColumnWidth(column)}>
-                                  <div ref={assigneeMenuOpen ? assigneeMenuRef : null} style={{ position: "relative" }}>
+                                  <div ref={assigneeMenuOpen ? assigneeMenuRef : null} className="board-assignee-select">
                                     <button
+                                      ref={assigneeMenuOpen ? assigneeTriggerRef : null}
                                       type="button"
                                       onClick={() => rowFieldEditable && setOpenAssigneeMenuRowId((current) => current === row.id ? "" : row.id)}
                                       disabled={!rowFieldEditable}
                                       title={assigneeFullLabel}
-                                      style={{
-                                        width: "100%",
-                                        minHeight: "2.2rem",
-                                        padding: "0.4rem 0.55rem",
-                                        borderRadius: "0.8rem",
-                                        border: "1px solid rgba(148, 163, 184, 0.45)",
-                                        background: "#fff",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "space-between",
-                                        gap: "0.5rem",
-                                        cursor: rowFieldEditable ? "pointer" : "default",
-                                      }}
+                                      className={`board-assignee-trigger${assigneeMenuOpen ? " is-open" : ""}${rowFieldEditable ? "" : " is-disabled"}`}
                                     >
-                                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{assigneeDisplayLabel}</span>
-                                      <span aria-hidden="true">▾</span>
+                                      <span className="board-assignee-trigger-label">{assigneeDisplayLabel}</span>
+                                      <span className="board-assignee-trigger-caret" aria-hidden="true">▾</span>
                                     </button>
-                                    {assigneeMenuOpen ? (
-                                      <div
-                                        style={{
-                                          position: "absolute",
-                                          top: "calc(100% + 0.35rem)",
-                                          left: 0,
-                                          zIndex: 20,
-                                          minWidth: "15rem",
-                                          maxWidth: "18rem",
-                                          padding: "0.5rem",
-                                          borderRadius: "0.9rem",
-                                          border: "1px solid rgba(148, 163, 184, 0.25)",
-                                          background: "#ffffff",
-                                          boxShadow: "0 14px 28px rgba(15, 23, 42, 0.14)",
-                                          display: "grid",
-                                          gap: "0.35rem",
-                                        }}
-                                      >
-                                        <div style={{ display: "grid", gap: "0.25rem", maxHeight: "12rem", overflowY: "auto" }}>
-                                          {visibleUsers.filter((user) => user.isActive).map((user) => {
-                                            const checked = rowResponsibleIds.includes(user.id);
-                                            return (
-                                              <label key={user.id} style={{ display: "flex", alignItems: "center", gap: "0.45rem", fontSize: "0.78rem", color: "#244040" }}>
-                                                <input
-                                                  type="checkbox"
-                                                  checked={checked}
-                                                  onChange={() => updateRowResponsibleAssignments(
-                                                    row.id,
-                                                    checked
-                                                      ? rowResponsibleIds.filter((userId) => userId !== user.id)
-                                                      : rowResponsibleIds.concat(user.id),
-                                                  )}
-                                                />
-                                                <span>{user.name}</span>
-                                              </label>
-                                            );
-                                          })}
-                                        </div>
-                                        <div style={{ display: "flex", justifyContent: "space-between", gap: "0.5rem" }}>
-                                          <button type="button" className="icon-button" onClick={() => updateRowResponsibleAssignments(row.id, [])}>Limpiar</button>
-                                          <button type="button" className="primary-button" onClick={() => setOpenAssigneeMenuRowId("")}>Cerrar</button>
-                                        </div>
-                                      </div>
-                                    ) : null}
+                                    {assigneeMenuOpen && assigneeMenuPosition && typeof document !== "undefined"
+                                      ? createPortal(
+                                        <div
+                                          ref={assigneeMenuRef}
+                                          className={`board-assignee-menu floating${assigneeMenuPosition.openUp ? " open-up" : ""}`}
+                                          style={{
+                                            top: `${assigneeMenuPosition.top}px`,
+                                            left: `${assigneeMenuPosition.left}px`,
+                                            width: `${assigneeMenuPosition.width}px`,
+                                          }}
+                                        >
+                                          <div className="board-assignee-menu-head">
+                                            <span>Selecciona player(s)</span>
+                                            <strong>{rowResponsibleIds.length}</strong>
+                                          </div>
+                                          <div className="board-assignee-list">
+                                            {visibleUsers.filter((user) => user.isActive).map((user) => {
+                                              const checked = rowResponsibleIds.includes(user.id);
+                                              return (
+                                                <label key={user.id} className={`board-assignee-option${checked ? " is-selected" : ""}`}>
+                                                  <input
+                                                    type="checkbox"
+                                                    className="board-assignee-checkbox"
+                                                    checked={checked}
+                                                    onChange={() => updateRowResponsibleAssignments(
+                                                      row.id,
+                                                      checked
+                                                        ? rowResponsibleIds.filter((userId) => userId !== user.id)
+                                                        : rowResponsibleIds.concat(user.id),
+                                                    )}
+                                                  />
+                                                  <span className="board-assignee-name" title={user.name}>{user.name}</span>
+                                                </label>
+                                              );
+                                            })}
+                                          </div>
+                                          <div className="board-assignee-actions">
+                                            <button type="button" className="icon-button board-assignee-clear" onClick={() => updateRowResponsibleAssignments(row.id, [])}>Limpiar</button>
+                                            <button type="button" className="primary-button board-assignee-close" onClick={() => setOpenAssigneeMenuRowId("")}>Cerrar</button>
+                                          </div>
+                                        </div>,
+                                        document.body,
+                                      )
+                                      : null}
                                   </div>
                                 </td>
                               );

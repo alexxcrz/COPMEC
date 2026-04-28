@@ -809,12 +809,10 @@ export function BoardBuilderModal({
     date: 140,
   };
   const auxMinWidths = Object.fromEntries(Object.values(BOARD_AUX_COLUMN_DEFINITIONS).map((item) => [item.id, item.minWidth]));
-  const builderTabs = ["base", "identity", "columns", "preview"];
+  const builderTabs = ["base", "identity"];
   const builderTabLabels = {
     base: "Base",
     identity: "Identidad",
-    columns: "Columnas",
-    preview: "Vista previa",
   };
   const currentBuilderTabIndex = Math.max(0, builderTabs.indexOf(builderTab));
   const hasBuilderPrev = currentBuilderTabIndex > 0;
@@ -1120,7 +1118,7 @@ export function BoardBuilderModal({
 
   const focusLayoutClassName = [
     "board-builder-focus-layout",
-    builderTab === "preview" ? "preview-only" : "",
+    builderTab === "identity" ? "identity-stage" : "",
     builderTab === "base" ? "base-stage" : "",
   ].filter(Boolean).join(" ");
 
@@ -1146,13 +1144,7 @@ export function BoardBuilderModal({
             <div className="saved-board-list board-builder-intuitive-chips">
               <button type="button" className={builderTab === "base" ? "tab active" : "tab"} onClick={() => setBuilderTab("base")}>Base</button>
               <button type="button" className={builderTab === "identity" ? "tab active" : "tab"} onClick={() => setBuilderTab("identity")}>Identidad</button>
-              <button type="button" className={builderTab === "columns" ? "tab active" : "tab"} onClick={() => setBuilderTab("columns")}>Columnas</button>
-              <button type="button" className={builderTab === "preview" ? "tab active" : "tab"} onClick={() => setBuilderTab("preview")}>Vista previa</button>
             </div>
-          </div>
-          <div className="saved-board-list board-builder-intuitive-actions">
-            <button type="button" className="icon-button" onClick={() => setBuilderTab("preview")}>Ver preview</button>
-            <button type="button" className="primary-button" onClick={() => { setBuilderTab("columns"); onOpenComponentStudio(); }}><Plus size={15} /> Agregar columna</button>
           </div>
         </section>
 
@@ -1351,135 +1343,108 @@ export function BoardBuilderModal({
                 {visibilityType === "department" ? <p className="board-assignment-hint">Solo los players cuyas áreas coincidan con las seleccionadas verán este tablero.</p> : null}
                 {visibilityType === "department" ? <span className="chip soft board-assignment-chip">{selectedDepartmentsLabel}</span> : null}
               </section>
+
+              <div className="builder-settings-grid board-builder-settings-grid board-builder-short-select-grid">
+                <div className="builder-card compact-builder-card board-builder-switch-row">
+                  <div>
+                    <strong>Workflow</strong>
+                    <span>Acciones de la fila</span>
+                  </div>
+                  <button type="button" className={draft.settings.showWorkflow ? "switch-button on" : "switch-button"} aria-label="Alternar workflow" aria-pressed={draft.settings.showWorkflow} onClick={() => onChange((current) => ({ ...current, settings: { ...current.settings, showWorkflow: !current.settings.showWorkflow } }))}>
+                    <span className="switch-thumb" />
+                  </button>
+                </div>
+                <div className="builder-card compact-builder-card board-builder-switch-row">
+                  <div>
+                    <strong>Métricas</strong>
+                    <span>Resumen del tablero</span>
+                  </div>
+                  <button type="button" className={draft.settings.showMetrics ? "switch-button on" : "switch-button"} aria-label="Alternar métricas" aria-pressed={draft.settings.showMetrics} onClick={() => onChange((current) => ({ ...current, settings: { ...current.settings, showMetrics: !current.settings.showMetrics } }))}>
+                    <span className="switch-thumb" />
+                  </button>
+                </div>
+                <div className="builder-card compact-builder-card board-builder-switch-row">
+                  <div>
+                    <strong>Player visible</strong>
+                    <span>Columna en tabla</span>
+                  </div>
+                  <button type="button" className={draft.settings.showAssignee ? "switch-button on" : "switch-button"} aria-label="Alternar player visible" aria-pressed={draft.settings.showAssignee} onClick={() => onChange((current) => ({ ...current, settings: { ...current.settings, showAssignee: !current.settings.showAssignee } }))}>
+                    <span className="switch-thumb" />
+                  </button>
+                </div>
+                <div className="builder-card compact-builder-card board-builder-switch-row">
+                  <div>
+                    <strong>Fechas visibles</strong>
+                    <span>Tiempos y fechas</span>
+                  </div>
+                  <button type="button" className={draft.settings.showDates ? "switch-button on" : "switch-button"} aria-label="Alternar fechas visibles" aria-pressed={draft.settings.showDates} onClick={() => onChange((current) => ({ ...current, settings: { ...current.settings, showDates: !current.settings.showDates } }))}>
+                    <span className="switch-thumb" />
+                  </button>
+                </div>
+                <div className="builder-card compact-builder-card board-builder-switch-row">
+                  <div>
+                    <strong>Acumulado</strong>
+                    <span>Columna de tiempo total</span>
+                  </div>
+                  <button type="button" className={draft.settings.showTotalTime !== false ? "switch-button on" : "switch-button"} aria-label="Alternar columna acumulado" aria-pressed={draft.settings.showTotalTime !== false} onClick={() => onChange((current) => ({ ...current, settings: { ...current.settings, showTotalTime: current.settings.showTotalTime === false } }))}>
+                    <span className="switch-thumb" />
+                  </button>
+                </div>
+                <div className="builder-card compact-builder-card board-builder-switch-row">
+                  <div>
+                    <strong>Eficiencia</strong>
+                    <span>Columna de eficiencia</span>
+                  </div>
+                  <button type="button" className={draft.settings.showEfficiency !== false ? "switch-button on" : "switch-button"} aria-label="Alternar columna eficiencia" aria-pressed={draft.settings.showEfficiency !== false} onClick={() => onChange((current) => ({ ...current, settings: { ...current.settings, showEfficiency: current.settings.showEfficiency === false } }))}>
+                    <span className="switch-thumb" />
+                  </button>
+                </div>
+
+                <div className="builder-card compact-builder-card board-context-card">
+                  <div className="board-context-grid">
+                    <label className="app-modal-field">
+                      <span>Contexto operativo</span>
+                      <select value={operationalContextType} onChange={(event) => updateOperationalContext(event.target.value)}>
+                        {boardOperationalContextOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                      </select>
+                    </label>
+
+                    {operationalContextType !== "none" ? (
+                      <label className="app-modal-field">
+                        <span>Etiqueta visible</span>
+                        <input value={operationalContextLabel} onChange={(event) => updateOperationalContext(operationalContextType, event.target.value)} placeholder={operationalContextType === "cleaningSite" ? "Sede de limpieza" : "Ej: Nave, estación o zona"} />
+                      </label>
+                    ) : null}
+
+                    {operationalContextType === "custom" ? (
+                      <label className="app-modal-field">
+                        <span>Opciones manuales</span>
+                        <input value={operationalContextOptionsText} onChange={(event) => updateOperationalContext(operationalContextType, operationalContextLabel, event.target.value.split(/[;,]/))} placeholder="Ej: Nave 1, Estación A, Estación B" />
+                      </label>
+                    ) : null}
+
+                    {operationalContextType !== "none" ? (
+                      <label className="app-modal-field">
+                        <span>Valor activo</span>
+                        <select value={operationalContextValue} onChange={(event) => updateOperationalContext(operationalContextType, operationalContextLabel, operationalContextOptions, event.target.value)}>
+                          {operationalContextOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                        </select>
+                      </label>
+                    ) : null}
+                  </div>
+                  <p className="board-context-help">
+                    Usa este contexto para que cada tablero opere por semana y además quede ligado manualmente a una sede, nave, estación o zona. Cuando el contexto sea C1, C2 o C3, el descuento automático de limpieza saldrá sólo de esa sede.
+                  </p>
+                </div>
+              </div>
             </div>
           </section>
-          ) : null}
-
-          {builderTab === "columns" ? (
-          <>
-          <div id="bb-step-columns" className="builder-settings-grid board-builder-settings-grid board-builder-short-select-grid">
-            <div className="builder-card compact-builder-card board-builder-switch-row">
-              <div>
-                <strong>Workflow</strong>
-                <span>Acciones de la fila</span>
-              </div>
-              <button type="button" className={draft.settings.showWorkflow ? "switch-button on" : "switch-button"} aria-label="Alternar workflow" aria-pressed={draft.settings.showWorkflow} onClick={() => onChange((current) => ({ ...current, settings: { ...current.settings, showWorkflow: !current.settings.showWorkflow } }))}>
-                <span className="switch-thumb" />
-              </button>
-            </div>
-            <div className="builder-card compact-builder-card board-builder-switch-row">
-              <div>
-                <strong>Métricas</strong>
-                <span>Resumen del tablero</span>
-              </div>
-              <button type="button" className={draft.settings.showMetrics ? "switch-button on" : "switch-button"} aria-label="Alternar métricas" aria-pressed={draft.settings.showMetrics} onClick={() => onChange((current) => ({ ...current, settings: { ...current.settings, showMetrics: !current.settings.showMetrics } }))}>
-                <span className="switch-thumb" />
-              </button>
-            </div>
-            <div className="builder-card compact-builder-card board-builder-switch-row">
-              <div>
-                <strong>Player visible</strong>
-                <span>Columna en tabla</span>
-              </div>
-              <button type="button" className={draft.settings.showAssignee ? "switch-button on" : "switch-button"} aria-label="Alternar player visible" aria-pressed={draft.settings.showAssignee} onClick={() => onChange((current) => ({ ...current, settings: { ...current.settings, showAssignee: !current.settings.showAssignee } }))}>
-                <span className="switch-thumb" />
-              </button>
-            </div>
-            <div className="builder-card compact-builder-card board-builder-switch-row">
-              <div>
-                <strong>Fechas visibles</strong>
-                <span>Tiempos y fechas</span>
-              </div>
-              <button type="button" className={draft.settings.showDates ? "switch-button on" : "switch-button"} aria-label="Alternar fechas visibles" aria-pressed={draft.settings.showDates} onClick={() => onChange((current) => ({ ...current, settings: { ...current.settings, showDates: !current.settings.showDates } }))}>
-                <span className="switch-thumb" />
-              </button>
-            </div>
-
-            <div className="builder-card compact-builder-card board-context-card">
-              <div className="board-context-grid">
-                <label className="app-modal-field">
-                  <span>Contexto operativo</span>
-                  <select value={operationalContextType} onChange={(event) => updateOperationalContext(event.target.value)}>
-                    {boardOperationalContextOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                  </select>
-                </label>
-
-                {operationalContextType !== "none" ? (
-                  <label className="app-modal-field">
-                    <span>Etiqueta visible</span>
-                    <input value={operationalContextLabel} onChange={(event) => updateOperationalContext(operationalContextType, event.target.value)} placeholder={operationalContextType === "cleaningSite" ? "Sede de limpieza" : "Ej: Nave, estación o zona"} />
-                  </label>
-                ) : null}
-
-                {operationalContextType === "custom" ? (
-                  <label className="app-modal-field">
-                    <span>Opciones manuales</span>
-                    <input value={operationalContextOptionsText} onChange={(event) => updateOperationalContext(operationalContextType, operationalContextLabel, event.target.value.split(/[;,]/))} placeholder="Ej: Nave 1, Estación A, Estación B" />
-                  </label>
-                ) : null}
-
-                {operationalContextType !== "none" ? (
-                  <label className="app-modal-field">
-                    <span>Valor activo</span>
-                    <select value={operationalContextValue} onChange={(event) => updateOperationalContext(operationalContextType, operationalContextLabel, operationalContextOptions, event.target.value)}>
-                      {operationalContextOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                    </select>
-                  </label>
-                ) : null}
-              </div>
-              <p className="board-context-help">
-                Usa este contexto para que cada tablero opere por semana y además quede ligado manualmente a una sede, nave, estación o zona. Cuando el contexto sea C1, C2 o C3, el descuento automático de limpieza saldrá sólo de esa sede.
-              </p>
-            </div>
-          </div>
-
-          {draft.columns.length ? (
-            <>
-              <div className="builder-section-head board-builder-section-head">
-                <div>
-                  <h4>Componentes configurados</h4>
-                  <p>Modifica el tablero y observa inmediatamente cómo cambia la estructura final.</p>
-                </div>
-                <span className="chip primary">{draft.columns.length} componente(s)</span>
-              </div>
-              <p className="required-legend"><span className="required-mark" aria-hidden="true">*</span> obligatorio</p>
-              <div className="builder-component-list board-builder-component-list">
-                {draftColumnGroups.map((group) => (
-                  <section key={group.name} className="builder-group-block compact-group-block">
-                    <div className="builder-group-head" style={{ borderColor: group.color }}>
-                      <span className="builder-group-indicator" style={{ backgroundColor: group.color }} />
-                      <div>
-                        <strong>{group.name}</strong>
-                        <p>{group.columns.length} componente(s)</p>
-                      </div>
-                    </div>
-                    {group.columns.map((column) => (
-                      <article key={column.id} className="builder-component-card compact-component-card">
-                        <div>
-                          <strong>{renderBoardFieldLabel(column.label, column.required)}</strong>
-                          <p>{column.helpText || getBoardFieldTypeDescription(getBoardFieldDisplayType(draft.columns, column))}</p>
-                        </div>
-                        <div className="saved-board-list compact-component-actions">
-                          <span className="chip primary">{BOARD_FIELD_TYPES.find((item) => item.value === getBoardFieldDisplayType(draft.columns, column))?.label || getBoardFieldDisplayType(draft.columns, column)}</span>
-                          <button type="button" className="icon-button" onClick={() => onMoveDraftColumn(column.id, "up")}><ArrowUp size={14} /> Subir</button>
-                          <button type="button" className="icon-button" onClick={() => onMoveDraftColumn(column.id, "down")}><ArrowDown size={14} /> Bajar</button>
-                          <button type="button" className="icon-button" onClick={() => onDuplicateDraftColumn(column.id)}><Copy size={14} /> Duplicar</button>
-                          <button type="button" className="icon-button" onClick={() => onEditDraftColumn(column.id)}><Pencil size={14} /> Editar</button>
-                          <button type="button" className="icon-button danger" onClick={() => onRemoveDraftColumn(column.id)}><Trash2 size={14} /> Quitar</button>
-                        </div>
-                      </article>
-                    ))}
-                  </section>
-                ))}
-              </div>
-            </>
-          ) : null}
-          </>
           ) : null}
         </section>
         ) : null}
 
-        <aside className={builderTab === "preview" ? "board-builder-preview-panel board-builder-preview-panel-focus" : "board-builder-preview-panel"}>
+        {builderTab !== "identity" ? (
+        <aside className="board-builder-preview-panel">
           <div className="board-preview-surface">
             <div className="board-preview-head">
               <div className="board-preview-head-main">
@@ -1490,20 +1455,6 @@ export function BoardBuilderModal({
                 </div>
               </div>
               <div className="board-preview-head-side">
-                <div className="board-preview-switches-top">
-                  <div className="board-preview-switch-pill">
-                    <span>Acumulado</span>
-                    <button type="button" className={draft.settings.showTotalTime !== false ? "switch-button on" : "switch-button"} aria-label="Alternar columna acumulado" aria-pressed={draft.settings.showTotalTime !== false} onClick={() => onChange((current) => ({ ...current, settings: { ...current.settings, showTotalTime: current.settings.showTotalTime === false } }))}>
-                      <span className="switch-thumb" />
-                    </button>
-                  </div>
-                  <div className="board-preview-switch-pill">
-                    <span>Eficiencia</span>
-                    <button type="button" className={draft.settings.showEfficiency !== false ? "switch-button on" : "switch-button"} aria-label="Alternar columna eficiencia" aria-pressed={draft.settings.showEfficiency !== false} onClick={() => onChange((current) => ({ ...current, settings: { ...current.settings, showEfficiency: current.settings.showEfficiency === false } }))}>
-                      <span className="switch-thumb" />
-                    </button>
-                  </div>
-                </div>
                 <div className="board-builder-toolbar" ref={actionMenuRef}>
                   <button
                     type="button"
@@ -1699,6 +1650,7 @@ export function BoardBuilderModal({
             </section>
           </div>
         </aside>
+        ) : null}
         </div>
       </div>
     </Modal>
