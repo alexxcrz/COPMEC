@@ -2616,6 +2616,7 @@ html {
   flex: 1;
   display: grid;
   gap: 0.1rem;
+  min-width: 0;
 }
 
 .board-finish-time-label {
@@ -2637,6 +2638,24 @@ html {
   color: #032121;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.board-finish-modal.sicfla-modal {
+  width: min(100%, 760px);
+}
+
+@media (max-width: 640px) {
+  .board-finish-time-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .board-finish-time-value {
+    width: 100%;
+    text-align: left;
+    font-size: 0.98rem;
+  }
 }
 
 .board-finish-efficiency-bar {
@@ -3266,6 +3285,20 @@ html {
 
 .history-detail-card .metric-grid {
   margin-bottom: 0.5rem;
+}
+
+.history-area-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 0.65rem;
+}
+
+.history-detail-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-bottom: 0.7rem;
 }
 
 .history-detail-card .metric-card {

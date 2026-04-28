@@ -1032,15 +1032,46 @@ export function normalizeCatalogCleaningSites(value) {
   return [...new Set(fromArray)];
 }
 
+export function normalizeCatalogArea(value, fallback = "General") {
+  const normalizedValue = String(value || fallback || "General").trim();
+  return normalizedValue || "General";
+}
+
+export function normalizeCatalogScheduledDaysBySite(value, fallbackDays = []) {
+  const validSites = new Set((CLEANING_SITE_OPTIONS || []).map((entry) => String(entry.value || "").trim().toUpperCase()).filter(Boolean));
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const normalizedFallbackDays = normalizeCatalogScheduledDays(fallbackDays, "weekly");
+  const entries = Object.entries(value)
+    .map(([rawSite, rawDays]) => {
+      const site = String(rawSite || "").trim().toUpperCase();
+      if (!validSites.has(site)) return null;
+      const directDays = Array.isArray(rawDays)
+        ? rawDays.map((entry) => normalizeWeekdayOffset(entry)).filter((entry) => entry !== null)
+        : [];
+      const uniqueDays = [...new Set(directDays)].sort((a, b) => a - b);
+      return [site, uniqueDays.length ? uniqueDays : normalizedFallbackDays];
+    })
+    .filter(Boolean);
+  return Object.fromEntries(entries);
+}
+
+export function getCatalogScheduledDaysForSite(item, cleaningSite = "") {
+  const baseDays = normalizeCatalogScheduledDays(item?.scheduledDays, item?.frequency);
+  const normalizedSite = String(cleaningSite || "").trim().toUpperCase();
+  if (!normalizedSite) return baseDays;
+  const bySite = normalizeCatalogScheduledDaysBySite(item?.scheduledDaysBySite, baseDays);
+  return bySite[normalizedSite] || baseDays;
+}
+
 export function getCurrentWeekdayOffset(now = new Date()) {
   const jsDay = now.getDay();
   return jsDay === 0 ? 6 : jsDay - 1;
 }
 
-export function isCatalogItemScheduledForDay(item, dayOffset) {
+export function isCatalogItemScheduledForDay(item, dayOffset, cleaningSite = "") {
   const normalizedDay = normalizeWeekdayOffset(dayOffset);
   if (normalizedDay === null) return true;
-  const scheduledDays = normalizeCatalogScheduledDays(item?.scheduledDays, item?.frequency);
+  const scheduledDays = getCatalogScheduledDaysForSite(item, cleaningSite);
   return scheduledDays.includes(normalizedDay);
 }
 
@@ -1058,18 +1089,28 @@ export function getActivityFrequencyLabel(value) {
 
 export function normalizeCatalogItemRecord(item = {}) {
   const frequency = normalizeActivityFrequency(item.frequency);
+  const scheduledDays = normalizeCatalogScheduledDays(item.scheduledDays, frequency);
   return {
     ...item,
     frequency,
-    scheduledDays: normalizeCatalogScheduledDays(item.scheduledDays, frequency),
+    scheduledDays,
+    scheduledDaysBySite: normalizeCatalogScheduledDaysBySite(item.scheduledDaysBySite, scheduledDays),
     cleaningSites: normalizeCatalogCleaningSites(item.cleaningSites),
     category: String(item.category || "General").trim() || "General",
+    area: normalizeCatalogArea(item.area, item.category),
   };
 }
 
 export function buildWeekActivitiesFromCatalogItem(weekId, item, weekStart, responsibleId) {
-  const offsets = ACTIVITY_FREQUENCY_DAY_OFFSETS[normalizeActivityFrequency(item.frequency)] || ACTIVITY_FREQUENCY_DAY_OFFSETS.weekly;
-  return offsets.map((dayOffset) => ({
+  const fallbackOffsets = ACTIVITY_FREQUENCY_DAY_OFFSETS[normalizeActivityFrequency(item.frequency)] || ACTIVITY_FREQUENCY_DAY_OFFSETS.weekly;
+  const baseDays = normalizeCatalogScheduledDays(item?.scheduledDays, item?.frequency);
+  const cleaningSites = normalizeCatalogCleaningSites(item?.cleaningSites);
+  const bySite = normalizeCatalogScheduledDaysBySite(item?.scheduledDaysBySite, baseDays);
+  const offsets = cleaningSites.length
+    ? [...new Set(cleaningSites.flatMap((site) => bySite[site] || baseDays))].sort((a, b) => a - b)
+    : baseDays;
+  const effectiveOffsets = offsets.length ? offsets : fallbackOffsets;
+  return effectiveOffsets.map((dayOffset) => ({
     id: makeId("act"),
     weekId,
     catalogActivityId: item.id,
@@ -3080,7 +3121,7 @@ export function buildSelectOptions(field, state, context = {}) {
     const weekdayOffset = hasDayFilter ? Number(context.weekdayOffset) : null;
     const cleaningSite = String(context?.cleaningSite || "").trim().toUpperCase();
     const filtered = filteredByCategory
-      .filter((item) => isCatalogItemScheduledForDay(item, weekdayOffset))
+      .filter((item) => isCatalogItemScheduledForDay(item, weekdayOffset, cleaningSite))
       .filter((item) => isCatalogItemAvailableForCleaningSite(item, cleaningSite));
     return filtered.map((item) => ({ value: item.name, label: item.name, group: item.category || "General" }));
   }

@@ -237,6 +237,7 @@ import {
 
   normalizeActivityFrequency, getActivityFrequencyLabel,
   normalizeCatalogScheduledDays, normalizeCatalogCleaningSites,
+  normalizeCatalogArea, normalizeCatalogScheduledDaysBySite,
 
   normalizeCatalogItemRecord, buildWeekActivitiesFromCatalogItem,
 
@@ -365,6 +366,48 @@ const CATALOG_WEEKDAY_OPTIONS = [
   { value: 5, short: "S", label: "Sabado" },
 ];
 
+function serializeCatalogScheduledDaysBySite(value) {
+  const normalized = normalizeCatalogScheduledDaysBySite(value, []);
+  const entries = Object.entries(normalized)
+    .map(([site, days]) => `${site}:${days.join(";")}`)
+    .filter((entry) => entry.endsWith(":") === false);
+  return entries.join("|");
+}
+
+function parseCatalogScheduledDaysBySite(value, fallbackDays = []) {
+  const raw = String(value || "").trim();
+  if (!raw) return {};
+  const parsed = raw
+    .split("|")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .reduce((accumulator, entry) => {
+      const [rawSite, rawDays = ""] = entry.split(":");
+      const site = String(rawSite || "").trim().toUpperCase();
+      if (!site) return accumulator;
+      const dayValues = rawDays
+        .split(/[;|,\s]+/)
+        .map((token) => token.trim())
+        .filter(Boolean)
+        .map((token) => {
+          const normalized = token.toLowerCase();
+          if (normalized === "l" || normalized === "lun" || normalized === "lunes") return 0;
+          if (normalized === "m" || normalized === "mar" || normalized === "martes") return 1;
+          if (normalized === "x" || normalized === "mie" || normalized === "miércoles" || normalized === "miercoles") return 2;
+          if (normalized === "j" || normalized === "jue" || normalized === "jueves") return 3;
+          if (normalized === "v" || normalized === "vie" || normalized === "viernes") return 4;
+          if (normalized === "s" || normalized === "sab" || normalized === "sábado" || normalized === "sabado") return 5;
+          if (normalized === "d" || normalized === "dom" || normalized === "domingo") return 6;
+          const numeric = Number(normalized);
+          return Number.isFinite(numeric) ? numeric : null;
+        })
+        .filter((entryDay) => entryDay !== null);
+      accumulator[site] = dayValues;
+      return accumulator;
+    }, {});
+  return normalizeCatalogScheduledDaysBySite(parsed, fallbackDays);
+}
+
 function createEmptyCatalogModalState() {
   return {
     open: false,
@@ -375,7 +418,9 @@ function createEmptyCatalogModalState() {
     mandatory: "true",
     frequency: "weekly",
     category: "General",
+    area: "General",
     scheduledDays: [0, 1, 2, 3, 4, 5],
+    scheduledDaysBySite: {},
     cleaningSites: [],
   };
 }
@@ -1060,11 +1105,99 @@ function App() { // NOSONAR
   }, [state.pauseLogs]);
 
   const dashboardRecords = useMemo(() => {
+    const AREA_KEYWORD_MAP = [
+      { keyword: "limpieza", area: "LIMPIEZA" },
+      { keyword: "inventario", area: "INVENTARIO" },
+      { keyword: "calidad", area: "CALIDAD" },
+      { keyword: "embarque", area: "EMBARQUES" },
+      { keyword: "pedidos", area: "PEDIDOS" },
+      { keyword: "logistica", area: "LOGISTICA" },
+    ];
+
+    function normalizeAreaLabel(rawArea) {
+      const normalized = normalizeAreaOption(rawArea);
+      const trimmedArea = String(normalized || rawArea || "").trim();
+      return trimmedArea || "Sin área";
+    }
+
+    function normalizeText(value) {
+      return String(value || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+    }
+
+    function buildAreaAliases(areaValue) {
+      const normalized = normalizeAreaLabel(areaValue);
+      if (!normalized || normalized === "Sin área") return [];
+      const root = normalizeAreaLabel(getAreaRoot(normalized));
+      return Array.from(new Set([normalized, root].filter(Boolean)));
+    }
+
+    function getPrimaryArea(areaValue) {
+      const normalized = normalizeAreaLabel(areaValue);
+      if (!normalized || normalized === "Sin área") return "Sin área";
+      return normalizeAreaLabel(getAreaRoot(normalized));
+    }
+
+    function resolveBoardAreaScope(board, responsibleUser) {
+      const visibility = getNormalizedBoardVisibility(board);
+      const scopedAreas = (visibility.sharedDepartments || [])
+        .map((area) => getPrimaryArea(area))
+        .filter((area) => area && area !== "Sin área");
+
+      if (scopedAreas.length) {
+        const primaryArea = scopedAreas[0];
+        return { primaryArea, areaScopes: [primaryArea] };
+      }
+
+      const ownerArea = normalizeAreaLabel(getUserArea(userMap.get(board?.ownerId)) || "");
+      const responsibleArea = normalizeAreaLabel(getUserArea(responsibleUser) || "");
+      const primaryArea = getPrimaryArea(ownerArea !== "Sin área" ? ownerArea : responsibleArea);
+      return { primaryArea, areaScopes: [primaryArea] };
+    }
+
+    const areaRoots = Array.from(new Set((state.areaCatalog || [])
+      .flatMap((entry) => buildAreaAliases(entry))
+      .filter(Boolean)));
+
+    function resolveActivityAreaScope(activity, responsibleUser) {
+      const responsibleArea = normalizeAreaLabel(getUserArea(responsibleUser));
+      const catalogItem = catalogMap.get(activity?.catalogActivityId);
+      const explicitCatalogArea = normalizeAreaLabel(normalizeCatalogArea(catalogItem?.area, catalogItem?.category));
+      if (explicitCatalogArea && explicitCatalogArea !== "Sin área") {
+        const primaryArea = getPrimaryArea(explicitCatalogArea);
+        return { primaryArea, areaScopes: [primaryArea] };
+      }
+      const categoryName = String(catalogItem?.category || "").trim();
+      if (!categoryName) {
+        const primaryArea = getPrimaryArea(responsibleArea);
+        return { primaryArea, areaScopes: [primaryArea] };
+      }
+
+      const normalizedCategory = normalizeText(categoryName);
+      const strictCategoryArea = AREA_KEYWORD_MAP.find((entry) => normalizedCategory.includes(entry.keyword))?.area || "";
+
+      const strictAreaFromCatalog = strictCategoryArea
+        ? areaRoots.find((areaRoot) => normalizeText(areaRoot) === normalizeText(strictCategoryArea)) || strictCategoryArea
+        : "";
+
+      const matchedArea = areaRoots.find((areaRoot) => {
+        const normalizedArea = normalizeText(areaRoot);
+        return normalizedArea.includes(normalizedCategory) || normalizedCategory.includes(normalizedArea);
+      });
+
+      const primaryArea = getPrimaryArea(strictAreaFromCatalog || matchedArea || responsibleArea);
+      return { primaryArea, areaScopes: [primaryArea] };
+    }
+
     const activityRecords = visibleDashboardActivities.map((activity) => {
       const responsibleUser = userMap.get(activity.responsibleId);
       const pauseSummary = activityPauseSummaryMap.get(activity.id) || { count: 0, totalSeconds: 0, reasons: [] };
       const durationSeconds = getElapsedSeconds(activity, now, operationalPauseState);
       const limitMinutes = getTimeLimitMinutes(activity, catalogMap);
+      const { primaryArea: activityArea, areaScopes } = resolveActivityAreaScope(activity, responsibleUser);
       return {
         id: `activity-${activity.id}`,
         rawId: activity.id,
@@ -1074,7 +1207,8 @@ function App() { // NOSONAR
         boardName: "Actividades semanales",
         responsibleId: activity.responsibleId || "",
         responsibleName: responsibleUser?.name || "Sin player",
-        area: getUserArea(responsibleUser) || "Sin área",
+        area: activityArea,
+        areaScopes,
         occurredAt: activity.endTime || activity.activityDate || activity.startTime || activity.lastResumedAt,
         status: activity.status || STATUS_PENDING,
         durationSeconds,
@@ -1088,11 +1222,11 @@ function App() { // NOSONAR
 
     const boardRecords = dashboardVisibleControlBoards.flatMap((board) => (board.rows || []).map((row) => {
       const responsibleUser = userMap.get(row.responsibleId);
+      const { primaryArea, areaScopes } = resolveBoardAreaScope(board, responsibleUser);
       const durationSeconds = getElapsedSeconds(row, now, operationalPauseState);
       const totalElapsedSeconds = row.startTime
         ? Math.max(durationSeconds, getOperationalElapsedSeconds(row.startTime, now, operationalPauseState))
         : durationSeconds;
-      const pauseSeconds = Math.max(0, totalElapsedSeconds - durationSeconds);
       return {
         id: `board-${board.id}-${row.id}`,
         rawId: row.id,
@@ -1103,26 +1237,27 @@ function App() { // NOSONAR
         boardName: board.name,
         responsibleId: row.responsibleId || "",
         responsibleName: responsibleUser?.name || "Sin player",
-        area: getUserArea(responsibleUser) || "Sin área",
+        area: primaryArea,
+        areaScopes,
         occurredAt: row.endTime || row.createdAt || row.startTime || row.lastResumedAt,
         status: row.status || STATUS_PENDING,
         durationSeconds,
         totalElapsedSeconds,
         limitMinutes: 0,
         excessSeconds: 0,
-        pauseCount: pauseSeconds > 0 ? 1 : 0,
-        pauseSeconds,
-        pauseReasons: row.lastPauseReason ? [row.lastPauseReason] : [],
+        pauseCount: 0,
+        pauseSeconds: 0,
+        pauseReasons: [],
       };
     }));
 
     const historicalBoardRecords = dashboardVisibleBoardHistorySnapshots.flatMap((snapshot) => (snapshot.rows || []).map((row) => {
       const responsibleUser = userMap.get(row.responsibleId);
+      const { primaryArea, areaScopes } = resolveBoardAreaScope(snapshot, responsibleUser);
       const durationSeconds = getElapsedSeconds(row, now, operationalPauseState);
       const totalElapsedSeconds = row.startTime
         ? Math.max(durationSeconds, getOperationalElapsedSeconds(row.startTime, now, operationalPauseState))
         : durationSeconds;
-      const pauseSeconds = Math.max(0, totalElapsedSeconds - durationSeconds);
       return {
         id: `board-history-${snapshot.id}-${row.id}`,
         rawId: `${snapshot.id}-${row.id}`,
@@ -1132,16 +1267,17 @@ function App() { // NOSONAR
         boardName: snapshot.boardName,
         responsibleId: row.responsibleId || "",
         responsibleName: responsibleUser?.name || "Sin player",
-        area: getUserArea(responsibleUser) || "Sin área",
+        area: primaryArea,
+        areaScopes,
         occurredAt: row.endTime || row.createdAt || row.startTime || row.lastResumedAt || snapshot.archivedAt,
         status: row.status || STATUS_PENDING,
         durationSeconds,
         totalElapsedSeconds,
         limitMinutes: 0,
         excessSeconds: 0,
-        pauseCount: pauseSeconds > 0 ? 1 : 0,
-        pauseSeconds,
-        pauseReasons: row.lastPauseReason ? [row.lastPauseReason] : [],
+        pauseCount: 0,
+        pauseSeconds: 0,
+        pauseReasons: [],
       };
     }));
 
@@ -1186,10 +1322,30 @@ function App() { // NOSONAR
   }, [dashboardFilters.periodKey, dashboardPeriodOptions]);
 
   const filteredDashboardRecords = useMemo(() => {
+    function normalizeAreaMatch(value) {
+      return String(value || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+    }
+
+    function areaMatchesFilter(scopedAreas, areaFilter) {
+      if (areaFilter === "all") return true;
+      const normalizedFilter = normalizeAreaMatch(areaFilter);
+      if (!normalizedFilter) return true;
+
+      return scopedAreas.some((area) => {
+        const rootArea = normalizeAreaMatch(getAreaRoot(area) || area);
+        return rootArea === normalizedFilter;
+      });
+    }
+
     return dateFilteredDashboardRecords.filter((record) => {
       const periodOk = dashboardFilters.periodKey === "all" || getDashboardPeriodKey(record.occurredAt, dashboardFilters.periodType) === dashboardFilters.periodKey;
       const responsibleOk = dashboardFilters.responsibleId === "all" || record.responsibleId === dashboardFilters.responsibleId;
-      const areaOk = dashboardFilters.area === "all" || record.area === dashboardFilters.area;
+      const scopedAreas = Array.isArray(record.areaScopes) && record.areaScopes.length ? record.areaScopes : [record.area];
+      const areaOk = areaMatchesFilter(scopedAreas, dashboardFilters.area);
       const sourceOk = dashboardFilters.source === "all" || record.source === dashboardFilters.source;
       return periodOk && responsibleOk && areaOk && sourceOk;
     });
@@ -1211,7 +1367,15 @@ function App() { // NOSONAR
   }, [filteredDashboardActivities, state.pauseLogs]);
 
   const dashboardMetrics = useMemo(() => {
-    const catalogItemsSnapshot = (state.catalog || []).filter((item) => !item.isDeleted);
+    const activeCatalogSnapshot = (state.catalog || []).filter((item) => !item.isDeleted);
+    const catalogItemsSnapshot = dashboardFilters.area === "all"
+      ? activeCatalogSnapshot
+      : activeCatalogSnapshot.filter((item) => {
+        const itemArea = normalizeCatalogArea(item?.area, item?.category);
+        const itemRoot = normalizeAreaOption(getAreaRoot(itemArea));
+        const selectedRoot = normalizeAreaOption(getAreaRoot(dashboardFilters.area));
+        return Boolean(selectedRoot) && selectedRoot !== "Sin área" && itemRoot === selectedRoot;
+      });
     const total = filteredDashboardRecords.length;
     const completed = filteredDashboardRecords.filter((record) => record.status === STATUS_FINISHED).length;
     const running = filteredDashboardRecords.filter((record) => record.status === STATUS_RUNNING).length;
@@ -1226,8 +1390,6 @@ function App() { // NOSONAR
     const within = slaScoped.filter((record) => record.durationSeconds <= record.limitMinutes * 60).length;
     const exceeded = slaScoped.filter((record) => record.durationSeconds > record.limitMinutes * 60);
     const totalPauseSeconds = dashboardPauseLogs.reduce((sum, log) => sum + (log.pauseDurationSeconds || 0), 0);
-    const boardPauseSeconds = filteredDashboardRecords.filter((r) => r.source === "board").reduce((sum, r) => sum + (r.pauseSeconds || 0), 0);
-    const allPauseSeconds = totalPauseSeconds + boardPauseSeconds;
     const totalProductionSeconds = filteredDashboardRecords.reduce((sum, r) => sum + (r.durationSeconds || 0), 0);
     const totalElapsedSeconds = filteredDashboardRecords.reduce((sum, r) => sum + (r.totalElapsedSeconds || r.durationSeconds || 0), 0);
     const globalEfficiency = totalElapsedSeconds > 0 ? (totalProductionSeconds / totalElapsedSeconds) * 100 : 100;
@@ -1247,8 +1409,8 @@ function App() { // NOSONAR
       withinPercent: slaScoped.length ? (within / slaScoped.length) * 100 : 0,
       outsidePercent: slaScoped.length ? (exceeded.length / slaScoped.length) * 100 : 0,
       exceeded,
-      pauseCount: dashboardPauseLogs.length + filteredDashboardRecords.filter((r) => r.source === "board" && r.pauseSeconds > 0).length,
-      pauseHours: allPauseSeconds / 3600,
+      pauseCount: dashboardPauseLogs.length,
+      pauseHours: totalPauseSeconds / 3600,
       productionHours: totalProductionSeconds / 3600,
       efficiency: globalEfficiency,
       areaCount: new Set(filteredDashboardRecords.map((record) => record.area)).size,
@@ -1259,6 +1421,7 @@ function App() { // NOSONAR
       catalogFrequencyTypes,
     };
   }, [
+    dashboardFilters.area,
     dashboardPauseLogs,
     filteredDashboardCompleted,
     filteredDashboardRecords,
@@ -1312,8 +1475,16 @@ function App() { // NOSONAR
   const pauseAnalysis = useMemo(() => {
     const groups = new Map();
 
+    function sanitizePauseReason(reason) {
+      const base = String(reason || "").trim();
+      if (!base) return "Pausa sin motivo";
+      const normalized = base.replace(/\s+/g, " ");
+      const suffixMatch = normalized.match(/^([\p{L}\s]{3,}?)(\d{1,4})$/u);
+      return suffixMatch ? suffixMatch[1].trim() : normalized;
+    }
+
     function registerPause(reason, seconds) {
-      const normalizedReason = String(reason || "").trim() || "Pausa sin motivo";
+      const normalizedReason = sanitizePauseReason(reason);
       if (!groups.has(normalizedReason)) {
         groups.set(normalizedReason, { reason: normalizedReason, count: 0, totalSeconds: 0 });
       }
@@ -1326,15 +1497,6 @@ function App() { // NOSONAR
       registerPause(log.pauseReason, log.pauseDurationSeconds || 0);
     });
 
-    filteredDashboardRecords
-      .filter((record) => record.source === "board" && Number(record.pauseSeconds || 0) > 0)
-      .forEach((record) => {
-        const reasons = Array.isArray(record.pauseReasons) ? record.pauseReasons.filter(Boolean) : [];
-        const normalizedReasons = reasons.length ? reasons : ["Pausa de tablero sin motivo"];
-        const splitSeconds = Number(record.pauseSeconds || 0) / normalizedReasons.length;
-        normalizedReasons.forEach((reason) => registerPause(reason, splitSeconds));
-      });
-
     const totalPauseSeconds = Array.from(groups.values()).reduce((sum, item) => sum + item.totalSeconds, 0);
 
     return Array.from(groups.values())
@@ -1343,7 +1505,7 @@ function App() { // NOSONAR
         percent: totalPauseSeconds ? (item.totalSeconds / totalPauseSeconds) * 100 : 0,
       }))
       .sort((a, b) => b.totalSeconds - a.totalSeconds);
-  }, [dashboardPauseLogs, filteredDashboardRecords]);
+  }, [dashboardPauseLogs]);
 
   const dashboardDynamicMetricRows = useMemo(() => {
     const boardRecords = filteredDashboardRecords.filter((record) => record.source === "board");
@@ -1351,6 +1513,7 @@ function App() { // NOSONAR
 
     const boardMap = new Map((dashboardVisibleControlBoards || []).map((board) => [board.id, board]));
     const measurableTypes = new Set(["number", "currency", "percentage", "progress", "counter", "rating", "time", "formula"]);
+    const ignoredMetricLabelTokens = ["hora inicio", "hora fin", "fecha inicio", "fecha fin"];
     const metricMap = new Map();
 
     function parseMetricValue(rawValue, fieldType) {
@@ -1378,6 +1541,12 @@ function App() { // NOSONAR
       (board.fields || []).forEach((field) => {
         const fieldType = String(field?.type || "").trim();
         if (!measurableTypes.has(fieldType)) return;
+        const normalizedLabel = String(field?.label || "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .trim();
+        if (ignoredMetricLabelTokens.some((token) => normalizedLabel.includes(token))) return;
         const numericValue = parseMetricValue(row.values?.[field.id], fieldType);
         if (!Number.isFinite(numericValue)) return;
 
@@ -1427,8 +1596,13 @@ function App() { // NOSONAR
 
     const boardMap = new Map((dashboardVisibleControlBoards || []).map((board) => [board.id, board]));
     const productKeywords = ["producto", "sku", "articulo", "item", "codigo", "clave", "material", "modelo"];
-    const timeKeywords = ["tiempo", "duracion", "duracion", "min", "hora", "revision", "ciclo", "proceso"];
+    const timeKeywords = ["tiempo", "duracion", "min", "revision", "ciclo", "proceso"];
+    const piecesKeywords = ["pieza", "pzas", "cantidad", "unidades", "qty"];
+    const palletKeywords = ["tarima", "pallet", "palet"];
+    const ignoredTimeLabelKeywords = ["hora inicio", "hora fin", "inicio", "fin"];
     const aggregated = new Map();
+    const inventoryItemById = new Map((state.inventoryItems || []).map((item) => [String(item.id || ""), item]));
+    const inventoryItemByCode = new Map((state.inventoryItems || []).map((item) => [normalizeToken(item.code), item]));
 
     function normalizeToken(value) {
       return String(value || "")
@@ -1440,6 +1614,8 @@ function App() { // NOSONAR
     function parseTimeToMinutes(rawValue, fieldType, fieldLabel) {
       const normalizedType = String(fieldType || "").trim();
       const normalizedLabel = normalizeToken(fieldLabel);
+
+      if (ignoredTimeLabelKeywords.some((token) => normalizedLabel.includes(token))) return null;
 
       if (normalizedType === "time") {
         const match = String(rawValue || "").trim().match(/^(\d{1,2}):(\d{2})$/);
@@ -1457,6 +1633,41 @@ function App() { // NOSONAR
       return numeric;
     }
 
+    function resolveProductDisplay(rawValue) {
+      const rawObject = rawValue && typeof rawValue === "object" ? rawValue : null;
+      if (rawObject) {
+        const lookupLabel = formatInventoryLookupLabel(rawObject);
+        if (lookupLabel) return lookupLabel;
+      }
+
+      let raw = String(rawValue || "").trim();
+      if (!raw) return "";
+
+      if (raw.startsWith("{") && raw.endsWith("}")) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === "object") {
+            const parsedLabel = formatInventoryLookupLabel(parsed);
+            if (parsedLabel) return parsedLabel;
+            raw = String(parsed.id || parsed.code || parsed.name || "").trim() || raw;
+          }
+        } catch {
+          // Keep raw value when the string is not valid JSON.
+        }
+      }
+
+      const fromInventory = inventoryItemById.get(raw) || inventoryItemByCode.get(normalizeToken(raw));
+      if (!fromInventory) {
+        const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(raw);
+        return looksLikeUuid ? "" : raw;
+      }
+
+      const code = String(fromInventory.code || "").trim();
+      const name = String(fromInventory.name || "").trim();
+      if (code && name) return `${code} - ${name}`;
+      return name || code || raw;
+    }
+
     inventoryRecords.forEach((record) => {
       const board = boardMap.get(record.boardId);
       if (!board) return;
@@ -1464,7 +1675,10 @@ function App() { // NOSONAR
       if (!row) return;
 
       let productValue = "";
+      let productRawValue = "";
       let timeMinutes = null;
+      let piecesValue = null;
+      let tarimaValue = "";
 
       (board.fields || []).forEach((field) => {
         const fieldLabel = String(field?.label || "").trim();
@@ -1473,19 +1687,33 @@ function App() { // NOSONAR
 
         if (!productValue && productKeywords.some((token) => normalizedLabel.includes(token))) {
           const candidate = String(rawValue || "").trim();
-          if (candidate) productValue = candidate;
+          if (candidate) {
+            productRawValue = candidate;
+            productValue = resolveProductDisplay(candidate);
+          }
         }
 
         if (timeMinutes === null && (String(field?.type || "") === "time" || timeKeywords.some((token) => normalizedLabel.includes(token)))) {
           const parsed = parseTimeToMinutes(rawValue, field?.type, fieldLabel);
           if (Number.isFinite(parsed) && parsed >= 0) timeMinutes = parsed;
         }
+
+        if (piecesValue === null && piecesKeywords.some((token) => normalizedLabel.includes(token))) {
+          const parsedPieces = Number(rawValue);
+          if (Number.isFinite(parsedPieces) && parsedPieces >= 0) piecesValue = parsedPieces;
+        }
+
+        if (!tarimaValue && palletKeywords.some((token) => normalizedLabel.includes(token))) {
+          const candidateTarima = String(rawValue || "").trim();
+          if (candidateTarima) tarimaValue = candidateTarima;
+        }
       });
 
       if (!productValue || !Number.isFinite(timeMinutes)) return;
 
-      const normalizedProduct = productValue.toLowerCase();
-      const key = `${record.area}::${board.id}::${normalizedProduct}`;
+      const normalizedProduct = normalizeToken(productRawValue || productValue);
+      const normalizedTarima = normalizeToken(tarimaValue || "sin-tarima");
+      const key = `${record.area}::${board.id}::${normalizedProduct}::${normalizedTarima}`;
       if (!aggregated.has(key)) {
         aggregated.set(key, {
           key,
@@ -1493,8 +1721,10 @@ function App() { // NOSONAR
           boardId: board.id,
           boardName: board.name || record.boardName || "Tablero",
           product: productValue,
+          tarima: tarimaValue || "Sin tarima",
           count: 0,
           totalMinutes: 0,
+          totalPieces: 0,
           minMinutes: Number.POSITIVE_INFINITY,
           maxMinutes: Number.NEGATIVE_INFINITY,
         });
@@ -1503,6 +1733,7 @@ function App() { // NOSONAR
       const item = aggregated.get(key);
       item.count += 1;
       item.totalMinutes += timeMinutes;
+      item.totalPieces += Number.isFinite(piecesValue) ? piecesValue : 0;
       item.minMinutes = Math.min(item.minMinutes, timeMinutes);
       item.maxMinutes = Math.max(item.maxMinutes, timeMinutes);
     });
@@ -1511,13 +1742,14 @@ function App() { // NOSONAR
       .map((item) => ({
         ...item,
         averageMinutes: item.count ? item.totalMinutes / item.count : 0,
+        averagePieces: item.count ? item.totalPieces / item.count : 0,
       }))
       .sort((left, right) => {
         if (right.totalMinutes !== left.totalMinutes) return right.totalMinutes - left.totalMinutes;
         if (right.averageMinutes !== left.averageMinutes) return right.averageMinutes - left.averageMinutes;
         return left.product.localeCompare(right.product, "es-MX");
       });
-  }, [dashboardVisibleControlBoards, filteredDashboardRecords]);
+  }, [dashboardVisibleControlBoards, filteredDashboardRecords, state.inventoryItems]);
 
   const dashboardAreaBoardDetailedRows = useMemo(() => {
     const areaMap = new Map();
@@ -1702,11 +1934,27 @@ function App() { // NOSONAR
   }, [filteredDashboardRecords]);
 
   const dashboardTrendRows = useMemo(() => {
+    function normalizeAreaMatch(value) {
+      return String(value || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+    }
+
+    function areaMatchesFilter(scopedAreas, areaFilter) {
+      if (areaFilter === "all") return true;
+      const normalizedFilter = normalizeAreaMatch(areaFilter);
+      if (!normalizedFilter) return true;
+      return scopedAreas.some((area) => normalizeAreaMatch(getAreaRoot(area) || area) === normalizedFilter);
+    }
+
     const groups = new Map();
     dashboardRecords
       .filter((record) => {
         const responsibleOk = dashboardFilters.responsibleId === "all" || record.responsibleId === dashboardFilters.responsibleId;
-        const areaOk = dashboardFilters.area === "all" || record.area === dashboardFilters.area;
+        const scopedAreas = Array.isArray(record.areaScopes) && record.areaScopes.length ? record.areaScopes : [record.area];
+        const areaOk = areaMatchesFilter(scopedAreas, dashboardFilters.area);
         const sourceOk = dashboardFilters.source === "all" || record.source === dashboardFilters.source;
         return responsibleOk && areaOk && sourceOk;
       })
@@ -2143,30 +2391,49 @@ function App() { // NOSONAR
     });
   }, [currentUser, departmentOptions]);
 
+  const catalogAreaOptions = useMemo(() => {
+    const roots = Array.from(new Set(departmentOptions
+      .map((entry) => normalizeAreaOption(getAreaRoot(entry)))
+      .filter((entry) => entry && entry !== "Sin área")));
+    if (!roots.includes("General")) roots.unshift("General");
+    return roots;
+  }, [departmentOptions]);
+
   const activeCatalogItems = useMemo(
     () => (state.catalog || []).filter((item) => !item.isDeleted),
     [state.catalog],
   );
 
+  const dashboardScopedCatalogItems = useMemo(() => {
+    if (dashboardFilters.area === "all") return activeCatalogItems;
+    const selectedRoot = normalizeAreaOption(getAreaRoot(dashboardFilters.area));
+    if (!selectedRoot || selectedRoot === "Sin área") return [];
+    return activeCatalogItems.filter((item) => {
+      const itemArea = normalizeCatalogArea(item?.area, item?.category);
+      const itemRoot = normalizeAreaOption(getAreaRoot(itemArea));
+      return itemRoot === selectedRoot;
+    });
+  }, [activeCatalogItems, dashboardFilters.area]);
+
   const dashboardCatalogTypeRows = useMemo(() => {
-    const mandatory = activeCatalogItems.filter((item) => item.isMandatory).length;
-    const optional = Math.max(0, activeCatalogItems.length - mandatory);
+    const mandatory = dashboardScopedCatalogItems.filter((item) => item.isMandatory).length;
+    const optional = Math.max(0, dashboardScopedCatalogItems.length - mandatory);
     return [
       { id: "mandatory", label: "Obligatorias", value: mandatory },
       { id: "optional", label: "Ocasionales", value: optional },
     ];
-  }, [activeCatalogItems]);
+  }, [dashboardScopedCatalogItems]);
 
   const dashboardCatalogFrequencyRows = useMemo(() => {
     const grouped = new Map();
-    activeCatalogItems.forEach((item) => {
+    dashboardScopedCatalogItems.forEach((item) => {
       const frequency = String(item.frequency || "daily");
       grouped.set(frequency, (grouped.get(frequency) || 0) + 1);
     });
     return Array.from(grouped.entries())
       .map(([id, value]) => ({ id, label: getActivityFrequencyLabel(id), value }))
       .sort((a, b) => b.value - a.value);
-  }, [activeCatalogItems]);
+  }, [dashboardScopedCatalogItems]);
 
   const catalogWeekGroups = useMemo(() => ([
     {
@@ -2991,19 +3258,21 @@ function App() { // NOSONAR
 
   function openCatalogCreate(preferredCategory = "General") {
     const normalizedCategory = String(preferredCategory || "General").trim() || "General";
-    setCatalogModal({ ...createEmptyCatalogModalState(), open: true, mode: "create", category: normalizedCategory });
+    setCatalogModal({ ...createEmptyCatalogModalState(), open: true, mode: "create", category: normalizedCategory, area: normalizeCatalogArea(normalizedCategory) });
   }
 
   function exportCatalogToCsv() {
     const items = state.catalog.filter((item) => !item.isDeleted);
     if (!items.length) return;
-    const header = ["nombre", "lista", "dias", "naves", "tiempo_limite_min", "tipo"].join(",");
+    const header = ["nombre", "lista", "area", "dias", "naves", "dias_por_nave", "tiempo_limite_min", "tipo"].join(",");
     const rows = items.map((item) =>
       [
         `"${String(item.name || "").replace(/"/g, '""')}"`,
         `"${String(item.category || "General").replace(/"/g, '""')}"`,
+        `"${String(item.area || item.category || "General").replace(/"/g, '""')}"`,
         `"${normalizeCatalogScheduledDays(item.scheduledDays, item.frequency).join(";")}"`,
         `"${normalizeCatalogCleaningSites(item.cleaningSites).join(";")}"`,
+        `"${serializeCatalogScheduledDaysBySite(item.scheduledDaysBySite)}"`,
         String(item.timeLimitMinutes || 0),
         item.isMandatory ? "Obligatoria" : "Ocasional",
       ].join(","),
@@ -3027,8 +3296,10 @@ function App() { // NOSONAR
     const headers = headerLine.split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
     const nameIdx = headers.findIndex((h) => h.includes("nombre") || h === "name");
     const catIdx = headers.findIndex((h) => h.includes("lista") || h.includes("categoria") || h.includes("category"));
+    const areaIdx = headers.findIndex((h) => h === "area" || h.includes("area") || h.includes("área"));
     const daysIdx = headers.findIndex((h) => h.includes("dias") || h.includes("días") || h === "days");
     const sitesIdx = headers.findIndex((h) => h.includes("naves") || h.includes("sedes") || h.includes("sites"));
+    const siteDaysIdx = headers.findIndex((h) => h.includes("dias_por_nave") || h.includes("días_por_nave") || h.includes("days_by_site") || h.includes("daybysite"));
     const freqIdx = headers.findIndex((h) => h.includes("frecuencia") || h === "frequency");
     const limitIdx = headers.findIndex((h) => h.includes("tiempo") || h.includes("limit") || h.includes("min"));
     const typeIdx = headers.findIndex((h) => h.includes("tipo") || h === "type" || h.includes("mandatory"));
@@ -3055,6 +3326,7 @@ function App() { // NOSONAR
       const name = String(cols[nameIdx] || "").trim();
       if (!name) return null;
       const category = catIdx >= 0 ? String(cols[catIdx] || "General").trim() || "General" : "General";
+      const area = areaIdx >= 0 ? normalizeCatalogArea(cols[areaIdx], category) : normalizeCatalogArea(category);
       const rawFreq = freqIdx >= 0 ? String(cols[freqIdx] || "weekly").trim().toLowerCase() : "weekly";
       const frequency = validFrequencies.has(rawFreq) ? rawFreq : (freqByLabel[rawFreq] || "weekly");
       const rawDays = daysIdx >= 0 ? String(cols[daysIdx] || "") : "";
@@ -3082,10 +3354,12 @@ function App() { // NOSONAR
         : normalizeCatalogScheduledDays([], frequency);
       const rawSites = sitesIdx >= 0 ? String(cols[sitesIdx] || "") : "";
       const cleaningSites = normalizeCatalogCleaningSites(rawSites.split(/[;|,\s]+/).map((entry) => entry.trim()).filter(Boolean));
+      const rawSiteDays = siteDaysIdx >= 0 ? String(cols[siteDaysIdx] || "") : "";
+      const scheduledDaysBySite = parseCatalogScheduledDaysBySite(rawSiteDays, scheduledDays);
       const timeLimitMinutes = Math.max(0, Number(limitIdx >= 0 ? cols[limitIdx] : 0) || 0);
       const rawType = typeIdx >= 0 ? String(cols[typeIdx] || "").trim().toLowerCase() : "";
       const isMandatory = rawType === "obligatoria" || rawType === "true" || rawType === "1";
-      return { name, category, frequency, scheduledDays, cleaningSites, timeLimitMinutes: timeLimitMinutes || 30, isMandatory, isDeleted: false };
+      return { name, category, area, frequency, scheduledDays, scheduledDaysBySite, cleaningSites, timeLimitMinutes: timeLimitMinutes || 30, isMandatory, isDeleted: false };
     }).filter(Boolean);
 
     if (!items.length) return;
@@ -3119,7 +3393,9 @@ function App() { // NOSONAR
       mandatory: String(item.isMandatory),
       frequency: normalizeActivityFrequency(item.frequency),
       category: String(item.category || "General").trim() || "General",
+      area: normalizeCatalogArea(item.area, item.category),
       scheduledDays: normalizeCatalogScheduledDays(item.scheduledDays, item.frequency),
+      scheduledDaysBySite: normalizeCatalogScheduledDaysBySite(item.scheduledDaysBySite, normalizeCatalogScheduledDays(item.scheduledDays, item.frequency)),
       cleaningSites: normalizeCatalogCleaningSites(item.cleaningSites),
     });
   }
@@ -3132,7 +3408,9 @@ function App() { // NOSONAR
       frequency: normalizeActivityFrequency(catalogModal.frequency),
       scheduledDays: normalizeCatalogScheduledDays(catalogModal.scheduledDays, catalogModal.frequency),
       cleaningSites: normalizeCatalogCleaningSites(catalogModal.cleaningSites),
+      scheduledDaysBySite: normalizeCatalogScheduledDaysBySite(catalogModal.scheduledDaysBySite, normalizeCatalogScheduledDays(catalogModal.scheduledDays, catalogModal.frequency)),
       category: String(catalogModal.category || "General").trim() || "General",
+      area: normalizeCatalogArea(catalogModal.area, catalogModal.category),
       isDeleted: false,
     };
 
@@ -6158,7 +6436,7 @@ function App() { // NOSONAR
         </div>
       </Modal>
 
-      <Modal open={boardFinishConfirm.open} title="Finalizar fila" confirmLabel="Confirmar fin" cancelLabel="Cancelar" onClose={() => setBoardFinishConfirm({ open: false, boardId: null, rowId: null, message: "" })} onConfirm={confirmFinishBoardRow}>
+      <Modal className="modal-wide board-finish-modal" open={boardFinishConfirm.open} title="Finalizar fila" confirmLabel="Confirmar fin" cancelLabel="Cancelar" onClose={() => setBoardFinishConfirm({ open: false, boardId: null, rowId: null, message: "" })} onConfirm={confirmFinishBoardRow}>
         <div className="modal-form-grid">
           {(() => {
             const finBoard = boardFinishConfirm.boardId ? (state.controlBoards || []).find((b) => b.id === boardFinishConfirm.boardId) : null;
@@ -6218,6 +6496,12 @@ function App() { // NOSONAR
 
       <Modal className="modal-wide catalog-activity-modal" open={catalogModal.open} title={catalogModal.mode === "create" ? "Nueva actividad" : "Editar actividad"} confirmLabel={catalogModal.mode === "create" ? "Guardar" : "Guardar cambios"} cancelLabel="Cancelar" onClose={() => setCatalogModal(createEmptyCatalogModalState())} onConfirm={submitCatalogModal}>
         <div className="modal-form-grid catalog-activity-modal-grid">
+          <label className="app-modal-field">
+            <span>Area propietaria</span>
+            <select value={catalogModal.area} onChange={(event) => setCatalogModal((current) => ({ ...current, area: event.target.value }))}>
+              {catalogAreaOptions.map((areaOption) => <option key={areaOption} value={areaOption}>{areaOption}</option>)}
+            </select>
+          </label>
           <label className="app-modal-field">
             <span>Lista de actividades</span>
             <input value={catalogModal.category} onChange={(event) => setCatalogModal((current) => ({ ...current, category: event.target.value }))} placeholder="Ej: Limpieza, Seguridad, Producción" />
@@ -6279,7 +6563,13 @@ function App() { // NOSONAR
                       const nextSites = hasSite
                         ? currentSites.filter((entry) => entry !== siteValue)
                         : currentSites.concat([siteValue]).sort();
-                      return { ...current, cleaningSites: nextSites };
+                      const nextBySite = { ...(current.scheduledDaysBySite || {}) };
+                      if (hasSite) {
+                        delete nextBySite[siteValue];
+                      } else {
+                        nextBySite[siteValue] = normalizeCatalogScheduledDays(current.scheduledDays, current.frequency);
+                      }
+                      return { ...current, cleaningSites: nextSites, scheduledDaysBySite: nextBySite };
                     })}
                     className={`catalog-site-chip ${isActive ? "active" : ""}`.trim()}
                   >
@@ -6287,6 +6577,52 @@ function App() { // NOSONAR
                   </button>
                 );
               })}
+            </div>
+          </label>
+          <label className="app-modal-field catalog-activity-chip-field">
+            <span>Dias por nave</span>
+            <div className="modal-form-grid">
+              {(catalogModal.cleaningSites || []).length ? (catalogModal.cleaningSites || []).map((siteValue) => {
+                const siteLabel = CLEANING_SITE_OPTIONS.find((site) => String(site.value || "").trim().toUpperCase() === siteValue)?.label || siteValue;
+                const siteDays = normalizeCatalogScheduledDaysBySite(catalogModal.scheduledDaysBySite, normalizeCatalogScheduledDays(catalogModal.scheduledDays, catalogModal.frequency))[siteValue]
+                  || normalizeCatalogScheduledDays(catalogModal.scheduledDays, catalogModal.frequency);
+                return (
+                  <div key={siteValue} className="app-modal-field">
+                    <span>{siteLabel}</span>
+                    <div className="catalog-activity-chip-row">
+                      {CATALOG_WEEKDAY_OPTIONS.map((option) => {
+                        const isActive = siteDays.includes(option.value);
+                        return (
+                          <button
+                            key={`${siteValue}-${option.value}`}
+                            type="button"
+                            onClick={() => setCatalogModal((current) => {
+                              const fallbackDays = normalizeCatalogScheduledDays(current.scheduledDays, current.frequency);
+                              const bySite = normalizeCatalogScheduledDaysBySite(current.scheduledDaysBySite, fallbackDays);
+                              const currentDays = bySite[siteValue] || fallbackDays;
+                              const hasDay = currentDays.includes(option.value);
+                              const nextDays = hasDay
+                                ? currentDays.filter((day) => day !== option.value)
+                                : currentDays.concat([option.value]).sort((a, b) => a - b);
+                              return {
+                                ...current,
+                                scheduledDaysBySite: {
+                                  ...bySite,
+                                  [siteValue]: nextDays,
+                                },
+                              };
+                            })}
+                            className={`catalog-day-chip ${isActive ? "active" : ""}`.trim()}
+                            title={option.label}
+                          >
+                            {option.short}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              }) : <p className="modal-footnote">Selecciona una o mas naves para configurar dias especificos por nave.</p>}
             </div>
           </label>
         </div>

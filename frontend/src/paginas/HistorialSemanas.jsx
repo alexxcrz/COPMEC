@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 export default function HistorialSemanas({ contexto }) {
@@ -17,6 +17,7 @@ export default function HistorialSemanas({ contexto }) {
     getTimeLimitMinutes,
     catalogMap,
     userMap,
+    getUserArea,
     StatusBadge,
     formatTime,
     formatDurationClock,
@@ -28,6 +29,146 @@ export default function HistorialSemanas({ contexto }) {
   } = contexto;
 
   const [deleteWeekModal, setDeleteWeekModal] = useState({ open: false, weekId: "", weekName: "", isSubmitting: false });
+  const [selectedAreaTab, setSelectedAreaTab] = useState("all");
+  const [selectedDayFilter, setSelectedDayFilter] = useState("all");
+  const [selectedNaveFilter, setSelectedNaveFilter] = useState("all");
+
+  const weekAreaMap = useMemo(() => {
+    const map = new Map();
+    (state.weeks || []).forEach((week) => {
+      const areas = new Set(
+        (state.activities || [])
+          .filter((activity) => activity.weekId === week.id)
+          .map((activity) => {
+            const areaValue = getUserArea(userMap.get(activity.responsibleId));
+            return String(areaValue || "Sin area").trim() || "Sin area";
+          }),
+      );
+      map.set(week.id, areas.size);
+    });
+    return map;
+  }, [getUserArea, state.activities, state.weeks, userMap]);
+
+  const historyActivities = useMemo(() => {
+    if (!historyWeek?.id) return [];
+
+    return (state.activities || [])
+      .filter((activity) => activity.weekId === historyWeek.id)
+      .map((activity) => {
+        const user = userMap.get(activity.responsibleId);
+        const areaLabel = String(getUserArea(user) || "Sin area").trim() || "Sin area";
+        const areaRoot = areaLabel.split("/")[0]?.trim() || areaLabel;
+        const catalogItem = catalogMap.get(activity.catalogActivityId);
+        const cleaningSites = Array.isArray(catalogItem?.cleaningSites)
+          ? catalogItem.cleaningSites.map((site) => String(site || "").trim()).filter(Boolean)
+          : [];
+        const naveLabel = cleaningSites.length
+          ? cleaningSites.join(", ")
+          : (areaRoot || "Sin nave");
+
+        const activityDate = new Date(activity.activityDate);
+        const hasValidDate = !Number.isNaN(activityDate.getTime());
+        const dayLabel = hasValidDate
+          ? activityDate.toLocaleDateString("es-MX", { weekday: "long" })
+          : "Sin dia";
+        const normalizedDayLabel = dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1);
+
+        return {
+          ...activity,
+          areaLabel,
+          areaRoot,
+          naveLabel,
+          dayLabel: normalizedDayLabel,
+        };
+      });
+  }, [catalogMap, getUserArea, historyWeek?.id, state.activities, userMap]);
+
+  const areaTabs = useMemo(() => {
+    const grouped = new Map();
+
+    (state.areaCatalog || []).forEach((areaEntry) => {
+      const areaRoot = String(areaEntry || "").split("/")[0]?.trim();
+      if (!areaRoot) return;
+      if (!grouped.has(areaRoot)) grouped.set(areaRoot, 0);
+    });
+
+    historyActivities.forEach((activity) => {
+      grouped.set(activity.areaRoot, (grouped.get(activity.areaRoot) || 0) + 1);
+    });
+
+    return Array.from(grouped.entries())
+      .map(([area, total]) => ({ value: area, label: area, total }))
+      .sort((left, right) => left.label.localeCompare(right.label, "es-MX"));
+  }, [historyActivities, state.areaCatalog]);
+
+  useEffect(() => {
+    setSelectedAreaTab("all");
+    setSelectedDayFilter("all");
+    setSelectedNaveFilter("all");
+  }, [historyWeek?.id]);
+
+  useEffect(() => {
+    if (selectedAreaTab === "all") return;
+    if (!areaTabs.some((tab) => tab.value === selectedAreaTab)) {
+      setSelectedAreaTab("all");
+    }
+  }, [areaTabs, selectedAreaTab]);
+
+  const areaScopedActivities = useMemo(() => {
+    if (selectedAreaTab === "all") return historyActivities;
+    return historyActivities.filter((activity) => activity.areaRoot === selectedAreaTab);
+  }, [historyActivities, selectedAreaTab]);
+
+  const dayOptions = useMemo(() => {
+    const values = new Set(areaScopedActivities.map((activity) => activity.dayLabel));
+    return Array.from(values.values()).sort((left, right) => left.localeCompare(right, "es-MX"));
+  }, [areaScopedActivities]);
+
+  const naveOptions = useMemo(() => {
+    const values = new Set(areaScopedActivities.map((activity) => activity.naveLabel));
+    return Array.from(values.values()).sort((left, right) => left.localeCompare(right, "es-MX"));
+  }, [areaScopedActivities]);
+
+  useEffect(() => {
+    if (selectedDayFilter !== "all" && !dayOptions.includes(selectedDayFilter)) {
+      setSelectedDayFilter("all");
+    }
+  }, [dayOptions, selectedDayFilter]);
+
+  useEffect(() => {
+    if (selectedNaveFilter !== "all" && !naveOptions.includes(selectedNaveFilter)) {
+      setSelectedNaveFilter("all");
+    }
+  }, [naveOptions, selectedNaveFilter]);
+
+  const visibleHistoryActivities = useMemo(() => {
+    const filtered = areaScopedActivities
+      .filter((activity) => selectedDayFilter === "all" || activity.dayLabel === selectedDayFilter)
+      .filter((activity) => selectedNaveFilter === "all" || activity.naveLabel === selectedNaveFilter);
+
+    return [...filtered].sort((left, right) => {
+      const leftTime = new Date(left.activityDate).getTime();
+      const rightTime = new Date(right.activityDate).getTime();
+      if (leftTime !== rightTime) return leftTime - rightTime;
+      return left.naveLabel.localeCompare(right.naveLabel, "es-MX");
+    });
+  }, [areaScopedActivities, selectedDayFilter, selectedNaveFilter]);
+
+  const totalEffectiveMinutes = useMemo(() => {
+    const totalSeconds = visibleHistoryActivities.reduce((sum, activity) => sum + (activity.accumulatedSeconds || 0), 0);
+    return totalSeconds / 60;
+  }, [visibleHistoryActivities]);
+
+  const completedCount = useMemo(() => {
+    return visibleHistoryActivities.filter((activity) => activity.status === STATUS_FINISHED).length;
+  }, [visibleHistoryActivities, STATUS_FINISHED]);
+
+  const outsideLimitCount = useMemo(() => {
+    return visibleHistoryActivities.filter((activity) => {
+      const timeLimitMinutes = getTimeLimitMinutes(activity, catalogMap);
+      return activity.accumulatedSeconds > timeLimitMinutes * 60;
+    }).length;
+  }, [catalogMap, getTimeLimitMinutes, visibleHistoryActivities]);
 
   useEffect(() => {
     if (!deleteWeekModal.open) return undefined;
@@ -98,6 +239,7 @@ export default function HistorialSemanas({ contexto }) {
                   <th>Fechas</th>
                   <th>Actividades</th>
                   <th>Completadas</th>
+                  <th>Areas</th>
                   <th>Estado</th>
                   <th>Acciones</th>
                 </tr>
@@ -112,6 +254,7 @@ export default function HistorialSemanas({ contexto }) {
                       <td>{formatDate(week.startDate)} - {formatDate(week.endDate)}</td>
                       <td>{weekRows.length}</td>
                       <td>{completed}</td>
+                      <td>{weekAreaMap.get(week.id) || 0}</td>
                       <td><span className={week.isActive ? "chip success" : "chip"}>{week.isActive ? "Activa" : "Histórica"}</span></td>
                       <td>
                         <div className="history-week-actions">
@@ -144,10 +287,48 @@ export default function HistorialSemanas({ contexto }) {
           </div>
           {historyWeek ? (
             <>
+              <div className="history-area-tabs">
+                <button
+                  type="button"
+                  className={`tab ${selectedAreaTab === "all" ? "active" : ""}`}
+                  onClick={() => setSelectedAreaTab("all")}
+                >
+                  Todas las areas ({historyActivities.length})
+                </button>
+                {areaTabs.map((tab) => (
+                  <button
+                    type="button"
+                    key={tab.value}
+                    className={`tab ${selectedAreaTab === tab.value ? "active" : ""}`}
+                    onClick={() => setSelectedAreaTab(tab.value)}
+                  >
+                    {tab.label} ({tab.total})
+                  </button>
+                ))}
+              </div>
+
+              <div className="history-detail-filters">
+                <label className="board-top-select min-width">
+                  <span>Dia</span>
+                  <select value={selectedDayFilter} onChange={(event) => setSelectedDayFilter(event.target.value)}>
+                    <option value="all">Todos</option>
+                    {dayOptions.map((day) => <option key={day} value={day}>{day}</option>)}
+                  </select>
+                </label>
+
+                <label className="board-top-select min-width">
+                  <span>Nave</span>
+                  <select value={selectedNaveFilter} onChange={(event) => setSelectedNaveFilter(event.target.value)}>
+                    <option value="all">Todas</option>
+                    {naveOptions.map((nave) => <option key={nave} value={nave}>{nave}</option>)}
+                  </select>
+                </label>
+              </div>
+
               <div className="metric-grid three-up">
-                <MetricCard label="Tiempo total efectivo" value={formatMinutes(state.activities.filter((item) => item.weekId === historyWeek.id).reduce((sum, item) => sum + item.accumulatedSeconds, 0) / 60)} hint="Suma total de la semana" />
-                <MetricCard label="Actividades completadas" value={String(state.activities.filter((item) => item.weekId === historyWeek.id && item.status === STATUS_FINISHED).length)} hint="Terminadas en la semana" />
-                <MetricCard label="Fuera de tiempo límite" value={String(state.activities.filter((item) => item.weekId === historyWeek.id && item.accumulatedSeconds > getTimeLimitMinutes(item, catalogMap) * 60).length)} hint="Desviaciones detectadas" tone="danger" />
+                <MetricCard label="Tiempo total efectivo" value={formatMinutes(totalEffectiveMinutes)} hint="Suma total del filtro actual" />
+                <MetricCard label="Actividades completadas" value={String(completedCount)} hint="Terminadas en el filtro actual" />
+                <MetricCard label="Fuera de tiempo limite" value={String(outsideLimitCount)} hint="Desviaciones detectadas" tone="danger" />
               </div>
 
               <div className="table-wrap compact-table">
@@ -155,6 +336,9 @@ export default function HistorialSemanas({ contexto }) {
                   <thead>
                     <tr>
                       <th>Fecha</th>
+                      <th>Dia</th>
+                      <th>Area</th>
+                      <th>Nave</th>
                       <th>Actividad</th>
                       <th>Player</th>
                       <th>Estado</th>
@@ -166,9 +350,12 @@ export default function HistorialSemanas({ contexto }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {state.activities.filter((item) => item.weekId === historyWeek.id).map((activity) => (
+                    {visibleHistoryActivities.map((activity) => (
                       <tr key={activity.id}>
                         <td>{formatDate(activity.activityDate)}</td>
+                        <td>{activity.dayLabel}</td>
+                        <td>{activity.areaRoot}</td>
+                        <td>{activity.naveLabel}</td>
                         <td>{getActivityLabel(activity, catalogMap)}</td>
                         <td title={userMap.get(activity.responsibleId)?.name || "Sin player"}>{userMap.get(activity.responsibleId)?.name || "Sin player"}</td>
                         <td><StatusBadge status={activity.status} /></td>
@@ -179,6 +366,13 @@ export default function HistorialSemanas({ contexto }) {
                         <td><button type="button" className="icon-button" onClick={() => setHistoryPauseActivityId(activity.id)}>Ver pausas</button></td>
                       </tr>
                     ))}
+                    {!visibleHistoryActivities.length ? (
+                      <tr>
+                        <td colSpan={12}>
+                          <span className="subtle-line">No hay actividades para el area, dia o nave seleccionados.</span>
+                        </td>
+                      </tr>
+                    ) : null}
                   </tbody>
                 </table>
               </div>

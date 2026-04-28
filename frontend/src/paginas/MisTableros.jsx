@@ -615,7 +615,7 @@ export default function MisTableros({ contexto }) {
                       && row.status !== STATUS_FINISHED
                       && canEditBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions);
                     const isFinishedRow = row.status === STATUS_FINISHED;
-                    const rowFieldEditable = rowCaptureEnabled && !isFinishedRow;
+                    const rowFieldEditable = rowCaptureEnabled;
                     const canStartRow = row.status === STATUS_PENDING || row.status === STATUS_PAUSED;
                     const canPauseRow = row.status === STATUS_RUNNING;
                     const canFinishRow = row.status === STATUS_RUNNING;

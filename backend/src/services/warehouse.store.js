@@ -3406,17 +3406,25 @@ export function removeProcessAuditEvidence(auth, auditId, evidenceId) {
 
 function sanitizeCatalogItemDraft(payload = {}, existingId = null) {
   const frequency = normalizeCatalogFrequency(payload.frequency);
+  const scheduledDays = normalizeCatalogScheduledDays(payload.scheduledDays, frequency);
   return {
     id: existingId || payload.id || makeId("cat"),
     name: String(payload.name || "").trim(),
     timeLimitMinutes: Number(payload.timeLimitMinutes || 0),
     isMandatory: Boolean(payload.isMandatory),
     frequency,
-    scheduledDays: normalizeCatalogScheduledDays(payload.scheduledDays, frequency),
+    scheduledDays,
+    scheduledDaysBySite: normalizeCatalogScheduledDaysBySite(payload.scheduledDaysBySite, scheduledDays),
     cleaningSites: normalizeCatalogCleaningSites(payload.cleaningSites),
     category: normalizeCatalogCategory(payload.category),
+    area: normalizeCatalogArea(payload.area, payload.category),
     isDeleted: Boolean(payload.isDeleted),
   };
+}
+
+function normalizeCatalogArea(value, fallback = "General") {
+  const normalizedValue = String(value || fallback || "General").trim();
+  return normalizedValue || "General";
 }
 
 function normalizeCatalogCategory(value) {
@@ -3455,6 +3463,24 @@ function normalizeCatalogCleaningSites(value) {
   return [...new Set(fromArray)];
 }
 
+function normalizeCatalogScheduledDaysBySite(value, fallbackDays = []) {
+  const validSites = new Set(BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE_OPTIONS.map((entry) => String(entry || "").trim().toUpperCase()));
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const normalizedFallbackDays = normalizeCatalogScheduledDays(fallbackDays, "weekly");
+  const entries = Object.entries(value)
+    .map(([rawSite, rawDays]) => {
+      const site = String(rawSite || "").trim().toUpperCase();
+      if (!validSites.has(site)) return null;
+      const directDays = Array.isArray(rawDays)
+        ? rawDays.map((entry) => normalizeCatalogWeekdayOffset(entry)).filter((entry) => entry !== null)
+        : [];
+      const uniqueDays = [...new Set(directDays)].sort((a, b) => a - b);
+      return [site, uniqueDays.length ? uniqueDays : normalizedFallbackDays];
+    })
+    .filter(Boolean);
+  return Object.fromEntries(entries);
+}
+
 function getCatalogFrequencyDayOffsets(value) {
   const normalizedValue = normalizeCatalogFrequency(value);
   return {
@@ -3472,8 +3498,15 @@ function getCatalogFrequencyDayOffsets(value) {
 }
 
 function buildActivitiesForCatalogItem(weekId, item, weekStart, responsibleId) {
+  const fallbackDays = getCatalogFrequencyDayOffsets(item?.frequency);
   const scheduledDays = normalizeCatalogScheduledDays(item?.scheduledDays, item?.frequency);
-  return scheduledDays.map((dayOffset) => ({
+  const cleaningSites = normalizeCatalogCleaningSites(item?.cleaningSites);
+  const scheduledDaysBySite = normalizeCatalogScheduledDaysBySite(item?.scheduledDaysBySite, scheduledDays);
+  const mergedDays = cleaningSites.length
+    ? [...new Set(cleaningSites.flatMap((site) => scheduledDaysBySite[site] || scheduledDays))].sort((a, b) => a - b)
+    : scheduledDays;
+  const effectiveDays = mergedDays.length ? mergedDays : fallbackDays;
+  return effectiveDays.map((dayOffset) => ({
     id: makeId("act"),
     weekId,
     catalogActivityId: item.id,

@@ -347,10 +347,38 @@ export default function PanelIndicadores({ contexto }) {
 
   const activeAreaLabel = dashboardFilters.area === "all" ? "General" : dashboardFilters.area;
 
+  function normalizeAreaText(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  }
+
+  function getAreaRootLabel(areaValue) {
+    const parts = String(areaValue || "")
+      .split("/")
+      .map((part) => String(part || "").trim())
+      .filter(Boolean);
+    return parts[0] || String(areaValue || "").trim();
+  }
+
+  function areaMatchesFilter(areaValue, selectedArea) {
+    if (selectedArea === "all") return true;
+    const normalizedSelected = normalizeAreaText(selectedArea);
+    const normalizedArea = normalizeAreaText(areaValue);
+    const normalizedRoot = normalizeAreaText(getAreaRootLabel(areaValue));
+    if (!normalizedSelected) return true;
+    if (normalizedArea === normalizedSelected) return true;
+    if (normalizedRoot === normalizedSelected) return true;
+    if (normalizedArea.includes(`/${normalizedSelected}`) || normalizedArea.includes(`${normalizedSelected}/`)) return true;
+    return false;
+  }
+
   const areaScopedDynamicMetrics = useMemo(() => {
     if (!Array.isArray(dashboardDynamicMetricRows)) return [];
     if (dashboardFilters.area === "all") return dashboardDynamicMetricRows;
-    return dashboardDynamicMetricRows.filter((item) => item.area === dashboardFilters.area);
+    return dashboardDynamicMetricRows.filter((item) => areaMatchesFilter(item.area, dashboardFilters.area));
   }, [dashboardDynamicMetricRows, dashboardFilters.area]);
 
   const areaPriorityMetricRows = useMemo(() => {
@@ -401,13 +429,13 @@ export default function PanelIndicadores({ contexto }) {
   const scopedInventoryProductTimeRows = useMemo(() => {
     const rows = Array.isArray(dashboardInventoryProductTimeRows) ? dashboardInventoryProductTimeRows : [];
     if (dashboardFilters.area === "all") return rows;
-    return rows.filter((item) => item.area === dashboardFilters.area);
+    return rows.filter((item) => areaMatchesFilter(item.area, dashboardFilters.area));
   }, [dashboardFilters.area, dashboardInventoryProductTimeRows]);
 
   const scopedAreaBoardDetailedRows = useMemo(() => {
     const rows = Array.isArray(dashboardAreaBoardDetailedRows) ? dashboardAreaBoardDetailedRows : [];
     if (dashboardFilters.area === "all") return rows;
-    return rows.filter((item) => item.area === dashboardFilters.area);
+    return rows.filter((item) => areaMatchesFilter(item.area, dashboardFilters.area));
   }, [dashboardAreaBoardDetailedRows, dashboardFilters.area]);
 
   const detailBoardFilterOptions = useMemo(() => {
@@ -1563,7 +1591,7 @@ export default function PanelIndicadores({ contexto }) {
               <Clock3 size={18} />
             </div>
             <p className="dashboard-panel-subtitle">
-              Ranking automático para Inventario: agrupa filas por producto/SKU y muestra dónde se concentra más tiempo operativo.
+              Ranking automático para Inventario: agrupa por producto/SKU y tarima, mostrando piezas y tiempo operativo real.
             </p>
             <DashboardColumnChart
               rows={scopedInventoryProductTimeRows.slice(0, 12).map((item) => ({
@@ -1583,6 +1611,8 @@ export default function PanelIndicadores({ contexto }) {
                     <th>Área</th>
                     <th>Tablero</th>
                     <th>Producto / SKU</th>
+                    <th>Tarima</th>
+                    <th>Piezas</th>
                     <th>Total (min)</th>
                     <th>Promedio (min)</th>
                     <th>Mín</th>
@@ -1596,6 +1626,8 @@ export default function PanelIndicadores({ contexto }) {
                       <td>{item.area}</td>
                       <td>{item.boardName}</td>
                       <td>{item.product}</td>
+                      <td>{item.tarima || "Sin tarima"}</td>
+                      <td>{formatMetricNumber(item.totalPieces || 0, 0)}</td>
                       <td>{formatMetricNumber(item.totalMinutes, 2)}</td>
                       <td>{formatMetricNumber(item.averageMinutes, 2)}</td>
                       <td>{formatMetricNumber(item.minMinutes, 2)}</td>
@@ -1727,7 +1759,7 @@ export default function PanelIndicadores({ contexto }) {
                               <td>
                                 {(board.inventoryProducts || []).length ? board.inventoryProducts.slice(0, 4).map((product) => (
                                   <div key={product.key}>
-                                    {product.product}: {formatMetricNumber(product.totalMinutes, 1)} min
+                                    {product.product} · {product.tarima || "Sin tarima"}: {formatMetricNumber(product.totalMinutes, 1)} min · {formatMetricNumber(product.totalPieces || 0, 0)} pzas
                                   </div>
                                 )) : <span>No aplica / sin datos</span>}
                               </td>
