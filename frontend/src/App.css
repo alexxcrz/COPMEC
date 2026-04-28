@@ -7551,6 +7551,10 @@ tbody tr:hover {
   gap: 0.72rem;
 }
 
+.dashboard-kpi-grid-executive.dashboard-kpi-grid-7 {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
 .dashboard-kpi-grid-main {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -9475,6 +9479,10 @@ tbody tr:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .dashboard-kpi-grid-executive.dashboard-kpi-grid-7 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .dashboard-kpi-card {
     min-height: 88px;
     padding: 0.66rem 0.72rem;
@@ -9845,6 +9853,10 @@ tbody tr:hover {
   .dashboard-kpi-grid-main,
   .dashboard-kpi-grid-secondary,
   .dashboard-kpi-grid-wide {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-kpi-grid-executive.dashboard-kpi-grid-7 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

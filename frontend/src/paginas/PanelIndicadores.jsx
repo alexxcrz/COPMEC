@@ -1,5 +1,7 @@
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { formatMinutesToHourMinute } from "../utils/utilidades";
 
 const DASHBOARD_WEEKDAY_LABELS = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sa", "Do"];
 const DASHBOARD_DETAIL_VIEW_PREFS_KEY = "copmec-dashboard-detail-view-prefs";
@@ -968,10 +970,10 @@ export default function PanelIndicadores({ contexto }) {
     { title: "Cerrados", value: String(dashboardMetrics.completed), subtitle: "registros terminados", tone: "green", icon: CircleCheckBig },
     { title: "En curso", value: String(dashboardMetrics.running), subtitle: "operaciones activas", tone: "amber", icon: Play },
     { title: "Pausados", value: String(dashboardMetrics.paused), subtitle: "registros detenidos", tone: "red", icon: PauseCircle },
-    { title: "Tiempo promedio", value: formatMetricNumber(dashboardMetrics.averageMinutes, 2), subtitle: "minutos promedio de cierre", tone: "cyan", icon: Gauge },
-    { title: "Mediana", value: formatMetricNumber(dashboardMetrics.medianMinutes, 2), subtitle: "punto medio del tiempo de ciclo", tone: "slate", icon: Clock3 },
-    { title: "Horas productivas", value: formatMetricNumber(dashboardMetrics.productionHours ?? dashboardMetrics.totalHours, 1), subtitle: "tiempo real de producción", tone: "green", icon: CalendarDays },
-    { title: "Horas en pausa", value: formatMetricNumber(dashboardMetrics.pauseHours, 1), subtitle: "tiempo no productivo acumulado", tone: "red", icon: OctagonAlert },
+    { title: "Tiempo promedio", value: `${formatMinutesToHourMinute(dashboardMetrics.averageMinutes)}\n(${formatMetricNumber(dashboardMetrics.averageMinutes, 2)} min)`, subtitle: "promedio de cierre (h:mm)", tone: "cyan", icon: Gauge },
+    { title: "Mediana", value: `${formatMinutesToHourMinute(dashboardMetrics.medianMinutes)}\n(${formatMetricNumber(dashboardMetrics.medianMinutes, 2)} min)`, subtitle: "punto medio del ciclo (h:mm)", tone: "slate", icon: Clock3 },
+    { title: "Horas productivas", value: `${formatMetricNumber(dashboardMetrics.productionHours ?? dashboardMetrics.totalHours, 1)}\n(${formatMinutesToHourMinute((dashboardMetrics.productionHours ?? dashboardMetrics.totalHours) * 60)})`, subtitle: "tiempo real de producción", tone: "green", icon: CalendarDays },
+    { title: "Horas en pausa", value: `${formatMetricNumber(dashboardMetrics.pauseHours, 1)}\n(${formatMinutesToHourMinute((dashboardMetrics.pauseHours ?? 0) * 60)})`, subtitle: "tiempo no productivo acumulado", tone: "red", icon: OctagonAlert },
     { title: "Eficiencia operativa", value: `${formatMetricNumber(dashboardMetrics.efficiency ?? 100, 1)}%`, subtitle: "producción / tiempo total", tone: dashboardMetrics.efficiency >= 80 ? "lime" : dashboardMetrics.efficiency >= 60 ? "amber" : "red", icon: Zap },
     { title: "Cumplimiento SLA", value: `${formatMetricNumber(dashboardMetrics.withinPercent, 1)}%`, subtitle: "porcentaje dentro del límite", tone: "lime", icon: Zap },
     { title: "Fuera de SLA", value: `${formatMetricNumber(dashboardMetrics.outsidePercent, 1)}%`, subtitle: "proporción fuera del objetivo", tone: "amber", icon: AlertTriangle },
@@ -980,7 +982,7 @@ export default function PanelIndicadores({ contexto }) {
     { title: "Catálogo activo", value: String(dashboardMetrics.catalogActiveCount), subtitle: "actividades disponibles", tone: "slate", icon: ClipboardList },
     { title: "Obligatorias", value: String(dashboardMetrics.catalogMandatoryCount), subtitle: "actividades base", tone: "green", icon: CircleCheckBig },
     { title: "Ocasionales", value: String(dashboardMetrics.catalogOptionalCount), subtitle: "actividades complementarias", tone: "amber", icon: PauseCircle },
-    { title: "Horas totales", value: formatMetricNumber(dashboardMetrics.totalHours, 1), subtitle: "tiempo completado acumulado", tone: "cyan", icon: CalendarDays },
+    { title: "Horas totales", value: `${formatMetricNumber(dashboardMetrics.totalHours, 1)}\n(${formatMinutesToHourMinute((dashboardMetrics.totalHours ?? 0) * 60)})`, subtitle: "tiempo completado acumulado", tone: "cyan", icon: CalendarDays },
     { title: "Frecuencias activas", value: String(dashboardMetrics.catalogFrequencyTypes), subtitle: "tipos de periodicidad en uso", tone: "cyan", icon: CalendarDays },
   ];
 
@@ -1089,7 +1091,7 @@ export default function PanelIndicadores({ contexto }) {
       </div>
 
       <DashboardSection title="Resumen ejecutivo" subtitle="KPIs principales para una lectura rápida del periodo filtrado." summary={`${dashboardMetrics.total} registros · ${dashboardMetrics.completed} cerrados · ${dashboardMetrics.areaCount} áreas`} icon={Gauge} open={dashboardSectionsOpen.executive} onToggle={() => setDashboardSectionsOpen((current) => ({ ...current, executive: !current.executive }))}>
-        <div className="dashboard-kpi-grid dashboard-kpi-grid-executive">
+        <div className="dashboard-kpi-grid dashboard-kpi-grid-executive dashboard-kpi-grid-7">
           {executiveKpiCards.map((item) => (
             <DashboardKpiCard
               key={item.title}
