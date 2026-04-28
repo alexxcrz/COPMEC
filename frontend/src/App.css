@@ -7611,13 +7611,13 @@ tbody tr:hover {
 
 @media (max-width: 1500px) {
   .dashboard-kpi-grid-executive {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 1080px) {
   .dashboard-kpi-grid-executive {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 
@@ -8543,7 +8543,7 @@ tbody tr:hover {
 
   .dashboard-kpi-grid-executive {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 0.56rem;
     align-items: stretch;
   }

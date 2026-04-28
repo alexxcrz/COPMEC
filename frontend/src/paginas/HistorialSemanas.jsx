@@ -22,6 +22,7 @@ export default function HistorialSemanas({ contexto }) {
     formatTime,
     formatDurationClock,
     setHistoryPauseActivityId,
+    setEditWeekId,
     actionPermissions,
     deleteWeek,
     pushAppToast,
@@ -32,6 +33,7 @@ export default function HistorialSemanas({ contexto }) {
   const [selectedAreaTab, setSelectedAreaTab] = useState("all");
   const [selectedDayFilter, setSelectedDayFilter] = useState("all");
   const [selectedNaveFilter, setSelectedNaveFilter] = useState("all");
+  const [detailViewMode, setDetailViewMode] = useState("activities");
 
   const weekAreaMap = useMemo(() => {
     const map = new Map();
@@ -105,6 +107,7 @@ export default function HistorialSemanas({ contexto }) {
     setSelectedAreaTab("all");
     setSelectedDayFilter("all");
     setSelectedNaveFilter("all");
+    setDetailViewMode("activities");
   }, [historyWeek?.id]);
 
   useEffect(() => {
@@ -169,6 +172,39 @@ export default function HistorialSemanas({ contexto }) {
       return activity.accumulatedSeconds > timeLimitMinutes * 60;
     }).length;
   }, [catalogMap, getTimeLimitMinutes, visibleHistoryActivities]);
+
+  const dailyHistoryRows = useMemo(() => {
+    const grouped = new Map();
+
+    areaScopedActivities.forEach((activity) => {
+      const activityDate = new Date(activity.activityDate);
+      const hasValidDate = !Number.isNaN(activityDate.getTime());
+      if (!hasValidDate) return;
+
+      const dateKey = activityDate.toISOString().slice(0, 10);
+      const dayLabel = activity.dayLabel || activityDate.toLocaleDateString("es-MX", { weekday: "long" });
+      const current = grouped.get(dateKey) || {
+        dateKey,
+        dayLabel,
+        total: 0,
+        completed: 0,
+        totalSeconds: 0,
+        outsideLimit: 0,
+      };
+
+      const timeLimitMinutes = getTimeLimitMinutes(activity, catalogMap);
+      current.total += 1;
+      current.completed += activity.status === STATUS_FINISHED ? 1 : 0;
+      current.totalSeconds += Number(activity.accumulatedSeconds || 0);
+      current.outsideLimit += Number(activity.accumulatedSeconds || 0) > (timeLimitMinutes * 60) ? 1 : 0;
+
+      grouped.set(dateKey, current);
+    });
+
+    return Array.from(grouped.values()).sort((left, right) => right.dateKey.localeCompare(left.dateKey));
+  }, [areaScopedActivities, catalogMap, getTimeLimitMinutes, STATUS_FINISHED]);
+
+  const canEditHistoricalWeekActivities = Boolean(actionPermissions.manageWeeks || actionPermissions.deleteWeekActivity);
 
   useEffect(() => {
     if (!deleteWeekModal.open) return undefined;
@@ -284,9 +320,31 @@ export default function HistorialSemanas({ contexto }) {
               <h3>{historyWeek?.name || "Selecciona una semana"}</h3>
               <p>Vista de solo lectura del desempeño semanal.</p>
             </div>
+            {historyWeek && canEditHistoricalWeekActivities ? (
+              <button type="button" className="icon-button" onClick={() => setEditWeekId(historyWeek.id)}>
+                Editar actividades
+              </button>
+            ) : null}
           </div>
           {historyWeek ? (
             <>
+              <div className="history-area-tabs">
+                <button
+                  type="button"
+                  className={`tab ${detailViewMode === "activities" ? "active" : ""}`}
+                  onClick={() => setDetailViewMode("activities")}
+                >
+                  Actividades
+                </button>
+                <button
+                  type="button"
+                  className={`tab ${detailViewMode === "days" ? "active" : ""}`}
+                  onClick={() => setDetailViewMode("days")}
+                >
+                  Días anteriores
+                </button>
+              </div>
+
               <div className="history-area-tabs">
                 <button
                   type="button"
@@ -325,57 +383,108 @@ export default function HistorialSemanas({ contexto }) {
                 </label>
               </div>
 
-              <div className="metric-grid three-up">
-                <MetricCard label="Tiempo total efectivo" value={formatMinutes(totalEffectiveMinutes)} hint="Suma total del filtro actual" />
-                <MetricCard label="Actividades completadas" value={String(completedCount)} hint="Terminadas en el filtro actual" />
-                <MetricCard label="Fuera de tiempo limite" value={String(outsideLimitCount)} hint="Desviaciones detectadas" tone="danger" />
-              </div>
+              {detailViewMode === "activities" ? (
+                <>
+                  <div className="metric-grid three-up">
+                    <MetricCard label="Tiempo total efectivo" value={formatMinutes(totalEffectiveMinutes)} hint="Suma total del filtro actual" />
+                    <MetricCard label="Actividades completadas" value={String(completedCount)} hint="Terminadas en el filtro actual" />
+                    <MetricCard label="Fuera de tiempo limite" value={String(outsideLimitCount)} hint="Desviaciones detectadas" tone="danger" />
+                  </div>
 
-              <div className="table-wrap compact-table">
-                <table className="history-table-clean">
-                  <thead>
-                    <tr>
-                      <th>Fecha</th>
-                      <th>Dia</th>
-                      <th>Area</th>
-                      <th>Nave</th>
-                      <th>Actividad</th>
-                      <th>Player</th>
-                      <th>Estado</th>
-                      <th>Inicio</th>
-                      <th>Fin</th>
-                      <th>Tiempo</th>
-                      <th>Límite</th>
-                      <th>Pausas</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visibleHistoryActivities.map((activity) => (
-                      <tr key={activity.id}>
-                        <td>{formatDate(activity.activityDate)}</td>
-                        <td>{activity.dayLabel}</td>
-                        <td>{activity.areaRoot}</td>
-                        <td>{activity.naveLabel}</td>
-                        <td>{getActivityLabel(activity, catalogMap)}</td>
-                        <td title={userMap.get(activity.responsibleId)?.name || "Sin player"}>{userMap.get(activity.responsibleId)?.name || "Sin player"}</td>
-                        <td><StatusBadge status={activity.status} /></td>
-                        <td>{formatTime(activity.startTime)}</td>
-                        <td>{formatTime(activity.endTime)}</td>
-                        <td>{formatDurationClock(activity.accumulatedSeconds)}</td>
-                        <td>{getTimeLimitMinutes(activity, catalogMap)} min</td>
-                        <td><button type="button" className="icon-button" onClick={() => setHistoryPauseActivityId(activity.id)}>Ver pausas</button></td>
-                      </tr>
-                    ))}
-                    {!visibleHistoryActivities.length ? (
+                  <div className="table-wrap compact-table">
+                    <table className="history-table-clean">
+                      <thead>
+                        <tr>
+                          <th>Fecha</th>
+                          <th>Dia</th>
+                          <th>Area</th>
+                          <th>Nave</th>
+                          <th>Actividad</th>
+                          <th>Player</th>
+                          <th>Estado</th>
+                          <th>Inicio</th>
+                          <th>Fin</th>
+                          <th>Tiempo</th>
+                          <th>Límite</th>
+                          <th>Pausas</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visibleHistoryActivities.map((activity) => (
+                          <tr key={activity.id}>
+                            <td>{formatDate(activity.activityDate)}</td>
+                            <td>{activity.dayLabel}</td>
+                            <td>{activity.areaRoot}</td>
+                            <td>{activity.naveLabel}</td>
+                            <td>{getActivityLabel(activity, catalogMap)}</td>
+                            <td title={userMap.get(activity.responsibleId)?.name || "Sin player"}>{userMap.get(activity.responsibleId)?.name || "Sin player"}</td>
+                            <td><StatusBadge status={activity.status} /></td>
+                            <td>{formatTime(activity.startTime)}</td>
+                            <td>{formatTime(activity.endTime)}</td>
+                            <td>{formatDurationClock(activity.accumulatedSeconds)}</td>
+                            <td>{getTimeLimitMinutes(activity, catalogMap)} min</td>
+                            <td><button type="button" className="icon-button" onClick={() => setHistoryPauseActivityId(activity.id)}>Ver pausas</button></td>
+                          </tr>
+                        ))}
+                        {!visibleHistoryActivities.length ? (
+                          <tr>
+                            <td colSpan={12}>
+                              <span className="subtle-line">No hay actividades para el area, dia o nave seleccionados.</span>
+                            </td>
+                          </tr>
+                        ) : null}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <div className="table-wrap compact-table">
+                  <table className="history-table-clean">
+                    <thead>
                       <tr>
-                        <td colSpan={12}>
-                          <span className="subtle-line">No hay actividades para el area, dia o nave seleccionados.</span>
-                        </td>
+                        <th>Fecha</th>
+                        <th>Dia</th>
+                        <th>Actividades</th>
+                        <th>Completadas</th>
+                        <th>Tiempo total</th>
+                        <th>Fuera de tiempo</th>
+                        <th>Acciones</th>
                       </tr>
-                    ) : null}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {dailyHistoryRows.map((dayRow) => (
+                        <tr key={dayRow.dateKey}>
+                          <td>{formatDate(`${dayRow.dateKey}T00:00:00.000Z`)}</td>
+                          <td>{dayRow.dayLabel}</td>
+                          <td>{dayRow.total}</td>
+                          <td>{dayRow.completed}</td>
+                          <td>{formatDurationClock(dayRow.totalSeconds)}</td>
+                          <td>{dayRow.outsideLimit}</td>
+                          <td>
+                            <button
+                              type="button"
+                              className="icon-button"
+                              onClick={() => {
+                                setSelectedDayFilter(dayRow.dayLabel);
+                                setDetailViewMode("activities");
+                              }}
+                            >
+                              Ver actividades
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {!dailyHistoryRows.length ? (
+                        <tr>
+                          <td colSpan={7}>
+                            <span className="subtle-line">No hay días históricos para el filtro seleccionado.</span>
+                          </td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </>
           ) : null}
         </article>
