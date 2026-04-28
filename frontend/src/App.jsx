@@ -4057,7 +4057,7 @@ function App() { // NOSONAR
     }
   }
 
-  async function updateBoardOperationalContext(boardId, operationalContextValue) {
+  async function updateBoardOperationalContext(boardId, operationalContextValue, overrideContextType = null) {
     if (!currentUser || !boardId) return;
 
     const board = (state.controlBoards || []).find((item) => item.id === boardId);
@@ -4068,14 +4068,20 @@ function App() { // NOSONAR
     if (!canUpdateContext) return;
 
     const normalizedSettings = withDefaultBoardSettings(board.settings);
+    const effectiveContextType = overrideContextType || normalizedSettings.operationalContextType;
+    const effectiveContextOptions = overrideContextType === "cleaningSite"
+      ? ["C1", "C2", "C3", "P"]
+      : normalizedSettings.operationalContextOptions;
+    const typeChanged = overrideContextType && overrideContextType !== normalizedSettings.operationalContextType;
     try {
       const result = await requestJson(`/warehouse/boards/${boardId}/context`, {
         method: "PATCH",
         body: JSON.stringify({
+          ...(typeChanged ? { operationalContextType: overrideContextType } : {}),
           operationalContextValue: normalizeBoardOperationalContextValue(
             operationalContextValue,
-            normalizedSettings.operationalContextType,
-            normalizedSettings.operationalContextOptions,
+            effectiveContextType,
+            effectiveContextOptions,
           ),
         }),
       });

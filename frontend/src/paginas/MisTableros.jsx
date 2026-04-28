@@ -264,9 +264,10 @@ export default function MisTableros({ contexto }) {
   })();
 
   const showCleaningNaveSelector = isCleaningRelatedBoard;
-  const effectiveCleaningNaves = (cleaningNaveOptions.length > 0)
-    ? cleaningNaveOptions
-    : ["C1", "C2", "C3", "P"];
+  const BASE_CLEANING_NAVES = ["C1", "C2", "C3", "P"];
+  const effectiveCleaningNaves = cleaningNaveOptions.length > 0
+    ? [...new Set([...BASE_CLEANING_NAVES, ...cleaningNaveOptions])].sort()
+    : BASE_CLEANING_NAVES;
   const cleaningNaveValue = boardOperationalContextValue || effectiveCleaningNaves[0] || "C3";
   const effectiveWeekKey = String(
     (isHistoricalCustomBoardView
@@ -470,7 +471,7 @@ export default function MisTableros({ contexto }) {
                       <span>Nave de limpieza</span>
                       <select
                         value={cleaningNaveValue}
-                        onChange={(event) => updateBoardOperationalContext(selectedCustomBoard.id, event.target.value)}
+                        onChange={(event) => updateBoardOperationalContext(selectedCustomBoard.id, event.target.value, "cleaningSite")}
                         disabled={isHistoricalCustomBoardView || !canChangeSelectedBoardOperationalContext}
                       >
                         {effectiveCleaningNaves.map((nave) => <option key={nave} value={nave}>{nave}</option>)}
