@@ -34,13 +34,72 @@ export default function HistorialSemanas({ contexto }) {
   const [selectedDayFilter, setSelectedDayFilter] = useState("all");
   const [selectedNaveFilter, setSelectedNaveFilter] = useState("all");
   const [detailViewMode, setDetailViewMode] = useState("activities");
+  const [fallbackHistoryWeekId, setFallbackHistoryWeekId] = useState("");
+
+  const derivedBoardWeeks = useMemo(() => {
+    const grouped = new Map();
+    (state.boardWeekHistory || []).forEach((snapshot) => {
+      const weekKey = String(snapshot?.weekKey || "").trim();
+      if (!weekKey) return;
+      if (!grouped.has(weekKey)) {
+        grouped.set(weekKey, {
+          id: weekKey,
+          name: String(snapshot?.weekName || `Semana ${weekKey}`).trim() || `Semana ${weekKey}`,
+          startDate: snapshot?.startDate || null,
+          endDate: snapshot?.endDate || null,
+          isActive: weekKey === state?.boardWeeklyCycle?.activeWeekKey,
+        });
+      }
+    });
+
+    const activeWeekKey = String(state?.boardWeeklyCycle?.activeWeekKey || "").trim();
+    const hasCurrentBoardRows = (state.controlBoards || []).some((board) => Array.isArray(board?.rows) && board.rows.length > 0);
+    if (activeWeekKey && hasCurrentBoardRows && !grouped.has(activeWeekKey)) {
+      grouped.set(activeWeekKey, {
+        id: activeWeekKey,
+        name: `Semana activa ${activeWeekKey}`,
+        startDate: state?.boardWeeklyCycle?.activeWeekStartDate || null,
+        endDate: state?.boardWeeklyCycle?.activeWeekEndDate || null,
+        isActive: true,
+      });
+    }
+
+    return Array.from(grouped.values()).sort((left, right) => String(right.startDate || right.id).localeCompare(String(left.startDate || left.id)));
+  }, [state.boardWeekHistory, state.controlBoards, state?.boardWeeklyCycle?.activeWeekEndDate, state?.boardWeeklyCycle?.activeWeekKey, state?.boardWeeklyCycle?.activeWeekStartDate]);
+
+  const useBoardHistoryFallback = (state.weeks || []).length === 0 && derivedBoardWeeks.length > 0;
+  const effectiveWeeks = useBoardHistoryFallback ? derivedBoardWeeks : (state.weeks || []);
+  const effectiveHistoryWeek = useBoardHistoryFallback
+    ? (effectiveWeeks.find((week) => week.id === fallbackHistoryWeekId) || effectiveWeeks[0] || null)
+    : historyWeek;
+
+  function resolveHistoryActivityLabel(activity) {
+    if (activity?.derivedFromBoardHistory) return String(activity.activityLabel || "Actividad").trim() || "Actividad";
+    return getActivityLabel(activity, catalogMap);
+  }
+
+  function resolveHistoryTimeLimitMinutes(activity) {
+    if (activity?.derivedFromBoardHistory) return 0;
+    return getTimeLimitMinutes(activity, catalogMap);
+  }
 
   const weekAreaMap = useMemo(() => {
     const map = new Map();
-    (state.weeks || []).forEach((week) => {
+    effectiveWeeks.forEach((week) => {
       const areas = new Set(
-        (state.activities || [])
-          .filter((activity) => activity.weekId === week.id)
+        (() => {
+          if (!useBoardHistoryFallback) {
+            return (state.activities || []).filter((activity) => activity.weekId === week.id);
+          }
+          return (state.boardWeekHistory || [])
+            .filter((snapshot) => String(snapshot?.weekKey || "").trim() === week.id)
+            .flatMap((snapshot) => (snapshot?.rows || []))
+            .concat(
+              week.id === state?.boardWeeklyCycle?.activeWeekKey
+                ? (state.controlBoards || []).flatMap((board) => (board?.rows || []))
+                : [],
+            );
+        })()
           .map((activity) => {
             const areaValue = getUserArea(userMap.get(activity.responsibleId));
             return String(areaValue || "Sin area").trim() || "Sin area";
@@ -49,13 +108,67 @@ export default function HistorialSemanas({ contexto }) {
       map.set(week.id, areas.size);
     });
     return map;
-  }, [getUserArea, state.activities, state.weeks, userMap]);
+  }, [effectiveWeeks, getUserArea, state.activities, state.boardWeekHistory, state.controlBoards, state?.boardWeeklyCycle?.activeWeekKey, useBoardHistoryFallback, userMap]);
 
   const historyActivities = useMemo(() => {
-    if (!historyWeek?.id) return [];
+    if (!effectiveHistoryWeek?.id) return [];
+
+    if (useBoardHistoryFallback) {
+      const snapshots = (state.boardWeekHistory || [])
+        .filter((snapshot) => String(snapshot?.weekKey || "").trim() === effectiveHistoryWeek.id);
+
+      const activeWeekKey = String(state?.boardWeeklyCycle?.activeWeekKey || "").trim();
+      const liveBoardsForWeek = effectiveHistoryWeek.id === activeWeekKey
+        ? (state.controlBoards || []).map((board) => ({
+          id: `${board.id}-live`,
+          boardName: board.name,
+          rows: board.rows || [],
+          settings: board.settings || {},
+          startDate: state?.boardWeeklyCycle?.activeWeekStartDate || null,
+          endDate: state?.boardWeeklyCycle?.activeWeekEndDate || null,
+        }))
+        : [];
+
+      const allSources = snapshots.concat(liveBoardsForWeek);
+
+      return allSources.flatMap((snapshot) => {
+        const boardContext = String(snapshot?.settings?.operationalContextValue || "").trim();
+        return (snapshot?.rows || []).map((row) => {
+          const user = userMap.get(row.responsibleId);
+          const areaLabel = String(getUserArea(user) || "Sin area").trim() || "Sin area";
+          const areaRoot = areaLabel.split("/")[0]?.trim() || areaLabel;
+          const rowDateIso = row?.endTime || row?.startTime || row?.createdAt || snapshot?.endDate || snapshot?.startDate;
+          const activityDate = new Date(rowDateIso);
+          const hasValidDate = !Number.isNaN(activityDate.getTime());
+          const dayLabel = hasValidDate
+            ? activityDate.toLocaleDateString("es-MX", { weekday: "long" })
+            : "Sin dia";
+          const normalizedDayLabel = dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1);
+          const rowValueText = Object.values(row?.values || {}).find((value) => String(value || "").trim()) || "";
+
+          return {
+            id: `${snapshot.id}-${row.id}`,
+            weekId: effectiveHistoryWeek.id,
+            activityDate: rowDateIso,
+            responsibleId: row.responsibleId,
+            status: row.status,
+            startTime: row.startTime,
+            endTime: row.endTime,
+            accumulatedSeconds: Number(row.accumulatedSeconds || 0),
+            areaLabel,
+            areaRoot,
+            naveLabel: boardContext || String(snapshot?.boardName || "Sin nave").trim() || "Sin nave",
+            dayLabel: normalizedDayLabel,
+            activityLabel: String(rowValueText || snapshot?.boardName || "Actividad").trim() || "Actividad",
+            lastPauseReason: String(row?.lastPauseReason || "").trim(),
+            derivedFromBoardHistory: true,
+          };
+        });
+      });
+    }
 
     return (state.activities || [])
-      .filter((activity) => activity.weekId === historyWeek.id)
+      .filter((activity) => activity.weekId === effectiveHistoryWeek.id)
       .map((activity) => {
         const user = userMap.get(activity.responsibleId);
         const areaLabel = String(getUserArea(user) || "Sin area").trim() || "Sin area";
@@ -81,9 +194,10 @@ export default function HistorialSemanas({ contexto }) {
           areaRoot,
           naveLabel,
           dayLabel: normalizedDayLabel,
+          derivedFromBoardHistory: false,
         };
       });
-  }, [catalogMap, getUserArea, historyWeek?.id, state.activities, userMap]);
+  }, [catalogMap, effectiveHistoryWeek?.id, getUserArea, state.activities, state.boardWeekHistory, state.controlBoards, state?.boardWeeklyCycle?.activeWeekEndDate, state?.boardWeeklyCycle?.activeWeekKey, state?.boardWeeklyCycle?.activeWeekStartDate, useBoardHistoryFallback, userMap]);
 
   const areaTabs = useMemo(() => {
     const grouped = new Map();
@@ -108,7 +222,7 @@ export default function HistorialSemanas({ contexto }) {
     setSelectedDayFilter("all");
     setSelectedNaveFilter("all");
     setDetailViewMode("activities");
-  }, [historyWeek?.id]);
+  }, [effectiveHistoryWeek?.id]);
 
   useEffect(() => {
     if (selectedAreaTab === "all") return;
@@ -168,10 +282,11 @@ export default function HistorialSemanas({ contexto }) {
 
   const outsideLimitCount = useMemo(() => {
     return visibleHistoryActivities.filter((activity) => {
-      const timeLimitMinutes = getTimeLimitMinutes(activity, catalogMap);
+      const timeLimitMinutes = resolveHistoryTimeLimitMinutes(activity);
+      if (timeLimitMinutes <= 0) return false;
       return activity.accumulatedSeconds > timeLimitMinutes * 60;
     }).length;
-  }, [catalogMap, getTimeLimitMinutes, visibleHistoryActivities]);
+  }, [visibleHistoryActivities]);
 
   const dailyHistoryRows = useMemo(() => {
     const grouped = new Map();
@@ -192,19 +307,19 @@ export default function HistorialSemanas({ contexto }) {
         outsideLimit: 0,
       };
 
-      const timeLimitMinutes = getTimeLimitMinutes(activity, catalogMap);
+      const timeLimitMinutes = resolveHistoryTimeLimitMinutes(activity);
       current.total += 1;
       current.completed += activity.status === STATUS_FINISHED ? 1 : 0;
       current.totalSeconds += Number(activity.accumulatedSeconds || 0);
-      current.outsideLimit += Number(activity.accumulatedSeconds || 0) > (timeLimitMinutes * 60) ? 1 : 0;
+      current.outsideLimit += timeLimitMinutes > 0 && Number(activity.accumulatedSeconds || 0) > (timeLimitMinutes * 60) ? 1 : 0;
 
       grouped.set(dateKey, current);
     });
 
     return Array.from(grouped.values()).sort((left, right) => right.dateKey.localeCompare(left.dateKey));
-  }, [areaScopedActivities, catalogMap, getTimeLimitMinutes, STATUS_FINISHED]);
+  }, [areaScopedActivities, STATUS_FINISHED]);
 
-  const canEditHistoricalWeekActivities = Boolean(actionPermissions.manageWeeks || actionPermissions.deleteWeekActivity);
+  const canEditHistoricalWeekActivities = !useBoardHistoryFallback && Boolean(actionPermissions.manageWeeks || actionPermissions.deleteWeekActivity);
 
   useEffect(() => {
     if (!deleteWeekModal.open) return undefined;
@@ -247,15 +362,15 @@ export default function HistorialSemanas({ contexto }) {
       <article className="history-summary-card">
         <div>
           <h3>Historial de Semanas</h3>
-          <p>Consulta semanas cerradas y revisa sus actividades sin editar información.</p>
+          <p>Consulta semanas cerradas y revisa sus actividades con datos reales del histórico.</p>
         </div>
-        <span className="chip">{state.weeks.length} semanas</span>
+        <span className="chip">{effectiveWeeks.length} semanas</span>
       </article>
 
       <div className="history-stat-strip">
-        <StatTile label="Semanas activas" value={state.weeks.filter((week) => week.isActive).length} />
-        <StatTile label="Semanas cerradas" value={state.weeks.filter((week) => !week.isActive).length} tone="soft" />
-        <StatTile label="Actividades históricas" value={state.activities.filter((item) => item.weekId !== activeWeek?.id).length} tone="success" />
+        <StatTile label="Semanas activas" value={effectiveWeeks.filter((week) => week.isActive).length} />
+        <StatTile label="Semanas cerradas" value={effectiveWeeks.filter((week) => !week.isActive).length} tone="soft" />
+        <StatTile label="Actividades históricas" value={historyActivities.length} tone="success" />
       </div>
 
       <section className="page-grid history-grid">
@@ -265,7 +380,7 @@ export default function HistorialSemanas({ contexto }) {
               <h3>Todas las semanas</h3>
               <p>Consulta de solo lectura del histórico operativo.</p>
             </div>
-            <span className="chip">{state.weeks.length} semanas registradas</span>
+            <span className="chip">{effectiveWeeks.length} semanas registradas</span>
           </div>
           <div className="table-wrap">
             <table className="history-table-clean">
@@ -281,21 +396,39 @@ export default function HistorialSemanas({ contexto }) {
                 </tr>
               </thead>
               <tbody>
-                {state.weeks.map((week) => {
-                  const weekRows = state.activities.filter((activity) => activity.weekId === week.id);
+                {effectiveWeeks.map((week) => {
+                  const weekRows = useBoardHistoryFallback
+                    ? (state.boardWeekHistory || [])
+                      .filter((snapshot) => String(snapshot?.weekKey || "").trim() === week.id)
+                      .flatMap((snapshot) => (snapshot?.rows || []).map((row) => ({ ...row, weekId: week.id })))
+                      .concat(
+                        week.id === state?.boardWeeklyCycle?.activeWeekKey
+                          ? (state.controlBoards || []).flatMap((board) => (board?.rows || []).map((row) => ({ ...row, weekId: week.id })))
+                          : [],
+                      )
+                    : state.activities.filter((activity) => activity.weekId === week.id);
                   const completed = weekRows.filter((activity) => activity.status === STATUS_FINISHED).length;
                   return (
                     <tr key={week.id}>
                       <td>{week.name}</td>
-                      <td>{formatDate(week.startDate)} - {formatDate(week.endDate)}</td>
+                      <td>{week.startDate && week.endDate ? `${formatDate(week.startDate)} - ${formatDate(week.endDate)}` : "Sin rango"}</td>
                       <td>{weekRows.length}</td>
                       <td>{completed}</td>
                       <td>{weekAreaMap.get(week.id) || 0}</td>
                       <td><span className={week.isActive ? "chip success" : "chip"}>{week.isActive ? "Activa" : "Histórica"}</span></td>
                       <td>
                         <div className="history-week-actions">
-                          <button type="button" className="icon-button" onClick={() => setSelectedHistoryWeekId(week.id)}><Search size={15} /> Ver detalle</button>
-                          {actionPermissions.deleteWeek ? (
+                          <button
+                            type="button"
+                            className="icon-button"
+                            onClick={() => {
+                              setSelectedHistoryWeekId(week.id);
+                              if (useBoardHistoryFallback) {
+                                setFallbackHistoryWeekId(week.id);
+                              }
+                            }}
+                          ><Search size={15} /> Ver detalle</button>
+                          {!useBoardHistoryFallback && actionPermissions.deleteWeek ? (
                             <button
                               type="button"
                               className="icon-button danger"
@@ -317,16 +450,16 @@ export default function HistorialSemanas({ contexto }) {
         <article className="surface-card table-card detail-panel history-detail-card">
           <div className="card-header-row">
             <div>
-              <h3>{historyWeek?.name || "Selecciona una semana"}</h3>
+              <h3>{effectiveHistoryWeek?.name || "Selecciona una semana"}</h3>
               <p>Vista de solo lectura del desempeño semanal.</p>
             </div>
-            {historyWeek && canEditHistoricalWeekActivities ? (
-              <button type="button" className="icon-button" onClick={() => setEditWeekId(historyWeek.id)}>
+            {effectiveHistoryWeek && canEditHistoricalWeekActivities ? (
+              <button type="button" className="icon-button" onClick={() => setEditWeekId(effectiveHistoryWeek.id)}>
                 Editar actividades
               </button>
             ) : null}
           </div>
-          {historyWeek ? (
+          {effectiveHistoryWeek ? (
             <>
               <div className="history-area-tabs">
                 <button
@@ -416,14 +549,18 @@ export default function HistorialSemanas({ contexto }) {
                             <td>{activity.dayLabel}</td>
                             <td>{activity.areaRoot}</td>
                             <td>{activity.naveLabel}</td>
-                            <td>{getActivityLabel(activity, catalogMap)}</td>
+                            <td>{resolveHistoryActivityLabel(activity)}</td>
                             <td title={userMap.get(activity.responsibleId)?.name || "Sin player"}>{userMap.get(activity.responsibleId)?.name || "Sin player"}</td>
                             <td><StatusBadge status={activity.status} /></td>
                             <td>{formatTime(activity.startTime)}</td>
                             <td>{formatTime(activity.endTime)}</td>
                             <td>{formatDurationClock(activity.accumulatedSeconds)}</td>
-                            <td>{getTimeLimitMinutes(activity, catalogMap)} min</td>
-                            <td><button type="button" className="icon-button" onClick={() => setHistoryPauseActivityId(activity.id)}>Ver pausas</button></td>
+                            <td>{resolveHistoryTimeLimitMinutes(activity) > 0 ? `${resolveHistoryTimeLimitMinutes(activity)} min` : "N/A"}</td>
+                            <td>
+                              {activity.derivedFromBoardHistory
+                                ? (activity.lastPauseReason || "Sin detalle")
+                                : <button type="button" className="icon-button" onClick={() => setHistoryPauseActivityId(activity.id)}>Ver pausas</button>}
+                            </td>
                           </tr>
                         ))}
                         {!visibleHistoryActivities.length ? (
