@@ -3296,18 +3296,23 @@ export function getOperationalElapsedSeconds(startTime, now, pauseState) {
 
 export function getElapsedSeconds(activity, now, pauseState) {
   if (!activity) return 0;
+  const accumulatedSeconds = Number(activity.accumulatedSeconds || 0);
   if (activity.status !== STATUS_RUNNING) {
-    return activity.accumulatedSeconds || 0;
+    // Fallback for legacy finished rows that have start/end but accumulatedSeconds was not persisted.
+    if (activity.status === STATUS_FINISHED && accumulatedSeconds <= 0 && activity.startTime && activity.endTime) {
+      return Math.max(0, getOperationalElapsedSeconds(activity.startTime, activity.endTime, pauseState));
+    }
+    return Math.max(0, accumulatedSeconds);
   }
 
   const baselineTimestamp = activity.lastResumedAt || activity.startTime;
   if (!baselineTimestamp) {
-    return activity.accumulatedSeconds || 0;
+    return Math.max(0, accumulatedSeconds);
   }
 
   const resumedMs = parseOperationalTimestamp(baselineTimestamp, now);
   if (!Number.isFinite(resumedMs)) {
-    return activity.accumulatedSeconds || 0;
+    return Math.max(0, accumulatedSeconds);
   }
 
   const effectiveNow = getEffectiveOperationalNow(now, pauseState);
@@ -3318,7 +3323,7 @@ export function getElapsedSeconds(activity, now, pauseState) {
   } else {
     delta = Math.max(0, Math.floor((effectiveNow - resumedMs) / 1000));
   }
-  return (activity.accumulatedSeconds || 0) + delta;
+  return Math.max(0, accumulatedSeconds + delta);
 }
 
 const SYSTEM_OPERATIONAL_NAVE_KEYS = ["C1", "C2", "C3", "P"];
@@ -3804,11 +3809,23 @@ export function buildStarterWorkspace(leadUser, catalog, inventoryItems, permiss
   };
 }
 
-export function updateElapsedForFinish(activity, nowIso) {
-  if (activity.status !== STATUS_RUNNING || !activity.lastResumedAt) {
-    return activity.accumulatedSeconds || 0;
+export function updateElapsedForFinish(activity, nowIso, pauseState) {
+  if (!activity) return 0;
+  if (activity.status !== STATUS_RUNNING) {
+    return Math.max(0, Number(activity.accumulatedSeconds || 0));
   }
-  const delta = Math.max(0, Math.floor((new Date(nowIso) - new Date(activity.lastResumedAt)) / 1000));
-  return (activity.accumulatedSeconds || 0) + delta;
+  const baselineTimestamp = activity.lastResumedAt || activity.startTime;
+  if (!baselineTimestamp) {
+    return Math.max(0, Number(activity.accumulatedSeconds || 0));
+  }
+  return getElapsedSeconds(
+    {
+      ...activity,
+      status: STATUS_RUNNING,
+      lastResumedAt: baselineTimestamp,
+    },
+    nowIso,
+    pauseState,
+  );
 }
 

@@ -3391,7 +3391,7 @@ function App() { // NOSONAR
         return {
           ...activity,
           status: STATUS_PAUSED,
-          accumulatedSeconds: updateElapsedForFinish(activity, nowIso),
+            accumulatedSeconds: updateElapsedForFinish(activity, nowIso, operationalPauseState),
           lastResumedAt: null,
         };
       }),

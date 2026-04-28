@@ -2254,9 +2254,33 @@ function calcWorkSeconds(fromMs, toMs, startHour, endHour) {
   return total;
 }
 
+function parseOperationalTimestamp(value, referenceIso) {
+  if (!value) return null;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+
+  const parsed = new Date(raw).getTime();
+  if (Number.isFinite(parsed)) return parsed;
+
+  const clockMatch = raw.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (!clockMatch) return null;
+
+  const hours = Number(clockMatch[1]);
+  const minutes = Number(clockMatch[2]);
+  const seconds = Number(clockMatch[3] || 0);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes) || !Number.isFinite(seconds)) return null;
+
+  const referenceMs = new Date(referenceIso || Date.now()).getTime();
+  const base = Number.isFinite(referenceMs) ? new Date(referenceMs) : new Date();
+  base.setHours(hours, minutes, seconds, 0);
+  return base.getTime();
+}
+
 function getOperationalElapsedSeconds(startIso, nowIso, pauseControl) {
   if (!startIso) return 0;
-  const startMs = new Date(startIso).getTime();
+  const startMs = parseOperationalTimestamp(startIso, nowIso);
   if (!Number.isFinite(startMs)) return 0;
   const effectiveNow = getEffectiveOperationalNowMs(nowIso, pauseControl);
   const workHours = pauseControl?.workHours;
@@ -2267,8 +2291,10 @@ function getOperationalElapsedSeconds(startIso, nowIso, pauseControl) {
 }
 
 function updateElapsedForFinish(row, nowIso, pauseControl) {
-  if (!row?.lastResumedAt) return Number(row?.accumulatedSeconds || 0);
-  return Math.max(0, Number(row?.accumulatedSeconds || 0) + getOperationalElapsedSeconds(row.lastResumedAt, nowIso, pauseControl));
+  const accumulated = Number(row?.accumulatedSeconds || 0);
+  const baselineTimestamp = row?.lastResumedAt || row?.startTime;
+  if (!baselineTimestamp) return Math.max(0, accumulated);
+  return Math.max(0, accumulated + getOperationalElapsedSeconds(baselineTimestamp, nowIso, pauseControl));
 }
 
 function findBoardAndRow(currentState, boardId, rowId = null) {
