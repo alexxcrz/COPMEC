@@ -1209,6 +1209,7 @@ export function withDefaultBoardSettings(settings) {
     showTotalTime: true,
     showEfficiency: true,
     ...resolvedSettings,
+    ownerArea: normalizeBoardOwnerArea(resolvedSettings?.ownerArea),
     operationalContextType,
     operationalContextLabel: normalizeBoardOperationalContextLabel(resolvedSettings?.operationalContextLabel, operationalContextType),
     operationalContextOptions,
@@ -1438,6 +1439,16 @@ export function formatDurationClock(totalSeconds) {
   const minutes = String(Math.floor((seconds % 3600) / 60)).padStart(2, "0");
   const remainder = String(seconds % 60).padStart(2, "0");
   return `${hours}:${minutes}:${remainder}`;
+}
+
+
+// Formatea minutos a 'h:mm' (ejemplo: 420 -> '7:00 h')
+export function formatMinutesToHourMinute(value) {
+  if (!Number.isFinite(value)) return "0:00 h";
+  const totalMinutes = Math.round(value);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}:${minutes.toString().padStart(2, "0")} h`;
 }
 
 export function formatMinutes(value) {
@@ -1908,6 +1919,7 @@ export function createEmptyBoardDraft() {
       auxColumnsOrder: [...DEFAULT_BOARD_AUX_COLUMNS_ORDER],
       columnOrder: [],
       auxColumnWidths: {},
+      ownerArea: "",
       operationalContextType: BOARD_OPERATIONAL_CONTEXT_NONE,
       operationalContextLabel: "",
       operationalContextOptions: [],
@@ -2929,6 +2941,12 @@ export function normalizeBoardAccessUserIds(entries = [], ownerId = "") {
   return Array.from(new Set((Array.isArray(entries) ? entries : [])
     .map((entry) => String(entry || "").trim())
     .filter((entry) => entry && entry !== ownerId)));
+}
+
+export function normalizeBoardOwnerArea(area) {
+  const normalized = normalizeAreaOption(area);
+  if (!normalized || normalized === "SIN AREA") return "";
+  return normalizeAreaOption(getAreaRoot(normalized) || normalized);
 }
 
 export function getNormalizedBoardVisibility(board) {
