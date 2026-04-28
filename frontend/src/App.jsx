@@ -1605,12 +1605,27 @@ function App() { // NOSONAR
     function parseMetricValue(rawValue, fieldType) {
       if (fieldType === "time") {
         const normalized = String(rawValue || "").trim();
-        const match = normalized.match(/^(\d{1,2}):(\d{2})$/);
-        if (!match) return null;
-        const hours = Number(match[1]);
-        const minutes = Number(match[2]);
-        if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
-        return hours * 60 + minutes;
+        if (!normalized) return null;
+
+        const hhmmssMatch = normalized.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
+        if (hhmmssMatch) {
+          const hours = Number(hhmmssMatch[1]);
+          const minutes = Number(hhmmssMatch[2]);
+          const seconds = Number(hhmmssMatch[3]);
+          if (!Number.isFinite(hours) || !Number.isFinite(minutes) || !Number.isFinite(seconds)) return null;
+          return (hours * 60) + minutes + (seconds / 60);
+        }
+
+        const hhmmMatch = normalized.match(/^(\d{1,2}):(\d{2})$/);
+        if (hhmmMatch) {
+          const hours = Number(hhmmMatch[1]);
+          const minutes = Number(hhmmMatch[2]);
+          if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+          return hours * 60 + minutes;
+        }
+
+        const numericMinutes = Number(normalized);
+        return Number.isFinite(numericMinutes) ? numericMinutes : null;
       }
 
       const parsed = Number(rawValue);
@@ -1681,7 +1696,10 @@ function App() { // NOSONAR
     const boardMap = new Map((dashboardVisibleControlBoards || []).map((board) => [board.id, board]));
     const productKeywords = ["producto", "sku", "articulo", "item", "codigo", "clave", "material", "modelo"];
     const timeKeywords = ["tiempo", "duracion", "min", "revision", "ciclo", "proceso"];
-    const piecesKeywords = ["pieza", "pzas", "cantidad", "unidades", "qty"];
+    const piecesKeywords = ["pieza", "pzas", "pz", "cantidad", "unidades", "qty", "total pz"];
+    const piecesReceivedKeywords = ["recib", "recep", "entrada", "ingreso", "total pz", "piezas por caja"];
+    const piecesMermaKeywords = ["merma", "mala", "dano", "danad", "defect", "rechazo"];
+    const piecesAptasKeywords = ["apta", "buen estado", "real", "ok", "liberada", "buenas"];
     const palletKeywords = ["tarima", "pallet", "palet"];
     const ignoredTimeLabelKeywords = ["hora inicio", "hora fin", "inicio", "fin"];
     const aggregated = new Map();
@@ -1693,6 +1711,21 @@ function App() { // NOSONAR
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
         .toLowerCase();
+    }
+
+    function parseNumericQuantity(rawValue) {
+      if (typeof rawValue === "number") {
+        return Number.isFinite(rawValue) ? rawValue : null;
+      }
+      const text = String(rawValue || "").trim();
+      if (!text) return null;
+      const normalized = text
+        .replace(/\s+/g, "")
+        .replace(/\.(?=\d{3}(\D|$))/g, "")
+        .replace(/,(?=\d{3}(\D|$))/g, "")
+        .replace(/,/g, ".");
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : null;
     }
 
     function parseTimeToMinutes(rawValue, fieldType, fieldLabel) {
@@ -1790,6 +1823,9 @@ function App() { // NOSONAR
       let productRawValue = "";
       let timeMinutes = null;
       let piecesValue = null;
+      let piecesReceivedValue = null;
+      let piecesMermaValue = null;
+      let piecesAptasValue = null;
       let tarimaValue = "";
 
       (board.fields || []).forEach((field) => {
@@ -1816,9 +1852,20 @@ function App() { // NOSONAR
           if (Number.isFinite(parsed) && parsed >= 0) timeMinutes = parsed;
         }
 
-        if (piecesValue === null && piecesKeywords.some((token) => normalizedLabel.includes(token))) {
-          const parsedPieces = Number(rawValue);
-          if (Number.isFinite(parsedPieces) && parsedPieces >= 0) piecesValue = parsedPieces;
+        const parsedPieces = parseNumericQuantity(rawValue);
+        if (Number.isFinite(parsedPieces) && parsedPieces >= 0) {
+          if (piecesMermaValue === null && piecesMermaKeywords.some((token) => normalizedLabel.includes(token))) {
+            piecesMermaValue = parsedPieces;
+          }
+          if (piecesAptasValue === null && piecesAptasKeywords.some((token) => normalizedLabel.includes(token))) {
+            piecesAptasValue = parsedPieces;
+          }
+          if (piecesReceivedValue === null && piecesReceivedKeywords.some((token) => normalizedLabel.includes(token))) {
+            piecesReceivedValue = parsedPieces;
+          }
+          if (piecesValue === null && piecesKeywords.some((token) => normalizedLabel.includes(token))) {
+            piecesValue = parsedPieces;
+          }
         }
 
         if (!tarimaValue && palletKeywords.some((token) => normalizedLabel.includes(token))) {
@@ -1832,6 +1879,14 @@ function App() { // NOSONAR
       }
 
       if (!productValue || !Number.isFinite(timeMinutes)) return;
+
+      if (!Number.isFinite(piecesValue)) {
+        if (Number.isFinite(piecesReceivedValue)) {
+          piecesValue = piecesReceivedValue;
+        } else if (Number.isFinite(piecesAptasValue)) {
+          piecesValue = piecesAptasValue;
+        }
+      }
 
       const normalizedProduct = normalizeToken(productRawValue || productValue);
       const normalizedTarima = normalizeToken(tarimaValue || "sin-tarima");
@@ -1847,6 +1902,9 @@ function App() { // NOSONAR
           count: 0,
           totalMinutes: 0,
           totalPieces: 0,
+          totalReceivedPieces: 0,
+          totalMermaPieces: 0,
+          totalAptasPieces: 0,
           minMinutes: Number.POSITIVE_INFINITY,
           maxMinutes: Number.NEGATIVE_INFINITY,
         });
@@ -1856,6 +1914,9 @@ function App() { // NOSONAR
       item.count += 1;
       item.totalMinutes += timeMinutes;
       item.totalPieces += Number.isFinite(piecesValue) ? piecesValue : 0;
+      item.totalReceivedPieces += Number.isFinite(piecesReceivedValue) ? piecesReceivedValue : 0;
+      item.totalMermaPieces += Number.isFinite(piecesMermaValue) ? piecesMermaValue : 0;
+      item.totalAptasPieces += Number.isFinite(piecesAptasValue) ? piecesAptasValue : 0;
       item.minMinutes = Math.min(item.minMinutes, timeMinutes);
       item.maxMinutes = Math.max(item.maxMinutes, timeMinutes);
     });
@@ -1865,6 +1926,9 @@ function App() { // NOSONAR
         ...item,
         averageMinutes: item.count ? item.totalMinutes / item.count : 0,
         averagePieces: item.count ? item.totalPieces / item.count : 0,
+        averageReceivedPieces: item.count ? item.totalReceivedPieces / item.count : 0,
+        averageMermaPieces: item.count ? item.totalMermaPieces / item.count : 0,
+        averageAptasPieces: item.count ? item.totalAptasPieces / item.count : 0,
       }))
       .sort((left, right) => {
         if (right.totalMinutes !== left.totalMinutes) return right.totalMinutes - left.totalMinutes;

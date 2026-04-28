@@ -3255,9 +3255,36 @@ export function getEffectiveOperationalNow(now, pauseState) {
   return effectiveNow;
 }
 
+function parseOperationalTimestamp(value, referenceNow) {
+  if (!value) return null;
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+
+  const parsed = new Date(raw).getTime();
+  if (Number.isFinite(parsed)) return parsed;
+
+  const clockMatch = raw.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (!clockMatch) return null;
+
+  const hours = Number(clockMatch[1]);
+  const minutes = Number(clockMatch[2]);
+  const seconds = Number(clockMatch[3] || 0);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes) || !Number.isFinite(seconds)) return null;
+
+  const referenceMs = typeof referenceNow === "number" ? referenceNow : new Date(referenceNow).getTime();
+  const base = Number.isFinite(referenceMs) ? new Date(referenceMs) : new Date();
+  base.setHours(hours, minutes, seconds, 0);
+  return base.getTime();
+}
+
 export function getOperationalElapsedSeconds(startTime, now, pauseState) {
   if (!startTime) return 0;
-  const startMs = new Date(startTime).getTime();
+  const startMs = parseOperationalTimestamp(startTime, now);
   if (!Number.isFinite(startMs)) return 0;
   const effectiveNow = getEffectiveOperationalNow(now, pauseState);
   const workHours = pauseState?.workHours;
@@ -3269,10 +3296,20 @@ export function getOperationalElapsedSeconds(startTime, now, pauseState) {
 
 export function getElapsedSeconds(activity, now, pauseState) {
   if (!activity) return 0;
-  if (activity.status !== STATUS_RUNNING || !activity.lastResumedAt) {
+  if (activity.status !== STATUS_RUNNING) {
     return activity.accumulatedSeconds || 0;
   }
-  const resumedMs = new Date(activity.lastResumedAt).getTime();
+
+  const baselineTimestamp = activity.lastResumedAt || activity.startTime;
+  if (!baselineTimestamp) {
+    return activity.accumulatedSeconds || 0;
+  }
+
+  const resumedMs = parseOperationalTimestamp(baselineTimestamp, now);
+  if (!Number.isFinite(resumedMs)) {
+    return activity.accumulatedSeconds || 0;
+  }
+
   const effectiveNow = getEffectiveOperationalNow(now, pauseState);
   const workHours = pauseState?.workHours;
   let delta;

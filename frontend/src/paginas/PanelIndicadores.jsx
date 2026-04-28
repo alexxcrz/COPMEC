@@ -1615,7 +1615,7 @@ export default function PanelIndicadores({ contexto }) {
             <DashboardColumnChart
               rows={scopedInventoryProductTimeRows.slice(0, 12).map((item) => ({
                 key: item.key,
-                label: `${item.product}`.substring(0, 14),
+                label: item.product.length > 30 ? `${item.product.slice(0, 30).trimEnd()}...` : item.product,
                 value: item.totalMinutes,
                 valueLabel: `${formatMetricNumber(item.totalMinutes, 1)} min`,
                 tooltip: `${item.area} · ${item.boardName} · ${item.product}: ${formatMetricNumber(item.totalMinutes, 2)} min totales`,
@@ -1632,6 +1632,9 @@ export default function PanelIndicadores({ contexto }) {
                     <th>Producto / SKU</th>
                     <th>Tarima</th>
                     <th>Piezas</th>
+                    <th>Recibidas</th>
+                    <th>Merma</th>
+                    <th>Aptas</th>
                     <th>Total (min)</th>
                     <th>Promedio (min)</th>
                     <th>Mín</th>
@@ -1647,6 +1650,9 @@ export default function PanelIndicadores({ contexto }) {
                       <td>{item.product}</td>
                       <td>{item.tarima || "Sin tarima"}</td>
                       <td>{formatMetricNumber(item.totalPieces || 0, 0)}</td>
+                      <td>{formatMetricNumber(item.totalReceivedPieces || 0, 0)}</td>
+                      <td>{formatMetricNumber(item.totalMermaPieces || 0, 0)}</td>
+                      <td>{formatMetricNumber(item.totalAptasPieces || 0, 0)}</td>
                       <td>{formatMetricNumber(item.totalMinutes, 2)}</td>
                       <td>{formatMetricNumber(item.averageMinutes, 2)}</td>
                       <td>{formatMetricNumber(item.minMinutes, 2)}</td>
