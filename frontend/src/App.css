@@ -11344,6 +11344,56 @@ body {
   gap: 0.68rem;
 }
 
+.system-config-dual-sections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.72rem;
+}
+
+.system-config-compact-surface {
+  min-width: 0;
+}
+
+.system-config-clock-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.46rem;
+  align-items: end;
+}
+
+.system-time-field {
+  min-width: 0;
+}
+
+.system-time-picker {
+  min-height: 2.2rem;
+  max-width: 10.5rem;
+}
+
+.system-time-mini {
+  max-width: 7rem;
+  min-height: 1.8rem !important;
+  font-size: 0.82rem;
+  padding: 0 0.42rem !important;
+}
+
+.system-mini-field {
+  max-width: 7.2rem;
+}
+
+.system-mini-field > input {
+  min-height: 1.95rem;
+  padding: 0 0.42rem;
+  font-size: 0.84rem;
+}
+
+.system-area-time-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.46rem;
+  align-items: end;
+}
+
 .system-config-card {
   border: 1px solid #d5dfdc;
   border-radius: 1rem;
@@ -11373,10 +11423,19 @@ body {
 }
 
 @media (max-width: 900px) {
+  .system-config-dual-sections,
+  .system-config-clock-grid,
+  .system-area-time-grid,
   .system-config-grid,
   .system-config-pause-row,
   .system-config-pause-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .system-mini-field,
+  .system-time-picker,
+  .system-time-mini {
+    max-width: 100%;
   }
 }
 

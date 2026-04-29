@@ -27,6 +27,21 @@ function normalizeWeekOptions(state) {
   return options;
 }
 
+function toTimeValue(hour, minute) {
+  const hh = String(Math.min(24, Math.max(0, Number(hour) || 0))).padStart(2, "0");
+  const mm = String(Math.min(59, Math.max(0, Number(minute) || 0))).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+function parseTimeValue(value, fallbackHour = 0, fallbackMinute = 0) {
+  const match = /^(\d{2}):(\d{2})$/.exec(String(value || ""));
+  if (!match) return { hour: fallbackHour, minute: fallbackMinute };
+  return {
+    hour: Math.min(24, Math.max(0, Number(match[1]) || fallbackHour)),
+    minute: Math.min(59, Math.max(0, Number(match[2]) || fallbackMinute)),
+  };
+}
+
 export default function ConfiguracionSistema({ contexto }) {
   const {
     actionPermissions,
@@ -179,6 +194,39 @@ export default function ConfiguracionSistema({ contexto }) {
     }
   }
 
+  function handleGlobalTimeChange(kind, value) {
+    const fallbackHour = kind === "start" ? Number(workHoursDraft.startHour) || 0 : Number(workHoursDraft.endHour) || 24;
+    const fallbackMinute = kind === "start" ? Number(workHoursDraft.startMinute) || 0 : Number(workHoursDraft.endMinute) || 0;
+    const { hour, minute } = parseTimeValue(value, fallbackHour, fallbackMinute);
+    if (kind === "start") {
+      setWorkHoursDraft((current) => ({ ...current, startHour: hour, startMinute: minute }));
+      return;
+    }
+    setWorkHoursDraft((current) => ({ ...current, endHour: hour, endMinute: minute }));
+  }
+
+  function handleAreaTimeChange(area, kind, value) {
+    const areaControl = areaPauseControlsDraft[area] || { enabled: false, workHours: {} };
+    const fallbackHour = kind === "start"
+      ? Number(areaControl.workHours?.startHour) || 0
+      : Number(areaControl.workHours?.endHour) || 24;
+    const fallbackMinute = kind === "start"
+      ? Number(areaControl.workHours?.startMinute) || 0
+      : Number(areaControl.workHours?.endMinute) || 0;
+    const { hour, minute } = parseTimeValue(value, fallbackHour, fallbackMinute);
+    setAreaPauseControlsDraft((current) => {
+      const sourceControl = current[area] || { enabled: false, workHours: {} };
+      const nextWorkHours = {
+        ...sourceControl.workHours,
+        ...(kind === "start" ? { startHour: hour, startMinute: minute } : { endHour: hour, endMinute: minute }),
+      };
+      return {
+        ...current,
+        [area]: { ...sourceControl, workHours: nextWorkHours },
+      };
+    });
+  }
+
   async function handleSaveAreaPauseControls() {
     if (!canManageSystemSettings || isSavingAreaPauseControls) return;
     setIsSavingAreaPauseControls(true);
@@ -205,15 +253,40 @@ export default function ConfiguracionSistema({ contexto }) {
         </div>
       </article>
 
-      <article className="surface-card full-width admin-surface-card">
+      <div className="system-config-dual-sections">
+      <article className="surface-card admin-surface-card system-config-compact-surface">
         <div className="card-header-row">
           <div>
             <h3>Horario laboral global</h3>
-            <p className="subtle-line">Define el rango horario en que se acumula tiempo en los tableros. Fuera de este rango el contador se congela automáticamente. Puedes usar minutos para granularidad fina.</p>
+            <p className="subtle-line">Selecciona la hora desde el reloj y confirma en los campos pequeños de abajo.</p>
           </div>
         </div>
-        <div className="modal-form-grid system-config-pause-grid" style={{ gridTemplateColumns: "repeat(4, 1fr)" }}>
-          <label className="app-modal-field">
+        <div className="system-config-clock-grid">
+          <label className="app-modal-field system-time-field">
+            <span>Reloj inicio</span>
+            <input
+              type="time"
+              step="60"
+              className="system-time-picker"
+              value={toTimeValue(workHoursDraft.startHour, workHoursDraft.startMinute)}
+              onChange={(event) => handleGlobalTimeChange("start", event.target.value)}
+              disabled={!canManageSystemSettings}
+            />
+            <input className="system-time-mini" value={toTimeValue(workHoursDraft.startHour, workHoursDraft.startMinute)} readOnly />
+          </label>
+          <label className="app-modal-field system-time-field">
+            <span>Reloj fin</span>
+            <input
+              type="time"
+              step="60"
+              className="system-time-picker"
+              value={toTimeValue(workHoursDraft.endHour, workHoursDraft.endMinute)}
+              onChange={(event) => handleGlobalTimeChange("end", event.target.value)}
+              disabled={!canManageSystemSettings}
+            />
+            <input className="system-time-mini" value={toTimeValue(workHoursDraft.endHour, workHoursDraft.endMinute)} readOnly />
+          </label>
+          <label className="app-modal-field system-mini-field">
             <span>Hora inicio</span>
             <input
               type="number"
@@ -224,8 +297,8 @@ export default function ConfiguracionSistema({ contexto }) {
               disabled={!canManageSystemSettings}
             />
           </label>
-          <label className="app-modal-field">
-            <span>Minuto inicio</span>
+          <label className="app-modal-field system-mini-field">
+            <span>Min inicio</span>
             <input
               type="number"
               min="0"
@@ -235,7 +308,7 @@ export default function ConfiguracionSistema({ contexto }) {
               disabled={!canManageSystemSettings}
             />
           </label>
-          <label className="app-modal-field">
+          <label className="app-modal-field system-mini-field">
             <span>Hora fin</span>
             <input
               type="number"
@@ -246,8 +319,8 @@ export default function ConfiguracionSistema({ contexto }) {
               disabled={!canManageSystemSettings}
             />
           </label>
-          <label className="app-modal-field">
-            <span>Minuto fin</span>
+          <label className="app-modal-field system-mini-field">
+            <span>Min fin</span>
             <input
               type="number"
               min="0"
@@ -268,11 +341,11 @@ export default function ConfiguracionSistema({ contexto }) {
         </div>
       </article>
 
-      <article className="surface-card full-width admin-surface-card">
+      <article className="surface-card admin-surface-card system-config-compact-surface">
         <div className="card-header-row">
           <div>
             <h3>Horario laboral por área (Limpieza)</h3>
-            <p className="subtle-line">Define horarios específicos para cada área de limpieza. Si está habilitada, el área tendrá su propio rango de trabajo independiente del global.</p>
+            <p className="subtle-line">Activa un área para que use horario propio y quede fuera del horario global.</p>
           </div>
         </div>
         <div className="system-config-grid">
@@ -289,13 +362,45 @@ export default function ConfiguracionSistema({ contexto }) {
                       onChange={(e) => setAreaPauseControlsDraft((current) => ({ ...current, [area]: { ...areaControl, enabled: e.target.checked } }))}
                       disabled={!canManageSystemSettings}
                     />
-                    <span style={{ fontSize: "0.9rem" }}>Activo</span>
+                    <span style={{ fontSize: "0.9rem" }}>Usar horario propio</span>
                   </label>
                 </div>
                 {areaControl.enabled && (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, fontSize: "0.85rem" }}>
-                    <label style={{ display: "flex", flexDirection: "column" }}>
-                      <span style={{ marginBottom: 4 }}>Hora inicio</span>
+                  <div className="system-area-time-grid">
+                    <label className="app-modal-field system-time-field">
+                      <span>Inicio</span>
+                      <input
+                        type="time"
+                        step="60"
+                        className="system-time-picker"
+                        value={toTimeValue(areaControl.workHours?.startHour ?? 0, areaControl.workHours?.startMinute ?? 0)}
+                        onChange={(e) => handleAreaTimeChange(area, "start", e.target.value)}
+                        disabled={!canManageSystemSettings}
+                      />
+                      <input
+                        className="system-time-mini"
+                        value={toTimeValue(areaControl.workHours?.startHour ?? 0, areaControl.workHours?.startMinute ?? 0)}
+                        readOnly
+                      />
+                    </label>
+                    <label className="app-modal-field system-time-field">
+                      <span>Fin</span>
+                      <input
+                        type="time"
+                        step="60"
+                        className="system-time-picker"
+                        value={toTimeValue(areaControl.workHours?.endHour ?? 24, areaControl.workHours?.endMinute ?? 0)}
+                        onChange={(e) => handleAreaTimeChange(area, "end", e.target.value)}
+                        disabled={!canManageSystemSettings}
+                      />
+                      <input
+                        className="system-time-mini"
+                        value={toTimeValue(areaControl.workHours?.endHour ?? 24, areaControl.workHours?.endMinute ?? 0)}
+                        readOnly
+                      />
+                    </label>
+                    <label className="app-modal-field system-mini-field">
+                      <span>H. ini</span>
                       <input
                         type="number"
                         min="0"
@@ -303,11 +408,10 @@ export default function ConfiguracionSistema({ contexto }) {
                         value={areaControl.workHours?.startHour ?? 0}
                         onChange={(e) => setAreaPauseControlsDraft((current) => ({ ...current, [area]: { ...areaControl, workHours: { ...areaControl.workHours, startHour: Number(e.target.value) } } }))}
                         disabled={!canManageSystemSettings}
-                        style={{ padding: 4 }}
                       />
                     </label>
-                    <label style={{ display: "flex", flexDirection: "column" }}>
-                      <span style={{ marginBottom: 4 }}>Minuto inicio</span>
+                    <label className="app-modal-field system-mini-field">
+                      <span>M. ini</span>
                       <input
                         type="number"
                         min="0"
@@ -315,11 +419,10 @@ export default function ConfiguracionSistema({ contexto }) {
                         value={areaControl.workHours?.startMinute ?? 0}
                         onChange={(e) => setAreaPauseControlsDraft((current) => ({ ...current, [area]: { ...areaControl, workHours: { ...areaControl.workHours, startMinute: Number(e.target.value) } } }))}
                         disabled={!canManageSystemSettings}
-                        style={{ padding: 4 }}
                       />
                     </label>
-                    <label style={{ display: "flex", flexDirection: "column" }}>
-                      <span style={{ marginBottom: 4 }}>Hora fin</span>
+                    <label className="app-modal-field system-mini-field">
+                      <span>H. fin</span>
                       <input
                         type="number"
                         min="0"
@@ -327,11 +430,10 @@ export default function ConfiguracionSistema({ contexto }) {
                         value={areaControl.workHours?.endHour ?? 24}
                         onChange={(e) => setAreaPauseControlsDraft((current) => ({ ...current, [area]: { ...areaControl, workHours: { ...areaControl.workHours, endHour: Number(e.target.value) } } }))}
                         disabled={!canManageSystemSettings}
-                        style={{ padding: 4 }}
                       />
                     </label>
-                    <label style={{ display: "flex", flexDirection: "column" }}>
-                      <span style={{ marginBottom: 4 }}>Minuto fin</span>
+                    <label className="app-modal-field system-mini-field">
+                      <span>M. fin</span>
                       <input
                         type="number"
                         min="0"
@@ -339,7 +441,6 @@ export default function ConfiguracionSistema({ contexto }) {
                         value={areaControl.workHours?.endMinute ?? 0}
                         onChange={(e) => setAreaPauseControlsDraft((current) => ({ ...current, [area]: { ...areaControl, workHours: { ...areaControl.workHours, endMinute: Number(e.target.value) } } }))}
                         disabled={!canManageSystemSettings}
-                        style={{ padding: 4 }}
                       />
                     </label>
                   </div>
@@ -354,15 +455,16 @@ export default function ConfiguracionSistema({ contexto }) {
           </button>
         </div>
       </article>
+      </div>
 
       <article className="surface-card full-width admin-surface-card">
         <div className="card-header-row">
           <div>
-            <h3>Horario semanal por nave</h3>
-            <p className="subtle-line">Define qué días le tocan a cada nave por semana. En Mis tableros solo aparecerán actividades del día consultado.</p>
+            <h3>Horario semanal por área</h3>
+            <p className="subtle-line">Define qué días operativos le tocan a cada área por semana.</p>
           </div>
           <label className="board-top-select min-width">
-            <span>Semana</span>
+            <span>Semana de operación</span>
             <select value={selectedWeekKey} onChange={(event) => setSelectedWeekKey(event.target.value)}>
               {weekOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
             </select>

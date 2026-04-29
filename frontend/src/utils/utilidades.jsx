@@ -3242,16 +3242,17 @@ export function getTimeLimitMinutes(activity, catalogMap) {
  * Calculates how many seconds between `fromMs` and `toMs` fall within
  * the daily work window [startHour, endHour). Handles multi-day spans.
  */
-function calcWorkSeconds(fromMs, toMs, startHour, endHour) {
+function calcWorkSeconds(fromMs, toMs, startHour, endHour, startMinute = 0, endMinute = 0) {
   if (toMs <= fromMs || startHour >= endHour) return Math.max(0, Math.floor((toMs - fromMs) / 1000));
   const MS_PER_HOUR = 3600000;
+  const MS_PER_MINUTE = 60000;
   let total = 0;
   const fromDate = new Date(fromMs);
   const startOfDay = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
   let dayStart = startOfDay.getTime();
   while (dayStart < toMs) {
-    const windowOpen = dayStart + startHour * MS_PER_HOUR;
-    const windowClose = dayStart + endHour * MS_PER_HOUR;
+    const windowOpen = dayStart + startHour * MS_PER_HOUR + startMinute * MS_PER_MINUTE;
+    const windowClose = dayStart + endHour * MS_PER_HOUR + endMinute * MS_PER_MINUTE;
     const overlapStart = Math.max(fromMs, windowOpen);
     const overlapEnd = Math.min(toMs, windowClose);
     if (overlapEnd > overlapStart) {
@@ -3311,9 +3312,25 @@ export function getOperationalElapsedSeconds(startTime, now, pauseState) {
   const effectiveNow = getEffectiveOperationalNow(now, pauseState);
   const workHours = pauseState?.workHours;
   if (workHours && typeof workHours.startHour === "number" && typeof workHours.endHour === "number") {
-    return calcWorkSeconds(startMs, effectiveNow, workHours.startHour, workHours.endHour);
+    return calcWorkSeconds(
+      startMs,
+      effectiveNow,
+      workHours.startHour,
+      workHours.endHour,
+      workHours.startMinute || 0,
+      workHours.endMinute || 0,
+    );
   }
   return Math.max(0, Math.floor((effectiveNow - startMs) / 1000));
+}
+
+function resolveWorkHoursForArea(pauseState, areaKey) {
+  if (!areaKey) return pauseState?.workHours;
+  const areaConfig = pauseState?.areaPauseControls?.[areaKey];
+  if (areaConfig?.enabled && areaConfig?.workHours) {
+    return areaConfig.workHours;
+  }
+  return pauseState?.workHours;
 }
 
 export function getElapsedSeconds(activity, now, pauseState) {
@@ -3338,10 +3355,17 @@ export function getElapsedSeconds(activity, now, pauseState) {
   }
 
   const effectiveNow = getEffectiveOperationalNow(now, pauseState);
-  const workHours = pauseState?.workHours;
+  const workHours = resolveWorkHoursForArea(pauseState, activity.cleaningSite);
   let delta;
   if (workHours && typeof workHours.startHour === "number" && typeof workHours.endHour === "number") {
-    delta = calcWorkSeconds(resumedMs, effectiveNow, workHours.startHour, workHours.endHour);
+    delta = calcWorkSeconds(
+      resumedMs,
+      effectiveNow,
+      workHours.startHour,
+      workHours.endHour,
+      workHours.startMinute || 0,
+      workHours.endMinute || 0,
+    );
   } else {
     delta = Math.max(0, Math.floor((effectiveNow - resumedMs) / 1000));
   }
@@ -3394,6 +3418,20 @@ function normalizeSystemPauseReason(reason, fallback = EMPTY_OBJECT) {
   };
 }
 
+function normalizeWorkHoursWithMinutes(source, fallbackStartHour = 0, fallbackEndHour = 24) {
+  const data = source && typeof source === "object" ? source : EMPTY_OBJECT;
+  const startHourRaw = Number(data.startHour ?? fallbackStartHour);
+  const startMinuteRaw = Number(data.startMinute ?? 0);
+  const endHourRaw = Number(data.endHour ?? fallbackEndHour);
+  const endMinuteRaw = Number(data.endMinute ?? 0);
+  return {
+    startHour: Number.isFinite(startHourRaw) ? Math.min(23, Math.max(0, Math.round(startHourRaw))) : fallbackStartHour,
+    startMinute: Number.isFinite(startMinuteRaw) ? Math.min(59, Math.max(0, Math.round(startMinuteRaw))) : 0,
+    endHour: Number.isFinite(endHourRaw) ? Math.min(24, Math.max(0, Math.round(endHourRaw))) : fallbackEndHour,
+    endMinute: Number.isFinite(endMinuteRaw) ? Math.min(59, Math.max(0, Math.round(endMinuteRaw))) : 0,
+  };
+}
+
 export function normalizeSystemOperationalSettings(value) {
   const source = value && typeof value === "object" ? value : EMPTY_OBJECT;
   const defaultReasons = [
@@ -3418,10 +3456,15 @@ export function normalizeSystemOperationalSettings(value) {
       globalPauseEnabled: Boolean(source.pauseControl?.globalPauseEnabled),
       forceGlobalPause: Boolean(source.pauseControl?.forceGlobalPause),
       reasons: normalizedReasons.length ? normalizedReasons : defaultReasons.map((entry) => normalizeSystemPauseReason(entry, entry)),
-      workHours: {
-        startHour: (() => { const v = Number(source.pauseControl?.workHours?.startHour ?? 0); return Number.isFinite(v) ? Math.min(23, Math.max(0, Math.round(v))) : 0; })(),
-        endHour: (() => { const v = Number(source.pauseControl?.workHours?.endHour ?? 24); return Number.isFinite(v) ? Math.min(24, Math.max(0, Math.round(v))) : 24; })(),
-      },
+      workHours: normalizeWorkHoursWithMinutes(source.pauseControl?.workHours, 0, 24),
+      areaPauseControls: SYSTEM_OPERATIONAL_NAVE_KEYS.reduce((accumulator, key) => {
+        const areaSource = source.pauseControl?.areaPauseControls?.[key];
+        accumulator[key] = {
+          enabled: Boolean(areaSource?.enabled),
+          workHours: normalizeWorkHoursWithMinutes(areaSource?.workHours, 0, 24),
+        };
+        return accumulator;
+      }, {}),
       globalPauseActivatedAt: (() => { const raw = source.pauseControl?.globalPauseActivatedAt; return (raw && !isNaN(Date.parse(raw))) ? String(raw) : null; })(),
     },
   };
