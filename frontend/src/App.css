@@ -11357,23 +11357,42 @@ body {
 .system-config-clock-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.46rem;
+  gap: 0.38rem;
   align-items: end;
+}
+
+.system-config-clock-grid-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .system-time-field {
   min-width: 0;
 }
 
+.system-time-input-wrap {
+  position: relative;
+}
+
+.system-time-icon {
+  position: absolute;
+  right: 0.56rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 0.84rem;
+  opacity: 0.7;
+}
+
 .system-time-picker {
-  min-height: 2.2rem;
+  min-height: 1.96rem;
   max-width: 10.5rem;
+  padding-right: 1.6rem;
 }
 
 .system-time-mini {
   max-width: 7rem;
-  min-height: 1.8rem !important;
-  font-size: 0.82rem;
+  min-height: 1.56rem !important;
+  font-size: 0.78rem;
   padding: 0 0.42rem !important;
 }
 
@@ -11389,17 +11408,17 @@ body {
 
 .system-area-time-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.46rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.38rem;
   align-items: end;
 }
 
 .system-config-card {
   border: 1px solid #d5dfdc;
   border-radius: 1rem;
-  padding: 0.56rem;
+  padding: 0.46rem;
   display: grid;
-  gap: 0.4rem;
+  gap: 0.32rem;
   background: #ffffff;
 }
 
@@ -11409,17 +11428,32 @@ body {
 
 .system-config-pause-list {
   display: grid;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .system-config-pause-row {
   border: 1px solid #d5dfdc;
   border-radius: 1rem;
-  padding: 0.56rem;
+  padding: 0.42rem;
   display: grid;
-  gap: 0.46rem;
+  gap: 0.36rem;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   background: #ffffff;
+}
+
+.system-config-pause-grid-compact {
+  gap: 0.4rem;
+}
+
+.system-config-switch {
+  min-height: 1.7rem;
+  min-width: 2.9rem;
+  padding: 0.12rem;
+}
+
+.system-config-switch .switch-thumb {
+  width: 1.2rem;
+  height: 1.2rem;
 }
 
 @media (max-width: 900px) {

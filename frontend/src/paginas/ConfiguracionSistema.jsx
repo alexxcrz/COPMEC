@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { normalizeSystemOperationalSettings } from "../utils/utilidades.jsx";
+import { buildAreaCatalog, getAreaRoot, normalizeAreaOption, normalizeSystemOperationalSettings } from "../utils/utilidades.jsx";
 
 const WEEKDAY_OPTIONS = [
   { value: 0, label: "Lunes", short: "L" },
@@ -10,7 +10,12 @@ const WEEKDAY_OPTIONS = [
   { value: 5, label: "Sábado", short: "S" },
 ];
 
-const NAVE_OPTIONS = ["C1", "C2", "C3", "P"];
+function buildEmptyDayMap(areaKeys) {
+  return (areaKeys || []).reduce((accumulator, areaKey) => {
+    accumulator[areaKey] = [];
+    return accumulator;
+  }, {});
+}
 
 function normalizeWeekOptions(state) {
   const activeWeekKey = String(state?.boardWeeklyCycle?.activeWeekKey || "").trim();
@@ -45,27 +50,33 @@ function parseTimeValue(value, fallbackHour = 0, fallbackMinute = 0) {
 export default function ConfiguracionSistema({ contexto }) {
   const {
     actionPermissions,
-    PauseCircle,
-    Play,
     pushAppToast,
     state,
     updateSystemOperationalSettings,
   } = contexto;
 
   const canManageSystemSettings = Boolean(actionPermissions?.manageSystemSettings);
+  const realAreaOptions = useMemo(() => {
+    const catalog = buildAreaCatalog(state?.users || [], state?.areaCatalog || []);
+    const roots = catalog
+      .map((area) => normalizeAreaOption(getAreaRoot(area) || area))
+      .filter(Boolean);
+    return Array.from(new Set(roots)).sort((a, b) => a.localeCompare(b, "es-MX"));
+  }, [state?.users, state?.areaCatalog]);
   const operationalSettings = useMemo(
     () => normalizeSystemOperationalSettings(state?.system?.operational),
     [state?.system?.operational],
   );
+  const areaKeys = useMemo(() => {
+    const fromPause = Object.keys(operationalSettings.pauseControl?.areaPauseControls || {}).map((key) => normalizeAreaOption(getAreaRoot(key) || key)).filter(Boolean);
+    return Array.from(new Set([...(realAreaOptions || []), ...fromPause])).sort((a, b) => a.localeCompare(b, "es-MX"));
+  }, [operationalSettings.pauseControl?.areaPauseControls, realAreaOptions]);
   const weekOptions = useMemo(() => normalizeWeekOptions(state), [state]);
   const [selectedWeekKey, setSelectedWeekKey] = useState(() => weekOptions[0]?.key || "");
-  const [scheduleDraft, setScheduleDraft] = useState(() => {
-    const weekKey = weekOptions[0]?.key || "";
-    return operationalSettings.naveWeekSchedules[weekKey] || { C1: [], C2: [], C3: [], P: [] };
-  });
+  const [scheduleDraft, setScheduleDraft] = useState({});
   const [pauseDraft, setPauseDraft] = useState(() => operationalSettings.pauseControl);
   const [workHoursDraft, setWorkHoursDraft] = useState(() => operationalSettings.pauseControl.workHours || { startHour: 0, endHour: 24, startMinute: 0, endMinute: 0 });
-  const [areaPauseControlsDraft, setAreaPauseControlsDraft] = useState(() => operationalSettings.pauseControl.areaPauseControls || { C1: { enabled: false, workHours: {} }, C2: { enabled: false, workHours: {} }, C3: { enabled: false, workHours: {} }, P: { enabled: false, workHours: {} } });
+  const [areaPauseControlsDraft, setAreaPauseControlsDraft] = useState(() => operationalSettings.pauseControl.areaPauseControls || {});
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
   const [isSavingPause, setIsSavingPause] = useState(false);
   const [isSavingAreaPauseControls, setIsSavingAreaPauseControls] = useState(false);
@@ -81,9 +92,10 @@ export default function ConfiguracionSistema({ contexto }) {
   }, [selectedWeekKey, weekOptions]);
 
   useEffect(() => {
-    const current = operationalSettings.naveWeekSchedules[selectedWeekKey] || { C1: [], C2: [], C3: [], P: [] };
-    setScheduleDraft(current);
-  }, [operationalSettings.naveWeekSchedules, selectedWeekKey]);
+    const current = operationalSettings.naveWeekSchedules[selectedWeekKey] || {};
+    const next = { ...buildEmptyDayMap(areaKeys), ...current };
+    setScheduleDraft(next);
+  }, [operationalSettings.naveWeekSchedules, selectedWeekKey, areaKeys]);
 
   useEffect(() => {
     setPauseDraft(operationalSettings.pauseControl);
@@ -92,17 +104,26 @@ export default function ConfiguracionSistema({ contexto }) {
     setWorkHoursDraft(operationalSettings.pauseControl.workHours || { startHour: 0, endHour: 24, startMinute: 0, endMinute: 0 });
   }, [operationalSettings.pauseControl.workHours]);
   useEffect(() => {
-    setAreaPauseControlsDraft(operationalSettings.pauseControl.areaPauseControls || { C1: { enabled: false, workHours: {} }, C2: { enabled: false, workHours: {} }, C3: { enabled: false, workHours: {} }, P: { enabled: false, workHours: {} } });
-  }, [operationalSettings.pauseControl.areaPauseControls]);
+    const source = operationalSettings.pauseControl.areaPauseControls || {};
+    const normalized = {};
+    areaKeys.forEach((key) => {
+      const entry = source[key] || {};
+      normalized[key] = {
+        enabled: Boolean(entry.enabled),
+        workHours: entry.workHours || { startHour: 0, startMinute: 0, endHour: 24, endMinute: 0 },
+      };
+    });
+    setAreaPauseControlsDraft(normalized);
+  }, [operationalSettings.pauseControl.areaPauseControls, areaKeys]);
 
-  function toggleNaveDay(nave, dayOffset) {
+  function toggleAreaDay(area, dayOffset) {
     setScheduleDraft((current) => {
-      const currentDays = Array.isArray(current?.[nave]) ? current[nave] : [];
+      const currentDays = Array.isArray(current?.[area]) ? current[area] : [];
       const hasDay = currentDays.includes(dayOffset);
       const nextDays = hasDay ? currentDays.filter((item) => item !== dayOffset) : currentDays.concat([dayOffset]).sort((a, b) => a - b);
       return {
         ...current,
-        [nave]: nextDays,
+        [area]: nextDays,
       };
     });
   }
@@ -118,9 +139,9 @@ export default function ConfiguracionSistema({ contexto }) {
       await updateSystemOperationalSettings({
         naveWeekSchedules: nextWeekSchedules,
       });
-      pushAppToast("Horario semanal por nave actualizado.", "success");
+      pushAppToast("Horario semanal por área actualizado.", "success");
     } catch (error) {
-      pushAppToast(error?.message || "No se pudo actualizar el horario semanal.", "danger");
+      pushAppToast(error?.message || "No se pudo actualizar el horario por área.", "danger");
     } finally {
       setIsSavingSchedule(false);
     }
@@ -138,23 +159,6 @@ export default function ConfiguracionSistema({ contexto }) {
       pushAppToast(error?.message || "No se pudo guardar la configuración de pausas.", "danger");
     } finally {
       setIsSavingPause(false);
-    }
-  }
-
-  async function handleQuickGlobalPauseToggle(nextValues) {
-    if (!canManageSystemSettings) return;
-    const previousPauseControl = pauseDraft;
-    const nextPauseControl = {
-      ...pauseDraft,
-      ...nextValues,
-    };
-    setPauseDraft(nextPauseControl);
-    try {
-      await updateSystemOperationalSettings({ pauseControl: nextPauseControl });
-      pushAppToast(nextPauseControl.globalPauseEnabled ? "Pausa global activada." : "Pausa global desactivada.", "success");
-    } catch (error) {
-      setPauseDraft(previousPauseControl);
-      pushAppToast(error?.message || "No se pudo actualizar la pausa global.", "danger");
     }
   }
 
@@ -248,7 +252,7 @@ export default function ConfiguracionSistema({ contexto }) {
         <div className="card-header-row">
           <div>
             <h3>Configuración del sistema</h3>
-            <p className="subtle-line">Centraliza pausas globales, reglas de pausa y programación semanal por nave.</p>
+            <p className="subtle-line">Centraliza pausas globales, reglas de pausa y programación por área.</p>
           </div>
         </div>
       </article>
@@ -258,77 +262,39 @@ export default function ConfiguracionSistema({ contexto }) {
         <div className="card-header-row">
           <div>
             <h3>Horario laboral global</h3>
-            <p className="subtle-line">Selecciona la hora desde el reloj y confirma en los campos pequeños de abajo.</p>
+            <p className="subtle-line">Selecciona horario con reloj. Solo dos campos: inicio y fin.</p>
           </div>
         </div>
-        <div className="system-config-clock-grid">
+        <div className="system-config-clock-grid system-config-clock-grid-two">
           <label className="app-modal-field system-time-field">
             <span>Reloj inicio</span>
-            <input
-              type="time"
-              step="60"
-              className="system-time-picker"
-              value={toTimeValue(workHoursDraft.startHour, workHoursDraft.startMinute)}
-              onChange={(event) => handleGlobalTimeChange("start", event.target.value)}
-              disabled={!canManageSystemSettings}
-            />
-            <input className="system-time-mini" value={toTimeValue(workHoursDraft.startHour, workHoursDraft.startMinute)} readOnly />
+            <div className="system-time-input-wrap">
+              <input
+                type="time"
+                step="60"
+                className="system-time-picker"
+                value={toTimeValue(workHoursDraft.startHour, workHoursDraft.startMinute)}
+                onChange={(event) => handleGlobalTimeChange("start", event.target.value)}
+                disabled={!canManageSystemSettings}
+              />
+              <span className="system-time-icon" aria-hidden="true">🕒</span>
+            </div>
+            <input className="system-time-mini" value={toTimeValue(workHoursDraft.startHour, workHoursDraft.startMinute)} readOnly aria-label="Hora inicio seleccionada" />
           </label>
           <label className="app-modal-field system-time-field">
             <span>Reloj fin</span>
-            <input
-              type="time"
-              step="60"
-              className="system-time-picker"
-              value={toTimeValue(workHoursDraft.endHour, workHoursDraft.endMinute)}
-              onChange={(event) => handleGlobalTimeChange("end", event.target.value)}
-              disabled={!canManageSystemSettings}
-            />
-            <input className="system-time-mini" value={toTimeValue(workHoursDraft.endHour, workHoursDraft.endMinute)} readOnly />
-          </label>
-          <label className="app-modal-field system-mini-field">
-            <span>Hora inicio</span>
-            <input
-              type="number"
-              min="0"
-              max="23"
-              value={workHoursDraft.startHour ?? 0}
-              onChange={(event) => setWorkHoursDraft((current) => ({ ...current, startHour: event.target.value === "" ? "" : Number(event.target.value) }))}
-              disabled={!canManageSystemSettings}
-            />
-          </label>
-          <label className="app-modal-field system-mini-field">
-            <span>Min inicio</span>
-            <input
-              type="number"
-              min="0"
-              max="59"
-              value={workHoursDraft.startMinute ?? 0}
-              onChange={(event) => setWorkHoursDraft((current) => ({ ...current, startMinute: event.target.value === "" ? "" : Number(event.target.value) }))}
-              disabled={!canManageSystemSettings}
-            />
-          </label>
-          <label className="app-modal-field system-mini-field">
-            <span>Hora fin</span>
-            <input
-              type="number"
-              min="0"
-              max="24"
-              value={workHoursDraft.endHour ?? 24}
-              onChange={(event) => setWorkHoursDraft((current) => ({ ...current, endHour: event.target.value === "" ? "" : Number(event.target.value) }))}
-              disabled={!canManageSystemSettings}
-            />
-          </label>
-          <label className="app-modal-field system-mini-field">
-            <span>Min fin</span>
-            <input
-              type="number"
-              min="0"
-              max="59"
-              value={workHoursDraft.endMinute ?? 0}
-              onChange={(event) => setWorkHoursDraft((current) => ({ ...current, endMinute: event.target.value === "" ? "" : Number(event.target.value) }))}
-              disabled={!canManageSystemSettings}
-            />
+            <div className="system-time-input-wrap">
+              <input
+                type="time"
+                step="60"
+                className="system-time-picker"
+                value={toTimeValue(workHoursDraft.endHour, workHoursDraft.endMinute)}
+                onChange={(event) => handleGlobalTimeChange("end", event.target.value)}
+                disabled={!canManageSystemSettings}
+              />
+              <span className="system-time-icon" aria-hidden="true">🕒</span>
+            </div>
+            <input className="system-time-mini" value={toTimeValue(workHoursDraft.endHour, workHoursDraft.endMinute)} readOnly aria-label="Hora fin seleccionada" />
           </label>
         </div>
         <p className="subtle-line" style={{ marginTop: 4 }}>
@@ -344,12 +310,12 @@ export default function ConfiguracionSistema({ contexto }) {
       <article className="surface-card admin-surface-card system-config-compact-surface">
         <div className="card-header-row">
           <div>
-            <h3>Horario laboral por área (Limpieza)</h3>
-            <p className="subtle-line">Activa un área para que use horario propio y quede fuera del horario global.</p>
+            <h3>Horario laboral por área</h3>
+            <p className="subtle-line">Activa un área real para que use horario propio y quede fuera del global.</p>
           </div>
         </div>
         <div className="system-config-grid">
-          {["C1", "C2", "C3", "P"].map((area) => {
+          {areaKeys.map((area) => {
             const areaControl = areaPauseControlsDraft[area] || { enabled: false, workHours: {} };
             return (
               <div key={area} className="system-config-card">
@@ -366,81 +332,45 @@ export default function ConfiguracionSistema({ contexto }) {
                   </label>
                 </div>
                 {areaControl.enabled && (
-                  <div className="system-area-time-grid">
+                  <div className="system-area-time-grid system-config-clock-grid-two">
                     <label className="app-modal-field system-time-field">
                       <span>Inicio</span>
-                      <input
-                        type="time"
-                        step="60"
-                        className="system-time-picker"
-                        value={toTimeValue(areaControl.workHours?.startHour ?? 0, areaControl.workHours?.startMinute ?? 0)}
-                        onChange={(e) => handleAreaTimeChange(area, "start", e.target.value)}
-                        disabled={!canManageSystemSettings}
-                      />
+                      <div className="system-time-input-wrap">
+                        <input
+                          type="time"
+                          step="60"
+                          className="system-time-picker"
+                          value={toTimeValue(areaControl.workHours?.startHour ?? 0, areaControl.workHours?.startMinute ?? 0)}
+                          onChange={(e) => handleAreaTimeChange(area, "start", e.target.value)}
+                          disabled={!canManageSystemSettings}
+                        />
+                        <span className="system-time-icon" aria-hidden="true">🕒</span>
+                      </div>
                       <input
                         className="system-time-mini"
                         value={toTimeValue(areaControl.workHours?.startHour ?? 0, areaControl.workHours?.startMinute ?? 0)}
                         readOnly
+                        aria-label={`Horario inicio seleccionado de ${area}`}
                       />
                     </label>
                     <label className="app-modal-field system-time-field">
                       <span>Fin</span>
-                      <input
-                        type="time"
-                        step="60"
-                        className="system-time-picker"
-                        value={toTimeValue(areaControl.workHours?.endHour ?? 24, areaControl.workHours?.endMinute ?? 0)}
-                        onChange={(e) => handleAreaTimeChange(area, "end", e.target.value)}
-                        disabled={!canManageSystemSettings}
-                      />
+                      <div className="system-time-input-wrap">
+                        <input
+                          type="time"
+                          step="60"
+                          className="system-time-picker"
+                          value={toTimeValue(areaControl.workHours?.endHour ?? 24, areaControl.workHours?.endMinute ?? 0)}
+                          onChange={(e) => handleAreaTimeChange(area, "end", e.target.value)}
+                          disabled={!canManageSystemSettings}
+                        />
+                        <span className="system-time-icon" aria-hidden="true">🕒</span>
+                      </div>
                       <input
                         className="system-time-mini"
                         value={toTimeValue(areaControl.workHours?.endHour ?? 24, areaControl.workHours?.endMinute ?? 0)}
                         readOnly
-                      />
-                    </label>
-                    <label className="app-modal-field system-mini-field">
-                      <span>H. ini</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="23"
-                        value={areaControl.workHours?.startHour ?? 0}
-                        onChange={(e) => setAreaPauseControlsDraft((current) => ({ ...current, [area]: { ...areaControl, workHours: { ...areaControl.workHours, startHour: Number(e.target.value) } } }))}
-                        disabled={!canManageSystemSettings}
-                      />
-                    </label>
-                    <label className="app-modal-field system-mini-field">
-                      <span>M. ini</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="59"
-                        value={areaControl.workHours?.startMinute ?? 0}
-                        onChange={(e) => setAreaPauseControlsDraft((current) => ({ ...current, [area]: { ...areaControl, workHours: { ...areaControl.workHours, startMinute: Number(e.target.value) } } }))}
-                        disabled={!canManageSystemSettings}
-                      />
-                    </label>
-                    <label className="app-modal-field system-mini-field">
-                      <span>H. fin</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="24"
-                        value={areaControl.workHours?.endHour ?? 24}
-                        onChange={(e) => setAreaPauseControlsDraft((current) => ({ ...current, [area]: { ...areaControl, workHours: { ...areaControl.workHours, endHour: Number(e.target.value) } } }))}
-                        disabled={!canManageSystemSettings}
-                      />
-                    </label>
-                    <label className="app-modal-field system-mini-field">
-                      <span>M. fin</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="59"
-                        value={areaControl.workHours?.endMinute ?? 0}
-                        onChange={(e) => setAreaPauseControlsDraft((current) => ({ ...current, [area]: { ...areaControl, workHours: { ...areaControl.workHours, endMinute: Number(e.target.value) } } }))}
-                        disabled={!canManageSystemSettings}
+                        aria-label={`Horario fin seleccionado de ${area}`}
                       />
                     </label>
                   </div>
@@ -460,7 +390,7 @@ export default function ConfiguracionSistema({ contexto }) {
       <article className="surface-card full-width admin-surface-card">
         <div className="card-header-row">
           <div>
-            <h3>Horario semanal por área</h3>
+            <h3>Días semanales por área</h3>
             <p className="subtle-line">Define qué días operativos le tocan a cada área por semana.</p>
           </div>
           <label className="board-top-select min-width">
@@ -472,19 +402,19 @@ export default function ConfiguracionSistema({ contexto }) {
         </div>
 
         <div className="system-config-grid">
-          {NAVE_OPTIONS.map((nave) => (
-            <div key={nave} className="system-config-card">
-              <strong>{nave}</strong>
+          {areaKeys.map((area) => (
+            <div key={area} className="system-config-card">
+              <strong>{area}</strong>
               <div className="catalog-activity-chip-row">
                 {WEEKDAY_OPTIONS.map((day) => {
-                  const active = Array.isArray(scheduleDraft?.[nave]) && scheduleDraft[nave].includes(day.value);
+                  const active = Array.isArray(scheduleDraft?.[area]) && scheduleDraft[area].includes(day.value);
                   return (
                     <button
-                      key={`${nave}-${day.value}`}
+                      key={`${area}-${day.value}`}
                       type="button"
                       className={`catalog-day-chip ${active ? "active" : ""}`.trim()}
                       title={day.label}
-                      onClick={() => toggleNaveDay(nave, day.value)}
+                      onClick={() => toggleAreaDay(area, day.value)}
                       disabled={!canManageSystemSettings}
                     >
                       {day.short}
@@ -506,61 +436,39 @@ export default function ConfiguracionSistema({ contexto }) {
       <article className="surface-card full-width admin-surface-card">
         <div className="card-header-row">
           <div>
-            <h3>Pausas globales y reglas</h3>
-            <p className="subtle-line">Marca qué pausas sí afectan el tiempo y define minutos autorizados sin penalización.</p>
+            <h3>Pausa global</h3>
+            <p className="subtle-line">Controla solo la pausa global del sistema.</p>
           </div>
-          <button type="button" className={`switch-button ${pauseDraft?.globalPauseEnabled ? "on" : ""}`} onClick={() => setPauseDraft((current) => ({ ...current, globalPauseEnabled: !current.globalPauseEnabled }))} disabled={!canManageSystemSettings} aria-label="Alternar pausa global">
-            <span className="switch-thumb" />
+        </div>
+
+        <div className="modal-form-grid system-config-pause-grid system-config-pause-grid-compact">
+          <div className="app-modal-field">
+            <span>Pausa global activa</span>
+            <button type="button" className={`switch-button system-config-switch ${pauseDraft?.globalPauseEnabled ? "on" : ""}`} onClick={() => setPauseDraft((current) => ({ ...current, globalPauseEnabled: !current.globalPauseEnabled }))} disabled={!canManageSystemSettings} aria-label="Alternar pausa global activa">
+              <span className="switch-thumb" />
+            </button>
+          </div>
+          <div className="app-modal-field">
+            <span>Pausa forzada de operación</span>
+            <button type="button" className={`switch-button system-config-switch ${pauseDraft?.forceGlobalPause ? "on" : ""}`} onClick={() => setPauseDraft((current) => ({ ...current, forceGlobalPause: !current.forceGlobalPause }))} disabled={!canManageSystemSettings} aria-label="Alternar pausa forzada">
+              <span className="switch-thumb" />
+            </button>
+          </div>
+        </div>
+
+        <div className="row-actions compact">
+          <button type="button" className="primary-button" onClick={handleSavePauseRules} disabled={!canManageSystemSettings || isSavingPause}>
+            {isSavingPause ? "Guardando..." : "Guardar pausa global"}
           </button>
         </div>
+      </article>
 
-        <div className="board-global-pause-top">
-          <div className="saved-board-list">
-            <span className="chip primary">Global</span>
-            <span className="chip" style={pauseDraft?.globalPauseEnabled ? { background: "#fee2e2", color: "#991b1b" } : { background: "#ecfdf3", color: "#166534" }}>
-              {pauseDraft?.globalPauseEnabled ? "Pausa global activa" : "Global activo"}
-            </span>
-            {pauseDraft?.forceGlobalPause ? (
-              <span className="chip" style={{ background: "#fff7ed", color: "#9a3412" }}>Horas extra activas</span>
-            ) : null}
+      <article className="surface-card full-width admin-surface-card">
+        <div className="card-header-row">
+          <div>
+            <h3>Motivos de pausa</h3>
+            <p className="subtle-line">Bloque compacto de 4 columnas fijas.</p>
           </div>
-          <div className="row-actions compact board-workflow-actions" aria-label="Control global">
-            <button
-              type="button"
-              className="board-action-button start icon-only"
-              title="Quitar pausa global"
-              aria-label="Quitar pausa global"
-              onClick={() => void handleQuickGlobalPauseToggle({ globalPauseEnabled: false, forceGlobalPause: false })}
-              disabled={!canManageSystemSettings || !pauseDraft?.globalPauseEnabled}
-            >
-              <Play size={13} />
-            </button>
-            <button
-              type="button"
-              className="board-action-button pause icon-only"
-              title="Activar pausa global"
-              aria-label="Activar pausa global"
-              onClick={() => void handleQuickGlobalPauseToggle({ globalPauseEnabled: true, forceGlobalPause: false })}
-              disabled={!canManageSystemSettings || pauseDraft?.globalPauseEnabled}
-            >
-              <PauseCircle size={13} />
-            </button>
-          </div>
-        </div>
-
-        <div className="modal-form-grid system-config-pause-grid">
-          <label className="app-modal-field">
-            <span>Pausa global activa</span>
-            <button type="button" className={`switch-button ${pauseDraft?.globalPauseEnabled ? "on" : ""}`} onClick={() => setPauseDraft((current) => ({ ...current, globalPauseEnabled: !current.globalPauseEnabled }))} disabled={!canManageSystemSettings} aria-label="Alternar pausa global activa">
-              <span className="switch-thumb" />
-            </button>
-          </label>
-          <label className="app-modal-field">
-            <span>Pausa forzada de operación</span>
-            <button type="button" className={`switch-button ${pauseDraft?.forceGlobalPause ? "on" : ""}`} onClick={() => setPauseDraft((current) => ({ ...current, forceGlobalPause: !current.forceGlobalPause }))} disabled={!canManageSystemSettings} aria-label="Alternar pausa forzada">
-              <span className="switch-thumb" />
-            </button>
-          </label>
         </div>
 
         <div className="system-config-pause-list">
@@ -573,11 +481,11 @@ export default function ConfiguracionSistema({ contexto }) {
                   reasons: (current?.reasons || []).map((entry, entryIndex) => (entryIndex === index ? { ...entry, label: event.target.value } : entry)),
                 }))} disabled={!canManageSystemSettings} />
               </label>
-              <label className="app-modal-field">
+              <div className="app-modal-field">
                 <span>Afecta contador</span>
                 <button
                   type="button"
-                  className={`switch-button ${reason.affectsTimer ? "on" : ""}`}
+                  className={`switch-button system-config-switch ${reason.affectsTimer ? "on" : ""}`}
                   onClick={() => setPauseDraft((current) => ({
                     ...current,
                     reasons: (current?.reasons || []).map((entry, entryIndex) => (entryIndex === index ? { ...entry, affectsTimer: !entry.affectsTimer } : entry)),
@@ -587,7 +495,7 @@ export default function ConfiguracionSistema({ contexto }) {
                 >
                   <span className="switch-thumb" />
                 </button>
-              </label>
+              </div>
               <label className="app-modal-field">
                 <span>Minutos autorizados</span>
                 <input type="number" min="0" value={reason.authorizedMinutes ?? 0} onChange={(event) => setPauseDraft((current) => ({
@@ -595,11 +503,11 @@ export default function ConfiguracionSistema({ contexto }) {
                   reasons: (current?.reasons || []).map((entry, entryIndex) => (entryIndex === index ? { ...entry, authorizedMinutes: event.target.value } : entry)),
                 }))} disabled={!canManageSystemSettings} />
               </label>
-              <label className="app-modal-field">
+              <div className="app-modal-field">
                 <span>Habilitada</span>
                 <button
                   type="button"
-                  className={`switch-button ${reason.enabled ? "on" : ""}`}
+                  className={`switch-button system-config-switch ${reason.enabled ? "on" : ""}`}
                   onClick={() => setPauseDraft((current) => ({
                     ...current,
                     reasons: (current?.reasons || []).map((entry, entryIndex) => (entryIndex === index ? { ...entry, enabled: !entry.enabled } : entry)),
@@ -609,7 +517,7 @@ export default function ConfiguracionSistema({ contexto }) {
                 >
                   <span className="switch-thumb" />
                 </button>
-              </label>
+              </div>
             </div>
           ))}
         </div>

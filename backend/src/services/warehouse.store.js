@@ -271,8 +271,13 @@ function normalizeWeekdayOffsets(value) {
 
 function normalizeSystemNaveWeekSchedule(value) {
   const source = value && typeof value === "object" ? value : EMPTY_OBJECT;
-  return SYSTEM_OPERATIONAL_NAVE_KEYS.reduce((accumulator, nave) => {
-    accumulator[nave] = normalizeWeekdayOffsets(source[nave]);
+  const keys = Object.keys(source).length ? Object.keys(source) : SYSTEM_OPERATIONAL_NAVE_KEYS;
+  return keys.reduce((accumulator, areaKey) => {
+    const normalizedArea = normalizeBoardOwnerArea(areaKey) || normalizeAreaOption(areaKey);
+    if (!normalizedArea) return accumulator;
+    const previousDays = Array.isArray(accumulator[normalizedArea]) ? accumulator[normalizedArea] : [];
+    const nextDays = normalizeWeekdayOffsets(source[areaKey]);
+    accumulator[normalizedArea] = normalizeWeekdayOffsets(previousDays.concat(nextDays));
     return accumulator;
   }, {});
 }
@@ -341,15 +346,22 @@ function normalizeSystemPauseControl(value) {
   // Global work hours (with minute support)
   const globalWorkHours = normalizeWorkHoursWithMinutes(source.workHours);
   
-  // Area-specific pause controls (C1, C2, C3, P)
   const areaSource = source.areaPauseControls && typeof source.areaPauseControls === "object" ? source.areaPauseControls : {};
-  const areaPauseControls = {};
-  ["C1", "C2", "C3", "P"].forEach((area) => {
-    areaPauseControls[area] = normalizeAreaPauseControl(areaSource[area]);
-  });
+  const areaKeys = Object.keys(areaSource).length ? Object.keys(areaSource) : ["C1", "C2", "C3", "P"];
+  const areaPauseControls = areaKeys.reduce((accumulator, areaKey) => {
+    const normalizedArea = normalizeBoardOwnerArea(areaKey) || normalizeAreaOption(areaKey);
+    if (!normalizedArea) return accumulator;
+    const mergedCurrent = accumulator[normalizedArea] || normalizeAreaPauseControl(EMPTY_OBJECT);
+    const normalizedIncoming = normalizeAreaPauseControl(areaSource[areaKey]);
+    accumulator[normalizedArea] = {
+      enabled: Boolean(normalizedIncoming.enabled || mergedCurrent.enabled),
+      workHours: normalizeWorkHoursWithMinutes(normalizedIncoming.workHours || mergedCurrent.workHours || EMPTY_OBJECT),
+    };
+    return accumulator;
+  }, {});
   
   const rawActivatedAt = source.globalPauseActivatedAt;
-  const globalPauseActivatedAt = (rawActivatedAt && !isNaN(Date.parse(rawActivatedAt))) ? String(rawActivatedAt) : null;
+  const globalPauseActivatedAt = (rawActivatedAt && !Number.isNaN(Date.parse(rawActivatedAt))) ? String(rawActivatedAt) : null;
   return {
     globalPauseEnabled: Boolean(source.globalPauseEnabled),
     forceGlobalPause: Boolean(source.forceGlobalPause),

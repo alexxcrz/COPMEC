@@ -3388,8 +3388,13 @@ function normalizeWeekdayOffsetsList(value) {
 
 function normalizeSystemNaveWeekSchedule(value) {
   const source = value && typeof value === "object" ? value : EMPTY_OBJECT;
-  return SYSTEM_OPERATIONAL_NAVE_KEYS.reduce((accumulator, nave) => {
-    accumulator[nave] = normalizeWeekdayOffsetsList(source[nave]);
+  const keys = Object.keys(source).length ? Object.keys(source) : SYSTEM_OPERATIONAL_NAVE_KEYS;
+  return keys.reduce((accumulator, areaKey) => {
+    const normalizedArea = normalizeAreaOption(getAreaRoot(areaKey) || areaKey);
+    if (!normalizedArea) return accumulator;
+    const previousDays = Array.isArray(accumulator[normalizedArea]) ? accumulator[normalizedArea] : [];
+    const nextDays = normalizeWeekdayOffsetsList(source[areaKey]);
+    accumulator[normalizedArea] = normalizeWeekdayOffsetsList(previousDays.concat(nextDays));
     return accumulator;
   }, {});
 }
@@ -3457,14 +3462,23 @@ export function normalizeSystemOperationalSettings(value) {
       forceGlobalPause: Boolean(source.pauseControl?.forceGlobalPause),
       reasons: normalizedReasons.length ? normalizedReasons : defaultReasons.map((entry) => normalizeSystemPauseReason(entry, entry)),
       workHours: normalizeWorkHoursWithMinutes(source.pauseControl?.workHours, 0, 24),
-      areaPauseControls: SYSTEM_OPERATIONAL_NAVE_KEYS.reduce((accumulator, key) => {
-        const areaSource = source.pauseControl?.areaPauseControls?.[key];
-        accumulator[key] = {
-          enabled: Boolean(areaSource?.enabled),
-          workHours: normalizeWorkHoursWithMinutes(areaSource?.workHours, 0, 24),
-        };
-        return accumulator;
-      }, {}),
+      areaPauseControls: (() => {
+        const areaSource = source.pauseControl?.areaPauseControls && typeof source.pauseControl.areaPauseControls === "object"
+          ? source.pauseControl.areaPauseControls
+          : EMPTY_OBJECT;
+        const keys = Object.keys(areaSource).length ? Object.keys(areaSource) : SYSTEM_OPERATIONAL_NAVE_KEYS;
+        return keys.reduce((accumulator, key) => {
+          const normalizedArea = normalizeAreaOption(getAreaRoot(key) || key);
+          if (!normalizedArea) return accumulator;
+          const current = accumulator[normalizedArea] || { enabled: false, workHours: normalizeWorkHoursWithMinutes(EMPTY_OBJECT, 0, 24) };
+          const rawAreaSource = areaSource[key] || EMPTY_OBJECT;
+          accumulator[normalizedArea] = {
+            enabled: Boolean(rawAreaSource?.enabled ?? current.enabled),
+            workHours: normalizeWorkHoursWithMinutes(rawAreaSource?.workHours || current.workHours, 0, 24),
+          };
+          return accumulator;
+        }, {});
+      })(),
       globalPauseActivatedAt: (() => { const raw = source.pauseControl?.globalPauseActivatedAt; return (raw && !isNaN(Date.parse(raw))) ? String(raw) : null; })(),
     },
   };
