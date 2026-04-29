@@ -101,6 +101,7 @@ export default function MisTableros({ contexto }) {
     state,
     InventoryLookupInput,
     updateBoardRowValue,
+    updateBoardRowTimeOverride,
     visibleUsers,
     requestJson,
     applyRemoteWarehouseState,
@@ -124,6 +125,8 @@ export default function MisTableros({ contexto }) {
     Trash2,
     LayoutDashboard,
     ROLE_JR,
+    isRootLead,
+    canManageDashboardState,
     formatDate,
     formatTime,
   } = contexto;
@@ -184,6 +187,33 @@ export default function MisTableros({ contexto }) {
     return `${String(hourValue).padStart(2, "0")}:${String(minuteValue).padStart(2, "0")}`;
   }
 
+  // Helpers for Lead time overrides
+  function parseHhmmToSeconds(hhmm) {
+    const parts = String(hhmm || "").split(":");
+    const h = Number.parseInt(parts[0], 10);
+    const m = Number.parseInt(parts[1] || "0", 10);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+    return h * 3600 + m * 60;
+  }
+
+  function secondsToHhmm(secs) {
+    const s = Math.max(0, Math.round(Number(secs) || 0));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  }
+
+  function hhmmToIso(hhmm, baseIso) {
+    const parts = String(hhmm || "").split(":");
+    const h = Number.parseInt(parts[0], 10);
+    const m = Number.parseInt(parts[1] || "0", 10);
+    if (!Number.isFinite(h) || !Number.isFinite(m) || h > 23 || m > 59) return null;
+    const base = baseIso ? new Date(baseIso) : new Date();
+    if (!Number.isFinite(base.getTime())) return null;
+    base.setHours(h, m, 0, 0);
+    return base.toISOString();
+  }
+
   const auxLabels = {
     assignee: "Player",
     status: "Estado",
@@ -236,6 +266,8 @@ export default function MisTableros({ contexto }) {
   const assigneeMenuRef = useRef(null);
   const assigneeTriggerRef = useRef(null);
   const [assigneeMenuPosition, setAssigneeMenuPosition] = useState(null);
+  // Local edit buffer for Lead time overrides: key = "rowId-colId", value = string being typed
+  const [leadTimeEdits, setLeadTimeEdits] = useState({});
   const boardColumns = boardView ? getOrderedBoardColumns(boardView, isBoardOwner) : [];
   const systemOperationalSettings = normalizeSystemOperationalSettings(state?.system?.operational);
   const systemPauseControl = systemOperationalSettings.pauseControl;
@@ -603,7 +635,7 @@ export default function MisTableros({ contexto }) {
                     title="Nueva fila"
                     aria-label="Nueva fila"
                     onClick={() => createBoardRow(selectedCustomBoard.id)}
-                    disabled={isHistoricalCustomBoardView || globalPauseLocked || !selectedBoardActionPermissions.createBoardRow}
+                    disabled={isHistoricalCustomBoardView || (!canManageDashboardState && (globalPauseLocked || !selectedBoardActionPermissions.createBoardRow))}
                   >
                     <Plus size={16} />
                   </button>
@@ -641,7 +673,7 @@ export default function MisTableros({ contexto }) {
               {boardOperationalContextType !== "none" && boardOperationalContextValue ? <span>{boardOperationalContextLabel} · {boardOperationalContextValue}</span> : null}
               {isHistoricalCustomBoardView ? <span>Corte · {formatDate(selectedCustomBoardSnapshot?.startDate)} - {formatDate(selectedCustomBoardSnapshot?.endDate)}</span> : null}
             </div>
-            {globalPauseLocked ? <p className="validation-text">Pausa global activa. Las filas quedan bloqueadas hasta reanudar en Configuración del sistema.</p> : null}
+            {globalPauseLocked ? <p className="validation-text">Pausa global activa.{canManageDashboardState ? " Lead principal puede seguir modificando." : " Las filas quedan bloqueadas hasta reanudar en Configuración del sistema."}</p> : null}
             {!weekdayAllowedBySystemSchedule && showCleaningNaveSelector ? <p className="validation-text">La nave {cleaningNaveValue} no tiene actividades configuradas para este día en la semana seleccionada.</p> : null}
             {isHistoricalCustomBoardView ? <p className="subtle-line">Vista histórica en solo lectura. El tablero activo ya quedó limpio para la semana actual.</p> : null}
             <p className="required-legend"><span className="required-mark" aria-hidden="true">*</span> obligatorio</p>
@@ -706,16 +738,15 @@ export default function MisTableros({ contexto }) {
                 </thead>
                 <tbody>
                   {visibleRows.map((row) => {
-                    const rowCaptureEnabled = !isHistoricalCustomBoardView && !globalPauseLocked && canEditBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions);
-                    const rowWorkflowEnabled = !isHistoricalCustomBoardView && !globalPauseLocked && canOperateBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions);
-                    const canDeleteBoardRows = Boolean(selectedBoardActionPermissions.deleteBoardRow);
+                    const isLeadPrincipal = Boolean(canManageDashboardState);
+                    const rowCaptureEnabled = !isHistoricalCustomBoardView && (isLeadPrincipal || (!globalPauseLocked && canEditBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions)));
+                    const rowWorkflowEnabled = !isHistoricalCustomBoardView && (isLeadPrincipal || (!globalPauseLocked && canOperateBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions)));
+                    const canDeleteBoardRows = Boolean(selectedBoardActionPermissions.deleteBoardRow) || isLeadPrincipal;
                     const rowDeleteEnabled = canDeleteBoardRows
                       && !isHistoricalCustomBoardView
-                      && !globalPauseLocked
-                      && row.status !== STATUS_FINISHED
-                      && canEditBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions);
+                      && (isLeadPrincipal || (!globalPauseLocked && row.status !== STATUS_FINISHED && canEditBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions)));
                     const isFinishedRow = row.status === STATUS_FINISHED;
-                    const rowFieldEditable = rowCaptureEnabled;
+                    const rowFieldEditable = rowCaptureEnabled || (isLeadPrincipal && isFinishedRow);
                     const canStartRow = row.status === STATUS_PENDING || row.status === STATUS_PAUSED;
                     const canPauseRow = row.status === STATUS_RUNNING;
                     const canFinishRow = row.status === STATUS_RUNNING;
@@ -792,29 +823,107 @@ export default function MisTableros({ contexto }) {
                             }
 
                             if (column.id === "status") {
-                              return <td key={`${row.id}-${column.token}`} style={getEffectiveColumnWidth(column)}><StatusBadge status={row.status || STATUS_PENDING} /></td>;
+                              const persistedPauseLogs = Array.isArray(row.pauseLogs) ? row.pauseLogs : [];
+                              const persistedPauseSeconds = persistedPauseLogs.reduce((sum, entry) => sum + Math.max(0, Number(entry?.pauseDurationSeconds || 0)), 0);
+                              const livePauseSeconds = row.status === STATUS_PAUSED && row.pauseStartedAt
+                                ? Math.max(0, getOperationalElapsedSeconds(row.pauseStartedAt, now, pauseState, row.cleaningSite))
+                                : 0;
+                              const totalPauseSeconds = persistedPauseSeconds + livePauseSeconds;
+                              const pauseCount = persistedPauseLogs.length + (row.status === STATUS_PAUSED && row.pauseStartedAt && !persistedPauseLogs.some((entry) => !entry?.resumedAt) ? 1 : 0);
+                              const pauseReasonLabel = String(
+                                row.lastPauseReason
+                                || persistedPauseLogs[persistedPauseLogs.length - 1]?.reason
+                                || "",
+                              ).trim();
+                              return (
+                                <td key={`${row.id}-${column.token}`} style={getEffectiveColumnWidth(column)}>
+                                  <div style={{ display: "grid", gap: "0.2rem" }}>
+                                    <StatusBadge status={row.status || STATUS_PENDING} />
+                                    {pauseCount > 0 ? <small className="subtle-line">{pauseCount} pausa(s) · {formatDurationClock(totalPauseSeconds)}</small> : null}
+                                    {row.status === STATUS_PAUSED && pauseReasonLabel ? <small className="subtle-line">Motivo: {pauseReasonLabel}</small> : null}
+                                    {isLeadPrincipal && pauseCount > 0 ? (
+                                      <button
+                                        type="button"
+                                        className="icon-button"
+                                        onClick={() => updateBoardRowTimeOverride(selectedCustomBoard.id, row.id, { clearPauseLogs: true })}
+                                      >
+                                        Eliminar pausas
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                </td>
+                              );
                             }
 
                             if (column.id === "time") {
                               const effectiveNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : now;
-                              return <td key={`${row.id}-${column.token}`} style={getEffectiveColumnWidth(column)}>{formatDurationClock(getElapsedSeconds(row, effectiveNow, pauseState))}</td>;
+                              const computedSecs = getElapsedSeconds(row, effectiveNow, pauseState);
+                              if (isLeadPrincipal) {
+                                const editKey = `${row.id}-time`;
+                                const editingVal = leadTimeEdits[editKey];
+                                const displayVal = editingVal !== undefined ? editingVal : secondsToHhmm(computedSecs);
+                                return (
+                                  <td key={`${row.id}-${column.token}`} style={getEffectiveColumnWidth(column)}>
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={displayVal}
+                                      placeholder="HH:mm"
+                                      style={{ width: "100%" }}
+                                      onChange={(event) => setLeadTimeEdits((prev) => ({ ...prev, [editKey]: event.target.value }))}
+                                      onBlur={(event) => {
+                                        setLeadTimeEdits((prev) => { const next = { ...prev }; delete next[editKey]; return next; });
+                                        const secs = parseHhmmToSeconds(event.target.value);
+                                        if (secs !== null) updateBoardRowTimeOverride(selectedCustomBoard.id, row.id, { accumulatedSeconds: secs });
+                                      }}
+                                    />
+                                  </td>
+                                );
+                              }
+                              return <td key={`${row.id}-${column.token}`} style={getEffectiveColumnWidth(column)}>{formatDurationClock(computedSecs)}</td>;
                             }
 
                             if (column.id === "totalTime") {
                               const effectiveNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : now;
                               const prodSecs = getElapsedSeconds(row, effectiveNow, pauseState);
-                              const totalSecs = row.startTime
-                                ? Math.max(prodSecs, getOperationalElapsedSeconds(row.startTime, effectiveNow, pauseState))
-                                : 0;
+                              const totalSecs = row.status === STATUS_PAUSED
+                                ? prodSecs
+                                : row.startTime
+                                  ? Math.max(prodSecs, getOperationalElapsedSeconds(row.startTime, effectiveNow, pauseState))
+                                  : 0;
+                              if (isLeadPrincipal) {
+                                const editKey = `${row.id}-totalTime`;
+                                const editingVal = leadTimeEdits[editKey];
+                                const displayVal = editingVal !== undefined ? editingVal : secondsToHhmm(totalSecs);
+                                return (
+                                  <td key={`${row.id}-${column.token}`} style={getEffectiveColumnWidth(column)}>
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={displayVal}
+                                      placeholder="HH:mm"
+                                      style={{ width: "100%" }}
+                                      onChange={(event) => setLeadTimeEdits((prev) => ({ ...prev, [editKey]: event.target.value }))}
+                                      onBlur={(event) => {
+                                        setLeadTimeEdits((prev) => { const next = { ...prev }; delete next[editKey]; return next; });
+                                        const secs = parseHhmmToSeconds(event.target.value);
+                                        if (secs !== null) updateBoardRowTimeOverride(selectedCustomBoard.id, row.id, { accumulatedSeconds: secs });
+                                      }}
+                                    />
+                                  </td>
+                                );
+                              }
                               return <td key={`${row.id}-${column.token}`} style={getEffectiveColumnWidth(column)}>{formatDurationClock(totalSecs)}</td>;
                             }
 
                             if (column.id === "efficiency") {
                               const effectiveNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : now;
                               const prodSecs = getElapsedSeconds(row, effectiveNow, pauseState);
-                              const totalSecs = row.startTime
-                                ? Math.max(prodSecs, getOperationalElapsedSeconds(row.startTime, effectiveNow, pauseState))
-                                : prodSecs;
+                              const totalSecs = row.status === STATUS_PAUSED
+                                ? prodSecs
+                                : row.startTime
+                                  ? Math.max(prodSecs, getOperationalElapsedSeconds(row.startTime, effectiveNow, pauseState))
+                                  : prodSecs;
                               const pct = totalSecs > 0 ? Math.round((prodSecs / totalSecs) * 100) : (row.startTime ? 100 : 0);
                               const color = pct >= 80 ? "#16a34a" : pct >= 50 ? "#15803d" : "#dc2626";
                               return (
@@ -903,10 +1012,6 @@ export default function MisTableros({ contexto }) {
                             );
                           }
 
-                          if (isBoardActivityListField) {
-                            return <td key={field.id} style={columnStyle}><input value={row.values?.[field.id] || ""} onChange={(event) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, event.target.value)} placeholder={field.placeholder || "Actividad"} style={rule ? { ...controlStyle, backgroundColor: rule.color, color: rule.textColor || "inherit" } : controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
-                          }
-
                           if (field.type === "select") {
                             const groupedOptions = options.reduce((accumulator, option) => {
                               const groupName = option.group || "Opciones";
@@ -980,28 +1085,74 @@ export default function MisTableros({ contexto }) {
                             const isEndTimeField = normalizedTimeLabel.includes("fin") || normalizedTimeLabel.includes("final") || normalizedTimeLabel.includes("end");
                             const startTimeMs = row.startTime ? new Date(row.startTime).getTime() : NaN;
                             const hasStartTimeMs = Number.isFinite(startTimeMs);
+                            const isAutoManagedTimeField = isStartTimeField || isEndTimeField;
+                            const timeFieldEditable = rowFieldEditable && (!isAutoManagedTimeField || isLeadPrincipal);
 
-                            let displayTimeValue = normalizeTimeInput24h(rawTimeValue, false);
-                            if (isStartTimeField && hasStartTimeMs) {
+                            // For Lead editing hora inicio/fin: use local edit buffer or the ISO-derived value.
+                            const leadEditKey = `${row.id}-${field.id}`;
+                            let displayTimeValue;
+                            if (isLeadPrincipal && isAutoManagedTimeField && leadEditKey in leadTimeEdits) {
+                              displayTimeValue = leadTimeEdits[leadEditKey];
+                            } else if (isStartTimeField && hasStartTimeMs) {
                               displayTimeValue = formatTime(startTimeMs);
                             } else if (isEndTimeField && row.status === STATUS_FINISHED && row.endTime) {
                               displayTimeValue = formatTime(row.endTime);
+                            } else {
+                              displayTimeValue = normalizeTimeInput24h(rawTimeValue, false);
                             }
 
-                            const isAutoManagedTimeField = isStartTimeField || isEndTimeField;
-                            const timeFieldEditable = rowFieldEditable && !isAutoManagedTimeField;
                             return (
                               <td key={field.id} style={columnStyle}>
                                 <input
                                   type="text"
                                   inputMode="numeric"
                                   value={displayTimeValue}
-                                  onChange={(event) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, normalizeTimeInput24h(event.target.value, false))}
+                                  onChange={(event) => {
+                                    if (isLeadPrincipal && isAutoManagedTimeField) {
+                                      setLeadTimeEdits((prev) => ({ ...prev, [leadEditKey]: event.target.value }));
+                                    } else {
+                                      updateBoardRowValue(selectedCustomBoard.id, row.id, field, normalizeTimeInput24h(event.target.value, false));
+                                    }
+                                  }}
                                   onBlur={(event) => {
                                     if (!timeFieldEditable) return;
-                                    const normalizedValue = normalizeTimeInput24h(event.target.value, true);
-                                    if (normalizedValue && normalizedValue !== rawTimeValue) {
-                                      updateBoardRowValue(selectedCustomBoard.id, row.id, field, normalizedValue);
+                                    if (isLeadPrincipal && isAutoManagedTimeField) {
+                                      const hhmm = normalizeTimeInput24h(event.target.value, true);
+                                      setLeadTimeEdits((prev) => {
+                                        const next = { ...prev };
+                                        delete next[leadEditKey];
+                                        return next;
+                                      });
+                                      if (!hhmm) return;
+                                      const baseIso = isStartTimeField ? (row.startTime || new Date().toISOString()) : (row.endTime || row.startTime || new Date().toISOString());
+                                      const newIso = hhmmToIso(hhmm, baseIso);
+                                      if (!newIso) return;
+                                      const overrides = {};
+                                      if (isStartTimeField) {
+                                        overrides.startTime = newIso;
+                                        if (row.endTime) {
+                                          const endMs = new Date(row.endTime).getTime();
+                                          const newStartMs = new Date(newIso).getTime();
+                                          if (endMs > newStartMs) {
+                                            overrides.accumulatedSeconds = Math.round((endMs - newStartMs) / 1000);
+                                          }
+                                        }
+                                      } else {
+                                        overrides.endTime = newIso;
+                                        if (row.startTime) {
+                                          const startMs = new Date(row.startTime).getTime();
+                                          const newEndMs = new Date(newIso).getTime();
+                                          if (newEndMs > startMs) {
+                                            overrides.accumulatedSeconds = Math.round((newEndMs - startMs) / 1000);
+                                          }
+                                        }
+                                      }
+                                      updateBoardRowTimeOverride(selectedCustomBoard.id, row.id, overrides);
+                                    } else {
+                                      const normalizedValue = normalizeTimeInput24h(event.target.value, true);
+                                      if (normalizedValue && normalizedValue !== rawTimeValue) {
+                                        updateBoardRowValue(selectedCustomBoard.id, row.id, field, normalizedValue);
+                                      }
                                     }
                                   }}
                                   placeholder={field.placeholder || "HH:mm"}

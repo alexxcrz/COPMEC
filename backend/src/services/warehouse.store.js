@@ -252,9 +252,9 @@ function normalizeBoardOperationalContextValue(value, contextType = BOARD_OPERAT
 
 const SYSTEM_OPERATIONAL_NAVE_KEYS = ["C1", "C2", "C3", "P"];
 const SYSTEM_OPERATIONAL_DEFAULT_PAUSE_REASONS = [
-  { id: "material", label: "Falta de material", enabled: true, affectsTimer: false, authorizedMinutes: 10 },
-  { id: "operativa", label: "Detención operativa", enabled: true, affectsTimer: true, authorizedMinutes: 0 },
-  { id: "calidad", label: "Ajuste de calidad", enabled: true, affectsTimer: false, authorizedMinutes: 5 },
+  { id: "material", label: "Falta de material", enabled: true, affectsTimer: false, authorizedMinutes: 10, dailyUsageLimit: 0 },
+  { id: "operativa", label: "Detención operativa", enabled: true, affectsTimer: true, authorizedMinutes: 0, dailyUsageLimit: 0 },
+  { id: "calidad", label: "Ajuste de calidad", enabled: true, affectsTimer: false, authorizedMinutes: 5, dailyUsageLimit: 0 },
 ];
 
 function normalizeWeekdayOffsets(value) {
@@ -300,12 +300,14 @@ function normalizeSystemPauseReasonEntry(value, fallback = null) {
   const normalizedId = String(source.id || fallbackId || "").trim() || makeId("pause-rule");
   const normalizedLabel = String(source.label || fallbackSource.label || "").trim() || "Pausa";
   const authorizedMinutesValue = Number(source.authorizedMinutes ?? fallbackSource.authorizedMinutes ?? 0);
+  const dailyUsageLimitValue = Number(source.dailyUsageLimit ?? fallbackSource.dailyUsageLimit ?? 0);
   return {
     id: normalizedId,
     label: normalizedLabel,
     enabled: Boolean(source.enabled ?? fallbackSource.enabled ?? true),
     affectsTimer: Boolean(source.affectsTimer ?? fallbackSource.affectsTimer ?? false),
     authorizedMinutes: Number.isFinite(authorizedMinutesValue) ? Math.max(0, Math.round(authorizedMinutesValue)) : 0,
+    dailyUsageLimit: Number.isFinite(dailyUsageLimitValue) ? Math.max(0, Math.round(dailyUsageLimitValue)) : 0,
   };
 }
 
@@ -2492,6 +2494,16 @@ function createBoardRowRecord(fields, responsibleId, partial = {}) {
     endTime: partial?.endTime ?? null,
     accumulatedSeconds: Number(partial?.accumulatedSeconds || 0),
     lastResumedAt: partial?.lastResumedAt ?? null,
+    pauseUsageByDay: partial?.pauseUsageByDay && typeof partial.pauseUsageByDay === "object" ? partial.pauseUsageByDay : {},
+    pauseLogs: Array.isArray(partial?.pauseLogs)
+      ? partial.pauseLogs.map((entry) => ({
+          id: entry?.id || makeId("pause"),
+          reason: String(entry?.reason || "").trim(),
+          pausedAt: entry?.pausedAt || null,
+          resumedAt: entry?.resumedAt || null,
+          pauseDurationSeconds: Math.max(0, Number(entry?.pauseDurationSeconds || 0)),
+        }))
+      : [],
     createdAt: partial?.createdAt || new Date().toISOString(),
   };
 
@@ -2500,6 +2512,31 @@ function createBoardRowRecord(fields, responsibleId, partial = {}) {
   }
 
   return nextRow;
+}
+
+function syncBoardRowPauseLogsWithCounters(row, nowIso, pauseControl) {
+  if (!row || !row.startTime) return row?.pauseLogs || [];
+  const referenceEndIso = row.endTime || nowIso;
+  const elapsedSeconds = Math.max(
+    0,
+    getOperationalElapsedSeconds(row.startTime, referenceEndIso, pauseControl, row.cleaningSite),
+  );
+  const productionSeconds = Math.max(0, Number(row.accumulatedSeconds || 0));
+  const targetPauseSeconds = Math.max(0, elapsedSeconds - productionSeconds);
+  if (targetPauseSeconds <= 0) return [];
+
+  const reason = String(row.lastPauseReason || "Ajuste manual de contadores").trim() || "Ajuste manual de contadores";
+  const pausedAt = row.startTime || nowIso;
+  const resumedAt = row.status === "Pausado" ? null : referenceEndIso;
+  return [
+    {
+      id: makeId("pause"),
+      reason,
+      pausedAt,
+      resumedAt,
+      pauseDurationSeconds: targetPauseSeconds,
+    },
+  ];
 }
 
 function buildBoardRowsFromActivityList(fields, catalog, responsibleId, previousFields = [], previousRows = []) {
@@ -4156,6 +4193,8 @@ export function duplicateWarehouseBoard(auth, boardId, includeRows = false) {
 export function canEditWarehouseBoardRow(user, board, row, permissions, actionId = "createBoardRow") {
   if (!user || !board || !row) return false;
   if (!canManageWarehouseBoard(user, board)) return false;
+  // Lead always has full edit access, including finished rows.
+  if (normalizeRole(user.role) === ROLE_LEAD) return true;
   if (!canUserDoWarehouseAction(user, actionId, permissions)) return false;
   if (row.status === "Terminado") {
     return canUserDoWarehouseAction(user, "editFinishedBoardRow", permissions);
@@ -4178,7 +4217,7 @@ export function createWarehouseBoardRow(auth, boardId) {
   if (!board) {
     return { ok: false, reason: "board_not_found" };
   }
-  if (currentState.system?.operational?.pauseControl?.globalPauseEnabled) {
+  if (currentState.system?.operational?.pauseControl?.globalPauseEnabled && normalizeRole(currentUser.role) !== ROLE_LEAD) {
     return { ok: false, reason: "global_pause_active" };
   }
   if (!canManageWarehouseBoard(currentUser, board) || !canUserDoWarehouseAction(currentUser, "createBoardRow", currentState.permissions)) {
@@ -4225,7 +4264,7 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
   if (isIdempotentStatusPatch) {
     return { ok: true, state: currentState, row };
   }
-  if (currentState.system?.operational?.pauseControl?.globalPauseEnabled) {
+  if (currentState.system?.operational?.pauseControl?.globalPauseEnabled && normalizeRole(currentUser.role) !== ROLE_LEAD) {
     return { ok: false, reason: "global_pause_active" };
   }
 
@@ -4253,16 +4292,6 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
       return byId || byLabel || byContains;
     }) || null;
   };
-  const computePauseCompensationSeconds = (targetRow, resumeIso) => {
-    if (!targetRow?.pauseStartedAt) return 0;
-    const pauseStartedMs = new Date(targetRow.pauseStartedAt).getTime();
-    const resumedMs = new Date(resumeIso).getTime();
-    if (!Number.isFinite(pauseStartedMs) || !Number.isFinite(resumedMs)) return 0;
-    const totalPauseSeconds = Math.max(0, Math.round((resumedMs - pauseStartedMs) / 1000));
-    const authorizedSeconds = Math.max(0, Number(targetRow.pauseAuthorizedSeconds || 0));
-    if (!targetRow.pauseAffectsTimer) return 0;
-    return Math.max(0, totalPauseSeconds - authorizedSeconds);
-  };
   const normalizedValuesPatch = {
     ...(patch.values ?? EMPTY_OBJECT),
   };
@@ -4274,6 +4303,55 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
       ...normalizedValuesPatch,
     },
   };
+  const formatLocalDateKey = (dateIso) => {
+    const localDate = new Date(dateIso);
+    if (!Number.isFinite(localDate.getTime())) return "";
+    const year = localDate.getFullYear();
+    const month = String(localDate.getMonth() + 1).padStart(2, "0");
+    const day = String(localDate.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+  const buildPauseUsageCounterKey = (reasonId, dateKey) => {
+    const normalizedReasonId = String(reasonId || "").trim().toLowerCase();
+    const normalizedDateKey = String(dateKey || "").trim();
+    if (!normalizedReasonId || !normalizedDateKey) return "";
+    return `${normalizedDateKey}::${normalizedReasonId}`;
+  };
+  const computePausedOverflowSeconds = (sourceRow) => {
+    if (!sourceRow || String(sourceRow.status || "") !== "Pausado") return 0;
+    const authorizedSeconds = Math.max(0, Number(sourceRow.pauseAuthorizedSeconds || 0));
+    if (!authorizedSeconds || !sourceRow.pauseStartedAt) return 0;
+    const pausedElapsedSeconds = getOperationalElapsedSeconds(
+      sourceRow.pauseStartedAt,
+      nowIso,
+      pauseControl,
+      sourceRow.cleaningSite,
+    );
+    return Math.max(0, pausedElapsedSeconds - authorizedSeconds);
+  };
+  const closeOpenPauseLog = (sourceLogs, sourceRow, resumeIso, fallbackReason = "") => {
+    const resumeTime = new Date(resumeIso).getTime();
+    if (!Number.isFinite(resumeTime)) return sourceLogs;
+    const openIndexes = (Array.isArray(sourceLogs) ? sourceLogs : [])
+      .map((entry, index) => ({ entry, index }))
+      .filter(({ entry }) => entry && !entry.resumedAt && entry.pausedAt)
+      .map(({ index }) => index);
+    const latestOpenIndex = openIndexes.length ? openIndexes[openIndexes.length - 1] : -1;
+    if (latestOpenIndex === -1) return sourceLogs;
+    return sourceLogs.map((entry, index) => {
+      if (index !== latestOpenIndex || !entry || !entry.pausedAt) return entry;
+      const pausedTime = new Date(entry.pausedAt).getTime();
+      if (!Number.isFinite(pausedTime)) return entry;
+      return {
+        ...entry,
+        reason: String(entry.reason || fallbackReason || "").trim(),
+        resumedAt: resumeIso,
+        pauseDurationSeconds: Math.max(0, getOperationalElapsedSeconds(entry.pausedAt, resumeIso, pauseControl, sourceRow?.cleaningSite)),
+      };
+    });
+  };
+  const rowPauseLogs = Array.isArray(row?.pauseLogs) ? row.pauseLogs : [];
+  nextRow.pauseLogs = rowPauseLogs.map((entry) => ({ ...entry }));
 
   if (hasOwn(patch, "responsibleIds")) {
     const responsibleIds = normalizeBoardResponsibleIds(patch.responsibleIds, "");
@@ -4287,9 +4365,6 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
 
   if (hasOwn(patch, "status")) {
     if (patch.status === "En curso") {
-      const pauseCompensationSeconds = row.status === "Pausado"
-        ? computePauseCompensationSeconds(row, nowIso)
-        : 0;
       (board.fields || []).forEach((field) => {
         if (field.type !== "time") return;
         const normalizedLabel = normalizeKey(field.label || "");
@@ -4301,15 +4376,24 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
       nextRow.status = patch.status;
       nextRow.startTime = nextRow.startTime || nowIso;
       nextRow.endTime = row.status === "Terminado" ? null : nextRow.endTime;
-      nextRow.accumulatedSeconds = Math.max(0, Number(row.accumulatedSeconds || 0) + pauseCompensationSeconds);
+      nextRow.accumulatedSeconds = Math.max(0, Number(row.accumulatedSeconds || 0) + computePausedOverflowSeconds(row));
       nextRow.lastResumedAt = nowIso;
       nextRow.pauseStartedAt = null;
       nextRow.pauseAffectsTimer = false;
       nextRow.pauseAuthorizedSeconds = 0;
+      nextRow.pauseLogs = closeOpenPauseLog(nextRow.pauseLogs, row, nowIso, row.lastPauseReason);
     } else if (patch.status === "Pausado") {
       const pauseReason = String(patch.lastPauseReason || row.lastPauseReason || "").trim();
       const pauseRule = resolvePauseRule(pauseReason);
       const pauseAuthorizedMinutes = Number(pauseRule?.authorizedMinutes || 0);
+      const pauseDailyUsageLimit = Number(pauseRule?.dailyUsageLimit || 0);
+      const pauseUsageByDay = row?.pauseUsageByDay && typeof row.pauseUsageByDay === "object" ? row.pauseUsageByDay : {};
+      const pauseDateKey = formatLocalDateKey(nowIso);
+      const pauseUsageCounterKey = buildPauseUsageCounterKey(pauseRule?.id, pauseDateKey);
+      const pauseUsageCount = pauseUsageCounterKey ? Number(pauseUsageByDay[pauseUsageCounterKey] || 0) : 0;
+      if (pauseDailyUsageLimit > 0 && pauseUsageCounterKey && pauseUsageCount >= pauseDailyUsageLimit) {
+        return { ok: false, reason: "pause_daily_limit_reached", limit: pauseDailyUsageLimit, used: pauseUsageCount };
+      }
       nextRow.status = patch.status;
       nextRow.accumulatedSeconds = updateElapsedForFinish(row, nowIso, pauseControl);
       nextRow.lastResumedAt = null;
@@ -4318,10 +4402,20 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
       nextRow.pauseAuthorizedSeconds = Number.isFinite(pauseAuthorizedMinutes)
         ? Math.max(0, Math.round(pauseAuthorizedMinutes * 60))
         : 0;
+      nextRow.pauseUsageByDay = pauseUsageCounterKey
+        ? {
+            ...pauseUsageByDay,
+            [pauseUsageCounterKey]: pauseUsageCount + 1,
+          }
+        : pauseUsageByDay;
+      nextRow.pauseLogs = nextRow.pauseLogs.concat({
+        id: makeId("pause"),
+        reason: pauseReason,
+        pausedAt: nowIso,
+        resumedAt: null,
+        pauseDurationSeconds: 0,
+      });
     } else if (patch.status === "Terminado") {
-      const pauseCompensationSeconds = row.status === "Pausado"
-        ? computePauseCompensationSeconds(row, nowIso)
-        : 0;
       (board.fields || []).forEach((field) => {
         if (field.type !== "time") return;
         const normalizedLabel = normalizeKey(field.label || "");
@@ -4331,11 +4425,15 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
       });
       nextRow.status = patch.status;
       nextRow.endTime = nowIso;
-      nextRow.accumulatedSeconds = updateElapsedForFinish(row, nowIso, pauseControl) + pauseCompensationSeconds;
+      const pausedOverflowSeconds = computePausedOverflowSeconds(row);
+      nextRow.accumulatedSeconds = String(row.status || "") === "Pausado"
+        ? Math.max(0, Number(row.accumulatedSeconds || 0) + pausedOverflowSeconds)
+        : Math.max(0, updateElapsedForFinish(row, nowIso, pauseControl));
       nextRow.lastResumedAt = null;
       nextRow.pauseStartedAt = null;
       nextRow.pauseAffectsTimer = false;
       nextRow.pauseAuthorizedSeconds = 0;
+      nextRow.pauseLogs = closeOpenPauseLog(nextRow.pauseLogs, row, nowIso, row.lastPauseReason);
     } else {
       nextRow.status = patch.status;
     }
@@ -4343,6 +4441,35 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
 
   if (hasOwn(patch, "lastPauseReason")) {
     nextRow.lastPauseReason = patch.lastPauseReason || "";
+    if (String(nextRow.status || "") === "Pausado" && Array.isArray(nextRow.pauseLogs) && nextRow.pauseLogs.length) {
+      const latestIndex = nextRow.pauseLogs.length - 1;
+      const latest = nextRow.pauseLogs[latestIndex];
+      if (latest && !latest.resumedAt) {
+        nextRow.pauseLogs = nextRow.pauseLogs.map((entry, index) => (
+          index === latestIndex ? { ...entry, reason: String(patch.lastPauseReason || "").trim() } : entry
+        ));
+      }
+    }
+  }
+
+  // Lead-only direct overrides for time fields (startTime, endTime, accumulatedSeconds).
+  if (normalizeRole(currentUser.role) === ROLE_LEAD) {
+    const hasTimeOverride = hasOwn(patch, "startTime") || hasOwn(patch, "endTime") || hasOwn(patch, "accumulatedSeconds");
+    if (hasOwn(patch, "startTime") && patch.startTime) {
+      nextRow.startTime = patch.startTime;
+    }
+    if (hasOwn(patch, "endTime") && patch.endTime) {
+      nextRow.endTime = patch.endTime;
+    }
+    if (hasOwn(patch, "accumulatedSeconds")) {
+      nextRow.accumulatedSeconds = Math.max(0, Number(patch.accumulatedSeconds || 0));
+    }
+    if (Boolean(patch.clearPauseLogs)) {
+      nextRow.pauseLogs = [];
+      nextRow.lastPauseReason = "";
+    } else if (hasTimeOverride && String(nextRow.status || "") !== "Pausado") {
+      nextRow.pauseLogs = syncBoardRowPauseLogsWithCounters(nextRow, nowIso, pauseControl);
+    }
   }
 
   const nextStateBase = {
@@ -4412,7 +4539,8 @@ export function deleteWarehouseBoardRow(auth, boardId, rowId) {
     // Idempotent delete: if row was already removed, sync current state instead of failing.
     return { ok: true, state: replaceWarehouseState(currentState) };
   }
-  if (row.status === "Terminado" || !canEditWarehouseBoardRow(currentUser, board, row, currentState.permissions)) {
+  const isLeadUser = normalizeRole(currentUser.role) === ROLE_LEAD;
+  if ((!isLeadUser && row.status === "Terminado") || !canEditWarehouseBoardRow(currentUser, board, row, currentState.permissions)) {
     return { ok: false, reason: "forbidden" };
   }
 

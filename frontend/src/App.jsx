@@ -334,6 +334,7 @@ import {
   toSelectOption, buildSelectOptions, getWeekName, getActivityLabel,
 
   getTimeLimitMinutes, getElapsedSeconds, getOperationalElapsedSeconds,
+  getNormalizedFormulaTerms, evaluateFormulaFieldValue,
 
   buildDemoUsers, buildSampleState, normalizeBoardRowValues, normalizeControlBoard,
 
@@ -467,7 +468,18 @@ function App() { // NOSONAR
   const [inventorySearch, setInventorySearch] = useState("");
   const [dashboardFilters, setDashboardFilters] = useState({ periodType: "week", periodKey: "all", responsibleId: "all", area: "all", source: "all", startDate: "", endDate: "" });
   const [pauseState, setPauseState] = useState({ open: false, activityId: null, reason: "", customReason: "", error: "", completed: false, continueReady: false, pauseLogId: null });
-  const [boardPauseState, setBoardPauseState] = useState({ open: false, boardId: null, rowId: null, reason: "", customReason: "", error: "", completed: false, continueReady: false });
+  const [boardPauseState, setBoardPauseState] = useState({
+    open: false,
+    boardId: null,
+    rowId: null,
+    reason: "",
+    customReason: "",
+    error: "",
+    completed: false,
+    continueReady: false,
+    authorizedPauseSeconds: 0,
+    pauseStartedAtMs: 0,
+  });
   const [pieceDeductionModal, setPieceDeductionModal] = useState({ open: false, boardId: null, rowId: null, items: [] });
   const [catalogModal, setCatalogModal] = useState(() => createEmptyCatalogModalState());
   const [editWeekId, setEditWeekId] = useState(null);
@@ -548,23 +560,41 @@ function App() { // NOSONAR
     globalPauseEnabled: Boolean(state?.system?.operational?.pauseControl?.globalPauseEnabled),
     globalPauseActivatedAt: state?.system?.operational?.pauseControl?.globalPauseActivatedAt || null,
     workHours: state?.system?.operational?.pauseControl?.workHours || { startHour: 0, endHour: 24 },
+    areaPauseControls: state?.system?.operational?.pauseControl?.areaPauseControls || EMPTY_OBJECT,
   }), [state?.system?.operational]);
-  const pauseReasonOptions = useMemo(() => {
+  const enabledPauseReasons = useMemo(() => {
     const source = Array.isArray(state?.system?.operational?.pauseControl?.reasons)
       ? state.system.operational.pauseControl.reasons
       : [];
     const seen = new Set();
-    const labels = source
+    return source
       .filter((entry) => entry?.enabled !== false)
-      .map((entry) => String(entry?.label || "").trim())
-      .filter((label) => {
-        const key = label.toLowerCase();
+      .map((entry) => ({
+        id: String(entry?.id || "").trim(),
+        label: String(entry?.label || "").trim(),
+        authorizedMinutes: Math.max(0, Number(entry?.authorizedMinutes || 0)),
+        dailyUsageLimit: Math.max(0, Number(entry?.dailyUsageLimit || 0)),
+      }))
+      .filter((entry) => {
+        const key = String(entry.label || "").trim().toLowerCase();
         if (!key || seen.has(key)) return false;
         seen.add(key);
         return true;
       });
-    return labels.length ? labels : ["Falta de material", "Detención operativa", "Ajuste de calidad"];
   }, [state?.system?.operational?.pauseControl?.reasons]);
+  const pauseReasonOptions = useMemo(() => {
+    const labels = enabledPauseReasons.map((entry) => entry.label);
+    return labels.length ? labels : ["Falta de material", "Detención operativa", "Ajuste de calidad"];
+  }, [enabledPauseReasons]);
+  const boardPauseElapsedSeconds = boardPauseState.pauseStartedAtMs
+    ? Math.max(0, Math.floor((now - boardPauseState.pauseStartedAtMs) / 1000))
+    : 0;
+  const boardPauseRemainingSeconds = Math.max(
+    0,
+    Number(boardPauseState.authorizedPauseSeconds || 0) - boardPauseElapsedSeconds,
+  );
+  const boardPauseIsOutOfTime = Number(boardPauseState.authorizedPauseSeconds || 0) > 0
+    && boardPauseRemainingSeconds <= 0;
   const CUSTOM_PAUSE_REASON_VALUE = "__custom__";
   const sessionRole = normalizeRole(state.users.find((user) => user.id === sessionUserId)?.role);
   const antiCaptureEnabled = import.meta.env.PROD && sessionRole !== ROLE_LEAD;
@@ -1174,12 +1204,22 @@ function App() { // NOSONAR
     const summary = new Map();
     (state.pauseLogs || []).forEach((log) => {
       if (!summary.has(log.weekActivityId)) {
-        summary.set(log.weekActivityId, { count: 0, totalSeconds: 0, reasons: [] });
+        summary.set(log.weekActivityId, { count: 0, totalSeconds: 0, reasons: [], logs: [] });
       }
       const current = summary.get(log.weekActivityId);
+      const reason = String(log.pauseReason || "").trim();
+      const pausedAt = log.pausedAt || null;
+      const resumedAt = log.resumedAt || null;
+      const pauseDurationSeconds = Math.max(0, Number(log.pauseDurationSeconds || 0));
       current.count += 1;
-      current.totalSeconds += log.pauseDurationSeconds || 0;
-      if (log.pauseReason) current.reasons.push(log.pauseReason);
+      current.totalSeconds += pauseDurationSeconds;
+      if (reason) current.reasons.push(reason);
+      current.logs.push({
+        reason,
+        pausedAt,
+        resumedAt,
+        pauseDurationSeconds,
+      });
     });
     return summary;
   }, [state.pauseLogs]);
@@ -1278,9 +1318,72 @@ function App() { // NOSONAR
       return { primaryArea, areaScopes: [primaryArea] };
     }
 
+    function normalizePauseReason(reason) {
+      const raw = String(reason || "").trim();
+      return raw || "Pausa sin motivo";
+    }
+
+    function summarizePauseLogs(logs) {
+      const normalizedLogs = (Array.isArray(logs) ? logs : []).map((entry) => ({
+        reason: normalizePauseReason(entry?.reason),
+        pausedAt: entry?.pausedAt || null,
+        resumedAt: entry?.resumedAt || null,
+        pauseDurationSeconds: Math.max(0, Number(entry?.pauseDurationSeconds || 0)),
+      }));
+      const totalSeconds = normalizedLogs.reduce((sum, entry) => sum + entry.pauseDurationSeconds, 0);
+      return {
+        count: normalizedLogs.length,
+        totalSeconds,
+        reasons: normalizedLogs.map((entry) => entry.reason),
+        logs: normalizedLogs,
+      };
+    }
+
+    function buildBoardRowPauseSummary(row) {
+      const persistedLogs = Array.isArray(row?.pauseLogs) ? row.pauseLogs : [];
+      const withLiveDurations = persistedLogs.map((entry) => {
+        const pausedAt = entry?.pausedAt || null;
+        const resumedAt = entry?.resumedAt || null;
+        const reason = normalizePauseReason(entry?.reason || row?.lastPauseReason);
+        if (!pausedAt) {
+          return {
+            reason,
+            pausedAt,
+            resumedAt,
+            pauseDurationSeconds: Math.max(0, Number(entry?.pauseDurationSeconds || 0)),
+          };
+        }
+        if (resumedAt) {
+          return {
+            reason,
+            pausedAt,
+            resumedAt,
+            pauseDurationSeconds: Math.max(0, Number(entry?.pauseDurationSeconds || 0)),
+          };
+        }
+        return {
+          reason,
+          pausedAt,
+          resumedAt: null,
+          pauseDurationSeconds: Math.max(0, getOperationalElapsedSeconds(pausedAt, now, operationalPauseState, row?.cleaningSite)),
+        };
+      });
+
+      if (!withLiveDurations.length && String(row?.status || "") === STATUS_PAUSED && row?.pauseStartedAt) {
+        withLiveDurations.push({
+          reason: normalizePauseReason(row?.lastPauseReason),
+          pausedAt: row.pauseStartedAt,
+          resumedAt: null,
+          pauseDurationSeconds: Math.max(0, getOperationalElapsedSeconds(row.pauseStartedAt, now, operationalPauseState, row?.cleaningSite)),
+        });
+      }
+
+      return summarizePauseLogs(withLiveDurations);
+    }
+
     const activityRecords = visibleDashboardActivities.map((activity) => {
       const responsibleUser = userMap.get(activity.responsibleId);
-      const pauseSummary = activityPauseSummaryMap.get(activity.id) || { count: 0, totalSeconds: 0, reasons: [] };
+      const pauseSummary = activityPauseSummaryMap.get(activity.id) || { count: 0, totalSeconds: 0, reasons: [], logs: [] };
       const durationSeconds = getElapsedSeconds(activity, now, operationalPauseState);
       const limitMinutes = getTimeLimitMinutes(activity, catalogMap);
       const { primaryArea: activityArea, areaScopes } = resolveActivityAreaScope(activity, responsibleUser);
@@ -1303,6 +1406,7 @@ function App() { // NOSONAR
         pauseCount: pauseSummary.count,
         pauseSeconds: pauseSummary.totalSeconds,
         pauseReasons: pauseSummary.reasons,
+        pauseLogEntries: pauseSummary.logs,
       };
     });
 
@@ -1313,6 +1417,7 @@ function App() { // NOSONAR
       const totalElapsedSeconds = row.startTime
         ? Math.max(durationSeconds, getOperationalElapsedSeconds(row.startTime, now, operationalPauseState))
         : durationSeconds;
+      const pauseSummary = buildBoardRowPauseSummary(row);
       return {
         id: `board-${board.id}-${row.id}`,
         rawId: row.id,
@@ -1331,9 +1436,10 @@ function App() { // NOSONAR
         totalElapsedSeconds,
         limitMinutes: 0,
         excessSeconds: 0,
-        pauseCount: 0,
-        pauseSeconds: 0,
-        pauseReasons: [],
+        pauseCount: pauseSummary.count,
+        pauseSeconds: pauseSummary.totalSeconds,
+        pauseReasons: pauseSummary.reasons,
+        pauseLogEntries: pauseSummary.logs,
       };
     }));
 
@@ -1344,6 +1450,7 @@ function App() { // NOSONAR
       const totalElapsedSeconds = row.startTime
         ? Math.max(durationSeconds, getOperationalElapsedSeconds(row.startTime, now, operationalPauseState))
         : durationSeconds;
+      const pauseSummary = buildBoardRowPauseSummary(row);
       return {
         id: `board-history-${snapshot.id}-${row.id}`,
         rawId: `${snapshot.id}-${row.id}`,
@@ -1361,9 +1468,10 @@ function App() { // NOSONAR
         totalElapsedSeconds,
         limitMinutes: 0,
         excessSeconds: 0,
-        pauseCount: 0,
-        pauseSeconds: 0,
-        pauseReasons: [],
+        pauseCount: pauseSummary.count,
+        pauseSeconds: pauseSummary.totalSeconds,
+        pauseReasons: pauseSummary.reasons,
+        pauseLogEntries: pauseSummary.logs,
       };
     }));
 
@@ -1447,10 +1555,10 @@ function App() { // NOSONAR
     [filteredDashboardRecords],
   );
 
-  const dashboardPauseLogs = useMemo(() => {
-    const ids = new Set(filteredDashboardActivities.map((record) => record.rawId));
-    return state.pauseLogs.filter((log) => ids.has(log.weekActivityId));
-  }, [filteredDashboardActivities, state.pauseLogs]);
+  const dashboardPauseLogs = useMemo(
+    () => filteredDashboardRecords.flatMap((record) => (Array.isArray(record.pauseLogEntries) ? record.pauseLogEntries : [])),
+    [filteredDashboardRecords],
+  );
 
   const dashboardMetrics = useMemo(() => {
     const activeCatalogSnapshot = (state.catalog || []).filter((item) => !item.isDeleted);
@@ -1580,7 +1688,7 @@ function App() { // NOSONAR
     }
 
     dashboardPauseLogs.forEach((log) => {
-      registerPause(log.pauseReason, log.pauseDurationSeconds || 0);
+      registerPause(log.pauseReason || log.reason, log.pauseDurationSeconds || 0);
     });
 
     const totalPauseSeconds = Array.from(groups.values()).reduce((sum, item) => sum + item.totalSeconds, 0);
@@ -3343,6 +3451,12 @@ function App() { // NOSONAR
     return String(pauseEntry?.reason || "").trim();
   }
 
+  function findEnabledPauseReasonByLabel(label) {
+    const normalizedLabel = String(label || "").trim().toLowerCase();
+    if (!normalizedLabel) return null;
+    return enabledPauseReasons.find((entry) => String(entry.label || "").trim().toLowerCase() === normalizedLabel) || null;
+  }
+
   function invalidateClientSession(message) {
     clearSessionExpiredHandler();
     localStorage.removeItem(SESSION_STORAGE_KEY);
@@ -3432,6 +3546,8 @@ function App() { // NOSONAR
       error: "",
       completed: false,
       continueReady: false,
+      authorizedPauseSeconds: 0,
+      pauseStartedAtMs: 0,
     });
   }
 
@@ -3446,7 +3562,18 @@ function App() { // NOSONAR
         applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
       }).catch(() => {});
       if (boardPauseContinueTimerRef.current) clearTimeout(boardPauseContinueTimerRef.current);
-      setBoardPauseState({ open: false, boardId: null, rowId: null, reason: "", customReason: "", error: "", completed: false, continueReady: false });
+      setBoardPauseState({
+        open: false,
+        boardId: null,
+        rowId: null,
+        reason: "",
+        customReason: "",
+        error: "",
+        completed: false,
+        continueReady: false,
+        authorizedPauseSeconds: 0,
+        pauseStartedAtMs: 0,
+      });
       return;
     }
 
@@ -3463,7 +3590,13 @@ function App() { // NOSONAR
         lastPauseReason: boardPauseReasonValue,
       }),
     }).then((remoteState) => {
-      applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      const normalizedState = applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      const pausedBoard = (normalizedState?.controlBoards || []).find((board) => board.id === boardPauseState.boardId);
+      const pausedRow = (pausedBoard?.rows || []).find((row) => row.id === boardPauseState.rowId);
+      const pauseRule = findEnabledPauseReasonByLabel(boardPauseReasonValue);
+      const startedAtMsCandidate = pausedRow?.pauseStartedAt ? new Date(pausedRow.pauseStartedAt).getTime() : Date.now();
+      const fallbackAuthorizedSeconds = Math.max(0, Math.round(Number(pauseRule?.authorizedMinutes || 0) * 60));
+      const authorizedPauseSeconds = Math.max(0, Number(pausedRow?.pauseAuthorizedSeconds ?? fallbackAuthorizedSeconds));
       if (boardPauseContinueTimerRef.current) clearTimeout(boardPauseContinueTimerRef.current);
       boardPauseContinueTimerRef.current = setTimeout(() => {
         setBoardPauseState((current) => (current.completed ? { ...current, continueReady: true } : current));
@@ -3473,6 +3606,8 @@ function App() { // NOSONAR
         error: "",
         completed: true,
         continueReady: false,
+        authorizedPauseSeconds,
+        pauseStartedAtMs: Number.isFinite(startedAtMsCandidate) ? startedAtMsCandidate : Date.now(),
       }));
     }).catch((error) => {
       setBoardPauseState((current) => ({ ...current, error: error?.message || "No se pudo pausar la fila." }));
@@ -4051,6 +4186,11 @@ function App() { // NOSONAR
       setControlBoardFeedback("Agrega primero un Buscador de inventario y luego enlaza este dato derivado.");
       return;
     }
+    const normalizedFormulaTerms = getNormalizedFormulaTerms(controlBoardDraft.formulaTerms, controlBoardDraft);
+    if (controlBoardDraft.fieldType === "formula" && normalizedFormulaTerms.length < 2) {
+      setControlBoardFeedback("Agrega al menos 2 términos para completar la fórmula o cálculo.");
+      return;
+    }
     const isActivityListField = controlBoardDraft.fieldType === BOARD_ACTIVITY_LIST_FIELD;
     const colorRules = controlBoardDraft.colorValue
       ? [{ operator: controlBoardDraft.colorOperator, value: controlBoardDraft.colorValue, color: controlBoardDraft.colorBg, textColor: controlBoardDraft.colorText }]
@@ -4069,6 +4209,7 @@ function App() { // NOSONAR
       formulaOperation: controlBoardDraft.formulaOperation,
       formulaLeftFieldId: controlBoardDraft.formulaLeftFieldId || null,
       formulaRightFieldId: controlBoardDraft.formulaRightFieldId || null,
+      formulaTerms: normalizedFormulaTerms,
       helpText: controlBoardDraft.fieldHelp.trim(),
       placeholder: controlBoardDraft.placeholder.trim(),
       defaultValue: controlBoardDraft.defaultValue,
@@ -5242,7 +5383,8 @@ function App() { // NOSONAR
   function deleteBoardRow(boardId, rowId) {
     const board = (state.controlBoards || []).find((item) => item.id === boardId);
     const row = board?.rows?.find((item) => item.id === rowId);
-    if (!board || !row || row.status === STATUS_FINISHED || !canEditBoardRowRecord(currentUser, board, row, normalizedPermissions)) {
+    const isLeadOverride = canManageDashboardState && board && row;
+    if (!board || !row || (!isLeadOverride && row.status === STATUS_FINISHED) || !canEditBoardRowRecord(currentUser, board, row, normalizedPermissions)) {
       setDeleteBoardRowState({ open: false, boardId: null, rowId: null });
       return;
     }
@@ -5340,6 +5482,35 @@ function App() { // NOSONAR
     boardCellSaveTimersRef.current.set(saveKey, timerId);
   }
 
+  function updateBoardRowTimeOverride(boardId, rowId, overrides) {
+    const board = (state.controlBoards || []).find((item) => item.id === boardId);
+    const row = board?.rows?.find((item) => item.id === rowId);
+    if (!canEditBoardRowRecord(currentUser, board, row, normalizedPermissions)) return;
+
+    setState((current) => ({
+      ...current,
+      controlBoards: (current.controlBoards || []).map((controlBoard) => {
+        if (controlBoard.id !== boardId) return controlBoard;
+        return {
+          ...controlBoard,
+          rows: (controlBoard.rows || []).map((boardRow) => {
+            if (boardRow.id !== rowId) return boardRow;
+            return { ...boardRow, ...overrides };
+          }),
+        };
+      }),
+    }));
+
+    requestJson(`/warehouse/boards/${boardId}/rows/${rowId}`, {
+      method: "PATCH",
+      body: JSON.stringify(overrides),
+    }).then((remoteState) => {
+      applyRemoteStatePreservingBoardDrafts(remoteState);
+    }).catch((error) => {
+      setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo actualizar el tiempo." });
+    });
+  }
+
   function getBoardExportRows(board) {
     return (board?.rows || []).map((row) => {
       const exportRow = {};
@@ -5359,9 +5530,11 @@ function App() { // NOSONAR
       if (board.settings?.showDates !== false) {
         const snapshotNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : Date.now();
         const prodSecs = getElapsedSeconds(row, snapshotNow, operationalPauseState);
-        const totalSecs = row.startTime
-          ? Math.max(prodSecs, getOperationalElapsedSeconds(row.startTime, snapshotNow, operationalPauseState))
-          : prodSecs;
+        const totalSecs = row.status === STATUS_PAUSED
+          ? prodSecs
+          : row.startTime
+            ? Math.max(prodSecs, getOperationalElapsedSeconds(row.startTime, snapshotNow, operationalPauseState))
+            : prodSecs;
         const pauseSecs = Math.max(0, totalSecs - prodSecs);
         const efficiencyPct = totalSecs > 0 ? Math.round((prodSecs / totalSecs) * 100) : (row.startTime ? 100 : 0);
         exportRow["Tiempo de producción"] = formatDurationClock(prodSecs);
@@ -5840,6 +6013,7 @@ function App() { // NOSONAR
             formulaOperation: "add",
             formulaLeftFieldId: null,
             formulaRightFieldId: null,
+            formulaTerms: [],
             helpText: field.helpText || "Buscador de inventario configurado desde el asistente de importación.",
           };
         }
@@ -5871,6 +6045,11 @@ function App() { // NOSONAR
             formulaOperation: mapping.operation || "add",
             formulaLeftFieldId: mapping.formulaLeftFieldId,
             formulaRightFieldId: mapping.formulaRightFieldId,
+            formulaTerms: getNormalizedFormulaTerms([], {
+              formulaOperation: mapping.operation || "add",
+              formulaLeftFieldId: mapping.formulaLeftFieldId,
+              formulaRightFieldId: mapping.formulaRightFieldId,
+            }),
             helpText: field.helpText || "Fórmula configurada manualmente desde el asistente de importación.",
           };
         }
@@ -5902,34 +6081,13 @@ function App() { // NOSONAR
     }
 
     if (field.type === "formula") {
-      const leftField = boardFields.find((item) => item.id === field.formulaLeftFieldId);
-      const rightField = boardFields.find((item) => item.id === field.formulaRightFieldId);
-      
-      let leftValue = 0;
-      if (leftField) {
-        const rawLeftValue = values[field.formulaLeftFieldId];
-        const hasValidLeftValue = rawLeftValue !== undefined && rawLeftValue !== null && String(rawLeftValue).trim() !== "";
-        leftValue = Number(hasValidLeftValue ? rawLeftValue : getBoardFieldValue(board, row, leftField)) || 0;
-      }
-      
-      let rightValue = 0;
-      if (rightField) {
-        const rawRightValue = values[field.formulaRightFieldId];
-        const hasValidRightValue = rawRightValue !== undefined && rawRightValue !== null && String(rawRightValue).trim() !== "";
-        rightValue = Number(hasValidRightValue ? rawRightValue : getBoardFieldValue(board, row, rightField)) || 0;
-      }
-      
-      const left = leftValue;
-      const right = rightValue;
-      
-      if (field.formulaOperation === "subtract") return left - right;
-      if (field.formulaOperation === "multiply") return left * right;
-      if (field.formulaOperation === "divide") return right === 0 ? 0 : left / right;
-      if (field.formulaOperation === "average") return (left + right) / 2;
-      if (field.formulaOperation === "min") return Math.min(left, right);
-      if (field.formulaOperation === "max") return Math.max(left, right);
-      if (field.formulaOperation === "percent") return right === 0 ? 0 : Math.round((left / right) * 10000) / 100;
-      return left + right;
+      return evaluateFormulaFieldValue(field, (fieldId) => {
+        const sourceField = boardFields.find((item) => item.id === fieldId);
+        if (!sourceField) return 0;
+        const rawFormulaValue = values[fieldId];
+        const hasRawFormulaValue = rawFormulaValue !== undefined && rawFormulaValue !== null && String(rawFormulaValue).trim() !== "";
+        return hasRawFormulaValue ? rawFormulaValue : getBoardFieldValue(board, row, sourceField);
+      });
     }
 
     return rawValue ?? "";
@@ -6507,6 +6665,7 @@ function App() { // NOSONAR
     Trash2,
     updateBoardAssignment,
     updateBoardRowValue,
+    updateBoardRowTimeOverride,
     updatePermissionEntry,
     Upload,
     userMap,
@@ -6711,12 +6870,27 @@ function App() { // NOSONAR
         </div>
       </Modal>
 
-      <Modal open={boardPauseState.open} title="Pausar fila" confirmLabel={boardPauseState.completed ? (boardPauseState.continueReady ? "Continuar" : "Espera un momento...") : "Confirmar pausa"} cancelLabel="Cancelar" hideCancel={boardPauseState.completed} confirmDisabled={boardPauseState.completed && !boardPauseState.continueReady} onClose={() => { if (boardPauseContinueTimerRef.current) clearTimeout(boardPauseContinueTimerRef.current); setBoardPauseState({ open: false, boardId: null, rowId: null, reason: "", customReason: "", error: "", completed: false, continueReady: false }); }} onConfirm={handleConfirmBoardPause}>
+      <Modal open={boardPauseState.open} title="Pausar fila" confirmLabel={boardPauseState.completed ? (boardPauseState.continueReady ? "Continuar" : "Espera un momento...") : "Confirmar pausa"} cancelLabel="Cancelar" hideCancel={boardPauseState.completed} confirmDisabled={boardPauseState.completed && !boardPauseState.continueReady} onClose={() => { if (boardPauseContinueTimerRef.current) clearTimeout(boardPauseContinueTimerRef.current); setBoardPauseState({ open: false, boardId: null, rowId: null, reason: "", customReason: "", error: "", completed: false, continueReady: false, authorizedPauseSeconds: 0, pauseStartedAtMs: 0 }); }} onConfirm={handleConfirmBoardPause}>
         <div className="modal-form-grid">
           {boardPauseState.completed ? (
             <>
               <p className="validation-text success">Continuemos. La fila quedó pausada y el motivo se guardó correctamente.</p>
               <p className="modal-footnote">{boardPauseState.continueReady ? "Pulsa continuar para reanudar la fila." : "El botón Continuar se habilitará en unos segundos..."}</p>
+              {Number(boardPauseState.authorizedPauseSeconds || 0) > 0 ? (
+                boardPauseIsOutOfTime ? (
+                  <div className="board-pause-overtime-alert">
+                    <span className="board-pause-overtime-icon" aria-hidden="true">⚠</span>
+                    <div>
+                      <strong>Tiempo de pausa excedido</strong>
+                      <span>El tiempo autorizado se agotó. Reanuda la fila cuanto antes.</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="modal-footnote">
+                    {`Tiempo autorizado restante: ${formatDurationClock(boardPauseRemainingSeconds)}`}
+                  </p>
+                )
+              ) : null}
             </>
           ) : (
             <>
