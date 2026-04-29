@@ -1804,6 +1804,7 @@ export function buildInventoryBundleFields(draft, preservedLookupId = null) {
     formulaOperation: "add",
     formulaLeftFieldId: null,
     formulaRightFieldId: null,
+    formulaTerms: [],
     helpText: draft.fieldHelp.trim() || "Busca el artículo y deja listos los campos de piezas por caja y cajas por tarima para captura manual.",
     placeholder: draft.placeholder.trim() || "Buscar por nombre o presentación",
     defaultValue: "",
@@ -1833,6 +1834,7 @@ export function buildInventoryBundleFields(draft, preservedLookupId = null) {
       formulaOperation: "add",
       formulaLeftFieldId: null,
       formulaRightFieldId: null,
+      formulaTerms: [],
       helpText: "Campo editable para capturar o ajustar cuántas piezas tiene cada caja.",
       placeholder: "Ej: 24",
       defaultValue: "",
@@ -1857,6 +1859,7 @@ export function buildInventoryBundleFields(draft, preservedLookupId = null) {
       formulaOperation: "add",
       formulaLeftFieldId: null,
       formulaRightFieldId: null,
+      formulaTerms: [],
       helpText: "Campo editable para capturar o ajustar cuántas cajas caben por tarima.",
       placeholder: "Ej: 30",
       defaultValue: "",
@@ -1913,6 +1916,10 @@ export function createEmptyFieldDraft() {
     formulaOperation: "add",
     formulaLeftFieldId: "",
     formulaRightFieldId: "",
+    formulaTerms: [
+      { fieldId: "" },
+      { operation: "add", fieldId: "" },
+    ],
     colorOperator: ">=",
     colorValue: "",
     colorBg: "#dbeafe",
@@ -1959,8 +1966,69 @@ export function cloneDraftColumns(fields) {
   return (fields || []).map((field) => ({
     ...field,
     options: Array.isArray(field.options) ? [...field.options] : [],
+    formulaTerms: getNormalizedFormulaTerms(field?.formulaTerms, field).map((term) => ({ ...term })),
     colorRules: (field.colorRules || []).map((rule) => ({ ...rule })),
   }));
+}
+
+function normalizeFormulaTermEntry(entry, index) {
+  if (!entry || typeof entry !== "object") return null;
+  const fieldId = String(entry.fieldId || "").trim();
+  if (!fieldId) return null;
+  if (index === 0) return { fieldId };
+  return {
+    operation: String(entry.operation || "add").trim() || "add",
+    fieldId,
+  };
+}
+
+export function getNormalizedFormulaTerms(value, fallbackField = null) {
+  const source = Array.isArray(value) ? value : [];
+  const normalizedTerms = source
+    .map((entry, index) => normalizeFormulaTermEntry(entry, index))
+    .filter(Boolean);
+
+  if (normalizedTerms.length) return normalizedTerms;
+
+  const leftFieldId = String(fallbackField?.formulaLeftFieldId || "").trim();
+  const rightFieldId = String(fallbackField?.formulaRightFieldId || "").trim();
+  if (!leftFieldId && !rightFieldId) return [];
+
+  const legacyTerms = [];
+  if (leftFieldId) legacyTerms.push({ fieldId: leftFieldId });
+  if (rightFieldId) {
+    legacyTerms.push({
+      operation: String(fallbackField?.formulaOperation || "add").trim() || "add",
+      fieldId: rightFieldId,
+    });
+  }
+  return legacyTerms;
+}
+
+function applyFormulaOperation(left, right, operation) {
+  if (operation === "subtract") return left - right;
+  if (operation === "multiply") return left * right;
+  if (operation === "divide") return right === 0 ? 0 : left / right;
+  if (operation === "average") return (left + right) / 2;
+  if (operation === "min") return Math.min(left, right);
+  if (operation === "max") return Math.max(left, right);
+  if (operation === "percent") return right === 0 ? 0 : Math.round((left / right) * 10000) / 100;
+  return left + right;
+}
+
+export function evaluateFormulaFieldValue(field, resolveFieldValue) {
+  const formulaTerms = getNormalizedFormulaTerms(field?.formulaTerms, field);
+  if (!formulaTerms.length || typeof resolveFieldValue !== "function") return 0;
+  const firstValue = Number(resolveFieldValue(formulaTerms[0].fieldId));
+  let result = Number.isFinite(firstValue) ? firstValue : 0;
+
+  for (let index = 1; index < formulaTerms.length; index += 1) {
+    const term = formulaTerms[index];
+    const nextValue = Number(resolveFieldValue(term.fieldId));
+    result = applyFormulaOperation(result, Number.isFinite(nextValue) ? nextValue : 0, term.operation);
+  }
+
+  return Number.isFinite(result) ? result : 0;
 }
 
 export function createBoardDraftFromBoard(board) {
@@ -2084,21 +2152,7 @@ export function buildPreviewRowValues(fields, currentUserId, inventoryItems, var
 
   fields.forEach((field) => {
     if (field.type !== "formula") return;
-    const left = Number(values[field.formulaLeftFieldId] || 0);
-    const right = Number(values[field.formulaRightFieldId] || 0);
-    if (field.formulaOperation === "subtract") {
-      values[field.id] = left - right;
-      return;
-    }
-    if (field.formulaOperation === "multiply") {
-      values[field.id] = left * right;
-      return;
-    }
-    if (field.formulaOperation === "divide") {
-      values[field.id] = right === 0 ? 0 : Number((left / right).toFixed(2));
-      return;
-    }
-    values[field.id] = left + right;
+    values[field.id] = evaluateFormulaFieldValue(field, (fieldId) => values[fieldId]);
   });
 
   return values;
@@ -2316,6 +2370,7 @@ export function buildTemplateColumns(template) {
       formulaOperation: column.formulaOperation || "add",
       formulaLeftFieldId: column.formulaLeftFieldId || null,
       formulaRightFieldId: column.formulaRightFieldId || null,
+      formulaTerms: getNormalizedFormulaTerms(column.formulaTerms, column),
       helpText: column.helpText || "",
       placeholder: column.placeholder || "",
       defaultValue: column.defaultValue ?? "",
@@ -2333,6 +2388,10 @@ export function buildTemplateColumns(template) {
     sourceFieldId: keyToId.get(column.sourceFieldId) || column.sourceFieldId,
     formulaLeftFieldId: keyToId.get(column.formulaLeftFieldId) || column.formulaLeftFieldId,
     formulaRightFieldId: keyToId.get(column.formulaRightFieldId) || column.formulaRightFieldId,
+    formulaTerms: getNormalizedFormulaTerms(column.formulaTerms, column).map((term) => ({
+      ...term,
+      fieldId: keyToId.get(term.fieldId) || term.fieldId,
+    })),
   }));
 }
 
@@ -2345,6 +2404,7 @@ export function cloneBoardFields(fields) {
     return {
       ...field,
       id,
+      formulaTerms: getNormalizedFormulaTerms(field.formulaTerms, field),
       colorRules: field.colorRules || [],
     };
   });
@@ -2354,6 +2414,10 @@ export function cloneBoardFields(fields) {
     sourceFieldId: keyToId.get(field.sourceFieldId) || field.sourceFieldId,
     formulaLeftFieldId: keyToId.get(field.formulaLeftFieldId) || field.formulaLeftFieldId,
     formulaRightFieldId: keyToId.get(field.formulaRightFieldId) || field.formulaRightFieldId,
+    formulaTerms: getNormalizedFormulaTerms(field.formulaTerms, field).map((term) => ({
+      ...term,
+      fieldId: keyToId.get(term.fieldId) || term.fieldId,
+    })),
   }));
 }
 
@@ -2366,6 +2430,7 @@ export function cloneBoardFieldBundle(fields) {
     return {
       ...field,
       id,
+      formulaTerms: getNormalizedFormulaTerms(field.formulaTerms, field),
       colorRules: field.colorRules || [],
     };
   });
@@ -2377,6 +2442,10 @@ export function cloneBoardFieldBundle(fields) {
       sourceFieldId: keyToId.get(field.sourceFieldId) || field.sourceFieldId,
       formulaLeftFieldId: keyToId.get(field.formulaLeftFieldId) || field.formulaLeftFieldId,
       formulaRightFieldId: keyToId.get(field.formulaRightFieldId) || field.formulaRightFieldId,
+      formulaTerms: getNormalizedFormulaTerms(field.formulaTerms, field).map((term) => ({
+        ...term,
+        fieldId: keyToId.get(term.fieldId) || term.fieldId,
+      })),
     })),
   };
 }
@@ -2424,6 +2493,10 @@ export function getTemplateFieldDetail(field) {
     return `Dato: ${INVENTORY_PROPERTIES.find((item) => item.value === field.inventoryProperty)?.label || field.inventoryProperty}`;
   }
   if (field.type === "formula") {
+    const formulaTerms = getNormalizedFormulaTerms(field.formulaTerms, field);
+    if (formulaTerms.length >= 2) {
+      return `Operación compuesta: ${formulaTerms.length} término(s)`;
+    }
     return `Operación: ${FORMULA_OPERATIONS.find((item) => item.value === field.formulaOperation)?.label || field.formulaOperation}`;
   }
   if (field.type === "boolean") {
@@ -2475,6 +2548,12 @@ export function mapColumnToFieldDraft(column, columns = []) {
     formulaOperation: column.formulaOperation || "add",
     formulaLeftFieldId: column.formulaLeftFieldId || "",
     formulaRightFieldId: column.formulaRightFieldId || "",
+    formulaTerms: getNormalizedFormulaTerms(column.formulaTerms, column).length
+      ? getNormalizedFormulaTerms(column.formulaTerms, column)
+      : [
+          { fieldId: column.formulaLeftFieldId || "" },
+          { operation: column.formulaOperation || "add", fieldId: column.formulaRightFieldId || "" },
+        ],
     colorOperator: primaryRule.operator || ">=",
     colorValue: primaryRule.value || "",
     colorBg: primaryRule.color || "#dbeafe",
@@ -3169,6 +3248,8 @@ export function canDoBoardAction(user, board) {
 export function canEditBoardRowRecord(user, board, row, permissions, actionId = "createBoardRow") {
   if (!user || !board || !row) return false;
   if (!canDoBoardAction(user, board)) return false;
+  // Lead always has full row edit access on boards they can manage.
+  if (normalizeRole(user.role) === ROLE_LEAD) return true;
   if (!canDoAction(user, actionId, permissions)) return false;
   if (row.status === STATUS_FINISHED) {
     return canDoAction(user, "editFinishedBoardRow", permissions);
@@ -3337,6 +3418,19 @@ export function getElapsedSeconds(activity, now, pauseState) {
   if (!activity) return 0;
   const accumulatedSeconds = Number(activity.accumulatedSeconds || 0);
   if (activity.status !== STATUS_RUNNING) {
+    if (activity.status === STATUS_PAUSED) {
+      const authorizedPauseSeconds = Math.max(0, Number(activity.pauseAuthorizedSeconds || 0));
+      if (authorizedPauseSeconds > 0 && activity.pauseStartedAt) {
+        const pausedElapsedSeconds = getOperationalElapsedSeconds(
+          activity.pauseStartedAt,
+          now,
+          pauseState,
+          activity.cleaningSite,
+        );
+        const overflowPausedSeconds = Math.max(0, pausedElapsedSeconds - authorizedPauseSeconds);
+        return Math.max(0, accumulatedSeconds + overflowPausedSeconds);
+      }
+    }
     // Fallback for legacy finished rows that have start/end but accumulatedSeconds was not persisted.
     if (activity.status === STATUS_FINISHED && accumulatedSeconds <= 0 && activity.startTime && activity.endTime) {
       return Math.max(0, getOperationalElapsedSeconds(activity.startTime, activity.endTime, pauseState));
@@ -3414,12 +3508,14 @@ function normalizeSystemPauseReason(reason, fallback = EMPTY_OBJECT) {
   const source = reason && typeof reason === "object" ? reason : EMPTY_OBJECT;
   const fallbackSource = fallback && typeof fallback === "object" ? fallback : EMPTY_OBJECT;
   const numericMinutes = Number(source.authorizedMinutes ?? fallbackSource.authorizedMinutes ?? 0);
+  const numericDailyUsageLimit = Number(source.dailyUsageLimit ?? fallbackSource.dailyUsageLimit ?? 0);
   return {
     id: String(source.id || fallbackSource.id || makeId("pause-rule")).trim(),
     label: String(source.label || fallbackSource.label || "Pausa").trim() || "Pausa",
     enabled: Boolean(source.enabled ?? fallbackSource.enabled ?? true),
     affectsTimer: Boolean(source.affectsTimer ?? fallbackSource.affectsTimer ?? false),
     authorizedMinutes: Number.isFinite(numericMinutes) ? Math.max(0, Math.round(numericMinutes)) : 0,
+    dailyUsageLimit: Number.isFinite(numericDailyUsageLimit) ? Math.max(0, Math.round(numericDailyUsageLimit)) : 0,
   };
 }
 
@@ -3440,9 +3536,9 @@ function normalizeWorkHoursWithMinutes(source, fallbackStartHour = 0, fallbackEn
 export function normalizeSystemOperationalSettings(value) {
   const source = value && typeof value === "object" ? value : EMPTY_OBJECT;
   const defaultReasons = [
-    { id: "material", label: "Falta de material", enabled: true, affectsTimer: false, authorizedMinutes: 10 },
-    { id: "operativa", label: "Detención operativa", enabled: true, affectsTimer: true, authorizedMinutes: 0 },
-    { id: "calidad", label: "Ajuste de calidad", enabled: true, affectsTimer: false, authorizedMinutes: 5 },
+    { id: "material", label: "Falta de material", enabled: true, affectsTimer: false, authorizedMinutes: 10, dailyUsageLimit: 0 },
+    { id: "operativa", label: "Detención operativa", enabled: true, affectsTimer: true, authorizedMinutes: 0, dailyUsageLimit: 0 },
+    { id: "calidad", label: "Ajuste de calidad", enabled: true, affectsTimer: false, authorizedMinutes: 5, dailyUsageLimit: 0 },
   ];
   const incomingReasons = Array.isArray(source.pauseControl?.reasons) ? source.pauseControl.reasons : defaultReasons;
   const seen = new Set();
