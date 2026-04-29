@@ -304,6 +304,26 @@ function normalizeSystemPauseReasonEntry(value, fallback = null) {
   };
 }
 
+function normalizeWorkHoursWithMinutes(source = {}) {
+  const rawStartHour = Number(source.startHour ?? 0);
+  const rawStartMinute = Number(source.startMinute ?? 0);
+  const rawEndHour = Number(source.endHour ?? 24);
+  const rawEndMinute = Number(source.endMinute ?? 0);
+  const startHour = Number.isFinite(rawStartHour) ? Math.min(23, Math.max(0, Math.round(rawStartHour))) : 0;
+  const startMinute = Number.isFinite(rawStartMinute) ? Math.min(59, Math.max(0, Math.round(rawStartMinute))) : 0;
+  const endHour = Number.isFinite(rawEndHour) ? Math.min(24, Math.max(0, Math.round(rawEndHour))) : 24;
+  const endMinute = Number.isFinite(rawEndMinute) ? Math.min(59, Math.max(0, Math.round(rawEndMinute))) : 0;
+  return { startHour, startMinute, endHour, endMinute };
+}
+
+function normalizeAreaPauseControl(value) {
+  const source = value && typeof value === "object" ? value : EMPTY_OBJECT;
+  return {
+    enabled: Boolean(source.enabled),
+    workHours: normalizeWorkHoursWithMinutes(source.workHours),
+  };
+}
+
 function normalizeSystemPauseControl(value) {
   const source = value && typeof value === "object" ? value : EMPTY_OBJECT;
   const fallbackReasons = SYSTEM_OPERATIONAL_DEFAULT_PAUSE_REASONS.map((reason) => normalizeSystemPauseReasonEntry(reason, reason));
@@ -317,17 +337,25 @@ function normalizeSystemPauseControl(value) {
       seen.add(key);
       return true;
     });
-  const rawStartHour = Number(source.workHours?.startHour ?? 0);
-  const rawEndHour = Number(source.workHours?.endHour ?? 24);
-  const startHour = Number.isFinite(rawStartHour) ? Math.min(23, Math.max(0, Math.round(rawStartHour))) : 0;
-  const endHour = Number.isFinite(rawEndHour) ? Math.min(24, Math.max(0, Math.round(rawEndHour))) : 24;
+  
+  // Global work hours (with minute support)
+  const globalWorkHours = normalizeWorkHoursWithMinutes(source.workHours);
+  
+  // Area-specific pause controls (C1, C2, C3, P)
+  const areaSource = source.areaPauseControls && typeof source.areaPauseControls === "object" ? source.areaPauseControls : {};
+  const areaPauseControls = {};
+  ["C1", "C2", "C3", "P"].forEach((area) => {
+    areaPauseControls[area] = normalizeAreaPauseControl(areaSource[area]);
+  });
+  
   const rawActivatedAt = source.globalPauseActivatedAt;
   const globalPauseActivatedAt = (rawActivatedAt && !isNaN(Date.parse(rawActivatedAt))) ? String(rawActivatedAt) : null;
   return {
     globalPauseEnabled: Boolean(source.globalPauseEnabled),
     forceGlobalPause: Boolean(source.forceGlobalPause),
     reasons: reasons.length ? reasons : fallbackReasons,
-    workHours: { startHour, endHour },
+    workHours: globalWorkHours,
+    areaPauseControls,
     globalPauseActivatedAt,
   };
 }
@@ -2231,19 +2259,20 @@ function getEffectiveOperationalNowMs(nowIso, pauseControl) {
   return effectiveNow;
 }
 
-function calcWorkSeconds(fromMs, toMs, startHour, endHour) {
+function calcWorkSeconds(fromMs, toMs, startHour, endHour, startMinute = 0, endMinute = 0) {
   if (toMs <= fromMs) return 0;
-  if (startHour >= endHour) {
+  if (startHour >= endHour && startHour !== endHour) {
     return Math.max(0, Math.floor((toMs - fromMs) / 1000));
   }
   const msPerHour = 3600000;
+  const msPerMinute = 60000;
   let total = 0;
   const fromDate = new Date(fromMs);
   const startOfDay = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
   let dayStart = startOfDay.getTime();
   while (dayStart < toMs) {
-    const windowOpen = dayStart + (startHour * msPerHour);
-    const windowClose = dayStart + (endHour * msPerHour);
+    const windowOpen = dayStart + (startHour * msPerHour) + (startMinute * msPerMinute);
+    const windowClose = dayStart + (endHour * msPerHour) + (endMinute * msPerMinute);
     const overlapStart = Math.max(fromMs, windowOpen);
     const overlapEnd = Math.min(toMs, windowClose);
     if (overlapEnd > overlapStart) {
@@ -2278,23 +2307,41 @@ function parseOperationalTimestamp(value, referenceIso) {
   return base.getTime();
 }
 
-function getOperationalElapsedSeconds(startIso, nowIso, pauseControl) {
+function getOperationalElapsedSeconds(startIso, nowIso, pauseControl, cleaningSite = null) {
   if (!startIso) return 0;
   const startMs = parseOperationalTimestamp(startIso, nowIso);
   if (!Number.isFinite(startMs)) return 0;
   const effectiveNow = getEffectiveOperationalNowMs(nowIso, pauseControl);
-  const workHours = pauseControl?.workHours;
-  if (workHours && typeof workHours.startHour === "number" && typeof workHours.endHour === "number") {
-    return calcWorkSeconds(startMs, effectiveNow, workHours.startHour, workHours.endHour);
+  
+  // Check if there's an area-specific pause active for this cleaning site
+  let activeWorkHours = pauseControl?.workHours;
+  if (cleaningSite && pauseControl?.areaPauseControls?.[cleaningSite]?.enabled) {
+    const areaControl = pauseControl.areaPauseControls[cleaningSite];
+    if (areaControl.workHours) {
+      activeWorkHours = areaControl.workHours;
+    }
+  }
+  
+  if (activeWorkHours && typeof activeWorkHours.startHour === "number" && typeof activeWorkHours.endHour === "number") {
+    return calcWorkSeconds(
+      startMs,
+      effectiveNow,
+      activeWorkHours.startHour,
+      activeWorkHours.endHour,
+      activeWorkHours.startMinute || 0,
+      activeWorkHours.endMinute || 0
+    );
   }
   return Math.max(0, Math.floor((effectiveNow - startMs) / 1000));
 }
 
-function updateElapsedForFinish(row, nowIso, pauseControl) {
+function updateElapsedForFinish(row, nowIso, pauseControl, cleaningSite = null) {
   const accumulated = Number(row?.accumulatedSeconds || 0);
   const baselineTimestamp = row?.lastResumedAt || row?.startTime;
   if (!baselineTimestamp) return Math.max(0, accumulated);
-  return Math.max(0, accumulated + getOperationalElapsedSeconds(baselineTimestamp, nowIso, pauseControl));
+  // Use cleaningSite from row if not explicitly provided
+  const site = cleaningSite || row?.cleaningSite;
+  return Math.max(0, accumulated + getOperationalElapsedSeconds(baselineTimestamp, nowIso, pauseControl, site));
 }
 
 function findBoardAndRow(currentState, boardId, rowId = null) {

@@ -49,9 +49,11 @@ export default function ConfiguracionSistema({ contexto }) {
     return operationalSettings.naveWeekSchedules[weekKey] || { C1: [], C2: [], C3: [], P: [] };
   });
   const [pauseDraft, setPauseDraft] = useState(() => operationalSettings.pauseControl);
-    const [workHoursDraft, setWorkHoursDraft] = useState(() => operationalSettings.pauseControl.workHours || { startHour: 0, endHour: 24 });
+  const [workHoursDraft, setWorkHoursDraft] = useState(() => operationalSettings.pauseControl.workHours || { startHour: 0, endHour: 24, startMinute: 0, endMinute: 0 });
+  const [areaPauseControlsDraft, setAreaPauseControlsDraft] = useState(() => operationalSettings.pauseControl.areaPauseControls || { C1: { enabled: false, workHours: {} }, C2: { enabled: false, workHours: {} }, C3: { enabled: false, workHours: {} }, P: { enabled: false, workHours: {} } });
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
   const [isSavingPause, setIsSavingPause] = useState(false);
+  const [isSavingAreaPauseControls, setIsSavingAreaPauseControls] = useState(false);
 
   useEffect(() => {
     if (!selectedWeekKey) {
@@ -72,8 +74,11 @@ export default function ConfiguracionSistema({ contexto }) {
     setPauseDraft(operationalSettings.pauseControl);
   }, [operationalSettings.pauseControl]);
   useEffect(() => {
-    setWorkHoursDraft(operationalSettings.pauseControl.workHours || { startHour: 0, endHour: 24 });
+    setWorkHoursDraft(operationalSettings.pauseControl.workHours || { startHour: 0, endHour: 24, startMinute: 0, endMinute: 0 });
   }, [operationalSettings.pauseControl.workHours]);
+  useEffect(() => {
+    setAreaPauseControlsDraft(operationalSettings.pauseControl.areaPauseControls || { C1: { enabled: false, workHours: {} }, C2: { enabled: false, workHours: {} }, C3: { enabled: false, workHours: {} }, P: { enabled: false, workHours: {} } });
+  }, [operationalSettings.pauseControl.areaPauseControls]);
 
   function toggleNaveDay(nave, dayOffset) {
     setScheduleDraft((current) => {
@@ -158,17 +163,34 @@ export default function ConfiguracionSistema({ contexto }) {
   async function handleSaveWorkHours() {
     if (!canManageSystemSettings || isSavingWorkHours) return;
     const startHour = Math.min(23, Math.max(0, Math.round(Number(workHoursDraft.startHour) || 0)));
+    const startMinute = Math.min(59, Math.max(0, Math.round(Number(workHoursDraft.startMinute) || 0)));
     const endHour = Math.min(24, Math.max(0, Math.round(Number(workHoursDraft.endHour) || 24)));
+    const endMinute = Math.min(59, Math.max(0, Math.round(Number(workHoursDraft.endMinute) || 0)));
     setIsSavingWorkHours(true);
     try {
       await updateSystemOperationalSettings({
-        pauseControl: { ...pauseDraft, workHours: { startHour, endHour } },
+        pauseControl: { ...pauseDraft, workHours: { startHour, startMinute, endHour, endMinute } },
       });
-      pushAppToast(`Horario laboral guardado: ${String(startHour).padStart(2, "0")}:00 – ${String(endHour).padStart(2, "0")}:00`, "success");
+      pushAppToast(`Horario laboral guardado: ${String(startHour).padStart(2, "0")}:${String(startMinute).padStart(2, "0")} – ${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}`, "success");
     } catch (error) {
       pushAppToast(error?.message || "No se pudo guardar el horario laboral.", "danger");
     } finally {
       setIsSavingWorkHours(false);
+    }
+  }
+
+  async function handleSaveAreaPauseControls() {
+    if (!canManageSystemSettings || isSavingAreaPauseControls) return;
+    setIsSavingAreaPauseControls(true);
+    try {
+      await updateSystemOperationalSettings({
+        pauseControl: { ...pauseDraft, areaPauseControls: areaPauseControlsDraft },
+      });
+      pushAppToast("Controles de pausa por área guardados.", "success");
+    } catch (error) {
+      pushAppToast(error?.message || "No se pudo guardar los controles por área.", "danger");
+    } finally {
+      setIsSavingAreaPauseControls(false);
     }
   }
 
@@ -186,24 +208,35 @@ export default function ConfiguracionSistema({ contexto }) {
       <article className="surface-card full-width admin-surface-card">
         <div className="card-header-row">
           <div>
-            <h3>Horario laboral</h3>
-            <p className="subtle-line">Define el rango horario en que se acumula tiempo en los tableros. Fuera de este rango el contador se congela automáticamente.</p>
+            <h3>Horario laboral global</h3>
+            <p className="subtle-line">Define el rango horario en que se acumula tiempo en los tableros. Fuera de este rango el contador se congela automáticamente. Puedes usar minutos para granularidad fina.</p>
           </div>
         </div>
-        <div className="modal-form-grid system-config-pause-grid">
+        <div className="modal-form-grid system-config-pause-grid" style={{ gridTemplateColumns: "repeat(4, 1fr)" }}>
           <label className="app-modal-field">
-            <span>Hora de inicio (0–23)</span>
+            <span>Hora inicio</span>
             <input
               type="number"
               min="0"
               max="23"
-              value={workHoursDraft.startHour ?? 8}
+              value={workHoursDraft.startHour ?? 0}
               onChange={(event) => setWorkHoursDraft((current) => ({ ...current, startHour: event.target.value === "" ? "" : Number(event.target.value) }))}
               disabled={!canManageSystemSettings}
             />
           </label>
           <label className="app-modal-field">
-            <span>Hora de fin (0–24)</span>
+            <span>Minuto inicio</span>
+            <input
+              type="number"
+              min="0"
+              max="59"
+              value={workHoursDraft.startMinute ?? 0}
+              onChange={(event) => setWorkHoursDraft((current) => ({ ...current, startMinute: event.target.value === "" ? "" : Number(event.target.value) }))}
+              disabled={!canManageSystemSettings}
+            />
+          </label>
+          <label className="app-modal-field">
+            <span>Hora fin</span>
             <input
               type="number"
               min="0"
@@ -213,13 +246,111 @@ export default function ConfiguracionSistema({ contexto }) {
               disabled={!canManageSystemSettings}
             />
           </label>
+          <label className="app-modal-field">
+            <span>Minuto fin</span>
+            <input
+              type="number"
+              min="0"
+              max="59"
+              value={workHoursDraft.endMinute ?? 0}
+              onChange={(event) => setWorkHoursDraft((current) => ({ ...current, endMinute: event.target.value === "" ? "" : Number(event.target.value) }))}
+              disabled={!canManageSystemSettings}
+            />
+          </label>
         </div>
         <p className="subtle-line" style={{ marginTop: 4 }}>
-          Ventana activa: <strong>{String(Math.min(23, Math.max(0, Math.round(Number(workHoursDraft.startHour) || 0)))).padStart(2, "0")}:00</strong> – <strong>{String(Math.min(24, Math.max(0, Math.round(Number(workHoursDraft.endHour) || 24)))).padStart(2, "0")}:00</strong>
+          Ventana activa: <strong>{String(Math.min(23, Math.max(0, Math.round(Number(workHoursDraft.startHour) || 0)))).padStart(2, "0")}:{String(Math.min(59, Math.max(0, Math.round(Number(workHoursDraft.startMinute) || 0)))).padStart(2, "0")}</strong> – <strong>{String(Math.min(24, Math.max(0, Math.round(Number(workHoursDraft.endHour) || 24)))).padStart(2, "0")}:{String(Math.min(59, Math.max(0, Math.round(Number(workHoursDraft.endMinute) || 0)))).padStart(2, "0")}</strong>
         </p>
         <div className="row-actions compact">
           <button type="button" className="primary-button" onClick={handleSaveWorkHours} disabled={!canManageSystemSettings || isSavingWorkHours}>
             {isSavingWorkHours ? "Guardando..." : "Guardar horario laboral"}
+          </button>
+        </div>
+      </article>
+
+      <article className="surface-card full-width admin-surface-card">
+        <div className="card-header-row">
+          <div>
+            <h3>Horario laboral por área (Limpieza)</h3>
+            <p className="subtle-line">Define horarios específicos para cada área de limpieza. Si está habilitada, el área tendrá su propio rango de trabajo independiente del global.</p>
+          </div>
+        </div>
+        <div className="system-config-grid">
+          {["C1", "C2", "C3", "P"].map((area) => {
+            const areaControl = areaPauseControlsDraft[area] || { enabled: false, workHours: {} };
+            return (
+              <div key={area} className="system-config-card">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <strong>Área {area}</strong>
+                  <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input
+                      type="checkbox"
+                      checked={areaControl.enabled || false}
+                      onChange={(e) => setAreaPauseControlsDraft((current) => ({ ...current, [area]: { ...areaControl, enabled: e.target.checked } }))}
+                      disabled={!canManageSystemSettings}
+                    />
+                    <span style={{ fontSize: "0.9rem" }}>Activo</span>
+                  </label>
+                </div>
+                {areaControl.enabled && (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, fontSize: "0.85rem" }}>
+                    <label style={{ display: "flex", flexDirection: "column" }}>
+                      <span style={{ marginBottom: 4 }}>Hora inicio</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="23"
+                        value={areaControl.workHours?.startHour ?? 0}
+                        onChange={(e) => setAreaPauseControlsDraft((current) => ({ ...current, [area]: { ...areaControl, workHours: { ...areaControl.workHours, startHour: Number(e.target.value) } } }))}
+                        disabled={!canManageSystemSettings}
+                        style={{ padding: 4 }}
+                      />
+                    </label>
+                    <label style={{ display: "flex", flexDirection: "column" }}>
+                      <span style={{ marginBottom: 4 }}>Minuto inicio</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="59"
+                        value={areaControl.workHours?.startMinute ?? 0}
+                        onChange={(e) => setAreaPauseControlsDraft((current) => ({ ...current, [area]: { ...areaControl, workHours: { ...areaControl.workHours, startMinute: Number(e.target.value) } } }))}
+                        disabled={!canManageSystemSettings}
+                        style={{ padding: 4 }}
+                      />
+                    </label>
+                    <label style={{ display: "flex", flexDirection: "column" }}>
+                      <span style={{ marginBottom: 4 }}>Hora fin</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="24"
+                        value={areaControl.workHours?.endHour ?? 24}
+                        onChange={(e) => setAreaPauseControlsDraft((current) => ({ ...current, [area]: { ...areaControl, workHours: { ...areaControl.workHours, endHour: Number(e.target.value) } } }))}
+                        disabled={!canManageSystemSettings}
+                        style={{ padding: 4 }}
+                      />
+                    </label>
+                    <label style={{ display: "flex", flexDirection: "column" }}>
+                      <span style={{ marginBottom: 4 }}>Minuto fin</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="59"
+                        value={areaControl.workHours?.endMinute ?? 0}
+                        onChange={(e) => setAreaPauseControlsDraft((current) => ({ ...current, [area]: { ...areaControl, workHours: { ...areaControl.workHours, endMinute: Number(e.target.value) } } }))}
+                        disabled={!canManageSystemSettings}
+                        style={{ padding: 4 }}
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="row-actions compact">
+          <button type="button" className="primary-button" onClick={handleSaveAreaPauseControls} disabled={!canManageSystemSettings || isSavingAreaPauseControls}>
+            {isSavingAreaPauseControls ? "Guardando..." : "Guardar controles por área"}
           </button>
         </div>
       </article>
