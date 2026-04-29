@@ -49,7 +49,7 @@ export default function ConfiguracionSistema({ contexto }) {
     return operationalSettings.naveWeekSchedules[weekKey] || { C1: [], C2: [], C3: [], P: [] };
   });
   const [pauseDraft, setPauseDraft] = useState(() => operationalSettings.pauseControl);
-    const [workHoursDraft, setWorkHoursDraft] = useState(() => operationalSettings.pauseControl.workHours || { startHour: 8, endHour: 16 });
+    const [workHoursDraft, setWorkHoursDraft] = useState(() => operationalSettings.pauseControl.workHours || { startHour: 0, endHour: 24 });
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
   const [isSavingPause, setIsSavingPause] = useState(false);
 
@@ -72,7 +72,7 @@ export default function ConfiguracionSistema({ contexto }) {
     setPauseDraft(operationalSettings.pauseControl);
   }, [operationalSettings.pauseControl]);
   useEffect(() => {
-    setWorkHoursDraft(operationalSettings.pauseControl.workHours || { startHour: 8, endHour: 16 });
+    setWorkHoursDraft(operationalSettings.pauseControl.workHours || { startHour: 0, endHour: 24 });
   }, [operationalSettings.pauseControl.workHours]);
 
   function toggleNaveDay(nave, dayOffset) {
@@ -157,8 +157,8 @@ export default function ConfiguracionSistema({ contexto }) {
 
   async function handleSaveWorkHours() {
     if (!canManageSystemSettings || isSavingWorkHours) return;
-    const startHour = Math.min(23, Math.max(0, Math.round(Number(workHoursDraft.startHour) || 8)));
-    const endHour = Math.min(23, Math.max(0, Math.round(Number(workHoursDraft.endHour) || 16)));
+    const startHour = Math.min(23, Math.max(0, Math.round(Number(workHoursDraft.startHour) || 0)));
+    const endHour = Math.min(24, Math.max(0, Math.round(Number(workHoursDraft.endHour) || 24)));
     setIsSavingWorkHours(true);
     try {
       await updateSystemOperationalSettings({
@@ -203,19 +203,19 @@ export default function ConfiguracionSistema({ contexto }) {
             />
           </label>
           <label className="app-modal-field">
-            <span>Hora de fin (0–23)</span>
+            <span>Hora de fin (0–24)</span>
             <input
               type="number"
               min="0"
-              max="23"
-              value={workHoursDraft.endHour ?? 16}
+              max="24"
+              value={workHoursDraft.endHour ?? 24}
               onChange={(event) => setWorkHoursDraft((current) => ({ ...current, endHour: event.target.value === "" ? "" : Number(event.target.value) }))}
               disabled={!canManageSystemSettings}
             />
           </label>
         </div>
         <p className="subtle-line" style={{ marginTop: 4 }}>
-          Ventana activa: <strong>{String(Math.min(23, Math.max(0, Math.round(Number(workHoursDraft.startHour) || 8)))).padStart(2, "0")}:00</strong> – <strong>{String(Math.min(23, Math.max(0, Math.round(Number(workHoursDraft.endHour) || 16)))).padStart(2, "0")}:00</strong>
+          Ventana activa: <strong>{String(Math.min(23, Math.max(0, Math.round(Number(workHoursDraft.startHour) || 0)))).padStart(2, "0")}:00</strong> – <strong>{String(Math.min(24, Math.max(0, Math.round(Number(workHoursDraft.endHour) || 24)))).padStart(2, "0")}:00</strong>
         </p>
         <div className="row-actions compact">
           <button type="button" className="primary-button" onClick={handleSaveWorkHours} disabled={!canManageSystemSettings || isSavingWorkHours}>

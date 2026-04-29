@@ -51,25 +51,25 @@ function sameOrBefore(left, right) {
 function parseJornadaFromState(state) {
   const startHour = clampNonNegativeInteger(state?.system?.operational?.pauseControl?.workHours?.startHour);
   const endHour = clampNonNegativeInteger(state?.system?.operational?.pauseControl?.workHours?.endHour);
-  const safeStart = Math.min(23, Math.max(0, startHour || 8));
-  const safeEnd = Math.min(23, Math.max(safeStart + 1, endHour || 16));
+  const safeStart = Math.min(23, Math.max(0, startHour || 0));
+  const safeEnd = Math.min(24, Math.max(safeStart + 1, endHour || 24));
   return {
     hora_inicio: `${String(safeStart).padStart(2, "0")}:00`,
     hora_fin: `${String(safeEnd).padStart(2, "0")}:00`,
-    horas_teoricas: clampNonNegativeInteger(safeEnd - safeStart) || 8,
+    horas_teoricas: clampNonNegativeInteger(safeEnd - safeStart) || 24,
     incluye_comida: false,
   };
 }
 
 function buildJornadaWindow(dayDate, jornadaConfig) {
-  const [startHour] = String(jornadaConfig.hora_inicio || "08:00").split(":").map(Number);
-  const [endHour] = String(jornadaConfig.hora_fin || "16:00").split(":").map(Number);
+  const [startHour] = String(jornadaConfig.hora_inicio || "00:00").split(":").map(Number);
+  const [endHour] = String(jornadaConfig.hora_fin || "24:00").split(":").map(Number);
 
   const windowStart = new Date(dayDate);
-  windowStart.setHours(startHour || 8, 0, 0, 0);
+  windowStart.setHours(startHour || 0, 0, 0, 0);
 
   const windowEnd = new Date(dayDate);
-  windowEnd.setHours(endHour || 16, 0, 0, 0);
+  windowEnd.setHours(endHour || 24, 0, 0, 0);
 
   return { windowStart, windowEnd };
 }

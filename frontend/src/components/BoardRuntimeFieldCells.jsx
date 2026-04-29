@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Image as ImageIcon, Plus, Upload } from "lucide-react";
 import { createPortal } from "react-dom";
 import { Modal } from "./Modal";
@@ -211,6 +211,7 @@ export function BoardEditableInventoryPropertyInput({ value, suggestions, disabl
 }
 
 export function BoardEvidenceCell({ value, disabled, onChange, label }) {
+  const pickerInputId = useId();
   const fileInputRef = useRef(null);
   const evidences = normalizeBoardEvidenceValue(value);
   const latestValueRef = useRef(evidences);
@@ -287,6 +288,7 @@ export function BoardEvidenceCell({ value, disabled, onChange, label }) {
   return (
     <>
       <input
+        id={pickerInputId}
         ref={fileInputRef}
         type="file"
         accept="image/*,video/*"
@@ -296,10 +298,8 @@ export function BoardEvidenceCell({ value, disabled, onChange, label }) {
         disabled={disabled || uploading}
       />
       <div style={{ display: "grid", gap: "0.4rem", minWidth: 0 }}>
-        <button
-          type="button"
-          onClick={handleOpenPicker}
-          disabled={disabled || uploading}
+        <label
+          htmlFor={disabled || uploading ? undefined : pickerInputId}
           style={{
             width: "100%",
             minHeight: "78px",
@@ -359,7 +359,7 @@ export function BoardEvidenceCell({ value, disabled, onChange, label }) {
               <span style={{ fontSize: "0.74rem" }}>Foto o video</span>
             </div>
           )}
-        </button>
+        </label>
         {displayItems.length ? (
           <button type="button" className="icon-button" onClick={handleOpenPicker} disabled={disabled || uploading}>
             <Plus size={14} /> {uploading ? "Subiendo..." : "Agregar más"}

@@ -919,6 +919,13 @@ function shouldRetryInventoryRequestInDev(path, method) {
   return /^\/warehouse\/inventory\/[^/]+\/duplicate$/.test(String(path || ""));
 }
 
+function shouldRetryLoginOptionsInDev(path, method, status) {
+  if (!import.meta.env.DEV) return false;
+  if (String(method || "GET").toUpperCase() !== "GET") return false;
+  if (path !== "/auth/login-options") return false;
+  return status === 502 || status === 503 || status === 504 || status === 0;
+}
+
 function buildDevBackendUrl(path) {
   const protocol = globalThis.location?.protocol || "http:";
   const hostname = globalThis.location?.hostname || "localhost";
@@ -935,9 +942,24 @@ export async function requestJson(path, options = {}) {
     ...options,
   };
 
-  let response = await fetch(`${API_BASE_URL}${path}`, requestInit);
+  const requestMethod = String(requestInit.method || "GET").toUpperCase();
+  let response;
 
-  if (response.status === 404 && shouldRetryInventoryRequestInDev(path, requestInit.method)) {
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, requestInit);
+  } catch (error) {
+    if (shouldRetryLoginOptionsInDev(path, requestMethod, 0)) {
+      response = await fetch(buildDevBackendUrl(path), requestInit);
+    } else {
+      throw error;
+    }
+  }
+
+  if (response.status === 404 && shouldRetryInventoryRequestInDev(path, requestMethod)) {
+    response = await fetch(buildDevBackendUrl(path), requestInit);
+  }
+
+  if (shouldRetryLoginOptionsInDev(path, requestMethod, response.status)) {
     response = await fetch(buildDevBackendUrl(path), requestInit);
   }
 
@@ -3397,8 +3419,8 @@ export function normalizeSystemOperationalSettings(value) {
       forceGlobalPause: Boolean(source.pauseControl?.forceGlobalPause),
       reasons: normalizedReasons.length ? normalizedReasons : defaultReasons.map((entry) => normalizeSystemPauseReason(entry, entry)),
       workHours: {
-        startHour: (() => { const v = Number(source.pauseControl?.workHours?.startHour ?? 8); return Number.isFinite(v) ? Math.min(23, Math.max(0, Math.round(v))) : 8; })(),
-        endHour: (() => { const v = Number(source.pauseControl?.workHours?.endHour ?? 16); return Number.isFinite(v) ? Math.min(23, Math.max(0, Math.round(v))) : 16; })(),
+        startHour: (() => { const v = Number(source.pauseControl?.workHours?.startHour ?? 0); return Number.isFinite(v) ? Math.min(23, Math.max(0, Math.round(v))) : 0; })(),
+        endHour: (() => { const v = Number(source.pauseControl?.workHours?.endHour ?? 24); return Number.isFinite(v) ? Math.min(24, Math.max(0, Math.round(v))) : 24; })(),
       },
       globalPauseActivatedAt: (() => { const raw = source.pauseControl?.globalPauseActivatedAt; return (raw && !isNaN(Date.parse(raw))) ? String(raw) : null; })(),
     },

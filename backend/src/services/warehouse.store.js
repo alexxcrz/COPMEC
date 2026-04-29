@@ -317,10 +317,10 @@ function normalizeSystemPauseControl(value) {
       seen.add(key);
       return true;
     });
-  const rawStartHour = Number(source.workHours?.startHour ?? 8);
-  const rawEndHour = Number(source.workHours?.endHour ?? 16);
-  const startHour = Number.isFinite(rawStartHour) ? Math.min(23, Math.max(0, Math.round(rawStartHour))) : 8;
-  const endHour = Number.isFinite(rawEndHour) ? Math.min(23, Math.max(0, Math.round(rawEndHour))) : 16;
+  const rawStartHour = Number(source.workHours?.startHour ?? 0);
+  const rawEndHour = Number(source.workHours?.endHour ?? 24);
+  const startHour = Number.isFinite(rawStartHour) ? Math.min(23, Math.max(0, Math.round(rawStartHour))) : 0;
+  const endHour = Number.isFinite(rawEndHour) ? Math.min(24, Math.max(0, Math.round(rawEndHour))) : 24;
   const rawActivatedAt = source.globalPauseActivatedAt;
   const globalPauseActivatedAt = (rawActivatedAt && !isNaN(Date.parse(rawActivatedAt))) ? String(rawActivatedAt) : null;
   return {

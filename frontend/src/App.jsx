@@ -547,7 +547,7 @@ function App() { // NOSONAR
   const operationalPauseState = useMemo(() => ({
     globalPauseEnabled: Boolean(state?.system?.operational?.pauseControl?.globalPauseEnabled),
     globalPauseActivatedAt: state?.system?.operational?.pauseControl?.globalPauseActivatedAt || null,
-    workHours: state?.system?.operational?.pauseControl?.workHours || { startHour: 8, endHour: 16 },
+    workHours: state?.system?.operational?.pauseControl?.workHours || { startHour: 0, endHour: 24 },
   }), [state?.system?.operational]);
   const pauseReasonOptions = useMemo(() => {
     const source = Array.isArray(state?.system?.operational?.pauseControl?.reasons)

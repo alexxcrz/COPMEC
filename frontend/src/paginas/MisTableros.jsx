@@ -245,7 +245,7 @@ export default function MisTableros({ contexto }) {
     const pauseState = {
       globalPauseEnabled: manualGlobalPause,
       globalPauseActivatedAt: systemPauseControl?.globalPauseActivatedAt || null,
-      workHours: systemPauseControl?.workHours || { startHour: 8, endHour: 16 },
+      workHours: systemPauseControl?.workHours || { startHour: 0, endHour: 24 },
     };
   const boardOperationalContextType = String(boardView?.settings?.operationalContextType || "none");
   const boardOperationalContextLabel = String(boardView?.settings?.operationalContextLabel || "").trim()
