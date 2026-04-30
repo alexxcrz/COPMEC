@@ -227,6 +227,13 @@ export default function MisTableros({ contexto }) {
     return base.toISOString();
   }
 
+  function addSecondsToIso(baseIso, secondsToAdd) {
+    const baseDate = new Date(baseIso);
+    if (!Number.isFinite(baseDate.getTime())) return baseIso || null;
+    baseDate.setSeconds(baseDate.getSeconds() + Math.max(0, Math.round(Number(secondsToAdd) || 0)));
+    return baseDate.toISOString();
+  }
+
   const auxLabels = {
     assignee: "Player",
     status: "Estado",
@@ -1474,6 +1481,10 @@ export default function MisTableros({ contexto }) {
             {pauseDetailsLogs.length ? (
               <div style={{ display: "grid", gap: "0.45rem", maxHeight: "42vh", overflowY: "auto", paddingRight: "0.1rem" }}>
                 {pauseDetailsLogs.map((entry, index) => {
+                  const effectiveNow = pauseDetailsRow?.status === STATUS_FINISHED && pauseDetailsRow?.endTime
+                    ? new Date(pauseDetailsRow.endTime).getTime()
+                    : now;
+                  const liveProductionSeconds = getElapsedSeconds(pauseDetailsRow, effectiveNow, pauseState);
                   const startLabel = entry?.pausedAt ? formatTime(entry.pausedAt) : "--";
                   const endLabel = entry?.resumedAt ? formatTime(entry.resumedAt) : "En curso";
                   const durationSeconds = entry?.resumedAt
@@ -1509,13 +1520,14 @@ export default function MisTableros({ contexto }) {
                                 if ((logEntry?.id || `${logIndex}`) !== (entry?.id || `${index}`)) return logEntry;
                                 return {
                                   ...logEntry,
+                                  resumedAt: logEntry?.pausedAt ? addSecondsToIso(logEntry.pausedAt, nextSeconds) : logEntry?.resumedAt,
                                   pauseDurationSeconds: nextSeconds,
                                 };
                               });
                               const totalPauseSeconds = nextPauseLogs.reduce((sum, logEntry) => sum + Math.max(0, Number(logEntry?.pauseDurationSeconds || 0)), 0);
                               updateBoardRowTimeOverride(selectedCustomBoard.id, pauseDetailsRow.id, {
                                 pauseLogs: nextPauseLogs,
-                                totalElapsedSecondsOverride: Math.max(0, Number(pauseDetailsRow?.accumulatedSeconds || 0)) + totalPauseSeconds,
+                                totalElapsedSecondsOverride: liveProductionSeconds + totalPauseSeconds,
                               });
                               setPauseDurationEdits((prev) => ({ ...prev, [durationEditKey]: formatDurationClock(nextSeconds) }));
                             }}

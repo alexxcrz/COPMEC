@@ -4673,8 +4673,10 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
             pauseDurationSeconds: Math.max(0, Number(entry?.pauseDurationSeconds || 0)),
           }))
         : [];
-      const totalPauseSeconds = nextRow.pauseLogs.reduce((sum, entry) => sum + Math.max(0, Number(entry?.pauseDurationSeconds || 0)), 0);
-      nextRow.totalElapsedSecondsOverride = Math.max(0, Number(nextRow.accumulatedSeconds || 0)) + totalPauseSeconds;
+      if (!hasOwn(patch, "totalElapsedSecondsOverride")) {
+        const totalPauseSeconds = nextRow.pauseLogs.reduce((sum, entry) => sum + Math.max(0, Number(entry?.pauseDurationSeconds || 0)), 0);
+        nextRow.totalElapsedSecondsOverride = Math.max(0, Number(nextRow.accumulatedSeconds || 0)) + totalPauseSeconds;
+      }
     }
     if (Boolean(patch.clearPauseLogs)) {
       nextRow.pauseLogs = [];
