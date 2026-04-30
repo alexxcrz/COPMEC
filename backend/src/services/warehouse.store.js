@@ -4644,9 +4644,10 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
     }
   }
 
-  // Lead-only direct overrides for time fields (startTime, endTime, accumulatedSeconds).
+  // Lead-only direct overrides for time fields (startTime, endTime, accumulatedSeconds) and persisted pause logs.
   if (normalizeRole(currentUser.role) === ROLE_LEAD) {
     const hasTimeOverride = hasOwn(patch, "startTime") || hasOwn(patch, "endTime") || hasOwn(patch, "accumulatedSeconds") || hasOwn(patch, "totalElapsedSecondsOverride");
+    const hasPauseLogOverride = hasOwn(patch, "pauseLogs");
     if (hasOwn(patch, "startTime") && patch.startTime) {
       nextRow.startTime = patch.startTime;
     }
@@ -4662,10 +4663,24 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
         ? Math.max(0, totalOverride)
         : null;
     }
+    if (hasPauseLogOverride) {
+      nextRow.pauseLogs = Array.isArray(patch.pauseLogs)
+        ? patch.pauseLogs.map((entry) => ({
+            id: entry?.id || makeId("pause"),
+            reason: String(entry?.reason || "").trim(),
+            pausedAt: entry?.pausedAt || null,
+            resumedAt: entry?.resumedAt || null,
+            pauseDurationSeconds: Math.max(0, Number(entry?.pauseDurationSeconds || 0)),
+          }))
+        : [];
+      const totalPauseSeconds = nextRow.pauseLogs.reduce((sum, entry) => sum + Math.max(0, Number(entry?.pauseDurationSeconds || 0)), 0);
+      nextRow.totalElapsedSecondsOverride = Math.max(0, Number(nextRow.accumulatedSeconds || 0)) + totalPauseSeconds;
+    }
     if (Boolean(patch.clearPauseLogs)) {
       nextRow.pauseLogs = [];
       nextRow.lastPauseReason = "";
-    } else if (hasTimeOverride && String(nextRow.status || "") !== "Pausado") {
+      nextRow.totalElapsedSecondsOverride = Math.max(0, Number(nextRow.accumulatedSeconds || 0));
+    } else if (hasTimeOverride && !hasPauseLogOverride && String(nextRow.status || "") !== "Pausado") {
       nextRow.pauseLogs = syncBoardRowPauseLogsWithCounters(nextRow, nowIso, pauseControl);
     }
   }

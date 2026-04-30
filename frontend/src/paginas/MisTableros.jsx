@@ -206,6 +206,16 @@ export default function MisTableros({ contexto }) {
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   }
 
+  function parseHhmmssToSeconds(value) {
+    const parts = String(value || "").trim().split(":");
+    if (parts.length < 2 || parts.length > 3) return null;
+    const normalized = parts.map((part) => Number.parseInt(part, 10));
+    if (normalized.some((part) => !Number.isFinite(part) || part < 0)) return null;
+    const [hours, minutes, seconds = 0] = normalized;
+    if (minutes > 59 || seconds > 59) return null;
+    return (hours * 3600) + (minutes * 60) + seconds;
+  }
+
   function hhmmToIso(hhmm, baseIso) {
     const parts = String(hhmm || "").split(":");
     const h = Number.parseInt(parts[0], 10);
@@ -272,6 +282,7 @@ export default function MisTableros({ contexto }) {
   const [pauseDetailsRow, setPauseDetailsRow] = useState(null);
   // Local edit buffer for Lead time overrides: key = "rowId-colId", value = string being typed
   const [leadTimeEdits, setLeadTimeEdits] = useState({});
+  const [pauseDurationEdits, setPauseDurationEdits] = useState({});
   const boardColumns = boardView ? getOrderedBoardColumns(boardView, isBoardOwner) : [];
   const systemOperationalSettings = normalizeSystemOperationalSettings(state?.system?.operational);
   const systemPauseControl = systemOperationalSettings.pauseControl;
@@ -603,6 +614,14 @@ export default function MisTableros({ contexto }) {
   const pauseDetailsLogs = Array.isArray(pauseDetailsRow?.pauseLogs)
     ? pauseDetailsRow.pauseLogs
     : [];
+
+  useEffect(() => {
+    if (!pauseDetailsRow?.id || !selectedCustomBoard?.rows) return;
+    const refreshedRow = (selectedCustomBoard.rows || []).find((row) => row.id === pauseDetailsRow.id);
+    if (refreshedRow && refreshedRow !== pauseDetailsRow) {
+      setPauseDetailsRow(refreshedRow);
+    }
+  }, [pauseDetailsRow, selectedCustomBoard]);
 
   return (
     <section className="admin-page-layout mis-tableros-shell">
@@ -1462,12 +1481,49 @@ export default function MisTableros({ contexto }) {
                     : entry?.pausedAt
                       ? Math.max(0, getOperationalElapsedSeconds(entry.pausedAt, now, pauseState, pauseDetailsRow?.cleaningSite))
                       : 0;
+                  const durationEditKey = `${pauseDetailsRow.id}:${entry?.id || index}`;
+                  const durationEditValue = pauseDurationEdits[durationEditKey] ?? formatDurationClock(durationSeconds);
+                  const canEditPauseDuration = Boolean(canManageDashboardState) && Boolean(entry?.resumedAt);
                   return (
                     <article key={entry?.id || `${pauseDetailsRow.id}-pause-${index}`} style={{ border: "1px solid rgba(3,33,33,0.14)", borderRadius: "0.8rem", padding: "0.48rem 0.58rem", display: "grid", gap: "0.2rem" }}>
                       <strong style={{ fontSize: "0.78rem" }}>Pausa {index + 1}</strong>
                       <span style={{ fontSize: "0.76rem" }}>Inicio: {startLabel}</span>
                       <span style={{ fontSize: "0.76rem" }}>Fin: {endLabel}</span>
-                      <span style={{ fontSize: "0.76rem" }}>Duración: {formatDurationClock(durationSeconds)}</span>
+                      {canEditPauseDuration ? (
+                        <label style={{ display: "grid", gap: "0.18rem", fontSize: "0.76rem" }}>
+                          <span>Duración</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={durationEditValue}
+                            placeholder="HH:mm:ss"
+                            style={{ width: "100%" }}
+                            onChange={(event) => setPauseDurationEdits((prev) => ({ ...prev, [durationEditKey]: event.target.value }))}
+                            onBlur={(event) => {
+                              const nextSeconds = parseHhmmssToSeconds(event.target.value);
+                              if (nextSeconds === null) {
+                                setPauseDurationEdits((prev) => ({ ...prev, [durationEditKey]: formatDurationClock(durationSeconds) }));
+                                return;
+                              }
+                              const nextPauseLogs = pauseDetailsLogs.map((logEntry, logIndex) => {
+                                if ((logEntry?.id || `${logIndex}`) !== (entry?.id || `${index}`)) return logEntry;
+                                return {
+                                  ...logEntry,
+                                  pauseDurationSeconds: nextSeconds,
+                                };
+                              });
+                              const totalPauseSeconds = nextPauseLogs.reduce((sum, logEntry) => sum + Math.max(0, Number(logEntry?.pauseDurationSeconds || 0)), 0);
+                              updateBoardRowTimeOverride(selectedCustomBoard.id, pauseDetailsRow.id, {
+                                pauseLogs: nextPauseLogs,
+                                totalElapsedSecondsOverride: Math.max(0, Number(pauseDetailsRow?.accumulatedSeconds || 0)) + totalPauseSeconds,
+                              });
+                              setPauseDurationEdits((prev) => ({ ...prev, [durationEditKey]: formatDurationClock(nextSeconds) }));
+                            }}
+                          />
+                        </label>
+                      ) : (
+                        <span style={{ fontSize: "0.76rem" }}>Duración: {formatDurationClock(durationSeconds)}</span>
+                      )}
                       {entry?.reason && !/ajuste\s+manual\s+de\s+contadores/i.test(String(entry.reason)) ? <span style={{ fontSize: "0.74rem", color: "#4b6b66" }}>Motivo: {entry.reason}</span> : null}
                     </article>
                   );
