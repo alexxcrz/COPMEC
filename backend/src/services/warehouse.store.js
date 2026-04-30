@@ -2716,25 +2716,11 @@ function createBoardRowRecord(fields, responsibleId, partial = {}) {
 
 function syncBoardRowPauseLogsWithCounters(row, nowIso, pauseControl) {
   if (!row || !row.startTime) return row?.pauseLogs || [];
-  const referenceEndIso = row.endTime || nowIso;
-  const elapsedSeconds = Math.max(
-    0,
-    getOperationalElapsedSeconds(row.startTime, referenceEndIso, pauseControl, row.cleaningSite),
-  );
-  const productionSeconds = Math.max(0, Number(row.accumulatedSeconds || 0));
-  const targetPauseSeconds = Math.max(0, elapsedSeconds - productionSeconds);
-  if (targetPauseSeconds <= 0) return [];
-
-  const pausedAt = row.startTime || nowIso;
-  const resumedAt = row.status === "Pausado" ? null : referenceEndIso;
-  return [
-    {
-      id: makeId("pause"),
-      pausedAt,
-      resumedAt,
-      pauseDurationSeconds: targetPauseSeconds,
-    },
-  ];
+  const blockedReasonKey = "ajuste manual de contadores";
+  const existingLogs = Array.isArray(row.pauseLogs) ? row.pauseLogs : [];
+  return existingLogs
+    .map((entry) => ({ ...entry }))
+    .filter((entry) => normalizeKey(entry?.reason || "") !== blockedReasonKey);
 }
 
 function buildBoardRowsFromActivityList(fields, catalog, responsibleId, previousFields = [], previousRows = []) {
@@ -4582,6 +4568,9 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
       nextRow.pauseLogs = closeOpenPauseLog(nextRow.pauseLogs, row, nowIso, row.lastPauseReason);
     } else if (patch.status === "Pausado") {
       const pauseReason = String(patch.lastPauseReason || row.lastPauseReason || "").trim();
+      if (normalizeKey(pauseReason) === "ajuste manual de contadores") {
+        return { ok: false, reason: "pause_reason_blocked" };
+      }
       const pauseRule = resolvePauseRule(pauseReason);
       const pauseAuthorizedMinutes = Number(pauseRule?.authorizedMinutes || 0);
       const pauseDailyUsageLimit = Number(pauseRule?.dailyUsageLimit || 0);

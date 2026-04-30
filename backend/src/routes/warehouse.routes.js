@@ -877,11 +877,15 @@ warehouseRouter.patch("/boards/:boardId/rows/:rowId", (req, res) => {
         ? 404
         : result.reason === "pause_daily_limit_reached"
           ? 429
+        : result.reason === "pause_reason_blocked"
+          ? 422
         : result.reason === "global_pause_active"
           ? 423
           : 403;
     const message = result.reason === "pause_daily_limit_reached"
       ? `Ya alcanzaste el máximo de pausas autorizadas para hoy (${Number(result.limit || 0)}).`
+      : result.reason === "pause_reason_blocked"
+        ? "Ese motivo no está permitido para pausar la actividad."
       : "No fue posible actualizar la fila solicitada.";
     res.status(status).json({ ok: false, message });
     return;

@@ -754,6 +754,7 @@ function App() { // NOSONAR
     areaPauseControls: state?.system?.operational?.pauseControl?.areaPauseControls || EMPTY_OBJECT,
   }), [state?.system?.operational]);
   const enabledPauseReasons = useMemo(() => {
+    const blockedReasonKey = "ajuste manual de contadores";
     const source = Array.isArray(state?.system?.operational?.pauseControl?.reasons)
       ? state.system.operational.pauseControl.reasons
       : [];
@@ -768,7 +769,7 @@ function App() { // NOSONAR
       }))
       .filter((entry) => {
         const key = String(entry.label || "").trim().toLowerCase();
-        if (!key || seen.has(key)) return false;
+        if (!key || key === blockedReasonKey || seen.has(key)) return false;
         seen.add(key);
         return true;
       });
@@ -3690,6 +3691,10 @@ function App() { // NOSONAR
       setPauseState((current) => ({ ...current, error: "El motivo es obligatorio para poder pausar." }));
       return;
     }
+    if (String(pauseReasonValue).trim().toLowerCase() === "ajuste manual de contadores") {
+      setPauseState((current) => ({ ...current, error: "Este motivo no está permitido para pausar actividades." }));
+      return;
+    }
 
     const nowIso = new Date().toISOString();
     const pauseLogId = makeId("pause");
@@ -3776,6 +3781,10 @@ function App() { // NOSONAR
     const boardPauseReasonValue = resolvePauseReasonValue(boardPauseState);
     if (!boardPauseReasonValue) {
       setBoardPauseState((current) => ({ ...current, error: "El motivo es obligatorio para poder pausar." }));
+      return;
+    }
+    if (String(boardPauseReasonValue).trim().toLowerCase() === "ajuste manual de contadores") {
+      setBoardPauseState((current) => ({ ...current, error: "Este motivo no está permitido para pausar filas." }));
       return;
     }
 
