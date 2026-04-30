@@ -7897,12 +7897,12 @@ tbody tr:hover {
 }
 
 .dashboard-kpi-grid-executive {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 0.72rem;
 }
 
 .dashboard-kpi-grid-executive.dashboard-kpi-grid-7 {
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
 }
 
 .dashboard-kpi-grid-main {
@@ -7982,7 +7982,7 @@ tbody tr:hover {
 
 @media (max-width: 1080px) {
   .dashboard-kpi-grid-executive {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
