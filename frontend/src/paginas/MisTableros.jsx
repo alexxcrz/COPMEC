@@ -996,11 +996,15 @@ export default function MisTableros({ contexto }) {
                             if (column.id === "efficiency") {
                               const effectiveNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : now;
                               const prodSecs = getElapsedSeconds(row, effectiveNow, pauseState);
-                              const totalSecs = row.status === STATUS_PAUSED
+                              const computedTotalSecs = row.status === STATUS_PAUSED
                                 ? prodSecs
                                 : row.startTime
                                   ? Math.max(prodSecs, getOperationalElapsedSeconds(row.startTime, effectiveNow, pauseState))
                                   : prodSecs;
+                              const overriddenTotalSecs = Number(row.totalElapsedSecondsOverride);
+                              const totalSecs = Number.isFinite(overriddenTotalSecs) && overriddenTotalSecs >= 0
+                                ? Math.max(0, overriddenTotalSecs)
+                                : computedTotalSecs;
                               const pct = totalSecs > 0 ? Math.round((prodSecs / totalSecs) * 100) : (row.startTime ? 100 : 0);
                               const color = pct >= 80 ? "#16a34a" : pct >= 50 ? "#15803d" : "#dc2626";
                               return (
