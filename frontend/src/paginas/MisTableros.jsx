@@ -892,7 +892,8 @@ export default function MisTableros({ contexto }) {
                                     {pauseCount > 0 ? (
                                       <button
                                         type="button"
-                                        className="icon-button sm-button board-pdf-hide"
+                                        className="board-pdf-hide"
+                                        style={{ background: "none", border: "none", padding: 0, color: "#5b8a8a", fontSize: "0.72rem", cursor: "pointer", textDecoration: "underline", textAlign: "left" }}
                                         onClick={() => setPauseDetailsRow(row)}
                                       >
                                         Ver pausas
@@ -901,7 +902,7 @@ export default function MisTableros({ contexto }) {
                                     {isLeadPrincipal && pauseCount > 0 ? (
                                       <button
                                         type="button"
-                                        className="icon-button"
+                                        style={{ background: "none", border: "none", padding: 0, color: "#b05050", fontSize: "0.72rem", cursor: "pointer", textDecoration: "underline", textAlign: "left" }}
                                         onClick={() => updateBoardRowTimeOverride(selectedCustomBoard.id, row.id, { clearPauseLogs: true })}
                                       >
                                         Eliminar pausas
@@ -918,7 +919,7 @@ export default function MisTableros({ contexto }) {
                               if (isLeadPrincipal) {
                                 const editKey = `${row.id}-time`;
                                 const editingVal = leadTimeEdits[editKey];
-                                const displayVal = editingVal !== undefined ? editingVal : secondsToHhmm(computedSecs);
+                                const displayVal = editingVal !== undefined ? editingVal : formatDurationClock(computedSecs);
                                 return (
                                   <td key={`${row.id}-${column.token}`} style={getEffectiveColumnWidth(column)}>
                                     <input
@@ -951,7 +952,7 @@ export default function MisTableros({ contexto }) {
                               if (isLeadPrincipal) {
                                 const editKey = `${row.id}-totalTime`;
                                 const editingVal = leadTimeEdits[editKey];
-                                const displayVal = editingVal !== undefined ? editingVal : secondsToHhmm(totalSecs);
+                                const displayVal = editingVal !== undefined ? editingVal : formatDurationClock(totalSecs);
                                 return (
                                   <td key={`${row.id}-${column.token}`} style={getEffectiveColumnWidth(column)}>
                                     <input
