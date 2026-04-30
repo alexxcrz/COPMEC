@@ -986,10 +986,10 @@ export default function MisTableros({ contexto }) {
                                               : 0;
                                           const existingOverride = Number(row.totalElapsedSecondsOverride);
                                           const preservedTotalSecs = Math.max(
-                                            computedTotalSecs,
+                                            computedSecs,
                                             Number.isFinite(existingOverride) && existingOverride >= 0
                                               ? Math.max(0, existingOverride)
-                                              : 0,
+                                              : computedTotalSecs,
                                           );
                                           updateBoardRowTimeOverride(selectedCustomBoard.id, row.id, {
                                             accumulatedSeconds: secs,
@@ -1014,7 +1014,7 @@ export default function MisTableros({ contexto }) {
                                   : 0;
                               const overriddenTotalSecs = Number(row.totalElapsedSecondsOverride);
                               const totalSecs = Number.isFinite(overriddenTotalSecs) && overriddenTotalSecs >= 0
-                                ? Math.max(computedTotalSecs, Math.max(0, overriddenTotalSecs))
+                                ? Math.max(prodSecs, Math.max(0, overriddenTotalSecs))
                                 : computedTotalSecs;
                               if (isLeadPrincipal) {
                                 const editKey = `${row.id}-totalTime`;
@@ -1051,7 +1051,7 @@ export default function MisTableros({ contexto }) {
                                   : prodSecs;
                               const overriddenTotalSecs = Number(row.totalElapsedSecondsOverride);
                               const totalSecs = Number.isFinite(overriddenTotalSecs) && overriddenTotalSecs >= 0
-                                ? Math.max(computedTotalSecs, Math.max(0, overriddenTotalSecs))
+                                ? Math.max(prodSecs, Math.max(0, overriddenTotalSecs))
                                 : computedTotalSecs;
                               const pct = totalSecs > 0 ? Math.round((prodSecs / totalSecs) * 100) : (row.startTime ? 100 : 0);
                               const color = pct >= 80 ? "#16a34a" : pct >= 50 ? "#15803d" : "#dc2626";
