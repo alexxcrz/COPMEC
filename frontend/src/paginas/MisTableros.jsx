@@ -7,6 +7,8 @@ import {
   getBoardRowResponsibleIds,
   getOperationalElapsedSeconds,
   normalizeSystemOperationalSettings,
+  parseBoardWeekKey,
+  addDays,
   resolveInventoryPropertySourceFieldId,
 } from "../utils/utilidades.jsx";
 
@@ -337,6 +339,23 @@ export default function MisTableros({ contexto }) {
     || !allowedWeekdaysForNave.length
     || allowedWeekdaysForNave.includes(effectiveWeekdayOffset);
   const effectiveCatalogCleaningSite = showCleaningNaveSelector ? cleaningNaveValue : "";
+  const boardDateField = (boardView?.fields || []).find((field) => field?.type === "date") || null;
+  const targetOperationalDateKey = (() => {
+    const nowDate = new Date();
+    if (selectedWeekdayFilter === "auto") {
+      const year = nowDate.getFullYear();
+      const month = String(nowDate.getMonth() + 1).padStart(2, "0");
+      const day = String(nowDate.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+    const parsedWeekStart = parseBoardWeekKey(effectiveWeekKey);
+    if (!parsedWeekStart) return "";
+    const targetDate = addDays(parsedWeekStart, effectiveWeekdayOffset);
+    const year = targetDate.getFullYear();
+    const month = String(targetDate.getMonth() + 1).padStart(2, "0");
+    const day = String(targetDate.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  })();
 
   useEffect(() => {
     const timer = globalThis.setInterval(() => {
@@ -507,6 +526,10 @@ export default function MisTableros({ contexto }) {
     )
     : null;
   const visibleRows = (boardView?.rows || []).filter((row) => {
+    if (showCleaningNaveSelector && boardDateField && targetOperationalDateKey) {
+      const rowDate = String(row?.values?.[boardDateField.id] || "").trim();
+      if (rowDate && rowDate !== targetOperationalDateKey) return false;
+    }
     if (!activityListField || !activityOptionNames) return true;
     const activityValue = String(row?.values?.[activityListField.id] || "").trim().toLowerCase();
     if (!activityValue) return true;

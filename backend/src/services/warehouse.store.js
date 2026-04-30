@@ -680,6 +680,77 @@ function applyAutomatedBoardWeeklyCut(state, referenceDate = new Date()) {
   };
 }
 
+function applyAutomatedBoardDailyRows(state, referenceDate = new Date()) {
+  const todayKey = formatLocalDateKey(referenceDate);
+  const weekdayOffset = getCatalogWeekdayOffset(referenceDate);
+  let changed = false;
+
+  const nextBoards = (state?.controlBoards || []).map((board) => {
+    const fields = normalizeBoardFields(board);
+    const activityListField = findBoardActivityListField(fields);
+    const dateField = fields.find((field) => field?.type === "date") || null;
+    if (!activityListField || !dateField) return board;
+
+    const settings = withDefaultBoardSettings(board?.settings);
+    const isCleaningContext = normalizeBoardOperationalContextType(settings?.operationalContextType) === BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE;
+    const cleaningSite = isCleaningContext ? normalizeCleaningSite(settings?.operationalContextValue, "") : "";
+
+    const expectedActivityNames = getBoardActivityListValuesForOperationalDay(
+      activityListField,
+      state?.catalog || [],
+      weekdayOffset,
+      cleaningSite,
+    );
+    if (!expectedActivityNames.length) return board;
+
+    const rows = Array.isArray(board?.rows) ? [...board.rows] : [];
+    const existingTodayActivities = new Set(
+      rows
+        .filter((row) => String(row?.values?.[dateField.id] || "").trim() === todayKey)
+        .map((row) => normalizeKey(row?.values?.[activityListField.id] || ""))
+        .filter(Boolean),
+    );
+
+    const missingActivityNames = expectedActivityNames.filter((activityName) => !existingTodayActivities.has(normalizeKey(activityName)));
+    if (!missingActivityNames.length) return board;
+
+    const baseResponsibleId = String(board?.ownerId || board?.createdById || "").trim();
+    const addedRows = missingActivityNames.map((activityName) => createBoardRowRecord(fields, baseResponsibleId, {
+      status: "Pendiente",
+      startTime: null,
+      endTime: null,
+      accumulatedSeconds: 0,
+      lastResumedAt: null,
+      lastPauseReason: "",
+      pauseUsageByDay: {},
+      pauseLogs: [],
+      values: {
+        [activityListField.id]: activityName,
+        [dateField.id]: todayKey,
+      },
+    }));
+
+    changed = true;
+    return {
+      ...board,
+      fields,
+      rows: rows.concat(addedRows),
+    };
+  });
+
+  if (!changed) {
+    return { state, changed: false };
+  }
+
+  return {
+    changed: true,
+    state: {
+      ...state,
+      controlBoards: nextBoards,
+    },
+  };
+}
+
 function normalizeInventoryDomain(value) {
   const key = String(value || "").trim().toLowerCase();
   if (["cleaning", "limpieza", "clean"].includes(key)) return "cleaning";
@@ -1756,8 +1827,9 @@ export function getWarehouseState() {
 function getRawWarehouseState() {
   const currentState = readStore();
   const { state: boardState, changed: boardChanged } = applyAutomatedBoardWeeklyCut(currentState);
-  const { state: automatedPauseState, changed: pauseChanged } = applyAutomatedGlobalPauseState(boardState);
-  if (!boardChanged && !pauseChanged) return currentState;
+  const { state: dailyRowsState, changed: dailyRowsChanged } = applyAutomatedBoardDailyRows(boardState);
+  const { state: automatedPauseState, changed: pauseChanged } = applyAutomatedGlobalPauseState(dailyRowsState);
+  if (!boardChanged && !dailyRowsChanged && !pauseChanged) return currentState;
 
   const persistedState = normalizeState({
     ...automatedPauseState,
@@ -2491,6 +2563,62 @@ function sanitizeBoardDraft(draft, currentUserId) {
 
 function findBoardActivityListField(fields = []) {
   return (fields || []).find((field) => field?.type === "select" && field?.optionSource === "catalogByCategory") || null;
+}
+
+function getCatalogWeekdayOffset(referenceDate = new Date()) {
+  const jsDay = referenceDate.getDay();
+  return jsDay === 0 ? 6 : jsDay - 1;
+}
+
+function formatLocalDateKey(referenceDate = new Date()) {
+  const year = referenceDate.getFullYear();
+  const month = String(referenceDate.getMonth() + 1).padStart(2, "0");
+  const day = String(referenceDate.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getCatalogItemOperationalWeekdays(item, cleaningSite = "") {
+  const normalizedCleaningSite = String(cleaningSite || "").trim().toUpperCase();
+  const scheduledDays = normalizeCatalogScheduledDays(item?.scheduledDays, item?.frequency);
+  const cleaningSites = normalizeCatalogCleaningSites(item?.cleaningSites);
+  const scheduledDaysBySite = normalizeCatalogScheduledDaysBySite(item?.scheduledDaysBySite, scheduledDays);
+
+  if (normalizedCleaningSite) {
+    if (cleaningSites.length && !cleaningSites.includes(normalizedCleaningSite)) {
+      return [];
+    }
+    if (cleaningSites.includes(normalizedCleaningSite)) {
+      return scheduledDaysBySite[normalizedCleaningSite] || scheduledDays;
+    }
+    return scheduledDays;
+  }
+
+  if (!cleaningSites.length) {
+    return scheduledDays;
+  }
+
+  return [...new Set(cleaningSites.flatMap((site) => scheduledDaysBySite[site] || scheduledDays))].sort((a, b) => a - b);
+}
+
+function getBoardActivityListValuesForOperationalDay(field, catalog = [], weekdayOffset = null, cleaningSite = "") {
+  const selectedCategory = String(field?.optionCatalogCategory || "").trim();
+  const normalizedWeekdayOffset = normalizeCatalogWeekdayOffset(weekdayOffset);
+  const seen = new Set();
+  return (catalog || [])
+    .filter((item) => !item?.isDeleted)
+    .filter((item) => !selectedCategory || String(item.category || "General").trim() === selectedCategory)
+    .filter((item) => {
+      if (normalizedWeekdayOffset === null) return true;
+      const activeDays = getCatalogItemOperationalWeekdays(item, cleaningSite);
+      return activeDays.includes(normalizedWeekdayOffset);
+    })
+    .map((item) => String(item.name || "").trim())
+    .filter((name) => {
+      const normalizedName = normalizeKey(name);
+      if (!normalizedName || seen.has(normalizedName)) return false;
+      seen.add(normalizedName);
+      return true;
+    });
 }
 
 function getBoardActivityListValues(field, catalog = []) {
