@@ -933,7 +933,21 @@ export default function MisTableros({ contexto }) {
                                       onBlur={(event) => {
                                         setLeadTimeEdits((prev) => { const next = { ...prev }; delete next[editKey]; return next; });
                                         const secs = parseHhmmToSeconds(event.target.value);
-                                        if (secs !== null) updateBoardRowTimeOverride(selectedCustomBoard.id, row.id, { accumulatedSeconds: secs });
+                                        if (secs !== null) {
+                                          const computedTotalSecs = row.status === STATUS_PAUSED
+                                            ? computedSecs
+                                            : row.startTime
+                                              ? Math.max(computedSecs, getOperationalElapsedSeconds(row.startTime, effectiveNow, pauseState))
+                                              : 0;
+                                          const existingOverride = Number(row.totalElapsedSecondsOverride);
+                                          const preservedTotalSecs = Number.isFinite(existingOverride) && existingOverride >= 0
+                                            ? Math.max(0, existingOverride)
+                                            : computedTotalSecs;
+                                          updateBoardRowTimeOverride(selectedCustomBoard.id, row.id, {
+                                            accumulatedSeconds: secs,
+                                            totalElapsedSecondsOverride: preservedTotalSecs,
+                                          });
+                                        }
                                       }}
                                     />
                                   </td>
