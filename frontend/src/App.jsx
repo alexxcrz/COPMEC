@@ -1676,8 +1676,10 @@ function App() { // NOSONAR
   }, [activityPauseSummaryMap, catalogMap, dashboardVisibleBoardHistorySnapshots, dashboardVisibleControlBoards, now, operationalPauseState, state.activities, userMap, visibleDashboardActivities]);
 
   const dateFilteredDashboardRecords = useMemo(() => {
-    const startDate = getDashboardFilterStartDate(dashboardFilters.startDate);
-    const endDate = getDashboardFilterEndDate(dashboardFilters.endDate);
+    const rawStartDate = getDashboardFilterStartDate(dashboardFilters.startDate);
+    const rawEndDate = getDashboardFilterEndDate(dashboardFilters.endDate);
+    const startDate = rawStartDate || (rawEndDate ? getDashboardFilterStartDate(dashboardFilters.endDate) : null);
+    const endDate = rawEndDate || (rawStartDate ? getDashboardFilterEndDate(dashboardFilters.startDate) : null);
     return dashboardRecords.filter((record) => {
       const occurredAt = new Date(record.occurredAt);
       if (Number.isNaN(occurredAt.getTime())) return false;
