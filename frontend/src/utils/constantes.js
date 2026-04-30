@@ -1,4 +1,3 @@
-﻿/* eslint-disable */
 import {
   BarChart3, LayoutDashboard, ClipboardList, CalendarDays, Package,
   Users, PieChart, BookOpen, OctagonAlert, ClipboardCheck,

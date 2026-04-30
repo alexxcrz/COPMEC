@@ -200,12 +200,14 @@ export default function HistorialSemanas({ contexto }) {
   const [expandedDayKey, setExpandedDayKey] = useState("");
   const [openHistoryMonth, setOpenHistoryMonth] = useState("");
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   function resolveBoardHistoryAreaLabel(snapshot, responsibleUser) {
     const boardArea = String(snapshot?.settings?.ownerArea || snapshot?.ownerArea || "").trim();
     if (boardArea) return boardArea;
     return String(getUserArea(responsibleUser) || "Sin area").trim() || "Sin area";
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   function resolveBoardHistoryAreaRoot(snapshot, responsibleUser) {
     const areaLabel = resolveBoardHistoryAreaLabel(snapshot, responsibleUser);
     return areaLabel.split("/")[0]?.trim() || areaLabel;
@@ -482,6 +484,7 @@ export default function HistorialSemanas({ contexto }) {
     });
 
     return Array.from(grouped.values()).sort((left, right) => left.label.localeCompare(right.label, "es-MX"));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardScopedActivities, resolveHistoryPlayerLabel, userMap]);
 
   const playerScopedActivities = useMemo(() => {

@@ -523,6 +523,7 @@ export default function MisTableros({ contexto }) {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columnResizing, visibleBoardColumns]);
 
   // Función para obtener el ancho efectivo de una columna

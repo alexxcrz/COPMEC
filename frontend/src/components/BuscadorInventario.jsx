@@ -16,6 +16,7 @@ function InventoryLookupInput({ inventoryItems, value, onChange, placeholder, di
 
   useEffect(() => {
     if (selectedItem) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setQuery(formatInventoryLookupLabel(selectedItem));
       return;
     }

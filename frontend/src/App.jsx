@@ -1184,6 +1184,7 @@ function App() { // NOSONAR
       globalThis.removeEventListener("keydown", handleKeyDown);
       globalThis.removeEventListener("keyup", handleKeyUp);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [antiCaptureEnabled, sessionUserId]);
 
   useEffect(() => {
@@ -1215,24 +1216,28 @@ function App() { // NOSONAR
     if (!boardRuntimeFeedback.message) return;
     pushAppToast(boardRuntimeFeedback.message, boardRuntimeFeedback.tone || "success");
     setBoardRuntimeFeedback({ tone: "", message: "" });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardRuntimeFeedback]);
 
   useEffect(() => {
     if (!inventoryImportFeedback.message) return;
     pushAppToast(inventoryImportFeedback.message, inventoryImportFeedback.tone || "success");
     setInventoryImportFeedback({ tone: "", message: "" });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inventoryImportFeedback]);
 
   useEffect(() => {
     if (!permissionsFeedback.message) return;
     pushAppToast(permissionsFeedback.message, permissionsFeedback.tone || "success");
     setPermissionsFeedback({ tone: "", message: "" });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [permissionsFeedback]);
 
   useEffect(() => {
     if (!controlBoardFeedback) return;
     pushAppToast(controlBoardFeedback, inferFeedbackToneFromMessage(controlBoardFeedback));
     setControlBoardFeedback("");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [controlBoardFeedback]);
 
   useEffect(() => {
@@ -1806,6 +1811,7 @@ function App() { // NOSONAR
     }));
 
     return activityRecords.concat(boardRecords, historicalBoardRecords).filter((record) => Boolean(record.occurredAt));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activityPauseSummaryMap, catalogMap, dashboardVisibleBoardHistorySnapshots, dashboardVisibleControlBoards, now, operationalPauseState, state.activities, userMap, visibleDashboardActivities]);
 
   const dateFilteredDashboardRecords = useMemo(() => {
@@ -2933,6 +2939,7 @@ function App() { // NOSONAR
     [currentInventoryDomainItems],
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const orderInventoryItems = inventoryItemsByDomain[INVENTORY_DOMAIN_ORDERS] || [];
 
   const orderInventoryTransferMovements = useMemo(
@@ -3334,6 +3341,7 @@ function App() { // NOSONAR
       const fallbackPage = allowedPages[0] || PAGE_DASHBOARD;
       setPage(fallbackPage);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allowedPagesKey, currentUser?.role, page]);
 
   useEffect(() => {
@@ -3381,6 +3389,7 @@ function App() { // NOSONAR
     return () => {
       active = false;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id, currentUser?.role]);
 
   const actionPermissions = useMemo(
@@ -3511,6 +3520,7 @@ function App() { // NOSONAR
       });
 
     return notifications.toSorted((left, right) => getComparableDateMs(right.timestamp) - getComparableDateMs(left.timestamp));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     actionableLowStockInventoryItems,
     actionPermissions,
@@ -5741,7 +5751,7 @@ function App() { // NOSONAR
       if (socketRef.current) {
         try {
           socketRef.current.disconnect();
-        } catch (_) {}
+        } catch (_) { /* noop */ }
         socketRef.current = null;
       }
     try {
@@ -7154,7 +7164,7 @@ function App() { // NOSONAR
     try {
       const parsedApiUrl = new URL(API_BASE_URL || window.location.origin, window.location.origin);
       socketBaseUrl = parsedApiUrl.origin;
-    } catch (_) {}
+    } catch (_) { /* noop */ }
 
     const socket = io(socketBaseUrl, {
       withCredentials: true,

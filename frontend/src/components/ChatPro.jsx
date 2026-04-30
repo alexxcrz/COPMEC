@@ -87,7 +87,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       } catch (_) {
         try {
           backendMessage = await r.clone().text();
-        } catch (_) {}
+        } catch (_) { /* noop */ }
       }
       const err = new Error(backendMessage || r.statusText || 'Request failed');
       err.status = r.status;
@@ -471,14 +471,14 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       if (callWindowRef.current?.requestFullscreen) {
         try {
           await callWindowRef.current.requestFullscreen();
-        } catch {}
+        } catch { /* noop */ }
       }
       return;
     }
     if (document.fullscreenElement && document.exitFullscreen) {
       try {
         await document.exitFullscreen();
-      } catch {}
+      } catch { /* noop */ }
     }
   };
 
@@ -642,7 +642,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       } else {
         doPlay();
       }
-    } catch {}
+    } catch { /* noop */ }
   };
 
   const playIncomingCallTone = () => {
@@ -844,6 +844,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         const data = await authFetch(`${SERVER_URL}/api/chat/usuarios`);
         setUsuariosCOPMEC(data || []);
       } catch (_e) {
+        /* noop */
       }
     };
 
@@ -852,6 +853,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         const estados = await authFetch(`${SERVER_URL}/api/chat/usuarios/estados`);
         setEstadosUsuarios(estados || {});
       } catch (_e) {
+        /* noop */
       }
     };
 
@@ -866,6 +868,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     }, 45000);
 
     return () => { clearInterval(interval); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // Sincronización de chats activos en segundo plano (chat abierto o cerrado).
@@ -880,6 +883,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         const data = await authFetch(`${SERVER_URL}/api/chat/activos`);
         if (!cancelled) setChatsActivos(data || []);
       } catch (_) {
+        /* noop */
       } finally {
         cargandoChatsActivosRef.current = false;
       }
@@ -891,6 +895,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       cancelled = true;
       clearInterval(interval);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [SERVER_URL]);
 
   // Re-fetch chats y mensajes abiertos cuando el socket se reconecta (connectCount > 1)
@@ -955,13 +960,14 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
           const sorted = (data || []).sort((a, b) => new Date(a.fecha || 0) - new Date(b.fecha || 0));
           setMensajesGrupal((prev) => ({ ...prev, [String(chatActual)]: sorted }));
         }
-      } catch (_) {}
+      } catch (_) { /* noop */ }
     };
 
     // Primer sync inmediato + intervalo moderado para evitar 429
     syncOpenChat();
     const interval = setInterval(syncOpenChat, 12000);
     return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, tipoChat, chatActual, SERVER_URL]);
 
   // ============================
@@ -1093,10 +1099,12 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
           } catch (e) {
             // Si es 404, simplemente no hay mensajes aún (normal)
             if (e.status !== 404 && !e.isNotFound) {
+              /* noop */
             }
           }
         }
       } catch (_e) {
+        /* noop */
       } finally {
         cargandoChatsActivosRef.current = false;
       }
@@ -1114,6 +1122,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       document.removeEventListener("keydown", emitirActividad);
       document.removeEventListener("pointerdown", emitirActividad);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket, user, esAdmin]);
 
   // ============================
@@ -1132,10 +1141,12 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
           return fechaA - fechaB;
         }));
       } catch (_e) {
+        /* noop */
       }
     };
 
     cargarMensajes();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, tipoChat]);
 
   // ============================
@@ -1168,10 +1179,12 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
           setLecturasPrivadas((prev) => ({ ...prev, ...lecturas }));
         }
       } catch (_e) {
+        /* noop */
       }
     };
 
     cargarMensajes();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, tipoChat, chatActual]);
 
   // ============================
@@ -1216,10 +1229,12 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
           setRestriccionInfo(null);
         }
       } catch (_e) {
+        /* noop */
       }
     };
 
     cargarMensajes();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, tipoChat, chatActual]);
 
   // ============================
@@ -1257,10 +1272,12 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
           } catch (e) {
             // Si es 404, simplemente no hay mensajes aún (normal)
             if (e.status !== 404 && !e.isNotFound) {
+              /* noop */
             }
           }
         }
       } catch (_e) {
+        /* noop */
       } finally {
         cargandoChatsActivosRef.current = false;
       }
@@ -1272,6 +1289,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     // Recargar cada 30 segundos para actualizar contadores (reducido de 5 segundos)
     const interval = setInterval(() => cargarChatsActivos(false), 30000);
     return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // ============================
@@ -1285,10 +1303,12 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         const data = await authFetch("/api/chat/grupos");
         setGrupos(data || []);
       } catch (_e) {
+        /* noop */
       }
     };
 
     cargarGrupos();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, tabPrincipal]);
 
   // 📞 Cargar historial de llamadas
@@ -1314,6 +1334,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       cancelado = true;
       clearInterval(interval);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, tabPrincipal, SERVER_URL]);
 
   useEffect(() => {
@@ -1323,9 +1344,11 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         const config = await authFetch(`${SERVER_URL}/api/chat/notificaciones/config`);
         setConfigNotificaciones(config || null);
       } catch (_err) {
+        /* noop */
       }
     };
     cargarConfigNotificaciones();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, SERVER_URL]);
 
   useEffect(() => {
@@ -1334,10 +1357,11 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       try {
         const config = await authFetch(`${SERVER_URL}/api/chat/notificaciones/config`);
         setConfigNotificaciones(config || null);
-      } catch (_) {}
+      } catch (_) { /* noop */ }
     };
     window.addEventListener("config-notificaciones-guardada", handler);
     return () => window.removeEventListener("config-notificaciones-guardada", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [SERVER_URL]);
 
   useEffect(() => {
@@ -1355,6 +1379,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       }
     };
     cargarRtcConfig();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, SERVER_URL]);
 
   // Redirigir al chat del grupo y mostrar modal de solicitud (desde notificación)
@@ -1369,6 +1394,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       groupName: solicitudPending.groupName,
     });
     onSolicitudConsumida?.();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, solicitudPending?.grupoId]);
 
   // Manejar apertura de mensaje prioritario desde notificación
@@ -1412,12 +1438,14 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         
         return () => clearTimeout(consumeTimeout);
       } else {
+        /* noop */
       }
     }, 500);
     
     return () => {
       clearTimeout(scrollTimeout);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mensajePrioritarioPending]); // SOLO estas dos dependencias
 
   // Limpiar modal al salir del grupo
@@ -1459,6 +1487,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       }
     };
     cargar();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, SERVER_URL, tipoChat, chatActual]);
 
   // ============================
@@ -1499,9 +1528,11 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
               "COPMEC": mensajesOrdenados,
             }));
           } catch (_e) {
+            /* noop */
           }
         }
       } catch (_e) {
+        /* noop */
       } finally {
         cargandoChatsActivosRef.current = false;
       }
@@ -1757,6 +1788,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         const data = await authFetch("/api/chat/grupos");
         setGrupos(data || []);
       } catch (_e) {
+        /* noop */
       }
     };
 
@@ -1964,6 +1996,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       socket.off("chat_privado_editado", handlePrivadoActualizado);
       socket.off("chat_grupal_editado", handleGrupalActualizado);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket, open, tipoChat, chatActual, tabPrincipal, user, SERVER_URL, esAdmin, configNotificaciones, audioSettings.msgSound, audioSettings.msgVolume]);
 
   useEffect(() => {
@@ -2162,6 +2195,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       socket.off("call_invite_status", handleCallInviteStatus);
       socket.off("call_cancelled", handleCallCancelled);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket, user, callActivo, audioSettings.callIncomingSound, audioSettings.callOutgoingSound, audioSettings.callVolume]);
 
   useEffect(() => {
@@ -2320,6 +2354,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     const pollInterval = socket?.connected ? 2000 : 1000;
     const interval = setInterval(pollSignals, pollInterval);
     return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [SERVER_URL, user, callActivo, audioSettings.callIncomingSound, audioSettings.callOutgoingSound, audioSettings.callVolume]);
 
   // ── Sincronizar localVideoRef con localStreamRef y state ─────────────────────────
@@ -2400,6 +2435,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       // Marcar mensajes grupales como leídos
       authFetch(`${SERVER_URL}/api/chat/grupos/${chatActual}/leer`, { method: "POST" }).catch(() => {});
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipoChat, chatActual, open, SERVER_URL]);
 
   // ⬇ Scroll automático al final cuando se cargan los mensajes
@@ -2419,12 +2455,14 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     return () => {
       limpiarLlamada();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (open && tipoChat) {
       cargarPinYDestacados();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, tipoChat, chatActual]);
 
   // ============================
@@ -2963,6 +3001,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
             setReuniones(reunionesData);
             reunionesData.forEach(reunion => programarNotificacionesReunion(reunion));
           } catch (_err) {
+            /* noop */
           }
         }
       }
@@ -2992,6 +3031,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     }, 60000); // Cada minuto
     
     return () => clearInterval(intervalo);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reuniones, SERVER_URL, open]);
 
   // Programar notificaciones para una reunión
@@ -3032,6 +3072,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       try {
         window.sonidoCOPMEC.reproducir('notification');
       } catch (_e) {
+        /* noop */
       }
     }
   };
@@ -3492,6 +3533,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       try {
         setEmojisPersonalizados(JSON.parse(guardados));
       } catch (_e) {
+        /* noop */
       }
     }
   }, []);
@@ -3501,6 +3543,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     const todosEmojis = Object.values(emojiCategorias).flatMap(cat => cat.emojis);
     const recientes = ordenarEmojis(todosEmojis).filter(e => (emojiUso[e] || 0) > 0).slice(0, 40);
     emojiCategorias.recientes.emojis = recientes;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emojiUso]);
 
   // Obtener emojis de la categoría activa o filtrados por búsqueda (para input)
@@ -3688,7 +3731,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     for (const id of idsReales) {
       try {
         await authFetch(`${SERVER_URL}/api/chat/mensaje/${tipo}/${id}`, { method: "DELETE" });
-      } catch (_) {}
+      } catch (_) { /* noop */ }
     }
     // Normalizar IDs para comparación (string)
     const idsSet = new Set(idsReales.map((id) => String(id)));
@@ -4025,6 +4068,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
               }),
             });
           } catch (_err) {
+            /* noop */
           }
         }
       }
@@ -4400,6 +4444,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       const data = await authFetch("/api/chat/grupos");
       setGrupos(data || []);
     } catch (_e) {
+      /* noop */
     }
   };
 
@@ -4750,6 +4795,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
               const text = await blob.text();
               setPreviewTextContent(text);
             } catch (_e) {
+              /* noop */
             }
           }
           
@@ -5066,7 +5112,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       socket.on("connect_error", onConnectError);
       try {
         socket.connect();
-      } catch (_) {}
+      } catch (_) { /* noop */ }
     });
   };
 
@@ -5305,7 +5351,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       const currentVideo = localStreamRef.current?.getVideoTracks?.()[0];
       if (currentVideo && localStreamRef.current) {
         localStreamRef.current.removeTrack(currentVideo);
-        try { currentVideo.stop(); } catch {}
+        try { currentVideo.stop(); } catch { /* noop */ }
       }
     }
 
@@ -5394,7 +5440,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       });
       const camTrack = camStream.getVideoTracks()[0];
       await replaceLocalVideoTrack(camTrack, camStream, true);
-    } catch {}
+    } catch { /* noop */ }
     setSharingScreen(false);
   };
 
@@ -5459,7 +5505,6 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   useEffect(() => {
     if (!callActivo) return;
     placePipBottomRight();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [callActivo, callExpanded]);
 
   // blobToBase64 removida (no usada en web-only)
@@ -5578,6 +5623,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         });
       }
     } catch (_e) {
+      /* noop */
     }
   };
   
@@ -5728,12 +5774,14 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       try {
         setChatGroups(JSON.parse(savedChatGroups));
       } catch (_e) {
+        /* noop */
       }
     }
     if (savedGrupoGroups) {
       try {
         setGrupoGroups(JSON.parse(savedGrupoGroups));
       } catch (_e) {
+        /* noop */
       }
     }
   }, []);
@@ -7648,6 +7696,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                     </div>
                                     
                                     {/* Menú ya no inline; se muestra como overlay */}
+                                    {/* eslint-disable-next-line no-constant-binary-expression */}
                                     {menuAbierto && false && (
                                       <div 
                                         className="chat-member-menu"

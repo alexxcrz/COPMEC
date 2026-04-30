@@ -190,6 +190,7 @@ export function BoardComponentStudioModal({
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentStep(0);
       setFeedback({ type: "", message: "" });
       setManualOptionInput("");
@@ -912,6 +913,7 @@ export function BoardBuilderModal({
 
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setBuilderTab("base");
     setBaseTemplatesCollapsed(true);
   }, [open]);
@@ -941,6 +943,7 @@ export function BoardBuilderModal({
   useEffect(() => {
     if (!accessMenuOpen) return undefined;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPendingAccessUserIds(draft.accessUserIds || []);
     setAccessSearch("");
 

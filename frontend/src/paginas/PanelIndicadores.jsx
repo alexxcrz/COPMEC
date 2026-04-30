@@ -325,6 +325,7 @@ export default function PanelIndicadores({ contexto }) {
 
     globalThis.addEventListener("keydown", handleConfirmResetHotkeys);
     return () => globalThis.removeEventListener("keydown", handleConfirmResetHotkeys);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [confirmResetOpen, isResetSubmitting]);
 
   useEffect(() => {
@@ -388,6 +389,7 @@ export default function PanelIndicadores({ contexto }) {
     if (!Array.isArray(dashboardDynamicMetricRows)) return [];
     if (dashboardFilters.area === "all") return dashboardDynamicMetricRows;
     return dashboardDynamicMetricRows.filter((item) => areaMatchesFilter(item.area, dashboardFilters.area));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboardDynamicMetricRows, dashboardFilters.area]);
 
   const areaPriorityMetricRows = useMemo(() => {
@@ -433,18 +435,21 @@ export default function PanelIndicadores({ contexto }) {
       tone: item.fieldType === "time" ? "cyan" : item.fieldType === "percentage" || item.fieldType === "progress" ? "lime" : "slate",
       icon: Gauge,
     }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areaPriorityMetricRows]);
 
   const scopedInventoryProductTimeRows = useMemo(() => {
     const rows = Array.isArray(dashboardInventoryProductTimeRows) ? dashboardInventoryProductTimeRows : [];
     if (dashboardFilters.area === "all") return rows;
     return rows.filter((item) => areaMatchesFilter(item.area, dashboardFilters.area));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboardFilters.area, dashboardInventoryProductTimeRows]);
 
   const scopedAreaBoardDetailedRows = useMemo(() => {
     const rows = Array.isArray(dashboardAreaBoardDetailedRows) ? dashboardAreaBoardDetailedRows : [];
     if (dashboardFilters.area === "all") return rows;
     return rows.filter((item) => areaMatchesFilter(item.area, dashboardFilters.area));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboardAreaBoardDetailedRows, dashboardFilters.area]);
 
   const detailBoardFilterOptions = useMemo(() => {

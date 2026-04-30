@@ -64,6 +64,7 @@ export default function GestionUsuarios({ contexto }) {
   const [activeAreaTab, setActiveAreaTab] = useState(null);
   const [viewingPlayer, setViewingPlayer] = useState(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const creatorGroups = Array.isArray(usersByCreatorGroups) ? usersByCreatorGroups : [];
   const activeCreatorGroup = useMemo(() => {
     if (!creatorGroups.length) return null;

@@ -1,4 +1,3 @@
-/* eslint-disable */
 // ── Utilidades de Fórmulas de Excel ─────────────────────────────────────────
 // Clasificación, parseo y memoria de fórmulas importadas desde Excel.
 // Este módulo no tiene dependencias de React ni del estado de la app.

@@ -1243,6 +1243,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
       setIsAuditDirty(false);
       setAuditRichEditorState(buildRichEditorState(selectedAudit));
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAudit?.id, selectedAudit?.updatedAt, selectedAudit?.status, selectedAudit?.evidences?.length]);
 
   useEffect(() => {

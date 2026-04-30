@@ -424,7 +424,7 @@ function ReturnsReconditionScannerInner({
     if (!activeBox?.id) return;
     try {
       localStorage.setItem(`${PRODUCT_WIDTH_STORAGE_PREFIX}:${activeBox.id}`, JSON.stringify(productWidths));
-    } catch {}
+    } catch { /* noop */ }
   }, [productWidths, activeBox?.id]);
 
   // Handler para cambiar el ancho de un producto/caja
@@ -449,7 +449,7 @@ function ReturnsReconditionScannerInner({
     if (!activeBox?.id) return;
     try {
       localStorage.setItem(`${PRODUCT_ORDER_STORAGE_PREFIX}:${activeBox.id}`, JSON.stringify(productOrder));
-    } catch {}
+    } catch { /* noop */ }
   }, [productOrder, activeBox?.id]);
 
   // Función para reordenar productos
@@ -583,6 +583,7 @@ function ReturnsReconditionScannerInner({
         autoScanTimeoutRef.current = null;
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanValue, disabled, lotModalOpen, tarimaModalOpen, boxModalOpen, inventoryItems]);
 
   const inventoryMapById = useMemo(
@@ -724,6 +725,7 @@ function ReturnsReconditionScannerInner({
     (Array.isArray(product?.lots) ? product.lots : []).forEach(pushEntry);
     getItemLotHistory(pendingItem).forEach(pushEntry);
     return merged;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingItem, activeBox, lotHistoryVersion]);
 
   useEffect(() => {
@@ -739,6 +741,7 @@ function ReturnsReconditionScannerInner({
     });
     setPendingItem(null);
     setBoardRuntimeFeedback({ tone: "success", message: `Caja creada. Se agregó +1 pieza de ${item.code} con lote/caducidad.` });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingAutoCaptureData, activeBox, inventoryMapById]);
 
   useEffect(() => {
@@ -752,6 +755,7 @@ function ReturnsReconditionScannerInner({
       etiqueta: historyEntry?.etiqueta || "",
       selectedLotKey,
     }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boxModalOpen, pendingItem?.id]);
 
   // Cargar tarima desde localStorage al montar
@@ -1142,6 +1146,7 @@ function ReturnsReconditionScannerInner({
       }
     });
     return merged;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     completedBoxes,
     closedTarimas,
@@ -1186,6 +1191,7 @@ function ReturnsReconditionScannerInner({
     const keys = (Array.isArray(selectedClosedTarima?.boxes) ? selectedClosedTarima.boxes : [])
       .map((box) => `${box.id}-${box.closedAt}`);
     setExpandedClosedBoxes(new Set(keys));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewingClosedTarima, selectedClosedTarima?.id]);
 
   useEffect(() => {
@@ -1351,6 +1357,7 @@ function ReturnsReconditionScannerInner({
       void tryAutoAddPendingCode(scannedText);
     }, 120);
     return () => globalThis.clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lotModalOpen, lotForm.lot, lotForm.expiry, pendingItem?.id, pendingItem?.code, pendingLotOptions]);
 
   async function persistLotHistory(item, lot, expiry, etiqueta = "") {

@@ -111,6 +111,7 @@ export default function AuditoriasProcesos({ contexto }) {
       evidences: [...(selectedAudit.evidences || [])],
     });
     setIsAuditDirty(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAudit?.id]);
 
   useEffect(() => {

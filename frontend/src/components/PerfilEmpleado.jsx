@@ -115,6 +115,7 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
   const initials       = getInitialsAvatar(currentUser?.name);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm(createIdentityFormFromUser(currentUser));
     setMessage("");
     setIsEditMode(false);
