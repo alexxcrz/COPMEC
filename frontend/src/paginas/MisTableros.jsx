@@ -1479,7 +1479,7 @@ export default function MisTableros({ contexto }) {
               })()}
             </p>
             {pauseDetailsLogs.length ? (
-              <div style={{ display: "grid", gap: "0.45rem", maxHeight: "42vh", overflowY: "auto", paddingRight: "0.1rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "0.45rem", maxHeight: "42vh", overflowY: "auto", paddingRight: "0.1rem" }}>
                 {pauseDetailsLogs.map((entry, index) => {
                   const effectiveNow = pauseDetailsRow?.status === STATUS_FINISHED && pauseDetailsRow?.endTime
                     ? new Date(pauseDetailsRow.endTime).getTime()
