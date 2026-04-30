@@ -952,15 +952,6 @@ export default function MisTableros({ contexto }) {
                                         Ver pausas
                                       </button>
                                     ) : null}
-                                    {isLeadPrincipal && pauseCount > 0 ? (
-                                      <button
-                                        type="button"
-                                        style={{ background: "none", border: "none", padding: 0, color: "#b05050", fontSize: "0.72rem", cursor: "pointer", textDecoration: "underline", textAlign: "left" }}
-                                        onClick={() => updateBoardRowTimeOverride(selectedCustomBoard.id, row.id, { clearPauseLogs: true })}
-                                      >
-                                        Eliminar pausas
-                                      </button>
-                                    ) : null}
                                   </div>
                                 </td>
                               );
@@ -1584,18 +1575,6 @@ export default function MisTableros({ contexto }) {
                 return activityLabel ? `Actividad: ${activityLabel}` : "Actividad sin nombre";
               })()}
             </p>
-            {canManageDashboardState && pauseDetailsLogs.length ? (
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <button
-                  type="button"
-                  className="board-pdf-hide"
-                  style={{ background: "none", border: "none", padding: 0, color: "#b05050", fontSize: "0.78rem", cursor: "pointer", textDecoration: "underline", textAlign: "right" }}
-                  onClick={() => updateBoardRowTimeOverride(selectedCustomBoard.id, pauseDetailsRow.id, { clearPauseLogs: true })}
-                >
-                  Eliminar pausas
-                </button>
-              </div>
-            ) : null}
             {pauseDetailsLogs.length ? (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "0.45rem", maxHeight: "42vh", overflowY: "auto", paddingRight: "0.1rem" }}>
                 {pauseDetailsLogs.map((entry, index) => {
@@ -1613,6 +1592,7 @@ export default function MisTableros({ contexto }) {
                   const durationEditKey = `${pauseDetailsRow.id}:${entry?.id || index}`;
                   const durationEditValue = pauseDurationEdits[durationEditKey] ?? formatDurationClock(durationSeconds);
                   const canEditPauseDuration = Boolean(canManageDashboardState) && Boolean(entry?.resumedAt);
+                  const canDeletePauseEntry = Boolean(canManageDashboardState);
                   return (
                     <article key={entry?.id || `${pauseDetailsRow.id}-pause-${index}`} style={{ border: "1px solid rgba(3,33,33,0.14)", borderRadius: "0.8rem", padding: "0.48rem 0.58rem", display: "grid", gap: "0.2rem" }}>
                       <strong style={{ fontSize: "0.78rem" }}>Pausa {index + 1}</strong>
@@ -1660,6 +1640,30 @@ export default function MisTableros({ contexto }) {
                         <span style={{ fontSize: "0.76rem" }}>Duración: {formatDurationClock(durationSeconds)}</span>
                       )}
                       {entry?.reason && !/ajuste\s+manual\s+de\s+contadores/i.test(String(entry.reason)) ? <span style={{ fontSize: "0.74rem", color: "#4b6b66" }}>Motivo: {entry.reason}</span> : null}
+                      {canDeletePauseEntry ? (
+                        <button
+                          type="button"
+                          className="board-pdf-hide"
+                          style={{ background: "none", border: "none", padding: 0, color: "#b05050", fontSize: "0.74rem", cursor: "pointer", textDecoration: "underline", textAlign: "left" }}
+                          onClick={() => {
+                            const nextPauseLogs = pauseDetailsLogs.filter((logEntry, logIndex) => {
+                              const currentKey = logEntry?.id || `${logIndex}`;
+                              const targetKey = entry?.id || `${index}`;
+                              return currentKey !== targetKey;
+                            });
+                            const totalPauseSeconds = nextPauseLogs.reduce((sum, logEntry) => sum + Math.max(0, Number(logEntry?.pauseDurationSeconds || 0)), 0);
+                            const livePauseSecondsForRow = pauseDetailsRow?.status === STATUS_PAUSED && pauseDetailsRow?.pauseStartedAt
+                              ? Math.max(0, getOperationalElapsedSeconds(pauseDetailsRow.pauseStartedAt, now, pauseState, pauseDetailsRow?.cleaningSite))
+                              : 0;
+                            updateBoardRowTimeOverride(selectedCustomBoard.id, pauseDetailsRow.id, {
+                              pauseLogs: nextPauseLogs,
+                              totalElapsedSecondsOverride: Math.max(0, liveProductionSeconds + totalPauseSeconds + livePauseSecondsForRow),
+                            });
+                          }}
+                        >
+                          Eliminar pausa
+                        </button>
+                      ) : null}
                     </article>
                   );
                 })}
