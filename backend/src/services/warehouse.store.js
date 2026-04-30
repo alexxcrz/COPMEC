@@ -714,8 +714,7 @@ function applyAutomatedBoardDailyRows(state, referenceDate = new Date()) {
     const missingActivityNames = expectedActivityNames.filter((activityName) => !existingTodayActivities.has(normalizeKey(activityName)));
     if (!missingActivityNames.length) return board;
 
-    const baseResponsibleId = String(board?.ownerId || board?.createdById || "").trim();
-    const addedRows = missingActivityNames.map((activityName) => createBoardRowRecord(fields, baseResponsibleId, {
+    const addedRows = missingActivityNames.map((activityName) => createBoardRowRecord(fields, "", {
       status: "Pendiente",
       startTime: null,
       endTime: null,
@@ -4425,7 +4424,7 @@ export function createWarehouseBoardRow(auth, boardId) {
     return { ok: false, reason: "forbidden" };
   }
 
-  const row = createBoardRowRecord(board.fields || [], currentUser.id);
+  const row = createBoardRowRecord(board.fields || [], "");
   const activityListField = findBoardActivityListField(board.fields || []);
   if (activityListField) {
     const existingValues = new Set((board.rows || []).map((currentRow) => normalizeKey(currentRow?.values?.[activityListField.id])));
@@ -4554,20 +4553,6 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
   const rowPauseLogs = Array.isArray(row?.pauseLogs) ? row.pauseLogs : [];
   nextRow.pauseLogs = rowPauseLogs.map((entry) => ({ ...entry }));
 
-  const isRunningStatus = (statusValue) => normalizeKey(statusValue) === "encurso";
-  const getRowResponsibleIds = (sourceRow) => {
-    const fromList = Array.isArray(sourceRow?.responsibleIds)
-      ? sourceRow.responsibleIds
-      : [];
-    const fallbackResponsible = String(sourceRow?.responsibleId || "").trim();
-    const fallbackCreator = String(sourceRow?.createdById || "").trim();
-    const merged = fromList
-      .concat([fallbackResponsible, fallbackCreator])
-      .map((value) => String(value || "").trim())
-      .filter(Boolean);
-    return [...new Set(merged)];
-  };
-
   if (hasOwn(patch, "responsibleIds")) {
     const responsibleIds = normalizeBoardResponsibleIds(patch.responsibleIds, "");
     nextRow.responsibleIds = responsibleIds;
@@ -4580,32 +4565,6 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
 
   if (hasOwn(patch, "status")) {
     if (patch.status === "En curso") {
-      const responsibleIdsToValidate = [...new Set([
-        ...getRowResponsibleIds(nextRow),
-        String(currentUser?.id || "").trim(),
-      ].filter(Boolean))];
-      if (responsibleIdsToValidate.length) {
-        const hasActiveWorkload = responsibleIdsToValidate.some((responsibleId) => {
-          const hasRunningActivity = (currentState.activities || []).some((activity) => (
-            String(activity?.responsibleId || "").trim() === responsibleId
-            && isRunningStatus(activity?.status)
-          ));
-          if (hasRunningActivity) return true;
-
-          return (currentState.controlBoards || []).some((controlBoard) => (
-            (controlBoard.rows || []).some((candidateRow) => (
-              String(candidateRow?.id || "").trim() !== String(row.id || "").trim()
-              && getRowResponsibleIds(candidateRow).includes(responsibleId)
-              && isRunningStatus(candidateRow?.status)
-            ))
-          ));
-        });
-
-        if (hasActiveWorkload && String(row.status || "") !== "En curso") {
-          return { ok: false, reason: "responsible_has_active_work" };
-        }
-      }
-
       (board.fields || []).forEach((field) => {
         if (field.type !== "time") return;
         const normalizedLabel = normalizeKey(field.label || "");
@@ -4748,7 +4707,7 @@ export function bulkImportWarehouseBoardRows(auth, boardId, rowsPayload) {
 
   const safeRows = Array.isArray(rowsPayload) ? rowsPayload.slice(0, 500) : [];
   const newRows = safeRows.map((item) => {
-    const row = createBoardRowRecord(board.fields || [], currentUser.id);
+    const row = createBoardRowRecord(board.fields || [], "");
     if (item && typeof item === "object" && item.values && typeof item.values === "object") {
       row.values = { ...row.values, ...item.values };
     }

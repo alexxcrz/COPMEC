@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import ReturnsReconditionScanner from "../features/boards/ReturnsReconditionScanner.jsx";
 import { BoardEditableInventoryPropertyInput, BoardEvidenceCell, BoardMultiSelectDetailCell } from "../components/BoardRuntimeFieldCells.jsx";
@@ -77,6 +77,7 @@ export default function MisTableros({ contexto }) {
     selectedBoardActionPermissions,
     Plus,
     Menu,
+    Modal,
     customBoardActionsMenuOpen,
     setCustomBoardActionsMenuOpen,
     exportSelectedBoardToExcel,
@@ -268,6 +269,7 @@ export default function MisTableros({ contexto }) {
   const assigneeMenuRef = useRef(null);
   const assigneeTriggerRef = useRef(null);
   const [assigneeMenuPosition, setAssigneeMenuPosition] = useState(null);
+  const [pauseDetailsRow, setPauseDetailsRow] = useState(null);
   // Local edit buffer for Lead time overrides: key = "rowId-colId", value = string being typed
   const [leadTimeEdits, setLeadTimeEdits] = useState({});
   const boardColumns = boardView ? getOrderedBoardColumns(boardView, isBoardOwner) : [];
@@ -340,6 +342,26 @@ export default function MisTableros({ contexto }) {
     || allowedWeekdaysForNave.includes(effectiveWeekdayOffset);
   const effectiveCatalogCleaningSite = showCleaningNaveSelector ? cleaningNaveValue : "";
   const boardDateField = (boardView?.fields || []).find((field) => field?.type === "date") || null;
+  const assigneeSelectableUsers = useMemo(() => {
+    const allUsers = Array.isArray(state?.users) ? state.users : [];
+    const boardAssignedIds = new Set([
+      String(boardView?.ownerId || "").trim(),
+      String(boardView?.createdById || "").trim(),
+      ...((Array.isArray(boardView?.accessUserIds) ? boardView.accessUserIds : []).map((userId) => String(userId || "").trim())),
+    ].filter(Boolean));
+
+    const userById = new Map(allUsers.map((user) => [String(user?.id || "").trim(), user]));
+    const scopedUsers = Array.isArray(visibleUsers) ? [...visibleUsers] : [];
+    const scopedIds = new Set(scopedUsers.map((user) => String(user?.id || "").trim()).filter(Boolean));
+    boardAssignedIds.forEach((userId) => {
+      if (!scopedIds.has(userId) && userById.has(userId)) {
+        scopedUsers.push(userById.get(userId));
+        scopedIds.add(userId);
+      }
+    });
+
+    return scopedUsers;
+  }, [boardView?.accessUserIds, boardView?.createdById, boardView?.ownerId, state?.users, visibleUsers]);
   const targetOperationalDateKey = (() => {
     const nowDate = new Date();
     if (selectedWeekdayFilter === "auto") {
@@ -392,7 +414,7 @@ export default function MisTableros({ contexto }) {
       const triggerElement = assigneeTriggerRef.current;
       if (!triggerElement) return;
       const rect = triggerElement.getBoundingClientRect();
-      const activeUsersCount = visibleUsers.filter((user) => user.isActive).length;
+      const activeUsersCount = assigneeSelectableUsers.filter((user) => user.isActive).length;
       const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1280;
       const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 800;
       const maxWidth = Math.max(220, Math.min(304, viewportWidth - 16));
@@ -415,7 +437,7 @@ export default function MisTableros({ contexto }) {
       window.removeEventListener("resize", updateMenuPosition);
       window.removeEventListener("scroll", updateMenuPosition, true);
     };
-  }, [openAssigneeMenuRowId]);
+  }, [assigneeSelectableUsers, openAssigneeMenuRowId]);
 
   // Handlers para redimensionamiento de columnas
   const getColumnMinWidth = (column) => {
@@ -578,6 +600,9 @@ export default function MisTableros({ contexto }) {
     running: visibleRows.filter((row) => row.status === STATUS_RUNNING).length,
     completed: visibleRows.filter((row) => row.status === STATUS_FINISHED).length,
   };
+  const pauseDetailsLogs = Array.isArray(pauseDetailsRow?.pauseLogs)
+    ? pauseDetailsRow.pauseLogs
+    : [];
 
   return (
     <section className="admin-page-layout mis-tableros-shell">
@@ -812,7 +837,7 @@ export default function MisTableros({ contexto }) {
                                             <strong>{rowResponsibleIds.length}</strong>
                                           </div>
                                           <div className="board-assignee-list">
-                                            {visibleUsers.filter((user) => user.isActive).map((user) => {
+                                            {assigneeSelectableUsers.filter((user) => user.isActive).map((user) => {
                                               const checked = rowResponsibleIds.includes(user.id);
                                               return (
                                                 <label key={user.id} className={`board-assignee-option${checked ? " is-selected" : ""}`}>
@@ -864,6 +889,15 @@ export default function MisTableros({ contexto }) {
                                     <StatusBadge status={row.status || STATUS_PENDING} />
                                     {pauseCount > 0 ? <small className="subtle-line">{pauseCount} pausa(s) · {formatDurationClock(totalPauseSeconds)}</small> : null}
                                     {row.status === STATUS_PAUSED && pauseReasonLabel ? <small className="subtle-line">Motivo: {pauseReasonLabel}</small> : null}
+                                    {pauseCount > 0 ? (
+                                      <button
+                                        type="button"
+                                        className="icon-button sm-button board-pdf-hide"
+                                        onClick={() => setPauseDetailsRow(row)}
+                                      >
+                                        Ver pausas
+                                      </button>
+                                    ) : null}
                                     {isLeadPrincipal && pauseCount > 0 ? (
                                       <button
                                         type="button"
@@ -1378,6 +1412,49 @@ export default function MisTableros({ contexto }) {
           <p>{currentUser.role === ROLE_JR ? "Tu líder aún no te asigna un tablero." : "Crea un tablero desde Creador de tableros para comenzar."}</p>
         </article>
       )}
+
+      <Modal
+        open={Boolean(pauseDetailsRow)}
+        title="Detalle de pausas"
+        onClose={() => setPauseDetailsRow(null)}
+        confirmLabel="Cerrar"
+        hideCancel
+      >
+        {pauseDetailsRow ? (
+          <div style={{ display: "grid", gap: "0.55rem" }}>
+            <p className="subtle-line" style={{ margin: 0 }}>
+              {(() => {
+                const activityLabel = activityListField?.id ? String(pauseDetailsRow?.values?.[activityListField.id] || "").trim() : "";
+                return activityLabel ? `Actividad: ${activityLabel}` : "Actividad sin nombre";
+              })()}
+            </p>
+            {pauseDetailsLogs.length ? (
+              <div style={{ display: "grid", gap: "0.45rem", maxHeight: "42vh", overflowY: "auto", paddingRight: "0.1rem" }}>
+                {pauseDetailsLogs.map((entry, index) => {
+                  const startLabel = entry?.pausedAt ? formatTime(entry.pausedAt) : "--";
+                  const endLabel = entry?.resumedAt ? formatTime(entry.resumedAt) : "En curso";
+                  const durationSeconds = entry?.resumedAt
+                    ? Math.max(0, Number(entry?.pauseDurationSeconds || 0))
+                    : entry?.pausedAt
+                      ? Math.max(0, getOperationalElapsedSeconds(entry.pausedAt, now, pauseState, pauseDetailsRow?.cleaningSite))
+                      : 0;
+                  return (
+                    <article key={entry?.id || `${pauseDetailsRow.id}-pause-${index}`} style={{ border: "1px solid rgba(3,33,33,0.14)", borderRadius: "0.8rem", padding: "0.48rem 0.58rem", display: "grid", gap: "0.2rem" }}>
+                      <strong style={{ fontSize: "0.78rem" }}>Pausa {index + 1}</strong>
+                      <span style={{ fontSize: "0.76rem" }}>Inicio: {startLabel}</span>
+                      <span style={{ fontSize: "0.76rem" }}>Fin: {endLabel}</span>
+                      <span style={{ fontSize: "0.76rem" }}>Duración: {formatDurationClock(durationSeconds)}</span>
+                      {entry?.reason ? <span style={{ fontSize: "0.74rem", color: "#4b6b66" }}>Motivo: {entry.reason}</span> : null}
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="subtle-line" style={{ margin: 0 }}>Esta actividad no tiene pausas registradas.</p>
+            )}
+          </div>
+        ) : null}
+      </Modal>
     </section>
   );
 }

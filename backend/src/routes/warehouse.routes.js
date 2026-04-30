@@ -875,8 +875,6 @@ warehouseRouter.patch("/boards/:boardId/rows/:rowId", (req, res) => {
       ? 401
       : result.reason === "row_not_found"
         ? 404
-        : result.reason === "responsible_has_active_work"
-          ? 409
         : result.reason === "pause_daily_limit_reached"
           ? 429
         : result.reason === "global_pause_active"
@@ -884,8 +882,6 @@ warehouseRouter.patch("/boards/:boardId/rows/:rowId", (req, res) => {
           : 403;
     const message = result.reason === "pause_daily_limit_reached"
       ? `Ya alcanzaste el máximo de pausas autorizadas para hoy (${Number(result.limit || 0)}).`
-      : result.reason === "responsible_has_active_work"
-        ? "Este player ya tiene una actividad en curso. Finaliza o pausa la actual antes de iniciar otra."
       : "No fue posible actualizar la fila solicitada.";
     res.status(status).json({ ok: false, message });
     return;

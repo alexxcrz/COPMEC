@@ -323,13 +323,86 @@ html {
 .app-modal-field > input,
 .app-modal-field > select {
   width: 100%;
-  min-height: 2.34rem;
-  border-radius: 0.8rem;
-  border: 1px solid var(--sicfla-border);
-  background: #ffffff;
-  padding: 0 0.68rem;
-  color: var(--sicfla-text);
+  min-height: 2.5rem;
+  height: auto;
+  padding: 0.48rem 0.62rem;
+  border-radius: 0.9rem;
+  border: 1px solid #c9d9d3;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fcfa 100%);
+  color: #16342f;
   font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  white-space: normal;
+  text-overflow: clip;
+  overflow: visible;
+  box-shadow: none;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+  outline: none;
+}
+
+.sidebar-user-select select,
+.filter-bar select,
+.field-inline select,
+.builder-grid select,
+.table-wrap select,
+.app-modal-field > select {
+  text-align-last: center;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  padding-left: 0.9rem;
+  padding-right: 1.9rem;
+}
+
+.filter-bar input,
+.builder-grid input,
+.table-wrap input,
+.form-card input,
+.app-modal-field > input {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  padding-left: 0.9rem;
+  padding-right: 0.9rem;
+}
+
+.filter-bar input::placeholder,
+.builder-grid input::placeholder,
+.table-wrap input::placeholder,
+.form-card input::placeholder,
+.app-modal-field > input::placeholder {
+  text-align: center;
+}
+
+.sidebar-user-select select:focus,
+.filter-bar input:focus,
+.filter-bar select:focus,
+.field-inline select:focus,
+.builder-grid input:focus,
+.builder-grid select:focus,
+.table-wrap input:focus,
+.table-wrap select:focus,
+.form-card input:focus,
+.app-modal-field > input:focus,
+.app-modal-field > select:focus {
+  border-color: #5b8d80;
+  box-shadow: 0 0 0 3px rgba(31, 143, 74, 0.1);
+}
+
+.sidebar-user-select select:hover,
+.filter-bar input:hover,
+.filter-bar select:hover,
+.field-inline select:hover,
+.builder-grid input:hover,
+.builder-grid select:hover,
+.table-wrap input:hover,
+.table-wrap select:hover,
+.form-card input:hover,
+.app-modal-field > input:hover,
+.app-modal-field > select:hover {
+  border-color: #8eb8ac;
+  box-shadow: 0 0 0 3px rgba(3, 33, 33, 0.06);
 }
 
 .field-inline input[type="color"],
@@ -3601,6 +3674,42 @@ html {
   max-width: 100%;
 }
 
+.table-scroll-top {
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  height: 0.7rem;
+  margin-bottom: 0.32rem;
+  border-radius: 999px;
+  background: rgba(3, 33, 33, 0.05);
+}
+
+.table-scroll-top-track {
+  height: 1px;
+}
+
+.table-wrap.is-horizontal-draggable,
+.board-table-wrap.is-horizontal-draggable,
+.custom-board-table-wrap.is-horizontal-draggable,
+.board-preview-table-wrap.is-horizontal-draggable,
+.dashboard-table-wrap.is-horizontal-draggable,
+.smart-grid-table-wrap.is-horizontal-draggable {
+  cursor: grab;
+}
+
+.table-wrap.is-horizontal-dragging,
+.board-table-wrap.is-horizontal-dragging,
+.custom-board-table-wrap.is-horizontal-dragging,
+.board-preview-table-wrap.is-horizontal-dragging,
+.dashboard-table-wrap.is-horizontal-dragging,
+.smart-grid-table-wrap.is-horizontal-dragging {
+  cursor: grabbing;
+}
+
+body.horizontal-dragging-active {
+  user-select: none;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -4661,6 +4770,46 @@ tbody tr:hover {
 .component-rule-hint p {
   margin: 0;
   color: #74808f;
+}
+
+.formula-composer-row .app-modal-field > select,
+.formula-composer-row .app-modal-field > input {
+  min-height: 2.28rem;
+  font-size: 0.82rem;
+  padding: 0.48rem 0.78rem;
+}
+
+.formula-composer-grid {
+  width: 100%;
+}
+
+.formula-composer-row {
+  width: 100%;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.formula-composer-row-actions {
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+
+.formula-composer-remove-button {
+  min-height: 2.16rem;
+  padding: 0.28rem 0.62rem;
+  font-size: 0.75rem;
+}
+
+.formula-add-actions {
+  align-self: start;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.formula-add-button {
+  min-height: 2.08rem;
+  padding: 0.3rem 0.68rem;
+  font-size: 0.76rem;
+  border-radius: 0.86rem;
 }
 
 .board-column-list,
@@ -11203,6 +11352,11 @@ body {
   gap: 0.75rem;
 }
 
+/* Dentro de modales las columnas deben poder encogerse para no desbordar */
+.sicfla-modal .modal-form-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
 .app-modal-field,
 .field-inline,
 .builder-grid label,
@@ -11344,6 +11498,10 @@ body {
   gap: 0.68rem;
 }
 
+.system-config-grid-three {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .system-config-dual-sections {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -11389,11 +11547,22 @@ body {
   padding-right: 1.6rem;
 }
 
-.system-time-mini {
-  max-width: 7rem;
-  min-height: 1.56rem !important;
+.system-time-select-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  min-height: 1.96rem;
+  padding-right: 1.6rem;
+}
+
+.system-time-select {
+  min-height: 1.78rem;
+  border: 1px solid var(--sicfla-border);
+  border-radius: 0.62rem;
+  background: #ffffff;
+  color: var(--sicfla-text);
+  padding: 0 0.38rem;
   font-size: 0.78rem;
-  padding: 0 0.42rem !important;
 }
 
 .system-mini-field {
@@ -11428,6 +11597,7 @@ body {
 
 .system-config-pause-list {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.4rem;
 }
 
@@ -11437,8 +11607,32 @@ body {
   padding: 0.42rem;
   display: grid;
   gap: 0.36rem;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.7fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.7fr);
+  align-items: end;
   background: #ffffff;
+}
+
+.system-config-pause-row .app-modal-field > input,
+.system-config-pause-row .app-modal-field > select {
+  max-width: 8.2rem;
+  min-height: 1.6rem;
+  font-size: 0.74rem;
+  padding: 0 0.42rem;
+}
+
+.system-config-pause-row .app-modal-field > span {
+  font-size: 0.72rem;
+  line-height: 1.1;
+}
+
+.system-config-pause-row .system-config-switch {
+  min-height: 1.55rem;
+  min-width: 2.6rem;
+}
+
+.system-config-pause-row .system-config-switch .switch-thumb {
+  width: 1.08rem;
+  height: 1.08rem;
 }
 
 .system-config-pause-grid-compact {
@@ -11456,21 +11650,76 @@ body {
   height: 1.2rem;
 }
 
+.system-config-actions {
+  gap: 0.72rem;
+  margin-top: 0.55rem;
+}
+
+.system-config-actions .primary-button,
+.system-config-actions .icon-button {
+  min-height: 1.76rem;
+  padding: 0.24rem 0.62rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
 @media (max-width: 900px) {
   .system-config-dual-sections,
   .system-config-clock-grid,
   .system-area-time-grid,
   .system-config-grid,
   .system-config-pause-row,
+  .system-config-pause-list,
   .system-config-pause-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .system-mini-field,
   .system-time-picker,
-  .system-time-mini {
+  .system-time-picker {
     max-width: 100%;
   }
+}
+
+@media (max-width: 1200px) {
+  .system-config-grid-three {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.board-pause-overtime-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.55rem 0.75rem;
+  background: #fff1f2;
+  border: 1.5px solid #f87171;
+  border-radius: 0.75rem;
+  color: #b91c1c;
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+}
+
+.board-pause-overtime-alert .board-pause-overtime-icon {
+  font-size: 1.1rem;
+  line-height: 1.3;
+  flex-shrink: 0;
+  color: #dc2626;
+}
+
+.board-pause-overtime-alert strong {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 0.12rem;
+  color: #991b1b;
+}
+
+.board-pause-overtime-alert span {
+  font-size: 0.74rem;
+  line-height: 1.35;
+  color: #b91c1c;
 }
 
 /* Catalog activity modal: force stable layout over global compact overrides */
