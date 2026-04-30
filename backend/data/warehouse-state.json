@@ -1,5 +1,5 @@
 {
-  "revision": 2577,
+  "revision": 2831,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro",
@@ -7,35 +7,79 @@
       "naveWeekSchedules": {},
       "pauseControl": {
         "globalPauseEnabled": false,
-        "forceGlobalPause": true,
+        "forceGlobalPause": false,
         "reasons": [
           {
             "id": "material",
-            "label": "Falta de material",
+            "label": "Sanitario",
             "enabled": true,
-            "affectsTimer": false,
-            "authorizedMinutes": 10
+            "affectsTimer": true,
+            "authorizedMinutes": 0,
+            "dailyUsageLimit": 0
           },
           {
             "id": "operativa",
-            "label": "Detención operativa",
+            "label": "comida",
             "enabled": true,
             "affectsTimer": true,
-            "authorizedMinutes": 0
+            "authorizedMinutes": 5,
+            "dailyUsageLimit": 0
           },
           {
             "id": "calidad",
             "label": "Ajuste de calidad",
             "enabled": true,
             "affectsTimer": false,
-            "authorizedMinutes": 5
+            "authorizedMinutes": 5,
+            "dailyUsageLimit": 0
           }
         ],
         "workHours": {
           "startHour": 8,
-          "endHour": 16
+          "startMinute": 0,
+          "endHour": 16,
+          "endMinute": 0
         },
-        "globalPauseActivatedAt": null
+        "areaPauseControls": {
+          "C1": {
+            "enabled": false,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          },
+          "C2": {
+            "enabled": false,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          },
+          "C3": {
+            "enabled": false,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          },
+          "P": {
+            "enabled": false,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          }
+        },
+        "globalPauseActivatedAt": null,
+        "globalPauseAutoDisabledUntil": null
       }
     }
   },
@@ -193,8 +237,28 @@
         4,
         6
       ],
-      "scheduledDaysBySite": {},
-      "cleaningSites": [],
+      "scheduledDaysBySite": {
+        "C1": [
+          2,
+          5,
+          6
+        ],
+        "C2": [
+          1,
+          4,
+          6
+        ],
+        "C3": [
+          0,
+          3,
+          6
+        ]
+      },
+      "cleaningSites": [
+        "C1",
+        "C2",
+        "C3"
+      ],
       "category": "Limpieza",
       "area": "Limpieza",
       "isDeleted": false
@@ -214,8 +278,40 @@
         5,
         6
       ],
-      "scheduledDaysBySite": {},
-      "cleaningSites": [],
+      "scheduledDaysBySite": {
+        "C1": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "C2": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "C3": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ]
+      },
+      "cleaningSites": [
+        "C1",
+        "C2",
+        "C3"
+      ],
       "category": "Limpieza",
       "area": "Limpieza",
       "isDeleted": false
@@ -257,8 +353,28 @@
         4,
         6
       ],
-      "scheduledDaysBySite": {},
-      "cleaningSites": [],
+      "scheduledDaysBySite": {
+        "C1": [
+          2,
+          5,
+          6
+        ],
+        "C2": [
+          1,
+          4,
+          6
+        ],
+        "C3": [
+          0,
+          3,
+          6
+        ]
+      },
+      "cleaningSites": [
+        "C1",
+        "C2",
+        "C3"
+      ],
       "category": "Limpieza",
       "area": "Limpieza",
       "isDeleted": false
@@ -272,8 +388,14 @@
       "scheduledDays": [
         0
       ],
-      "scheduledDaysBySite": {},
-      "cleaningSites": [],
+      "scheduledDaysBySite": {
+        "P": [
+          4
+        ]
+      },
+      "cleaningSites": [
+        "P"
+      ],
       "category": "Limpieza",
       "area": "Limpieza",
       "isDeleted": false
@@ -290,8 +412,28 @@
         4,
         6
       ],
-      "scheduledDaysBySite": {},
-      "cleaningSites": [],
+      "scheduledDaysBySite": {
+        "C1": [
+          2,
+          5,
+          6
+        ],
+        "C3": [
+          0,
+          3,
+          6
+        ],
+        "C2": [
+          1,
+          4,
+          6
+        ]
+      },
+      "cleaningSites": [
+        "C1",
+        "C2",
+        "C3"
+      ],
       "category": "Limpieza",
       "area": "Limpieza",
       "isDeleted": false
@@ -308,8 +450,28 @@
         4,
         6
       ],
-      "scheduledDaysBySite": {},
-      "cleaningSites": [],
+      "scheduledDaysBySite": {
+        "C1": [
+          2,
+          5,
+          6
+        ],
+        "C2": [
+          1,
+          4,
+          6
+        ],
+        "C3": [
+          0,
+          3,
+          6
+        ]
+      },
+      "cleaningSites": [
+        "C1",
+        "C2",
+        "C3"
+      ],
       "category": "Limpieza",
       "area": "Limpieza",
       "isDeleted": false
@@ -329,8 +491,40 @@
         5,
         6
       ],
-      "scheduledDaysBySite": {},
-      "cleaningSites": [],
+      "scheduledDaysBySite": {
+        "C1": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "C2": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "C3": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ]
+      },
+      "cleaningSites": [
+        "C1",
+        "C2",
+        "C3"
+      ],
       "category": "Limpieza",
       "area": "Limpieza",
       "isDeleted": false
@@ -350,8 +544,37 @@
         5,
         6
       ],
-      "scheduledDaysBySite": {},
-      "cleaningSites": [],
+      "scheduledDaysBySite": {
+        "C1": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          6
+        ],
+        "C2": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          6
+        ],
+        "C3": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          6
+        ]
+      },
+      "cleaningSites": [
+        "C1",
+        "C2",
+        "C3"
+      ],
       "category": "Limpieza",
       "area": "Limpieza",
       "isDeleted": false
@@ -368,8 +591,28 @@
         4,
         6
       ],
-      "scheduledDaysBySite": {},
-      "cleaningSites": [],
+      "scheduledDaysBySite": {
+        "C1": [
+          2,
+          5,
+          6
+        ],
+        "C2": [
+          1,
+          4,
+          6
+        ],
+        "C3": [
+          0,
+          3,
+          6
+        ]
+      },
+      "cleaningSites": [
+        "C1",
+        "C2",
+        "C3"
+      ],
       "category": "Limpieza",
       "area": "Limpieza",
       "isDeleted": false
@@ -389,8 +632,40 @@
         5,
         6
       ],
-      "scheduledDaysBySite": {},
-      "cleaningSites": [],
+      "scheduledDaysBySite": {
+        "C1": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "C2": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "C3": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ]
+      },
+      "cleaningSites": [
+        "C1",
+        "C2",
+        "C3"
+      ],
       "category": "Limpieza",
       "area": "Limpieza",
       "isDeleted": false
@@ -407,8 +682,16 @@
         4,
         6
       ],
-      "scheduledDaysBySite": {},
-      "cleaningSites": [],
+      "scheduledDaysBySite": {
+        "C3": [
+          0,
+          3,
+          6
+        ]
+      },
+      "cleaningSites": [
+        "C3"
+      ],
       "category": "Limpieza",
       "area": "Limpieza",
       "isDeleted": false
@@ -425,8 +708,28 @@
         4,
         6
       ],
-      "scheduledDaysBySite": {},
-      "cleaningSites": [],
+      "scheduledDaysBySite": {
+        "C1": [
+          2,
+          5,
+          6
+        ],
+        "C2": [
+          1,
+          4,
+          6
+        ],
+        "C3": [
+          0,
+          3,
+          6
+        ]
+      },
+      "cleaningSites": [
+        "C1",
+        "C2",
+        "C3"
+      ],
       "category": "Limpieza",
       "area": "Limpieza",
       "isDeleted": false
@@ -440,8 +743,25 @@
       "scheduledDays": [
         0
       ],
-      "scheduledDaysBySite": {},
-      "cleaningSites": [],
+      "scheduledDaysBySite": {
+        "C1": [
+          2,
+          5
+        ],
+        "C2": [
+          1,
+          4
+        ],
+        "C3": [
+          0,
+          3
+        ]
+      },
+      "cleaningSites": [
+        "C1",
+        "C2",
+        "C3"
+      ],
       "category": "Limpieza",
       "area": "Limpieza",
       "isDeleted": false
@@ -458,8 +778,16 @@
         4,
         6
       ],
-      "scheduledDaysBySite": {},
-      "cleaningSites": [],
+      "scheduledDaysBySite": {
+        "C3": [
+          0,
+          3,
+          6
+        ]
+      },
+      "cleaningSites": [
+        "C3"
+      ],
       "category": "Limpieza",
       "area": "Limpieza",
       "isDeleted": false
@@ -473,8 +801,14 @@
       "scheduledDays": [
         0
       ],
-      "scheduledDaysBySite": {},
-      "cleaningSites": [],
+      "scheduledDaysBySite": {
+        "P": [
+          4
+        ]
+      },
+      "cleaningSites": [
+        "P"
+      ],
       "category": "Limpieza",
       "area": "Limpieza",
       "isDeleted": false
@@ -488,8 +822,14 @@
       "scheduledDays": [
         0
       ],
-      "scheduledDaysBySite": {},
-      "cleaningSites": [],
+      "scheduledDaysBySite": {
+        "P": [
+          4
+        ]
+      },
+      "cleaningSites": [
+        "P"
+      ],
       "category": "Limpieza",
       "area": "Limpieza",
       "isDeleted": false
@@ -503,8 +843,14 @@
       "scheduledDays": [
         0
       ],
-      "scheduledDaysBySite": {},
-      "cleaningSites": [],
+      "scheduledDaysBySite": {
+        "P": [
+          4
+        ]
+      },
+      "cleaningSites": [
+        "P"
+      ],
       "category": "Limpieza",
       "area": "Limpieza",
       "isDeleted": false
@@ -9653,7 +9999,6 @@
           "fld-fxcbxxhm",
           "fld-wfufcb0c",
           "fld-6p7nqzmd",
-          "fld-uev2k1ab",
           "fld-3qiexh33",
           "fld-98i7zceh",
           "fld-dgx50xpd",
@@ -9663,7 +10008,8 @@
           "aux:efficiency",
           "aux:workflow",
           "aux:assignee",
-          "fld-c7zlre4d"
+          "fld-c7zlre4d",
+          "fld-iz637z6b"
         ],
         "auxColumnWidths": {
           "assignee": 190,
@@ -9707,7 +10053,8 @@
           "required": true,
           "groupName": "Control",
           "groupColor": "#ede9fe",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-qsz13t42",
@@ -9729,7 +10076,8 @@
           "required": true,
           "groupName": "Control",
           "groupColor": "#ede9fe",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-qb54r8d9",
@@ -9751,7 +10099,8 @@
           "required": false,
           "groupName": "Control",
           "groupColor": "#ede9fe",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-tfrpbe0m",
@@ -9773,7 +10122,8 @@
           "required": true,
           "groupName": "Producto",
           "groupColor": "#e0f2fe",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-0dkj3b5x",
@@ -9795,7 +10145,8 @@
           "required": false,
           "groupName": "Trazabilidad",
           "groupColor": "#dcfce7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-m7ncgvx9",
@@ -9817,7 +10168,8 @@
           "required": false,
           "groupName": "Trazabilidad",
           "groupColor": "#dcfce7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-2poaolyx",
@@ -9839,7 +10191,8 @@
           "required": false,
           "groupName": "Trazabilidad",
           "groupColor": "#dcfce7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-k2bb0z18",
@@ -9861,7 +10214,8 @@
           "required": false,
           "groupName": "Trazabilidad",
           "groupColor": "#dcfce7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-sf0ku94c",
@@ -9883,7 +10237,8 @@
           "required": false,
           "groupName": "Conteo",
           "groupColor": "#fef3c7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-kxjv1tti",
@@ -9905,7 +10260,8 @@
           "required": false,
           "groupName": "Conteo",
           "groupColor": "#fef3c7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-w7l359e5",
@@ -9927,7 +10283,16 @@
           "required": false,
           "groupName": "Conteo",
           "groupColor": "#fef3c7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": [
+            {
+              "fieldId": "fld-sf0ku94c"
+            },
+            {
+              "operation": "multiply",
+              "fieldId": "fld-kxjv1tti"
+            }
+          ]
         },
         {
           "id": "fld-t4lc3uib",
@@ -9949,7 +10314,8 @@
           "required": false,
           "groupName": "Tiempo",
           "groupColor": "#fee2e2",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-fxcbxxhm",
@@ -9971,7 +10337,8 @@
           "required": false,
           "groupName": "Conteo",
           "groupColor": "#fef3c7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-wfufcb0c",
@@ -9993,7 +10360,8 @@
           "required": false,
           "groupName": "Resultado",
           "groupColor": "#dcfce7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-6p7nqzmd",
@@ -10022,29 +10390,8 @@
           "required": false,
           "groupName": "Resultado",
           "groupColor": "#fee2e2",
-          "colorRules": []
-        },
-        {
-          "id": "fld-uev2k1ab",
-          "label": "Evidencias",
-          "type": "evidenceGallery",
-          "optionSource": "manual",
-          "optionCatalogCategory": "",
-          "options": [],
-          "inventoryProperty": "code",
-          "sourceFieldId": null,
-          "formulaOperation": "add",
-          "formulaLeftFieldId": null,
-          "formulaRightFieldId": null,
-          "helpText": "Adjunta fotos o videos en miniatura dentro de la celda.",
-          "placeholder": "",
-          "defaultValue": "",
-          "width": "lg",
-          "widthPx": null,
-          "required": false,
-          "groupName": "Resultado",
-          "groupColor": "#dcfce7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-3qiexh33",
@@ -10066,7 +10413,8 @@
           "required": false,
           "groupName": "Resultado",
           "groupColor": "#fee2e2",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-98i7zceh",
@@ -10088,7 +10436,8 @@
           "required": false,
           "groupName": "Tiempo",
           "groupColor": "#fee2e2",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-dgx50xpd",
@@ -10110,7 +10459,8 @@
           "required": false,
           "groupName": "Tiempo",
           "groupColor": "#fee2e2",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-c7zlre4d",
@@ -10132,6 +10482,42 @@
           "required": false,
           "groupName": "Resultado",
           "groupColor": "#dcfce7",
+          "colorRules": [],
+          "formulaTerms": []
+        },
+        {
+          "id": "fld-iz637z6b",
+          "label": "total",
+          "type": "formula",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "subtract",
+          "formulaLeftFieldId": "fld-w7l359e5",
+          "formulaRightFieldId": "fld-wfufcb0c",
+          "formulaTerms": [
+            {
+              "fieldId": "fld-w7l359e5"
+            },
+            {
+              "operation": "subtract",
+              "fieldId": "fld-wfufcb0c"
+            },
+            {
+              "operation": "subtract",
+              "fieldId": "fld-3qiexh33"
+            }
+          ],
+          "helpText": "total",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "md",
+          "widthPx": null,
+          "required": false,
+          "groupName": "General",
+          "groupColor": "#e2f4ec",
           "colorRules": []
         }
       ],
@@ -10147,37 +10533,164 @@
             "fld-m7ncgvx9": "123456",
             "fld-2poaolyx": "",
             "fld-k2bb0z18": "",
-            "fld-sf0ku94c": 40,
+            "fld-sf0ku94c": 50,
             "fld-kxjv1tti": "",
             "fld-w7l359e5": "",
-            "fld-t4lc3uib": "",
+            "fld-t4lc3uib": "15:09",
             "fld-fxcbxxhm": 0,
-            "fld-wfufcb0c": 0,
+            "fld-wfufcb0c": 10,
             "fld-6p7nqzmd": [],
-            "fld-uev2k1ab": [
-              {
-                "url": "/api/uploads/files/1777306873482_mercadopago_logo_icon_248494.png",
-                "thumbnailUrl": "/api/uploads/files/1777306873482_mercadopago_logo_icon_248494.png",
-                "mimeType": "image/png",
-                "name": "mercadopago_logo_icon_248494.png",
-                "publicId": ""
-              }
-            ],
-            "fld-3qiexh33": 0,
-            "fld-98i7zceh": "",
+            "fld-3qiexh33": 50,
+            "fld-98i7zceh": "15:18",
             "fld-dgx50xpd": "",
-            "fld-c7zlre4d": ""
+            "fld-c7zlre4d": "",
+            "fld-iz637z6b": ""
           },
           "responsibleId": "usr-lead-nu7wt83h",
           "responsibleIds": [
             "usr-lead-nu7wt83h"
           ],
-          "status": "Pendiente",
-          "startTime": null,
-          "endTime": null,
-          "accumulatedSeconds": 0,
+          "status": "Terminado",
+          "startTime": "2026-04-29T21:09:05.987Z",
+          "endTime": "2026-04-29T21:25:00.000Z",
+          "accumulatedSeconds": 420,
           "lastResumedAt": null,
+          "pauseUsageByDay": {},
           "createdAt": "2026-04-27T15:09:36.477Z"
+        },
+        {
+          "id": "row-785eda9588f7",
+          "values": {
+            "fld-0mdfs1q6": "2026-04-29",
+            "fld-qsz13t42": "1",
+            "fld-qb54r8d9": "",
+            "fld-tfrpbe0m": "inv-4n0dwn7n",
+            "fld-0dkj3b5x": "",
+            "fld-m7ncgvx9": "",
+            "fld-2poaolyx": "",
+            "fld-k2bb0z18": "",
+            "fld-sf0ku94c": 0,
+            "fld-kxjv1tti": "",
+            "fld-w7l359e5": "",
+            "fld-t4lc3uib": "12:36",
+            "fld-fxcbxxhm": 0,
+            "fld-wfufcb0c": 0,
+            "fld-6p7nqzmd": "",
+            "fld-3qiexh33": "",
+            "fld-98i7zceh": "08:13",
+            "fld-dgx50xpd": "",
+            "fld-c7zlre4d": "",
+            "fld-iz637z6b": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Terminado",
+          "startTime": "2026-04-30T12:39:25.273Z",
+          "endTime": "2026-04-30T14:13:06.950Z",
+          "accumulatedSeconds": 786,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "createdAt": "2026-04-29T21:22:56.468Z",
+          "pauseLogs": [],
+          "pauseStartedAt": null,
+          "pauseAffectsTimer": false,
+          "pauseAuthorizedSeconds": 0
+        },
+        {
+          "id": "row-fe46b9037de1",
+          "values": {
+            "fld-0mdfs1q6": "2026-04-30",
+            "fld-qsz13t42": "",
+            "fld-qb54r8d9": "",
+            "fld-tfrpbe0m": "",
+            "fld-0dkj3b5x": "",
+            "fld-m7ncgvx9": "",
+            "fld-2poaolyx": "",
+            "fld-k2bb0z18": "",
+            "fld-sf0ku94c": 0,
+            "fld-kxjv1tti": "",
+            "fld-w7l359e5": "",
+            "fld-t4lc3uib": "08:27",
+            "fld-fxcbxxhm": 0,
+            "fld-wfufcb0c": 0,
+            "fld-6p7nqzmd": "",
+            "fld-3qiexh33": 0,
+            "fld-98i7zceh": "",
+            "fld-dgx50xpd": "",
+            "fld-c7zlre4d": "",
+            "fld-iz637z6b": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "En curso",
+          "startTime": "2026-04-30T14:27:24.778Z",
+          "endTime": null,
+          "accumulatedSeconds": 3660,
+          "lastResumedAt": "2026-04-30T14:28:04.028Z",
+          "pauseUsageByDay": {
+            "2026-04-30::material": 1
+          },
+          "pauseLogs": [],
+          "createdAt": "2026-04-30T12:41:42.919Z",
+          "pauseStartedAt": null,
+          "pauseAffectsTimer": false,
+          "pauseAuthorizedSeconds": 0,
+          "lastPauseReason": "Sanitario",
+          "totalElapsedSecondsOverride": 7200
+        },
+        {
+          "id": "row-12151b5cd85f",
+          "values": {
+            "fld-0mdfs1q6": "2026-04-30",
+            "fld-qsz13t42": "",
+            "fld-qb54r8d9": "",
+            "fld-tfrpbe0m": "",
+            "fld-0dkj3b5x": "",
+            "fld-m7ncgvx9": "",
+            "fld-2poaolyx": "",
+            "fld-k2bb0z18": "",
+            "fld-sf0ku94c": 0,
+            "fld-kxjv1tti": "",
+            "fld-w7l359e5": "",
+            "fld-t4lc3uib": "08:28",
+            "fld-fxcbxxhm": 0,
+            "fld-wfufcb0c": 0,
+            "fld-6p7nqzmd": "",
+            "fld-3qiexh33": 0,
+            "fld-98i7zceh": "",
+            "fld-dgx50xpd": "",
+            "fld-c7zlre4d": "",
+            "fld-iz637z6b": ""
+          },
+          "responsibleId": "",
+          "responsibleIds": [],
+          "status": "En curso",
+          "startTime": "2026-04-30T14:28:26.993Z",
+          "endTime": null,
+          "accumulatedSeconds": 4260,
+          "lastResumedAt": "2026-04-30T15:36:04.054Z",
+          "pauseUsageByDay": {
+            "2026-04-30::material": 2
+          },
+          "pauseLogs": [
+            {
+              "id": "pause-66f73095fa55",
+              "reason": "Sanitario",
+              "pausedAt": "2026-04-30T15:17:21.705Z",
+              "resumedAt": "2026-04-30T15:47:21.705Z",
+              "pauseDurationSeconds": 1800
+            }
+          ],
+          "createdAt": "2026-04-30T14:27:55.570Z",
+          "pauseStartedAt": null,
+          "pauseAffectsTimer": false,
+          "pauseAuthorizedSeconds": 0,
+          "lastPauseReason": "Sanitario",
+          "totalElapsedSecondsOverride": 6454
         }
       ],
       "permissions": {
@@ -10685,11 +11198,27 @@
           "aux:totalTime",
           "aux:efficiency"
         ],
-        "operationalContextType": "none",
-        "operationalContextLabel": "",
-        "operationalContextOptions": [],
-        "operationalContextValue": "",
-        "ownerArea": ""
+        "operationalContextType": "cleaningSite",
+        "operationalContextLabel": "Sede de limpieza",
+        "operationalContextOptions": [
+          "C1",
+          "C2",
+          "C3",
+          "P"
+        ],
+        "operationalContextValue": "C1",
+        "ownerArea": "",
+        "columnWidths": {
+          "fld-pjabusyf": 126,
+          "aux:workflow": 96,
+          "fld-x1jzjoxm": 74,
+          "fld-gtp4zz3s": 82,
+          "aux:assignee": 148,
+          "aux:time": 80,
+          "aux:status": 106,
+          "aux:totalTime": 80,
+          "aux:efficiency": 76
+        }
       },
       "fields": [
         {
@@ -10786,17 +11315,26 @@
           "id": "row-e871979ad87a",
           "values": {
             "fld-pjabusyf": "Piso de Produccíon",
-            "fld-x1jzjoxm": "",
-            "fld-gtp4zz3s": "",
+            "fld-x1jzjoxm": "10:31",
+            "fld-gtp4zz3s": "13:42",
             "fld-eaq0jvax": ""
           },
           "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Pendiente",
-          "startTime": null,
-          "endTime": null,
-          "accumulatedSeconds": 0,
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Terminado",
+          "startTime": "2026-04-29T16:31:18.910Z",
+          "endTime": "2026-04-29T19:42:50.656Z",
+          "accumulatedSeconds": 9400,
           "lastResumedAt": null,
-          "createdAt": "2026-04-28T12:59:27.930Z"
+          "pauseUsageByDay": {
+            "2026-04-29::operativa": 5,
+            "2026-04-29::material": 2,
+            "2026-04-29::calidad": 1
+          },
+          "createdAt": "2026-04-28T12:59:27.930Z",
+          "lastPauseReason": "comida"
         },
         {
           "id": "row-4feee0c75655",
@@ -10807,15 +11345,396 @@
             "fld-eaq0jvax": ""
           },
           "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
           "status": "Terminado",
           "startTime": "2026-04-28T12:59:36.578Z",
           "endTime": "2026-04-28T13:00:18.631Z",
           "accumulatedSeconds": 0,
           "lastResumedAt": null,
-          "createdAt": "2026-04-28T12:59:28.968Z",
-          "pauseStartedAt": null,
-          "pauseAffectsTimer": false,
-          "pauseAuthorizedSeconds": 0
+          "pauseUsageByDay": {},
+          "createdAt": "2026-04-28T12:59:28.968Z"
+        },
+        {
+          "id": "row-d10668c240ee",
+          "values": {
+            "fld-pjabusyf": "Baños",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "createdAt": "2026-04-29T16:18:35.643Z"
+        },
+        {
+          "id": "row-1601a9404b39",
+          "values": {
+            "fld-pjabusyf": "Oficinas",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "createdAt": "2026-04-29T16:18:36.875Z"
+        },
+        {
+          "id": "row-4a0ba607c391",
+          "values": {
+            "fld-pjabusyf": "Portones",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "createdAt": "2026-04-29T16:18:37.873Z"
+        },
+        {
+          "id": "row-452c4e3e5be3",
+          "values": {
+            "fld-pjabusyf": "Rampas",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "createdAt": "2026-04-29T16:18:40.938Z"
+        },
+        {
+          "id": "row-6dc105cd421b",
+          "values": {
+            "fld-pjabusyf": "Racks",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "createdAt": "2026-04-29T16:18:42.864Z"
+        },
+        {
+          "id": "row-afaddf21bbb7",
+          "values": {
+            "fld-pjabusyf": "Comedor 1ra",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "createdAt": "2026-04-29T16:18:44.206Z"
+        },
+        {
+          "id": "row-f182307ab50c",
+          "values": {
+            "fld-pjabusyf": "Comedor 2da",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "createdAt": "2026-04-29T16:18:44.745Z"
+        },
+        {
+          "id": "row-8a9f819d0872",
+          "values": {
+            "fld-pjabusyf": "Protección Civil",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "createdAt": "2026-04-29T16:18:45.197Z"
+        },
+        {
+          "id": "row-532285f2b14c",
+          "values": {
+            "fld-pjabusyf": "Recolección Basura",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "createdAt": "2026-04-29T16:18:45.408Z"
+        },
+        {
+          "id": "row-260a657c4d22",
+          "values": {
+            "fld-pjabusyf": "Sala de Juntas",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "createdAt": "2026-04-29T16:18:45.618Z"
+        },
+        {
+          "id": "row-24e578738852",
+          "values": {
+            "fld-pjabusyf": "Vidrios",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "createdAt": "2026-04-29T16:18:45.858Z"
+        },
+        {
+          "id": "row-4dac6809a6d2",
+          "values": {
+            "fld-pjabusyf": "Tarimas",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "createdAt": "2026-04-29T16:18:46.069Z"
+        },
+        {
+          "id": "row-abdf39448c94",
+          "values": {
+            "fld-pjabusyf": "Muebles Picking",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "createdAt": "2026-04-29T16:18:46.337Z"
+        },
+        {
+          "id": "row-75a39462d00d",
+          "values": {
+            "fld-pjabusyf": "Barrido de Colindancia",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "createdAt": "2026-04-29T16:18:46.721Z"
+        },
+        {
+          "id": "row-48f56ae72f30",
+          "values": {
+            "fld-pjabusyf": "Limpieza de Patio",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "createdAt": "2026-04-29T16:18:46.825Z"
+        },
+        {
+          "id": "row-9903496df1a7",
+          "values": {
+            "fld-pjabusyf": "Deshierbe en Grietas y Jardineras",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "createdAt": "2026-04-29T16:18:46.962Z"
+        },
+        {
+          "id": "row-124b8a942e11",
+          "values": {
+            "fld-pjabusyf": "",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "createdAt": "2026-04-29T16:29:50.877Z"
+        },
+        {
+          "id": "row-0ecf2c54f115",
+          "values": {
+            "fld-pjabusyf": "",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "createdAt": "2026-04-29T16:29:51.974Z"
+        },
+        {
+          "id": "row-7f59db113e8f",
+          "values": {
+            "fld-pjabusyf": "",
+            "fld-x1jzjoxm": "",
+            "fld-gtp4zz3s": "",
+            "fld-eaq0jvax": ""
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "createdAt": "2026-04-29T16:31:49.365Z"
         }
       ],
       "permissions": {
@@ -10899,7 +11818,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-28T19:30:45.832Z",
+  "updatedAt": "2026-04-30T15:42:40.077Z",
   "permissions": {
     "pages": {
       "index": {

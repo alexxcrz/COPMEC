@@ -1,5 +1,5 @@
 {
-  "revision": 2830,
+  "revision": 2829,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro",
@@ -10671,7 +10671,7 @@
           "status": "En curso",
           "startTime": "2026-04-30T14:28:26.993Z",
           "endTime": null,
-          "accumulatedSeconds": 4260,
+          "accumulatedSeconds": 4200,
           "lastResumedAt": "2026-04-30T15:36:04.054Z",
           "pauseUsageByDay": {
             "2026-04-30::material": 2
@@ -11818,7 +11818,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-30T15:37:15.777Z",
+  "updatedAt": "2026-04-30T15:36:04.091Z",
   "permissions": {
     "pages": {
       "index": {

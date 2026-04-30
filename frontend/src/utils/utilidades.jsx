@@ -3556,6 +3556,10 @@ export function normalizeSystemOperationalSettings(value) {
     pauseControl: {
       globalPauseEnabled: Boolean(source.pauseControl?.globalPauseEnabled),
       forceGlobalPause: Boolean(source.pauseControl?.forceGlobalPause),
+      globalPauseAutoDisabledUntil: (() => {
+        const raw = source.pauseControl?.globalPauseAutoDisabledUntil;
+        return (raw && !isNaN(Date.parse(raw))) ? String(raw) : null;
+      })(),
       reasons: normalizedReasons.length ? normalizedReasons : defaultReasons.map((entry) => normalizeSystemPauseReason(entry, entry)),
       workHours: normalizeWorkHoursWithMinutes(source.pauseControl?.workHours, 0, 24),
       areaPauseControls: (() => {

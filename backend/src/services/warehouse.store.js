@@ -4406,7 +4406,8 @@ export function createWarehouseBoardRow(auth, boardId) {
   if (!board) {
     return { ok: false, reason: "board_not_found" };
   }
-  if (currentState.system?.operational?.pauseControl?.globalPauseEnabled && normalizeRole(currentUser.role) !== ROLE_LEAD) {
+  const operationalSettings = normalizeSystemOperationalSettings(currentState.system?.operational);
+  if (operationalSettings.pauseControl?.globalPauseEnabled && normalizeRole(currentUser.role) !== ROLE_LEAD) {
     return { ok: false, reason: "global_pause_active" };
   }
   if (!canManageWarehouseBoard(currentUser, board) || !canUserDoWarehouseAction(currentUser, "createBoardRow", currentState.permissions)) {
@@ -4453,7 +4454,7 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
   if (isIdempotentStatusPatch) {
     return { ok: true, state: currentState, row };
   }
-  if (currentState.system?.operational?.pauseControl?.globalPauseEnabled && normalizeRole(currentUser.role) !== ROLE_LEAD) {
+  if (pauseControl?.globalPauseEnabled && normalizeRole(currentUser.role) !== ROLE_LEAD) {
     return { ok: false, reason: "global_pause_active" };
   }
 

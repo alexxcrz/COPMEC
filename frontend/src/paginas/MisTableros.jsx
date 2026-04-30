@@ -293,13 +293,32 @@ export default function MisTableros({ contexto }) {
   const boardColumns = boardView ? getOrderedBoardColumns(boardView, isBoardOwner) : [];
   const systemOperationalSettings = normalizeSystemOperationalSettings(state?.system?.operational);
   const systemPauseControl = systemOperationalSettings.pauseControl;
-  const manualGlobalPause = Boolean(systemPauseControl?.globalPauseEnabled);
+  const nowMsForPause = Number.isFinite(Number(now)) ? Number(now) : new Date(now).getTime();
+  const effectiveNowMsForPause = Number.isFinite(nowMsForPause) ? nowMsForPause : Date.now();
+  const pauseWorkHours = systemPauseControl?.workHours || { startHour: 0, endHour: 24, startMinute: 0, endMinute: 0 };
+  const pauseWindowStartMinutes = ((Number(pauseWorkHours.startHour) || 0) * 60) + (Number(pauseWorkHours.startMinute) || 0);
+  const pauseWindowEndMinutes = ((Number(pauseWorkHours.endHour) || 24) * 60) + (Number(pauseWorkHours.endMinute) || 0);
+  const nowDateForPause = new Date(effectiveNowMsForPause);
+  const nowMinutesForPause = (nowDateForPause.getHours() * 60) + nowDateForPause.getMinutes();
+  const isWithinPauseWindow = nowMinutesForPause >= pauseWindowStartMinutes && nowMinutesForPause < pauseWindowEndMinutes;
+  const autoDisabledUntilMs = systemPauseControl?.globalPauseAutoDisabledUntil
+    ? new Date(systemPauseControl.globalPauseAutoDisabledUntil).getTime()
+    : NaN;
+  const hasActiveTemporaryDisable = Number.isFinite(autoDisabledUntilMs) && autoDisabledUntilMs > effectiveNowMsForPause;
+  const manualGlobalPause = Boolean(systemPauseControl?.forceGlobalPause)
+    ? true
+    : hasActiveTemporaryDisable
+      ? false
+      : !isWithinPauseWindow;
   const globalForceActive = Boolean(systemPauseControl?.forceGlobalPause);
   const globalPauseLocked = manualGlobalPause;
     const pauseState = {
       globalPauseEnabled: manualGlobalPause,
-      globalPauseActivatedAt: systemPauseControl?.globalPauseActivatedAt || null,
+      globalPauseActivatedAt: manualGlobalPause
+        ? (systemPauseControl?.globalPauseActivatedAt || new Date(effectiveNowMsForPause).toISOString())
+        : null,
       workHours: systemPauseControl?.workHours || { startHour: 0, endHour: 24 },
+      areaPauseControls: systemPauseControl?.areaPauseControls || {},
     };
   const boardOperationalContextType = String(boardView?.settings?.operationalContextType || "none");
   const boardOperationalContextLabel = String(boardView?.settings?.operationalContextLabel || "").trim()
@@ -966,9 +985,12 @@ export default function MisTableros({ contexto }) {
                                               ? Math.max(computedSecs, getOperationalElapsedSeconds(row.startTime, effectiveNow, pauseState))
                                               : 0;
                                           const existingOverride = Number(row.totalElapsedSecondsOverride);
-                                          const preservedTotalSecs = Number.isFinite(existingOverride) && existingOverride >= 0
-                                            ? Math.max(0, existingOverride)
-                                            : computedTotalSecs;
+                                          const preservedTotalSecs = Math.max(
+                                            computedTotalSecs,
+                                            Number.isFinite(existingOverride) && existingOverride >= 0
+                                              ? Math.max(0, existingOverride)
+                                              : 0,
+                                          );
                                           updateBoardRowTimeOverride(selectedCustomBoard.id, row.id, {
                                             accumulatedSeconds: secs,
                                             totalElapsedSecondsOverride: preservedTotalSecs,
@@ -992,7 +1014,7 @@ export default function MisTableros({ contexto }) {
                                   : 0;
                               const overriddenTotalSecs = Number(row.totalElapsedSecondsOverride);
                               const totalSecs = Number.isFinite(overriddenTotalSecs) && overriddenTotalSecs >= 0
-                                ? Math.max(0, overriddenTotalSecs)
+                                ? Math.max(computedTotalSecs, Math.max(0, overriddenTotalSecs))
                                 : computedTotalSecs;
                               if (isLeadPrincipal) {
                                 const editKey = `${row.id}-totalTime`;
@@ -1029,7 +1051,7 @@ export default function MisTableros({ contexto }) {
                                   : prodSecs;
                               const overriddenTotalSecs = Number(row.totalElapsedSecondsOverride);
                               const totalSecs = Number.isFinite(overriddenTotalSecs) && overriddenTotalSecs >= 0
-                                ? Math.max(0, overriddenTotalSecs)
+                                ? Math.max(computedTotalSecs, Math.max(0, overriddenTotalSecs))
                                 : computedTotalSecs;
                               const pct = totalSecs > 0 ? Math.round((prodSecs / totalSecs) * 100) : (row.startTime ? 100 : 0);
                               const color = pct >= 80 ? "#16a34a" : pct >= 50 ? "#15803d" : "#dc2626";
