@@ -176,10 +176,10 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const [perfilError, setPerfilError] = useState(null);
   const [perfilCompartidosTab, setPerfilCompartidosTab] = useState("imagenes");
   const [perfilTipo, setPerfilTipo] = useState(null); // 'usuario' o 'grupo'
-  const [editandoMiPerfil, setEditandoMiPerfil] = useState(false);
-  const [editPerfilCargo, setEditPerfilCargo] = useState("");
-  const [editPerfilArea, setEditPerfilArea] = useState("");
-  const [editPerfilGuardando, setEditPerfilGuardando] = useState(false);
+  const [_editandoMiPerfil, setEditandoMiPerfil] = useState(false);
+  const [editPerfilCargo, _setEditPerfilCargo] = useState("");
+  const [editPerfilArea, _setEditPerfilArea] = useState("");
+  const [_editPerfilGuardando, setEditPerfilGuardando] = useState(false);
   const [perfilGrupoMiembros, setPerfilGrupoMiembros] = useState([]);
   const [perfilGrupoAdmins, setPerfilGrupoAdmins] = useState([]);
   const [perfilGrupoRestricciones, setPerfilGrupoRestricciones] = useState({});
@@ -653,8 +653,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       }
       const played = playNotificationSound(audioSettings.callIncomingSound, { volume: audioSettings.callVolume });
       if (!played) playCallSound("ringIncoming");
-    } catch (err) {
-      console.warn("Error al reproducir tono entrante:", err);
+    } catch (_err) {
+      console.warn("Error al reproducir tono entrante:", _err);
       playCallSound("ringIncoming");
     }
   };
@@ -739,8 +739,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         tag,
         requireInteraction: true,
       });
-    } catch (err) {
-      console.warn("[NOTIFICATION] Error mostrando notificación de llamada:", err?.message || err);
+    } catch (_err) {
+      console.warn("[NOTIFICATION] Error mostrando notificación de llamada:", _err?.message || _err);
     }
   };
 
@@ -843,7 +843,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       try {
         const data = await authFetch(`${SERVER_URL}/api/chat/usuarios`);
         setUsuariosCOPMEC(data || []);
-      } catch (e) {
+      } catch (_e) {
       }
     };
 
@@ -851,7 +851,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       try {
         const estados = await authFetch(`${SERVER_URL}/api/chat/usuarios/estados`);
         setEstadosUsuarios(estados || {});
-      } catch (e) {
+      } catch (_e) {
       }
     };
 
@@ -1096,7 +1096,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
             }
           }
         }
-      } catch (e) {
+      } catch (_e) {
       } finally {
         cargandoChatsActivosRef.current = false;
       }
@@ -1131,7 +1131,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
           const fechaB = new Date(b.fecha || 0);
           return fechaA - fechaB;
         }));
-      } catch (e) {
+      } catch (_e) {
       }
     };
 
@@ -1167,7 +1167,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         if (Object.keys(lecturas).length > 0) {
           setLecturasPrivadas((prev) => ({ ...prev, ...lecturas }));
         }
-      } catch (e) {
+      } catch (_e) {
       }
     };
 
@@ -1210,12 +1210,12 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
             setUsuarioRestringido(false);
             setRestriccionInfo(null);
           }
-        } catch (err) {
+        } catch (_err) {
           // Si no se puede cargar el perfil, asumir que no está restringido
           setUsuarioRestringido(false);
           setRestriccionInfo(null);
         }
-      } catch (e) {
+      } catch (_e) {
       }
     };
 
@@ -1260,7 +1260,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
             }
           }
         }
-      } catch (e) {
+      } catch (_e) {
       } finally {
         cargandoChatsActivosRef.current = false;
       }
@@ -1284,7 +1284,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       try {
         const data = await authFetch("/api/chat/grupos");
         setGrupos(data || []);
-      } catch (e) {
+      } catch (_e) {
       }
     };
 
@@ -1322,7 +1322,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       try {
         const config = await authFetch(`${SERVER_URL}/api/chat/notificaciones/config`);
         setConfigNotificaciones(config || null);
-      } catch (err) {
+      } catch (_err) {
       }
     };
     cargarConfigNotificaciones();
@@ -1350,7 +1350,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         } else {
           setRtcConfig({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
         }
-      } catch (err) {
+      } catch (_err) {
         setRtcConfig({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
       }
     };
@@ -1498,10 +1498,10 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
               ...prev,
               "COPMEC": mensajesOrdenados,
             }));
-          } catch (e) {
+          } catch (_e) {
           }
         }
-      } catch (e) {
+      } catch (_e) {
       } finally {
         cargandoChatsActivosRef.current = false;
       }
@@ -1587,7 +1587,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
             .then((data) => {
               setChatsActivos(data || []);
             })
-            .catch((e) => {
+            .catch((_e) => {
             })
             .finally(() => {
               cargandoChatsActivosRef.current = false;
@@ -1638,7 +1638,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         const esMioMensaje = isSameNickname(mensaje.de_nickname, userDisplayName);
         // Mensaje a uno mismo: siempre ya leído, independientemente de userDisplayName
         const esSelfMessage = isSameNickname(mensaje.de_nickname, mensaje.para_nickname);
-        const viendoEste = open && tipoChat === "privado" && isSameNickname(chatActual, otroUsuario);
+        const _viendoEste = open && tipoChat === "privado" && isSameNickname(chatActual, otroUsuario);
         // Si es mensaje de COPMEC para admin, siempre contar como no leído hasta que se abra
         const esMensajeCOPMECAdmin = mensaje.de_nickname === "COPMEC" && esAdmin && mensaje.es_admin;
         
@@ -1692,7 +1692,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         );
         authFetch(`${SERVER_URL}/api/chat/privado/${otroUsuario}/leer`, {
           method: "POST",
-        }).catch((e) => {
+        }).catch((_e) => {
         });
       }
       
@@ -1742,7 +1742,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         };
       });
 
-      const viendoEste = open && tipoChat === "grupal" && chatActual === String(mensaje.grupo_id);
+      const _viendoEste = open && tipoChat === "grupal" && chatActual === String(mensaje.grupo_id);
       const esNuestroMensaje = mensaje.usuario_nickname === userDisplayName;
       if (!esNuestroMensaje) {
         setNoLeidos((n) => n + 1);
@@ -1751,12 +1751,12 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     };
 
     // Actualizar grupos cuando se crea uno nuevo
-    const handleGrupoCreado = async (grupo) => {
+    const handleGrupoCreado = async (_grupo) => {
       // Recargar grupos
       try {
         const data = await authFetch("/api/chat/grupos");
         setGrupos(data || []);
-      } catch (e) {
+      } catch (_e) {
       }
     };
 
@@ -2387,7 +2387,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         .then((data) => {
           setChatsActivos(data || []);
         })
-        .catch((e) => {
+        .catch((_e) => {
         });
     }
 
@@ -2474,7 +2474,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       const formData = new FormData();
       formData.append("archivo", archivo);
 
-      const token = localStorage.getItem("token");
+      const _token = localStorage.getItem("token");
       const response = await fetch(`${SERVER_URL}/api/chat/archivo`, {
         method: "POST",
         headers: {
@@ -2488,7 +2488,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
       const data = await response.json();
       return data.archivo;
-    } catch (err) {
+    } catch (_err) {
       showAlert("Error al subir el archivo", "error");
       return null;
     } finally {
@@ -2798,7 +2798,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       
       const blob = new Blob(byteArrays, { type: contentType });
       return new File([blob], filename, { type: contentType });
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   };
@@ -2829,7 +2829,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
           archivo = new File([blob], `sticker-${emoji.nombre || 'emoji'}-${Date.now()}.${extension}`, { 
             type: blob.type 
           });
-        } catch (err) {
+        } catch (_err) {
           showAlert('Error al cargar el sticker', 'error');
           return;
         }
@@ -2935,11 +2935,11 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         }
         
         setArchivoSubiendo(false);
-      } catch (err) {
+      } catch (_err) {
         showAlert("Error al enviar el sticker", "error");
         setArchivoSubiendo(false);
       }
-    } catch (error) {
+    } catch (_error) {
       showAlert('Error al enviar sticker', 'error');
     }
   };
@@ -2954,7 +2954,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         setReuniones(data || []);
         // Programar notificaciones para todas las reuniones
         (data || []).forEach(reunion => programarNotificacionesReunion(reunion));
-      } catch (e) {
+      } catch (_e) {
         // Fallback a localStorage si falla el servidor
         const guardadas = localStorage.getItem('COPMEC_reuniones');
         if (guardadas) {
@@ -2962,7 +2962,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
             const reunionesData = JSON.parse(guardadas);
             setReuniones(reunionesData);
             reunionesData.forEach(reunion => programarNotificacionesReunion(reunion));
-          } catch (err) {
+          } catch (_err) {
           }
         }
       }
@@ -3031,7 +3031,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     if (window.sonidoCOPMEC) {
       try {
         window.sonidoCOPMEC.reproducir('notification');
-      } catch (e) {
+      } catch (_e) {
       }
     }
   };
@@ -3238,7 +3238,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
       setIsRecording(true);
       recorder.start();
-    } catch (err) {
+    } catch (_err) {
       setIsRecording(false);
       showAlert("No se pudo iniciar la grabación de voz.", "error");
     }
@@ -3491,7 +3491,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     if (guardados) {
       try {
         setEmojisPersonalizados(JSON.parse(guardados));
-      } catch (e) {
+      } catch (_e) {
       }
     }
   }, []);
@@ -3568,7 +3568,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     try {
       const pinRes = await authFetch(`${SERVER_URL}/api/chat/pin/${tipoChat}/${encodeURIComponent(chatId)}`);
       setMensajeFijado(pinRes?.pin || null);
-    } catch (e) {
+    } catch (_e) {
       setMensajeFijado(null);
     }
     try {
@@ -3577,7 +3577,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       );
       const ids = Array.isArray(destRes?.destacados) ? destRes.destacados : [];
       setMensajesDestacados(new Set(ids.map((id) => String(id))));
-    } catch (e) {
+    } catch (_e) {
       setMensajesDestacados(new Set());
     }
   };
@@ -3746,7 +3746,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         document.body.removeChild(temp);
       }
       showAlert("Mensaje copiado", "success");
-    } catch (err) {
+    } catch (_err) {
       showAlert("No se pudo copiar el mensaje", "error");
     }
   };
@@ -3808,7 +3808,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         : "Aún no leído";
       const por = info?.leido_por ? ` por ${info.leido_por}` : "";
       showAlert(`Llegó: ${fechaEnvio}\nLeído${por}: ${fechaLeido}`, "info");
-    } catch (e) {
+    } catch (_e) {
       showAlert("No se pudo obtener la info del mensaje.", "error");
     }
   };
@@ -3886,7 +3886,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       showAlert("Mensaje reenviado", "success");
       setMostrarReenvio(false);
       setReenviarMensaje(null);
-    } catch (e) {
+    } catch (_e) {
       showAlert("No se pudo reenviar el mensaje.", "error");
     }
   };
@@ -3910,7 +3910,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       });
       setMensajeFijado(mensaje);
       showAlert("Mensaje fijado", "success");
-    } catch (e) {
+    } catch (_e) {
       showAlert("No se pudo fijar el mensaje.", "error");
     }
   };
@@ -3926,7 +3926,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       });
       setMensajeFijado(null);
       showAlert("Mensaje desfijado", "success");
-    } catch (e) {
+    } catch (_e) {
       showAlert("No se pudo desfijar el mensaje.", "error");
     }
   };
@@ -3955,7 +3955,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         }
         return next;
       });
-    } catch (e) {
+    } catch (_e) {
       showAlert("No se pudo destacar el mensaje.", "error");
     }
   };
@@ -4024,11 +4024,11 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                 tieneEtiqueta: !!tieneEtiqueta
               }),
             });
-          } catch (err) {
+          } catch (_err) {
           }
         }
       }
-    } catch (e) {
+    } catch (_e) {
       showAlert("No se pudo cambiar la prioridad del mensaje.", "error");
     }
   };
@@ -4399,7 +4399,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       // Recargar grupos
       const data = await authFetch("/api/chat/grupos");
       setGrupos(data || []);
-    } catch (e) {
+    } catch (_e) {
     }
   };
 
@@ -4543,7 +4543,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       }
       
       return años >= 0 ? { años, meses } : null;
-    } catch (e) {
+    } catch (_e) {
       return null;
     }
   };
@@ -4576,7 +4576,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     }
   };
 
-  const guardarMiPerfil = async () => {
+  const _guardarMiPerfil = async () => {
     if (!user) return;
     setEditPerfilGuardando(true);
     try {
@@ -4660,7 +4660,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   const obtenerToken = () => {
     try {
       return localStorage.getItem("token");
-    } catch (e) {
+    } catch (_e) {
       return null;
     }
   };
@@ -4681,7 +4681,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         let url;
         
         // Obtener token de autenticación (opcional, la sesión se maneja por cookies)
-        const authToken = obtenerToken();
+        const _authToken = obtenerToken();
         
         if (archivoIdMatch) {
           // Es un archivo del chat, usar la ruta del endpoint
@@ -4689,10 +4689,6 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
           url = `${SERVER_URL}/api/chat/archivo/${archivoId}`;
         } else if (/^\d+:\d+$/.test(archivo.archivo_url)) {
           // Formato antiguo: "63:1" -> convertir a "/chat/archivo/63"
-          const archivoId = archivo.archivo_url.split(':')[0];
-          url = `${SERVER_URL}/api/chat/archivo/${archivoId}`;
-        } else if (/^\d+:\d+$/.test(archivo.archivo_url)) {
-          // Formato antiguo: "63:1" -> convertir a "/chat/archivo/63" (ya manejado arriba, pero por si acaso)
           const archivoId = archivo.archivo_url.split(':')[0];
           url = `${SERVER_URL}/api/chat/archivo/${archivoId}`;
         } else {
@@ -4720,11 +4716,11 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
           });
           
           if (!response.ok) {
-            let errorText = "";
+            let _errorText = "";
             try {
-              errorText = await response.text();
-            } catch (e) {
-              errorText = response.statusText || "Error desconocido";
+              _errorText = await response.text();
+            } catch (_e) {
+              _errorText = response.statusText || "Error desconocido";
             }
             
             // Si es 401, puede ser problema de autenticación
@@ -4753,7 +4749,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
             try {
               const text = await blob.text();
               setPreviewTextContent(text);
-            } catch (e) {
+            } catch (_e) {
             }
           }
           
@@ -5493,7 +5489,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-    } catch (err) {
+    } catch (_err) {
       showAlert("No se pudo descargar el archivo.", "error");
     }
   };
@@ -5581,7 +5577,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
           method: "POST",
         });
       }
-    } catch (e) {
+    } catch (_e) {
     }
   };
   
@@ -5731,13 +5727,13 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     if (savedChatGroups) {
       try {
         setChatGroups(JSON.parse(savedChatGroups));
-      } catch (e) {
+      } catch (_e) {
       }
     }
     if (savedGrupoGroups) {
       try {
         setGrupoGroups(JSON.parse(savedGrupoGroups));
-      } catch (e) {
+      } catch (_e) {
       }
     }
   }, []);
@@ -6107,7 +6103,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                         </div>
                       ) : (
                         historialLlamadas.map((ll) => {
-                          const yo = user?.nickname || user?.name || "";
+                          const _yo = user?.nickname || user?.name || "";
                           const contraparte = ll.fueIniciador
                             ? (ll.receptores || []).join(", ")
                             : ll.iniciador;
@@ -6984,12 +6980,12 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                 try {
                                   document.execCommand('copy');
                                   showAlert("Enlace copiado al portapapeles", "success");
-                                } catch (e) {
+                                } catch (_e) {
                                   showAlert("No se pudo copiar el enlace. Por favor, cópialo manualmente: " + urlToShare, "warning");
                                 }
                                 document.body.removeChild(textArea);
                               }
-                            } catch (err) {
+                            } catch (_err) {
                               showAlert("Error al compartir. Por favor, intenta de nuevo.", "error");
                             }
                           }}
@@ -7221,7 +7217,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                       // Recargar grupos
                                       const data = await authFetch("/api/chat/grupos");
                                       setGrupos(data || []);
-                                    } catch (err) {
+                                    } catch (_err) {
                                       showAlert("Error al dejar el grupo", "error");
                                     }
                                   }
@@ -7652,7 +7648,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                     </div>
                                     
                                     {/* Menú ya no inline; se muestra como overlay */}
-                                    {false && menuAbierto && (
+                                    {menuAbierto && false && (
                                       <div 
                                         className="chat-member-menu"
                                         style={{
@@ -7684,7 +7680,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                                   });
                                                   abrirPerfilGrupo(chatActual);
                                                   showAlert(esAdmin ? "Administrador removido" : "Administrador agregado", "success");
-                                                } catch (err) {
+                                                } catch (_err) {
                                                   showAlert("Error gestionando administrador", "error");
                                                 }
                                               }}
@@ -7763,7 +7759,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                                           });
                                                           abrirPerfilGrupo(chatActual);
                                                           showAlert("Restricción removida", "success");
-                                                        } catch (err) {
+                                                        } catch (_err) {
                                                           showAlert("Error removiendo restricción", "error");
                                                         }
                                                       }}
@@ -7813,7 +7809,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                                               });
                                                               abrirPerfilGrupo(chatActual);
                                                               showAlert(`Restricción aplicada: ${opcion}`, "success");
-                                                            } catch (err) {
+                                                            } catch (_err) {
                                                               showAlert("Error aplicando restricción", "error");
                                                             }
                                                           }}
@@ -7855,7 +7851,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                                     });
                                                     abrirPerfilGrupo(chatActual);
                                                     showAlert("Miembro eliminado del grupo", "success");
-                                                  } catch (err) {
+                                                  } catch (_err) {
                                                     showAlert("Error eliminando miembro", "error");
                                                   }
                                                 }
@@ -7898,7 +7894,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                                   });
                                                   abrirPerfilGrupo(chatActual);
                                                   showAlert("Propiedad transferida", "success");
-                                                } catch (err) {
+                                                } catch (_err) {
                                                   showAlert("Error transfiriendo propiedad", "error");
                                                 }
                                               }
@@ -8012,7 +8008,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                         });
                                         abrirPerfilGrupo(chatActual);
                                         showAlert(`Grupo ${nuevoEstado ? "público" : "privado"}`, "success");
-                                      } catch (err) {
+                                      } catch (_err) {
                                         showAlert("Error cambiando visibilidad del grupo", "error");
                                       }
                                     }}
@@ -8165,7 +8161,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                     const nombres = perfilGrupoMiembros.join(", ");
                                     await navigator.clipboard.writeText(nombres);
                                     showAlert("Nombres copiados al portapapeles", "success");
-                                  } catch (err) {
+                                  } catch (_err) {
                                     showAlert("Error al copiar nombres", "error");
                                   }
                                 }}
@@ -8204,7 +8200,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                     } else {
                                       showAlert("No hay correos disponibles", "warning");
                                     }
-                                  } catch (err) {
+                                  } catch (_err) {
                                     showAlert("Error al copiar correos", "error");
                                   }
                                 }}
@@ -8650,7 +8646,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                         
                                         if (esSticker) {
                                           // Construir URL completa con token de autenticación
-                                          const token = obtenerToken();
+                                          const _token1 = obtenerToken();
                                           let urlImagen = m.archivo_url;
                                           
                                           if (urlImagen.startsWith('/chat/archivo/')) {
@@ -8684,7 +8680,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                         
                                         // Si es imagen normal, mostrarla más pequeña
                                         if (esImagen) {
-                                          const token = obtenerToken();
+                                          const _token2 = obtenerToken();
                                           let urlImagen = m.archivo_url;
                                           
                                           if (urlImagen.startsWith('/chat/archivo/')) {
@@ -9199,12 +9195,12 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                               }
                                             };
                                             intentarGuardar(nuevosEmojis);
-                                          } catch (err) {
+                                          } catch (_err) {
                                             showAlert('Error al agregar el emoji', 'error');
                                           }
                                         };
                                         reader.readAsDataURL(imagenComprimida);
-                                      } catch (err) {
+                                      } catch (_err) {
                                         showAlert('Error al procesar la imagen', 'error');
                                       }
                                     }
@@ -9393,7 +9389,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                             }}
                             onLoad={() => {
                             }}
-                            onError={(e) => {
+                            onError={(_e) => {
                               setPreviewError("No se pudo cargar el PDF en el visor. Intenta descargarlo.");
                             }}
                           />
@@ -9430,7 +9426,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                             }}
                             onLoad={() => {
                             }}
-                            onError={(e) => {
+                            onError={(_e) => {
                               setPreviewError("No se pudo cargar el archivo de texto en el visor.");
                             }}
                           />
@@ -9450,7 +9446,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                             }}
                             onLoad={() => {
                             }}
-                            onError={(e) => {
+                            onError={(_e) => {
                               setPreviewError("No se pudo cargar el archivo HTML en el visor.");
                             }}
                           />
@@ -9852,7 +9848,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                         });
                         abrirPerfilGrupo(chatActual);
                         showAlert(esAdmin ? "Administrador removido" : "Administrador agregado", "success");
-                      } catch (err) {
+                      } catch (_err) {
                         showAlert("Error gestionando administrador", "error");
                       }
                     }}
@@ -9884,7 +9880,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                               });
                               abrirPerfilGrupo(chatActual);
                               showAlert("Restricción removida", "success");
-                            } catch (err) {
+                            } catch (_err) {
                               showAlert("Error removiendo restricción", "error");
                             }
                           }}>✅ Permitir mensaje</button>
@@ -9910,7 +9906,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                     });
                                     abrirPerfilGrupo(chatActual);
                                     showAlert(`Restricción aplicada: ${opcion}`, "success");
-                                  } catch (err) {
+                                  } catch (_err) {
                                     showAlert("Error aplicando restricción", "error");
                                   }
                                 }}>{opcion}</button>
@@ -9931,7 +9927,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                           await authFetch(`${SERVER_URL}/api/chat/grupos/${chatActual}/miembros/${nickname}`, { method: "DELETE" });
                           abrirPerfilGrupo(chatActual);
                           showAlert("Miembro eliminado del grupo", "success");
-                        } catch (err) {
+                        } catch (_err) {
                           showAlert("Error eliminando miembro", "error");
                         }
                       }
@@ -9957,7 +9953,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                         });
                         abrirPerfilGrupo(chatActual);
                         showAlert("Propiedad transferida", "success");
-                      } catch (err) {
+                      } catch (_err) {
                         showAlert("Error transfiriendo propiedad", "error");
                       }
                     }

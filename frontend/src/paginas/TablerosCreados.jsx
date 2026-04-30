@@ -296,7 +296,7 @@ export default function TablerosCreados({ contexto }) {
                       <span className="subtle-line">
                         {selectedCatalogCategory === "General"
                           ? "No hay actividades registradas todavía."
-                          : `No hay actividades en la lista ${selectedCatalogCategory}. Usa \"Agregar actividad\" para crear la primera.`}
+                          : `No hay actividades en la lista ${selectedCatalogCategory}. Usa "Agregar actividad" para crear la primera.`}
                       </span>
                     </td>
                   </tr>

@@ -159,6 +159,7 @@ export function AlertModalProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAlert() {
   const ctx = useContext(AlertContext);
   if (!ctx) throw new Error("useAlert debe usarse dentro de AlertModalProvider");

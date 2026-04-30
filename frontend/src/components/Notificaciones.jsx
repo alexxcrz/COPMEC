@@ -1,5 +1,4 @@
-﻿/* eslint-disable react/prop-types */
-import { Bell, X } from "lucide-react";
+﻿import { Bell, X } from "lucide-react";
 import { formatNotificationTimestamp } from "../utils/utilidades.jsx";
 
 function AppToastStack({ toasts, onDismiss }) {

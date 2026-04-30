@@ -1,5 +1,5 @@
 {
-  "revision": 2830,
+  "revision": 2847,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro",
@@ -1672,7 +1672,12 @@
       "activityCatalogIds": [],
       "activityConsumptions": [],
       "consumptionPerStart": 0,
-      "customFields": {}
+      "customFields": {
+        "lote": "123456",
+        "caducidad": "08/12/2027",
+        "etiqueta": "a",
+        "lotesCaducidades": "[{\"lot\":\"123456\",\"expiry\":\"08/12/2027\",\"etiqueta\":\"a\",\"updatedAt\":\"2026-04-30T19:07:52.304Z\"}]"
+      }
     },
     {
       "id": "inv-5av6gefh",
@@ -1712,7 +1717,12 @@
       "activityCatalogIds": [],
       "activityConsumptions": [],
       "consumptionPerStart": 0,
-      "customFields": {}
+      "customFields": {
+        "lote": "13456",
+        "caducidad": "132465",
+        "etiqueta": "D",
+        "lotesCaducidades": "[{\"lot\":\"13456\",\"expiry\":\"132465\",\"etiqueta\":\"D\",\"updatedAt\":\"2026-04-30T17:19:10.057Z\"}]"
+      }
     },
     {
       "id": "inv-9zj3208k",
@@ -9960,6 +9970,342 @@
   "controlRows": [],
   "controlBoards": [
     {
+      "id": "board-daecc37f1410",
+      "name": "Devoluciones / Reacondicionado por tarima copia",
+      "description": "Flujo de escaneo continuo por tarima con control de lotes, caducidad y piezas por producto.",
+      "createdById": "usr-lead-nu7wt83h",
+      "ownerId": "usr-lead-nu7wt83h",
+      "visibilityType": "users",
+      "sharedDepartments": [],
+      "accessUserIds": [],
+      "settings": {
+        "showWorkflow": true,
+        "showMetrics": true,
+        "showAssignee": true,
+        "showDates": true,
+        "showTotalTime": true,
+        "showEfficiency": true,
+        "auxColumnsOrder": [
+          "status",
+          "time",
+          "totalTime",
+          "efficiency",
+          "workflow",
+          "assignee"
+        ],
+        "columnOrder": [
+          "fld-5002a07e601e",
+          "fld-9bea415de1a5",
+          "fld-deed11450949",
+          "fld-e747f4fdc722",
+          "fld-51772c4b11e4",
+          "fld-b364ca096dad",
+          "fld-99f7f325f67a",
+          "fld-658916511807",
+          "aux:status",
+          "aux:time",
+          "aux:totalTime",
+          "aux:efficiency",
+          "aux:workflow",
+          "aux:assignee"
+        ],
+        "auxColumnWidths": {},
+        "operationalContextType": "custom",
+        "operationalContextLabel": "Proceso",
+        "operationalContextOptions": [
+          "Devolución",
+          "Reacondicionado"
+        ],
+        "operationalContextValue": "Devolución",
+        "ownerArea": ""
+      },
+      "fields": [
+        {
+          "id": "fld-5002a07e601e",
+          "label": "Tarima",
+          "type": "text",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Número único de tarima.",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "sm",
+          "widthPx": null,
+          "required": true,
+          "groupName": "Control",
+          "groupColor": "#ede9fe",
+          "colorRules": []
+        },
+        {
+          "id": "fld-9bea415de1a5",
+          "label": "Tipo de flujo",
+          "type": "select",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [
+            "Devolución",
+            "Reacondicionado"
+          ],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Clasifica la tarima.",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "sm",
+          "widthPx": null,
+          "required": true,
+          "groupName": "Control",
+          "groupColor": "#ede9fe",
+          "colorRules": []
+        },
+        {
+          "id": "fld-deed11450949",
+          "label": "Producto",
+          "type": "inventoryLookup",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Producto detectado por escáner.",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "md",
+          "widthPx": null,
+          "required": true,
+          "groupName": "Producto",
+          "groupColor": "#e0f2fe",
+          "colorRules": []
+        },
+        {
+          "id": "fld-e747f4fdc722",
+          "label": "Lote",
+          "type": "text",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Lote capturado para ese producto.",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "sm",
+          "widthPx": null,
+          "required": true,
+          "groupName": "Lote",
+          "groupColor": "#dcfce7",
+          "colorRules": []
+        },
+        {
+          "id": "fld-51772c4b11e4",
+          "label": "Caducidad",
+          "type": "text",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Caducidad del lote capturado (texto en mayúsculas).",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "sm",
+          "widthPx": null,
+          "required": true,
+          "groupName": "Lote",
+          "groupColor": "#dcfce7",
+          "colorRules": []
+        },
+        {
+          "id": "fld-b364ca096dad",
+          "label": "Etiqueta",
+          "type": "text",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Etiqueta capturada para ese producto.",
+          "placeholder": "",
+          "defaultValue": "",
+          "width": "sm",
+          "widthPx": null,
+          "required": false,
+          "groupName": "Lote",
+          "groupColor": "#dcfce7",
+          "colorRules": []
+        },
+        {
+          "id": "fld-99f7f325f67a",
+          "label": "Piezas",
+          "type": "number",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Piezas agregadas para ese lote.",
+          "placeholder": "",
+          "defaultValue": 1,
+          "width": "sm",
+          "widthPx": null,
+          "required": true,
+          "groupName": "Cantidad",
+          "groupColor": "#fef3c7",
+          "colorRules": []
+        },
+        {
+          "id": "fld-658916511807",
+          "label": "Meta de caja",
+          "type": "number",
+          "optionSource": "manual",
+          "optionCatalogCategory": "",
+          "options": [],
+          "inventoryProperty": "code",
+          "sourceFieldId": null,
+          "formulaOperation": "add",
+          "formulaLeftFieldId": null,
+          "formulaRightFieldId": null,
+          "helpText": "Objetivo total de piezas para cierre automático de la caja.",
+          "placeholder": "",
+          "defaultValue": 50,
+          "width": "sm",
+          "widthPx": null,
+          "required": false,
+          "groupName": "Cantidad",
+          "groupColor": "#fef3c7",
+          "colorRules": []
+        }
+      ],
+      "rows": [
+        {
+          "id": "row-7e68b880f64a",
+          "values": {
+            "fld-5002a07e601e": "1",
+            "fld-9bea415de1a5": "Devolución",
+            "fld-deed11450949": "inv-hryx6tou",
+            "fld-e747f4fdc722": "123456",
+            "fld-51772c4b11e4": "08/12/2027",
+            "fld-b364ca096dad": "a",
+            "fld-99f7f325f67a": 3,
+            "fld-658916511807": 3
+          },
+          "responsibleId": "",
+          "responsibleIds": [],
+          "status": "Terminado",
+          "startTime": "2026-04-30T19:07:51.456Z",
+          "endTime": "2026-04-30T19:08:01.976Z",
+          "accumulatedSeconds": 10,
+          "totalElapsedSecondsOverride": null,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "pauseLogs": [],
+          "createdAt": "2026-04-30T19:07:50.154Z",
+          "pauseStartedAt": null,
+          "pauseAffectsTimer": false,
+          "pauseAuthorizedSeconds": 0
+        }
+      ],
+      "permissions": {
+        "isEnabled": false,
+        "visibility": {
+          "roles": [],
+          "userIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "departments": []
+        },
+        "actions": {
+          "createBoardRow": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)",
+              "Junior (Jr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "boardWorkflow": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)",
+              "Junior (Jr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "exportBoardExcel": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "previewBoardPdf": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "exportBoardPdf": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)",
+              "Semi-Senior (Ssr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "duplicateBoard": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)"
+            ],
+            "userIds": [],
+            "departments": []
+          },
+          "duplicateBoardWithRows": {
+            "roles": [
+              "Lead",
+              "Senior (Sr)"
+            ],
+            "userIds": [],
+            "departments": []
+          }
+        }
+      }
+    },
+    {
       "id": "board-2ee4d0a5c1ca",
       "name": "Revisión de tarimas",
       "description": "Plantilla para revisión de tarimas con datos jalados desde inventario y control de conteo.",
@@ -10681,8 +11027,8 @@
               "id": "pause-66f73095fa55",
               "reason": "Sanitario",
               "pausedAt": "2026-04-30T15:17:21.705Z",
-              "resumedAt": "2026-04-30T15:36:04.054Z",
-              "pauseDurationSeconds": 1122
+              "resumedAt": "2026-04-30T15:57:21.705Z",
+              "pauseDurationSeconds": 2400
             }
           ],
           "createdAt": "2026-04-30T14:27:55.570Z",
@@ -10690,392 +11036,7 @@
           "pauseAffectsTimer": false,
           "pauseAuthorizedSeconds": 0,
           "lastPauseReason": "Sanitario",
-          "totalElapsedSecondsOverride": 4200
-        }
-      ],
-      "permissions": {
-        "isEnabled": false,
-        "visibility": {
-          "roles": [],
-          "userIds": [
-            "usr-lead-nu7wt83h"
-          ],
-          "departments": []
-        },
-        "actions": {
-          "createBoardRow": {
-            "roles": [
-              "Lead",
-              "Senior (Sr)",
-              "Semi-Senior (Ssr)",
-              "Junior (Jr)"
-            ],
-            "userIds": [],
-            "departments": []
-          },
-          "boardWorkflow": {
-            "roles": [
-              "Lead",
-              "Senior (Sr)",
-              "Semi-Senior (Ssr)",
-              "Junior (Jr)"
-            ],
-            "userIds": [],
-            "departments": []
-          },
-          "exportBoardExcel": {
-            "roles": [
-              "Lead",
-              "Senior (Sr)",
-              "Semi-Senior (Ssr)"
-            ],
-            "userIds": [],
-            "departments": []
-          },
-          "previewBoardPdf": {
-            "roles": [
-              "Lead",
-              "Senior (Sr)",
-              "Semi-Senior (Ssr)"
-            ],
-            "userIds": [],
-            "departments": []
-          },
-          "exportBoardPdf": {
-            "roles": [
-              "Lead",
-              "Senior (Sr)",
-              "Semi-Senior (Ssr)"
-            ],
-            "userIds": [],
-            "departments": []
-          },
-          "duplicateBoard": {
-            "roles": [
-              "Lead",
-              "Senior (Sr)"
-            ],
-            "userIds": [],
-            "departments": []
-          },
-          "duplicateBoardWithRows": {
-            "roles": [
-              "Lead",
-              "Senior (Sr)"
-            ],
-            "userIds": [],
-            "departments": []
-          }
-        }
-      }
-    },
-    {
-      "id": "board-f2aa0853ca27",
-      "name": "Devoluciones / Reacondicionado por tarima",
-      "description": "Flujo de escaneo continuo por tarima con control de lotes, caducidad y piezas por producto.",
-      "createdById": "usr-lead-nu7wt83h",
-      "ownerId": "usr-lead-nu7wt83h",
-      "visibilityType": "users",
-      "sharedDepartments": [],
-      "accessUserIds": [],
-      "settings": {
-        "showWorkflow": true,
-        "showMetrics": true,
-        "showAssignee": true,
-        "showDates": true,
-        "showTotalTime": true,
-        "showEfficiency": true,
-        "auxColumnsOrder": [
-          "status",
-          "time",
-          "totalTime",
-          "efficiency",
-          "workflow",
-          "assignee"
-        ],
-        "columnOrder": [
-          "fld-tdbazfyz",
-          "fld-pqyzdboh",
-          "fld-288qq5dv",
-          "fld-84knvz2z",
-          "fld-3iisyp99",
-          "fld-7tqz6rke",
-          "fld-zapc1vgv",
-          "fld-dnlcoahj",
-          "aux:status",
-          "aux:time",
-          "aux:totalTime",
-          "aux:efficiency",
-          "aux:workflow",
-          "aux:assignee"
-        ],
-        "auxColumnWidths": {},
-        "operationalContextType": "custom",
-        "operationalContextLabel": "Proceso",
-        "operationalContextOptions": [
-          "Devolución",
-          "Reacondicionado"
-        ],
-        "operationalContextValue": "Devolución",
-        "ownerArea": ""
-      },
-      "fields": [
-        {
-          "id": "fld-tdbazfyz",
-          "label": "Tarima",
-          "type": "text",
-          "optionSource": "manual",
-          "optionCatalogCategory": "",
-          "options": [],
-          "inventoryProperty": "code",
-          "sourceFieldId": null,
-          "formulaOperation": "add",
-          "formulaLeftFieldId": null,
-          "formulaRightFieldId": null,
-          "helpText": "Número único de tarima.",
-          "placeholder": "",
-          "defaultValue": "",
-          "width": "sm",
-          "widthPx": null,
-          "required": true,
-          "groupName": "Control",
-          "groupColor": "#ede9fe",
-          "colorRules": []
-        },
-        {
-          "id": "fld-pqyzdboh",
-          "label": "Tipo de flujo",
-          "type": "select",
-          "optionSource": "manual",
-          "optionCatalogCategory": "",
-          "options": [
-            "Devolución",
-            "Reacondicionado"
-          ],
-          "inventoryProperty": "code",
-          "sourceFieldId": null,
-          "formulaOperation": "add",
-          "formulaLeftFieldId": null,
-          "formulaRightFieldId": null,
-          "helpText": "Clasifica la tarima.",
-          "placeholder": "",
-          "defaultValue": "",
-          "width": "sm",
-          "widthPx": null,
-          "required": true,
-          "groupName": "Control",
-          "groupColor": "#ede9fe",
-          "colorRules": []
-        },
-        {
-          "id": "fld-288qq5dv",
-          "label": "Producto",
-          "type": "inventoryLookup",
-          "optionSource": "manual",
-          "optionCatalogCategory": "",
-          "options": [],
-          "inventoryProperty": "code",
-          "sourceFieldId": null,
-          "formulaOperation": "add",
-          "formulaLeftFieldId": null,
-          "formulaRightFieldId": null,
-          "helpText": "Producto detectado por escáner.",
-          "placeholder": "",
-          "defaultValue": "",
-          "width": "md",
-          "widthPx": null,
-          "required": true,
-          "groupName": "Producto",
-          "groupColor": "#e0f2fe",
-          "colorRules": []
-        },
-        {
-          "id": "fld-84knvz2z",
-          "label": "Lote",
-          "type": "text",
-          "optionSource": "manual",
-          "optionCatalogCategory": "",
-          "options": [],
-          "inventoryProperty": "code",
-          "sourceFieldId": null,
-          "formulaOperation": "add",
-          "formulaLeftFieldId": null,
-          "formulaRightFieldId": null,
-          "helpText": "Lote capturado para ese producto.",
-          "placeholder": "",
-          "defaultValue": "",
-          "width": "sm",
-          "widthPx": null,
-          "required": true,
-          "groupName": "Lote",
-          "groupColor": "#dcfce7",
-          "colorRules": []
-        },
-        {
-          "id": "fld-3iisyp99",
-          "label": "Caducidad",
-          "type": "text",
-          "optionSource": "manual",
-          "optionCatalogCategory": "",
-          "options": [],
-          "inventoryProperty": "code",
-          "sourceFieldId": null,
-          "formulaOperation": "add",
-          "formulaLeftFieldId": null,
-          "formulaRightFieldId": null,
-          "helpText": "Caducidad del lote capturado (texto en mayúsculas).",
-          "placeholder": "",
-          "defaultValue": "",
-          "width": "sm",
-          "widthPx": null,
-          "required": true,
-          "groupName": "Lote",
-          "groupColor": "#dcfce7",
-          "colorRules": []
-        },
-        {
-          "id": "fld-7tqz6rke",
-          "label": "Etiqueta",
-          "type": "text",
-          "optionSource": "manual",
-          "optionCatalogCategory": "",
-          "options": [],
-          "inventoryProperty": "code",
-          "sourceFieldId": null,
-          "formulaOperation": "add",
-          "formulaLeftFieldId": null,
-          "formulaRightFieldId": null,
-          "helpText": "Etiqueta capturada para ese producto.",
-          "placeholder": "",
-          "defaultValue": "",
-          "width": "sm",
-          "widthPx": null,
-          "required": false,
-          "groupName": "Lote",
-          "groupColor": "#dcfce7",
-          "colorRules": []
-        },
-        {
-          "id": "fld-zapc1vgv",
-          "label": "Piezas",
-          "type": "number",
-          "optionSource": "manual",
-          "optionCatalogCategory": "",
-          "options": [],
-          "inventoryProperty": "code",
-          "sourceFieldId": null,
-          "formulaOperation": "add",
-          "formulaLeftFieldId": null,
-          "formulaRightFieldId": null,
-          "helpText": "Piezas agregadas para ese lote.",
-          "placeholder": "",
-          "defaultValue": 1,
-          "width": "sm",
-          "widthPx": null,
-          "required": true,
-          "groupName": "Cantidad",
-          "groupColor": "#fef3c7",
-          "colorRules": []
-        },
-        {
-          "id": "fld-dnlcoahj",
-          "label": "Meta de caja",
-          "type": "number",
-          "optionSource": "manual",
-          "optionCatalogCategory": "",
-          "options": [],
-          "inventoryProperty": "code",
-          "sourceFieldId": null,
-          "formulaOperation": "add",
-          "formulaLeftFieldId": null,
-          "formulaRightFieldId": null,
-          "helpText": "Objetivo total de piezas para cierre automático de la caja.",
-          "placeholder": "",
-          "defaultValue": 50,
-          "width": "sm",
-          "widthPx": null,
-          "required": false,
-          "groupName": "Cantidad",
-          "groupColor": "#fef3c7",
-          "colorRules": []
-        }
-      ],
-      "rows": [
-        {
-          "id": "row-420a86bd88d5",
-          "values": {
-            "fld-tdbazfyz": "1",
-            "fld-pqyzdboh": "Devolución",
-            "fld-288qq5dv": "inv-uedj3bs4",
-            "fld-84knvz2z": "123456",
-            "fld-3iisyp99": "0812365",
-            "fld-zapc1vgv": 10,
-            "fld-dnlcoahj": 50
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Terminado",
-          "startTime": "2026-04-26T15:47:53.389Z",
-          "endTime": "2026-04-26T21:21:29.054Z",
-          "accumulatedSeconds": 20015,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-26T15:47:52.569Z"
-        },
-        {
-          "id": "row-129a220beb66",
-          "values": {
-            "fld-tdbazfyz": "2",
-            "fld-pqyzdboh": "Devolución",
-            "fld-288qq5dv": "inv-un8aclfa",
-            "fld-84knvz2z": "123456",
-            "fld-3iisyp99": "021218",
-            "fld-zapc1vgv": 1,
-            "fld-dnlcoahj": 168
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Terminado",
-          "startTime": "2026-04-26T19:50:59.671Z",
-          "endTime": "2026-04-27T02:51:23.977Z",
-          "accumulatedSeconds": 25224,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-26T19:50:58.732Z"
-        },
-        {
-          "id": "row-2e04865a8a20",
-          "values": {
-            "fld-tdbazfyz": "1",
-            "fld-pqyzdboh": "Devolución",
-            "fld-288qq5dv": "inv-uedj3bs4",
-            "fld-84knvz2z": "1234566789",
-            "fld-3iisyp99": "12/12/2028",
-            "fld-zapc1vgv": 19,
-            "fld-dnlcoahj": 50
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Terminado",
-          "startTime": "2026-04-27T03:22:37.264Z",
-          "endTime": "2026-04-27T03:26:31.142Z",
-          "accumulatedSeconds": 233,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-27T03:22:36.903Z"
-        },
-        {
-          "id": "row-51982ae3d148",
-          "values": {
-            "fld-tdbazfyz": "3",
-            "fld-pqyzdboh": "Devolución",
-            "fld-288qq5dv": "inv-un8aclfa",
-            "fld-84knvz2z": "78945",
-            "fld-3iisyp99": "30/12/2030",
-            "fld-zapc1vgv": 1,
-            "fld-dnlcoahj": 50
-          },
-          "responsibleId": "usr-lead-nu7wt83h",
-          "status": "Terminado",
-          "startTime": "2026-04-27T03:29:54.558Z",
-          "endTime": "2026-04-27T03:29:59.877Z",
-          "accumulatedSeconds": 5,
-          "lastResumedAt": null,
-          "createdAt": "2026-04-27T03:29:54.191Z"
+          "totalElapsedSecondsOverride": 11940
         }
       ],
       "permissions": {
@@ -11818,7 +11779,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-30T15:37:15.777Z",
+  "updatedAt": "2026-04-30T19:08:02.018Z",
   "permissions": {
     "pages": {
       "index": {

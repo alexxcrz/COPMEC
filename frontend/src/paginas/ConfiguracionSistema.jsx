@@ -9,7 +9,7 @@ const HOURS_24 = Array.from({ length: 24 }, (_, index) => String(index).padStart
 const HOURS_24_WITH_24 = HOURS_24.concat(["24"]);
 const MINUTES_60 = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, "0"));
 
-function toTimeValue(hour, minute) {
+function toTimeValue(hour, minute) { // eslint-disable-line no-unused-vars
   const hh = String(Math.min(24, Math.max(0, Number(hour) || 0))).padStart(2, "0");
   const mm = String(Math.min(59, Math.max(0, Number(minute) || 0))).padStart(2, "0");
   return `${hh}:${mm}`;

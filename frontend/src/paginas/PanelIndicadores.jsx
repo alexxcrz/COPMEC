@@ -1,5 +1,5 @@
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 const DASHBOARD_WEEKDAY_LABELS = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sa", "Do"];
@@ -86,11 +86,10 @@ function DashboardDateRangePicker({ startDate, endDate, onChange }) {
       ? `${formatDashboardDateLabel(start)} - Selecciona fin`
       : "Seleccionar rango de fechas";
 
-  useEffect(() => {
-    if (isOpen) return;
-    setDraftStartDate(startDate || "");
-    setDraftEndDate(endDate || "");
-  }, [endDate, isOpen, startDate]);
+  const applyDraftAndClose = useCallback(() => {
+    onChange({ startDate: draftStartDate, endDate: draftEndDate });
+    setIsOpen(false);
+  }, [draftEndDate, draftStartDate, onChange]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -105,7 +104,7 @@ function DashboardDateRangePicker({ startDate, endDate, onChange }) {
 
     globalThis.addEventListener("pointerdown", handlePointerDown);
     return () => globalThis.removeEventListener("pointerdown", handlePointerDown);
-  }, [isOpen]);
+  }, [applyDraftAndClose, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -122,11 +121,6 @@ function DashboardDateRangePicker({ startDate, endDate, onChange }) {
       globalThis.removeEventListener("scroll", updatePopoverPosition, true);
     };
   }, [isOpen]);
-
-  function applyDraftAndClose() {
-    onChange({ startDate: draftStartDate, endDate: draftEndDate });
-    setIsOpen(false);
-  }
 
   function handleDaySelection(day) {
     const selectedValue = formatDashboardDateValue(day);
@@ -147,7 +141,19 @@ function DashboardDateRangePicker({ startDate, endDate, onChange }) {
 
   return (
     <div ref={pickerRef} className="dashboard-date-range-shell">
-      <button ref={triggerRef} type="button" className={`dashboard-date-range-trigger ${isOpen ? "open" : ""}`} onClick={() => setIsOpen((current) => !current)}>
+      <button
+        ref={triggerRef}
+        type="button"
+        className={`dashboard-date-range-trigger ${isOpen ? "open" : ""}`}
+        onClick={() => {
+          setIsOpen((current) => {
+            if (current) return false;
+            setDraftStartDate(startDate || "");
+            setDraftEndDate(endDate || "");
+            return true;
+          });
+        }}
+      >
         <span>{buttonLabel}</span>
         <small>{startDate || endDate ? "Rango activo" : "Sin filtro por fecha"}</small>
       </button>
@@ -535,25 +541,6 @@ export default function PanelIndicadores({ contexto }) {
     setDetailSearchText("");
   }
 
-  function resetMainDashboardView() {
-    setDashboardFilters({
-      periodType: "week",
-      periodKey: "all",
-      responsibleId: "all",
-      area: "all",
-      source: "all",
-      startDate: "",
-      endDate: "",
-    });
-    setDashboardSectionsOpen({
-      executive: true,
-      people: true,
-      trends: true,
-      causes: true,
-      alerts: true,
-    });
-  }
-
   async function confirmHardReset() {
     if (isResetSubmitting) return;
     try {
@@ -761,7 +748,6 @@ export default function PanelIndicadores({ contexto }) {
         alternateRowStyles: { fillColor: [247, 250, 248] },
       });
       // KPI grid
-      let currentY = (pdf.lastAutoTable?.finalY || 66) + 18;
       const kpiItems = [
         { value: dashboardMetrics.total, label: "Registros analizados", sub: "actividades y tableros" },
         { value: dashboardMetrics.completed, label: "Cerrados", sub: "terminados" },
@@ -776,7 +762,7 @@ export default function PanelIndicadores({ contexto }) {
         { value: dashboardMetrics.pauseCount, label: "Pausas registradas", sub: "con log", warn: dashboardMetrics.pauseCount > 5 },
         { value: dashboardMetrics.areaCount, label: "Áreas activas", sub: "con movimiento" },
       ];
-      currentY = drawKpiGrid(currentY, kpiItems);
+      drawKpiGrid((pdf.lastAutoTable?.finalY || 66) + 18, kpiItems);
 
       // ─── PÁGINA 3: GRÁFICA PLAYER + DISTRIBUCIÓN ─────────────────────────────
       pdf.addPage();
@@ -828,7 +814,7 @@ export default function PanelIndicadores({ contexto }) {
         { value: dashboardMetrics.exceeded?.length || 0, label: "Alertas activas", sub: "excedieron límite", alert: (dashboardMetrics.exceeded?.length || 0) > 0 },
         { value: `${formatMetricNumber(dashboardMetrics.averageMinutes, 1)} min`, label: "Promedio real", sub: "vs objetivo establecido" },
       ];
-      let slaY = drawKpiGrid(76, slaKpis);
+      drawKpiGrid(76, slaKpis);
       drawSectionTable("Registros que excedieron el límite de tiempo", ["Operación", "Fuente", "Player", "Área", "Tiempo real", "Límite objetivo", "Exceso", "Severidad"], dashboardMetrics.exceeded.map((record) => {
         const excess = Math.max(0, Math.round(record.durationSeconds / 60 - record.limitMinutes));
         return [
@@ -967,7 +953,6 @@ export default function PanelIndicadores({ contexto }) {
   }
 
   const hasActivityUsage = Number(dashboardMetrics.activityRecords || 0) > 0;
-  const hasBoardUsage = Number(dashboardMetrics.boardRecords || 0) > 0;
   const hasAnyUsage = Number(dashboardMetrics.total || 0) > 0;
   const hasCatalogUsage = Number(dashboardMetrics.catalogActiveCount || 0) > 0;
   const hasActivityGoalUsage = Array.isArray(dashboardActivityRows) && dashboardActivityRows.length > 0;

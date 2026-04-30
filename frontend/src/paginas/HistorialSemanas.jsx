@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 function toDateParts(value) {
@@ -172,16 +172,14 @@ export default function HistorialSemanas({ contexto }) {
     Search,
     historyWeek,
     MetricCard,
-    formatMinutes,
     getActivityLabel,
-    getTimeLimitMinutes,
+    getTimeLimitMinutes: _getTimeLimitMinutes,
     catalogMap,
     userMap,
     getUserArea,
     StatusBadge,
     formatTime,
     formatDurationClock,
-    setHistoryPauseActivityId,
     setEditWeekId,
     actionPermissions,
     deleteWeek,
@@ -196,7 +194,6 @@ export default function HistorialSemanas({ contexto }) {
   const [selectedYearFilter, setSelectedYearFilter] = useState("all");
   const [selectedMonthFilter, setSelectedMonthFilter] = useState("all");
   const [selectedDayFilter, setSelectedDayFilter] = useState("all");
-  const [detailViewMode, setDetailViewMode] = useState("dates");
   const [fallbackHistoryWeekId, setFallbackHistoryWeekId] = useState("");
   const [openReportMonth, setOpenReportMonth] = useState("");
   const [openReportYear, setOpenReportYear] = useState("");
@@ -243,18 +240,16 @@ export default function HistorialSemanas({ contexto }) {
     }
 
     return Array.from(grouped.values()).sort((left, right) => String(right.startDate || right.id).localeCompare(String(left.startDate || left.id)));
-  }, [state.boardWeekHistory, state.controlBoards, state?.boardWeeklyCycle?.activeWeekEndDate, state?.boardWeeklyCycle?.activeWeekKey, state?.boardWeeklyCycle?.activeWeekStartDate]);
+  }, [state.boardWeekHistory, state.controlBoards, state.boardWeeklyCycle?.activeWeekEndDate, state.boardWeeklyCycle?.activeWeekKey, state.boardWeeklyCycle?.activeWeekStartDate]);
 
   const useBoardHistoryFallback = (state.weeks || []).length === 0 && derivedBoardWeeks.length > 0;
-  const effectiveWeeks = useBoardHistoryFallback ? derivedBoardWeeks : (state.weeks || []);
+  const effectiveWeeks = useMemo(
+    () => useBoardHistoryFallback ? derivedBoardWeeks : (state.weeks || []),
+    [useBoardHistoryFallback, derivedBoardWeeks, state.weeks],
+  );
   const effectiveHistoryWeek = useBoardHistoryFallback
     ? (effectiveWeeks.find((week) => week.id === fallbackHistoryWeekId) || effectiveWeeks[0] || null)
     : historyWeek;
-
-  const selectedWeekIndex = useMemo(() => {
-    if (!effectiveHistoryWeek?.id) return -1;
-    return effectiveWeeks.findIndex((week) => week.id === effectiveHistoryWeek.id);
-  }, [effectiveHistoryWeek?.id, effectiveWeeks]);
 
   function selectWeek(weekId) {
     if (!weekId) return;
@@ -267,11 +262,6 @@ export default function HistorialSemanas({ contexto }) {
   function resolveHistoryActivityLabel(activity) {
     if (activity?.derivedFromBoardHistory) return String(activity.activityLabel || "Actividad").trim() || "Actividad";
     return getActivityLabel(activity, catalogMap);
-  }
-
-  function resolveHistoryTimeLimitMinutes(activity) {
-    if (activity?.derivedFromBoardHistory) return 0;
-    return getTimeLimitMinutes(activity, catalogMap);
   }
 
   function getHistoryPlayerKey(activity) {
@@ -319,7 +309,7 @@ export default function HistorialSemanas({ contexto }) {
       map.set(week.id, areas.size);
     });
     return map;
-  }, [effectiveWeeks, getUserArea, state.activities, state.boardWeekHistory, state.controlBoards, state?.boardWeeklyCycle?.activeWeekKey, useBoardHistoryFallback, userMap]);
+  }, [effectiveWeeks, getUserArea, resolveBoardHistoryAreaRoot, state.activities, state.boardWeekHistory, state.controlBoards, state.boardWeeklyCycle?.activeWeekKey, useBoardHistoryFallback, userMap]);
 
   const weekStatsMap = useMemo(() => {
     const map = new Map();
@@ -342,7 +332,7 @@ export default function HistorialSemanas({ contexto }) {
       });
     });
     return map;
-  }, [STATUS_FINISHED, effectiveWeeks, state.activities, state.boardWeekHistory, state.controlBoards, state?.boardWeeklyCycle?.activeWeekKey, useBoardHistoryFallback, weekAreaMap]);
+  }, [STATUS_FINISHED, effectiveWeeks, state, useBoardHistoryFallback, weekAreaMap]);
 
   const historyActivities = useMemo(() => {
     if (!effectiveHistoryWeek?.id) return [];
@@ -438,7 +428,7 @@ export default function HistorialSemanas({ contexto }) {
           derivedFromBoardHistory: false,
         };
       });
-  }, [catalogMap, effectiveHistoryWeek?.id, getUserArea, state.activities, state.boardWeekHistory, state.controlBoards, state?.boardWeeklyCycle?.activeWeekEndDate, state?.boardWeeklyCycle?.activeWeekKey, state?.boardWeeklyCycle?.activeWeekStartDate, useBoardHistoryFallback, userMap]);
+  }, [catalogMap, effectiveHistoryWeek, getUserArea, resolveBoardHistoryAreaLabel, resolveBoardHistoryAreaRoot, state, useBoardHistoryFallback, userMap]);
 
   const areaTabs = useMemo(() => {
     const grouped = new Map();
@@ -474,36 +464,6 @@ export default function HistorialSemanas({ contexto }) {
       .sort((left, right) => left.label.localeCompare(right.label, "es-MX"));
   }, [areaScopedActivities]);
 
-  const boardSummaryRows = useMemo(() => {
-    const grouped = new Map();
-    areaScopedActivities.forEach((activity) => {
-      const boardName = String(activity.boardName || "General").trim() || "General";
-      if (!grouped.has(boardName)) {
-        grouped.set(boardName, {
-          boardName,
-          total: 0,
-          completed: 0,
-          totalSeconds: 0,
-          lastActivityAt: "",
-        });
-      }
-
-      const entry = grouped.get(boardName);
-      entry.total += 1;
-      entry.completed += activity.status === STATUS_FINISHED ? 1 : 0;
-      entry.totalSeconds += Number(activity.accumulatedSeconds || 0);
-      const activityDate = String(activity.activityDate || "");
-      if (activityDate && activityDate > entry.lastActivityAt) {
-        entry.lastActivityAt = activityDate;
-      }
-    });
-
-    return Array.from(grouped.values()).sort((left, right) => {
-      if (right.total !== left.total) return right.total - left.total;
-      return left.boardName.localeCompare(right.boardName, "es-MX");
-    });
-  }, [areaScopedActivities, STATUS_FINISHED]);
-
   const boardScopedActivities = useMemo(() => {
     if (selectedBoardTab === "all") return areaScopedActivities;
     return areaScopedActivities.filter((activity) => String(activity.boardName || "") === selectedBoardTab);
@@ -522,7 +482,7 @@ export default function HistorialSemanas({ contexto }) {
     });
 
     return Array.from(grouped.values()).sort((left, right) => left.label.localeCompare(right.label, "es-MX"));
-  }, [boardScopedActivities, userMap]);
+  }, [boardScopedActivities, resolveHistoryPlayerLabel, userMap]);
 
   const playerScopedActivities = useMemo(() => {
     if (selectedPlayerTab === "all") return boardScopedActivities;
@@ -578,35 +538,6 @@ export default function HistorialSemanas({ contexto }) {
         return String(left.boardName || "").localeCompare(String(right.boardName || ""), "es-MX");
       });
   }, [playerScopedActivities, selectedDayFilter, selectedMonthFilter, selectedYearFilter]);
-
-  const groupedDateRows = useMemo(() => {
-    const grouped = new Map();
-
-    playerScopedActivities.forEach((activity) => {
-      const parts = toDateParts(activity.activityDate);
-      if (!parts) return;
-      if (selectedYearFilter !== "all" && parts.year !== selectedYearFilter) return;
-      if (selectedMonthFilter !== "all" && parts.month !== selectedMonthFilter) return;
-
-      const key = `${parts.year}|${parts.month}|${parts.day}`;
-      const current = grouped.get(key) || {
-        key,
-        year: parts.year,
-        month: parts.month,
-        day: parts.day,
-        total: 0,
-        completed: 0,
-        totalSeconds: 0,
-      };
-
-      current.total += 1;
-      current.completed += activity.status === STATUS_FINISHED ? 1 : 0;
-      current.totalSeconds += Number(activity.accumulatedSeconds || 0);
-      grouped.set(key, current);
-    });
-
-    return Array.from(grouped.values()).sort((left, right) => right.day.localeCompare(left.day));
-  }, [playerScopedActivities, selectedMonthFilter, selectedYearFilter, STATUS_FINISHED]);
 
   const reportYearSections = useMemo(() => {
     const grouped = new Map();
@@ -693,12 +624,7 @@ export default function HistorialSemanas({ contexto }) {
     return activeYearSection.months.filter((entry) => entry.monthKey === selectedMonthFilter);
   }, [activeReportYear, reportYearSections, selectedMonthFilter]);
 
-  const totalEffectiveMinutes = useMemo(() => {
-    const totalSeconds = visibleHistoryActivities.reduce((sum, activity) => sum + (activity.accumulatedSeconds || 0), 0);
-    return totalSeconds / 60;
-  }, [visibleHistoryActivities]);
-
-  const selectedDayActivities = useMemo(() => {
+  const _selectedDayActivities = useMemo(() => {
     if (selectedDayFilter === "all") return [];
     return visibleHistoryActivities.filter((activity) => {
       const parts = toDateParts(activity.activityDate);
@@ -706,37 +632,10 @@ export default function HistorialSemanas({ contexto }) {
     });
   }, [selectedDayFilter, visibleHistoryActivities]);
 
-  const selectedDaySummary = useMemo(() => {
-    if (!selectedDayActivities.length) return null;
-    const boardSet = new Set();
-    const playerSet = new Set();
-    let totalSeconds = 0;
-    let completed = 0;
-
-    selectedDayActivities.forEach((activity) => {
-      boardSet.add(String(activity.boardName || "General").trim() || "General");
-      if (activity.responsibleId) playerSet.add(activity.responsibleId);
-      totalSeconds += Number(activity.accumulatedSeconds || 0);
-      if (activity.status === STATUS_FINISHED) completed += 1;
-    });
-
-    return {
-      total: selectedDayActivities.length,
-      completed,
-      totalSeconds,
-      boardCount: boardSet.size,
-      playerCount: playerSet.size,
-    };
-  }, [STATUS_FINISHED, selectedDayActivities]);
-
-  const completedCount = useMemo(() => {
-    return visibleHistoryActivities.filter((activity) => activity.status === STATUS_FINISHED).length;
-  }, [visibleHistoryActivities, STATUS_FINISHED]);
-
   const currentWeekStats = useMemo(() => {
     if (!effectiveHistoryWeek?.id) return { total: 0, completed: 0, areas: 0 };
     return weekStatsMap.get(effectiveHistoryWeek.id) || { total: 0, completed: 0, areas: 0 };
-  }, [effectiveHistoryWeek?.id, weekStatsMap]);
+  }, [effectiveHistoryWeek, weekStatsMap]);
 
   const monthWeekSections = useMemo(() => {
     const grouped = new Map();
@@ -775,21 +674,26 @@ export default function HistorialSemanas({ contexto }) {
   const selectedWeekIndexInMonth = useMemo(() => {
     if (!effectiveHistoryWeek?.id) return -1;
     return activeMonthWeeks.findIndex((week) => week.id === effectiveHistoryWeek.id);
-  }, [activeMonthWeeks, effectiveHistoryWeek?.id]);
+  }, [activeMonthWeeks, effectiveHistoryWeek]);
 
   const weeklyDaySections = useMemo(() => {
     return buildWeekDaySections(effectiveHistoryWeek, playerScopedActivities, STATUS_FINISHED);
   }, [STATUS_FINISHED, effectiveHistoryWeek, playerScopedActivities]);
 
-  const outsideLimitCount = useMemo(() => {
-    return visibleHistoryActivities.filter((activity) => {
-      const timeLimitMinutes = resolveHistoryTimeLimitMinutes(activity);
-      if (timeLimitMinutes <= 0) return false;
-      return activity.accumulatedSeconds > timeLimitMinutes * 60;
-    }).length;
-  }, [visibleHistoryActivities]);
-
   const canEditHistoricalWeekActivities = !useBoardHistoryFallback && Boolean(actionPermissions.manageWeeks || actionPermissions.deleteWeekActivity);
+
+  const confirmDeleteWeek = useCallback(async () => {
+    if (!deleteWeekModal.weekId || deleteWeekModal.isSubmitting) return;
+    setDeleteWeekModal((current) => ({ ...current, isSubmitting: true }));
+    try {
+      await deleteWeek(deleteWeekModal.weekId);
+      pushAppToast(`Semana ${deleteWeekModal.weekName} eliminada correctamente.`, "success");
+      setDeleteWeekModal({ open: false, weekId: "", weekName: "", isSubmitting: false });
+    } catch (error) {
+      pushAppToast(error?.message || "No se pudo eliminar la semana.", "danger");
+      setDeleteWeekModal((current) => ({ ...current, isSubmitting: false }));
+    }
+  }, [deleteWeek, deleteWeekModal.isSubmitting, deleteWeekModal.weekId, deleteWeekModal.weekName, pushAppToast]);
 
   useEffect(() => {
     setSelectedAreaTab("all");
@@ -798,7 +702,6 @@ export default function HistorialSemanas({ contexto }) {
     setSelectedYearFilter("all");
     setSelectedMonthFilter("all");
     setSelectedDayFilter("all");
-    setDetailViewMode("dates");
     setOpenReportMonth("");
     setOpenReportYear("");
     setExpandedDayKey("");
@@ -891,20 +794,7 @@ export default function HistorialSemanas({ contexto }) {
 
     globalThis.addEventListener("keydown", handleDeleteWeekHotkeys);
     return () => globalThis.removeEventListener("keydown", handleDeleteWeekHotkeys);
-  }, [deleteWeekModal.open, deleteWeekModal.isSubmitting, deleteWeekModal.weekId]);
-
-  async function confirmDeleteWeek() {
-    if (!deleteWeekModal.weekId || deleteWeekModal.isSubmitting) return;
-    setDeleteWeekModal((current) => ({ ...current, isSubmitting: true }));
-    try {
-      await deleteWeek(deleteWeekModal.weekId);
-      pushAppToast(`Semana ${deleteWeekModal.weekName} eliminada correctamente.`, "success");
-      setDeleteWeekModal({ open: false, weekId: "", weekName: "", isSubmitting: false });
-    } catch (error) {
-      pushAppToast(error?.message || "No se pudo eliminar la semana.", "danger");
-      setDeleteWeekModal((current) => ({ ...current, isSubmitting: false }));
-    }
-  }
+  }, [confirmDeleteWeek, deleteWeekModal.isSubmitting, deleteWeekModal.open]);
 
   return (
     <section className="history-page-layout">

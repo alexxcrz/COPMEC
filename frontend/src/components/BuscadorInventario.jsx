@@ -1,5 +1,4 @@
-﻿/* eslint-disable react/prop-types */
-import { useState, useEffect, useMemo, useRef } from "react";
+﻿import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { normalizeKey, formatInventoryLookupLabel, findInventoryItemByQuery } from "../utils/utilidades.jsx";

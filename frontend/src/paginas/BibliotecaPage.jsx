@@ -61,7 +61,7 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-export default function BibliotecaPage({ currentUser, canUpload, canDelete }) {
+export default function BibliotecaPage({ _currentUser, canUpload, canDelete }) {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

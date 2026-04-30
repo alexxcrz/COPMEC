@@ -133,7 +133,7 @@ function buildQuestionDraft(question = {}) {
   };
 }
 
-function buildFallbackTemplates() {
+function _buildFallbackTemplates() {
   return FALLBACK_PROCESS_TEMPLATES.map((template, index) => ({
     id: `fallback-template-${index + 1}`,
     area: template.area,
@@ -836,7 +836,7 @@ function TemplateQuestionEditor({
   setDraft,
   disabled,
   title,
-  subtitle,
+  _subtitle,
   addLabel,
 }) {
   return (

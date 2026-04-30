@@ -27,9 +27,9 @@ export default function GestionUsuarios({ contexto }) {
     toggleUserActive,
     openEditUser,
     setDeleteUserId,
-    transferLeadTargetId,
+    _transferLeadTargetId,
     setTransferLeadTargetId,
-    transferLead,
+    _transferLead,
     BOOTSTRAP_MASTER_ID,
     usersByAreaGroups,
     boardAssignmentsByUser,
@@ -51,13 +51,13 @@ export default function GestionUsuarios({ contexto }) {
     setRoleModalOpen,
     deleteArea,
     handleAddAreaOption,
-    rootAreaOptions,
+    _rootAreaOptions,
     splitAreaAndSubArea,
     ROLE_LEAD,
   } = contexto;
 
   const [selectedCreatorId, setSelectedCreatorId] = useState("");
-  const [creatorUserViewer, setCreatorUserViewer] = useState(null);
+  const [_creatorUserViewer, _setCreatorUserViewer] = useState(null);
   const [creatorSearch, setCreatorSearch] = useState("");
   const [creatorPage, setCreatorPage] = useState(1);
   const [creatorPageSize, setCreatorPageSize] = useState(6);
@@ -216,7 +216,7 @@ export default function GestionUsuarios({ contexto }) {
               {(() => {
                 const activeGroup = usersByAreaGroups.find((g) => g.area === (activeAreaTab ?? usersByAreaGroups[0]?.area)) || usersByAreaGroups[0];
                 if (!activeGroup) return <p className="subtle-line">No hay áreas configuradas.</p>;
-                const { area: rootArea, subArea } = splitAreaAndSubArea ? splitAreaAndSubArea(activeGroup.area) : { area: activeGroup.area, subArea: "" };
+                const { area: _rootArea, subArea } = splitAreaAndSubArea ? splitAreaAndSubArea(activeGroup.area) : { area: activeGroup.area, subArea: "" };
                 const isSubArea = Boolean(subArea);
                 return (
                   <>

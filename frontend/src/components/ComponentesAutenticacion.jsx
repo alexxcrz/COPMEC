@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 // ── Pantallas de Autenticación ───────────────────────────────────────────────
 // LoginScreen: pantalla de inicio de sesión con visual decorativa.
 // BootstrapLeadSetup: configuración inicial del player principal (Lead).

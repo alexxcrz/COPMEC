@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 // ── Perfil de Empleado ───────────────────────────────────────────────────────
 
 import { useState, useEffect } from "react";
@@ -46,10 +45,12 @@ function normalizeRole(role) {
   return ROLE_JR;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function getUserArea(user) {
   return String(user?.area || user?.department || "").trim();
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function getUserJobTitle(user) {
   return String(user?.jobTitle || DEFAULT_JOB_TITLE_BY_ROLE[user?.role] || "").trim();
 }
@@ -68,6 +69,7 @@ function getInitialsAvatar(name) {
 
 // ── Exports mantenidos por compatibilidad con App.jsx ─────────────────────────
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function createIdentityFormFromUser(currentUser) {
   return {
     name:             currentUser?.name     || "",

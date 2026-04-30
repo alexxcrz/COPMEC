@@ -1,6 +1,4 @@
-﻿/* eslint-disable react/prop-types */
-import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowDown,
@@ -52,7 +50,6 @@ import PaginaNoEncontrada from "./paginas/PaginaNoEncontrada";
 import PanelIndicadores from "./paginas/PanelIndicadores";
 import TablerosCreados from "./paginas/TablerosCreados";
 import BibliotecaPage from "./paginas/BibliotecaPage";
-import copmecLogo from "./assets/copmec-logo.jpeg";
 import "./App.css";
 
 
@@ -76,33 +73,37 @@ import { Sidebar, InventoryActivityConsumptionEditor } from "./components/BarraL
 
 import {
 
-  createIdentityFormFromUser, EmployeeProfileSummarySection,
+  EmployeeProfileSummarySection,
 
-  EmployeeProfileDetailsSection, EmployeeProfilePasswordSection,
+  EmployeeProfileDetailsSection,
 
-  EmployeeProfileMessages, EmployeeProfileModal, ForcedPasswordChangeModal,
+  EmployeeProfilePasswordSection,
+
+  EmployeeProfileMessages,
+
+  EmployeeProfileModal,
+
+  ForcedPasswordChangeModal,
 
 } from "./components/PerfilEmpleado";
 
 import {
 
-  excelColumnLettersToIndex, parseSimpleExcelFormula, EXCEL_FUNCTION_DESCRIPTIONS,
+  EXCEL_FUNCTION_DESCRIPTIONS,
 
-  FORMULA_MEMORY_LS_KEY, loadFormulasMemory, lookupFormulaMemory, saveFormulaToMemory,
+  FORMULA_MEMORY_LS_KEY,
 
-  classifyExcelFormula,
+  loadFormulasMemory,
+
+  saveFormulaToMemory,
 
 } from "./utils/utilidadesFormulas.js";
 
 import {
 
-  getExcelJsModule, normalizeArgbHex, getExcelCellColors,
+  getExcelJsModule,
 
-  inferImportedFieldTypeFromSamples, getWorksheetHeaders, getCellTextValue,
-
-  collectBoardStructureCellData, collectBoardStructureSheetData,
-
-  buildImportedColorRules, buildImportedBoardFields, parseBoardStructureImportFile,
+  parseBoardStructureImportFile,
 
 } from "./utils/utilidadesImportExcel.js";
 
@@ -177,172 +178,304 @@ import {
 
   getInitialRouteState,
 
-  toBoardAuxColumnToken, isBoardAuxColumnToken, getBoardAuxColumnIdFromToken,
+  getNormalizedBoardColumnOrder,
 
-  getBoardFields, getBoardVisibleAuxColumnIds, getBoardAuxColumnOrder,
+  sortBoardFieldsByColumnOrder,
 
-  getNormalizedBoardColumnOrder, sortBoardFieldsByColumnOrder,
+  syncBoardFieldOrderIntoColumnOrder,
 
-  syncBoardFieldOrderIntoColumnOrder, reorderBoardColumnOrderTokens, getOrderedBoardColumns,
+  reorderBoardColumnOrderTokens,
 
-  normalizeInventoryDomain, inventoryDomainUsesPresentation, inventoryDomainUsesPackagingMetrics,
+  getOrderedBoardColumns,
 
-  getInventoryPresentationLabel, getInventoryPresentationPlaceholder,
+  normalizeInventoryDomain,
 
-  getInventoryUnitPlaceholder, getInventoryStoragePlaceholder, getInventoryEntityLabel,
+  inventoryDomainUsesPresentation,
 
-  normalizeCleaningSite, normalizeBoardOperationalContextType, normalizeBoardOperationalContextOptions,
+  inventoryDomainUsesPackagingMetrics,
 
-  normalizeBoardOperationalContextLabel, normalizeBoardOperationalContextValue,
+  getInventoryPresentationLabel,
 
-  normalizeInventoryActivityConsumptions, normalizeInventoryMovementType,
+  getInventoryPresentationPlaceholder,
 
-  buildInventoryTransferTargetKey, normalizeInventoryTransferTargetRecord,
+  getInventoryUnitPlaceholder,
 
-  resolveInventorySourceStockUnits, normalizeInventoryItemRecord, normalizeInventoryMovementRecord,
+  getInventoryStoragePlaceholder,
 
-  findInventoryTransferTarget, sumInventoryTransferTargetUnits, hasInventoryBalanceInput,
+  getInventoryEntityLabel,
 
-  getInventoryAllocatedUnits, getInventoryAvailableToTransfer, getComparableDateMs,
+  normalizeCleaningSite,
 
-  formatInventoryTransferDestinationLabel, getInventorySavedStorageLocations,
+  normalizeBoardOperationalContextValue,
 
-  getInventorySavedTransferDestinations, getInventoryDefaultTransferDestination,
+  buildInventoryTransferTargetKey,
 
-  getInventoryDeleteActionId, getInventoryManageActionId, getInventoryImportActionId,
+  normalizeInventoryItemRecord,
 
-  createInventoryModalState, createInventoryMovementModalState,
+  normalizeInventoryMovementRecord,
 
-  createInventoryTransferConfirmModalState, readNotificationReadState,
+  findInventoryTransferTarget,
 
-  readNotificationDeletedState, readNotificationInboxState, formatNotificationTimestamp,
+  hasInventoryBalanceInput,
 
-  createInventoryRestockModalState, inferFeedbackToneFromMessage,
+  getInventoryAllocatedUnits,
 
-  buildDefaultPermissions, hasExplicitOverrideValues, remapPermissionsModel,
+  getInventoryAvailableToTransfer,
 
-  normalizePermissionEntry, normalizePermissions, buildBoardPermissions,
+  getComparableDateMs,
 
-  normalizeBoardPermissions, buildPermissionsFromPreset,
+  formatInventoryTransferDestinationLabel,
 
-  buildAuditEntry, appendAuditLog, makeId,
+  getInventorySavedStorageLocations,
 
-  SESSION_STORAGE_KEY, setSessionExpiredHandler, clearSessionExpiredHandler,
+  getInventorySavedTransferDestinations,
 
-  requestJson, isSessionRequiredError, applyRemoteWarehouseState,
+  getInventoryDefaultTransferDestination,
 
-  createWarehouseEventSource, buildLoginDirectoryFromState,
+  getInventoryDeleteActionId,
 
-  buildRouteQuery, buildRoutePath, normalizeAdminTab,
+  getInventoryManageActionId,
 
-  normalizeActivityFrequency, getActivityFrequencyLabel,
-  normalizeCatalogScheduledDays, normalizeCatalogCleaningSites,
-  normalizeCatalogArea, normalizeCatalogScheduledDaysBySite,
+  getInventoryImportActionId,
 
-  normalizeCatalogItemRecord, buildWeekActivitiesFromCatalogItem,
+  createInventoryModalState,
 
-  isoAt, isStrongPassword, isTemporaryPassword, addDays,
+  createInventoryMovementModalState,
 
-  startOfWeek, endOfWeek, getBoardWeekStart, getBoardWeekEnd,
+  createInventoryTransferConfirmModalState,
 
-  formatBoardWeekKey, parseBoardWeekKey, getBoardWeekLabel, normalizeBoardWeeklyCycle,
+  readNotificationReadState,
 
-  withDefaultBoardSettings, cloneBoardRowSnapshot, normalizeBoardHistorySnapshot,
+  readNotificationDeletedState,
 
-  buildBoardHistorySnapshot, advanceBoardWeekKey, applyBoardWeeklyCutToState,
+  readNotificationInboxState,
 
-  startOfMonth, endOfMonth, startOfFortnight, endOfFortnight,
+  createInventoryRestockModalState,
 
-  getDashboardPeriodTypeLabel, getDashboardPeriodRange, getDashboardPeriodKey,
+  inferFeedbackToneFromMessage,
 
-  formatDateRangeCompact, formatDashboardPeriodLabel,
+  normalizePermissions,
 
-  getDashboardFilterStartDate, getDashboardFilterEndDate,
+  normalizeBoardPermissions,
 
-  formatDate, formatTime, formatDateTime, formatDurationClock,
+  buildPermissionsFromPreset,
 
-  formatMinutes, formatPercent, formatMetricNumber, getAuditPeriodMs,
+  buildAuditEntry,
 
-  normalizeKey, buildPlayerAccessBase, buildUniquePlayerAccess, getIshikawaCategory,
+  appendAuditLog,
 
-  normalizeImportHeader, normalizeMeridiemHour, normalizeTimeValue24h,
+  makeId,
 
-  isEmptyRuleValue, parseComparableNumber, parseComparableDate,
+  SESSION_STORAGE_KEY,
 
-  compareRuleValues, parseRuleValueList, isTruthyRuleValue, isFalsyRuleValue,
+  setSessionExpiredHandler,
 
-  doesFieldColorRuleMatch, getFieldColorRule,
+  clearSessionExpiredHandler,
 
-  formatInventoryLookupLabel, isInventoryLookupFieldType, getInventoryLookupSourceFields,
+  requestJson,
 
-  resolveInventoryPropertySourceFieldId, resolveInventoryPropertyValue, getInventoryBundleEditableFields,
+  isSessionRequiredError,
 
-  inferInventoryBundleFieldType, isBoardActivityListField, getBoardFieldDisplayType,
+  applyRemoteWarehouseState,
 
-  buildInventoryBundleFields, buildUpdatedDraftColumns, findInventoryItemByQuery,
+  createWarehouseEventSource,
 
-  createEmptyFieldDraft, createEmptyBoardDraft, cloneDraftColumns, createBoardDraftFromBoard,
+  buildLoginDirectoryFromState,
 
-  hasFieldDefaultValue, getFieldDefaultPreviewValue, getPreviewDateValue,
+  buildRouteQuery,
 
-  getDirectPreviewSeedValue, getTextPreviewSeedValue, getTypedPreviewSeedValue,
+  buildRoutePath,
 
-  getPreviewFieldSeedValue, buildPreviewRowValues, buildBoardPreviewModel,
+  normalizeAdminTab,
 
-  buildDraftPreviewBoard, buildTemplatePreviewBoard,
+  normalizeActivityFrequency,
 
-  getTypedBoardPreviewValue, formatBoardPreviewValue,
+  getActivityFrequencyLabel,
 
-  getBoardFieldTypeDescription, renderBoardFieldLabel,
+  normalizeCatalogScheduledDays,
 
-  getProfileEditAvailabilityMessage, getHeaderEyebrowText,
+  normalizeCatalogCleaningSites,
 
-  buildTemplateColumns, cloneBoardFields, cloneBoardFieldBundle,
+  normalizeCatalogArea,
 
-  getBoardTemplateCategory, getTemplateFields, getTemplateFieldGroups, getTemplateFieldDetail,
+  normalizeCatalogScheduledDaysBySite,
 
-  isBoardFieldValueFilled, getBoardSectionGroups, mapColumnToFieldDraft, getBoardFieldDefaultValue,
+  buildWeekActivitiesFromCatalogItem,
 
-  toInventoryNumber, decodeCsvBuffer, parseCsvTextToObjects,
+  isStrongPassword,
 
-  triggerBrowserDownload, sanitizeImportedText, mapInventoryImportRow,
+  isTemporaryPassword,
 
-  parseInventoryImportFile, buildImportedBoardRowValuesPatch,
+  withDefaultBoardSettings,
 
-  buildBoardSavePayload, formatBoardExportFieldValue, downloadInventoryTemplateFile,
+  getDashboardPeriodTypeLabel,
+
+  getDashboardPeriodRange,
+
+  getDashboardPeriodKey,
+
+  formatDashboardPeriodLabel,
+
+  getDashboardFilterStartDate,
+
+  getDashboardFilterEndDate,
+
+  formatDate,
+
+  formatTime,
+
+  formatDateTime,
+
+  formatDurationClock,
+
+  formatMinutes,
+
+  formatPercent,
+
+  formatMetricNumber,
+
+  getAuditPeriodMs,
+
+  normalizeKey,
+
+  buildUniquePlayerAccess,
+
+  getIshikawaCategory,
+
+  getFieldColorRule,
+
+  formatInventoryLookupLabel,
+
+  resolveInventoryPropertySourceFieldId,
+
+  resolveInventoryPropertyValue,
+
+  getBoardFieldDisplayType,
+
+  buildInventoryBundleFields,
+
+  buildUpdatedDraftColumns,
+
+  createEmptyFieldDraft,
+
+  createEmptyBoardDraft,
+
+  createBoardDraftFromBoard,
+
+  buildDraftPreviewBoard,
+
+  buildTemplatePreviewBoard,
+
+  formatBoardPreviewValue,
+
+  getBoardFieldTypeDescription,
+
+  renderBoardFieldLabel,
+
+  getHeaderEyebrowText,
+
+  buildTemplateColumns,
+
+  getBoardTemplateCategory,
+
+  isBoardFieldValueFilled,
+
+  getBoardSectionGroups,
+
+  mapColumnToFieldDraft,
+
+  triggerBrowserDownload,
+
+  parseInventoryImportFile,
+
+  buildImportedBoardRowValuesPatch,
+
+  buildBoardSavePayload,
+
+  formatBoardExportFieldValue,
+
+  downloadInventoryTemplateFile,
 
   formatBoardRowAssigneeLabel,
 
-  getResponsibleVisual, getRoleBadgeClass, normalizeRole, canCreateRole,
+  getResponsibleVisual,
 
-  supportsManagedPermissionOverrides, createUserModalState, getManagedUserIds, normalizeAreaOption,
+  getRoleBadgeClass,
 
-  splitAreaAndSubArea, joinAreaAndSubArea, getAreaRoot,
+  normalizeRole,
 
-  normalizeBoardVisibilityType, normalizeBoardSharedDepartments, normalizeBoardAccessUserIds,
+  supportsManagedPermissionOverrides,
 
-  getNormalizedBoardVisibility, getBoardAssignmentSummary, buildAreaCatalog,
+  createUserModalState,
 
-  getUserArea, getUserJobTitle, hasLeadUser, normalizeUserRecord, canBypassSelfProfileEditLimit,
+  getManagedUserIds,
 
-  canViewUserByAreaScope, userMatchesPermissionEntry, canAccessPage, canDoAction,
+  normalizeAreaOption,
 
-  canUserAccessTemplate, canManageBoard, canEditBoard, getBoardVisibleToUser,
+  splitAreaAndSubArea,
 
-  canDoBoardAction, canEditBoardRowRecord, canOperateBoardRowRecord,
+  joinAreaAndSubArea,
 
-  toSelectOption, buildSelectOptions, getWeekName, getActivityLabel,
+  getAreaRoot,
 
-  getTimeLimitMinutes, getElapsedSeconds, getOperationalElapsedSeconds,
-  getNormalizedFormulaTerms, evaluateFormulaFieldValue,
+  normalizeBoardVisibilityType,
 
-  buildDemoUsers, buildSampleState, normalizeBoardRowValues, normalizeControlBoard,
+  normalizeBoardSharedDepartments,
 
-  getNormalizedControlBoards, resolveHydratedWorkspaceCollection,
+  normalizeBoardAccessUserIds,
 
-  buildNormalizedWarehouseState, normalizeWarehouseState, loadState,
+  getNormalizedBoardVisibility,
 
-  buildWeekActivities, buildStarterWorkspace, updateElapsedForFinish,
+  getBoardAssignmentSummary,
+
+  buildAreaCatalog,
+
+  getUserArea,
+
+  getUserJobTitle,
+
+  normalizeUserRecord,
+
+  canBypassSelfProfileEditLimit,
+
+  canViewUserByAreaScope,
+
+  canAccessPage,
+
+  canDoAction,
+
+  canUserAccessTemplate,
+
+  canEditBoard,
+
+  getBoardVisibleToUser,
+
+  canDoBoardAction,
+
+  canEditBoardRowRecord,
+
+  canOperateBoardRowRecord,
+
+  buildSelectOptions,
+
+  getActivityLabel,
+
+  getTimeLimitMinutes,
+
+  getElapsedSeconds,
+
+  getOperationalElapsedSeconds,
+
+  getNormalizedFormulaTerms,
+
+  evaluateFormulaFieldValue,
+
+  normalizeWarehouseState,
+
+  loadState,
+
+  updateElapsedForFinish,
+
   mergeInventoryColumnsWithSystem,
 
 } from "./utils/utilidades.jsx";
@@ -622,7 +755,7 @@ function setupGlobalHorizontalScrollEnhancements() {
 function App() { // NOSONAR
   const socketRef = useRef(null);
   const [socketConnectCount, setSocketConnectCount] = useState(0);
-  const [socketResetKey, setSocketResetKey] = useState(0);
+  const [_socketResetKey, _setSocketResetKey] = useState(0);
   const [state, setState] = useState(loadState);
   const [page, setPage] = useState(() => {
     const urlPage = INITIAL_ROUTE_STATE.page;
@@ -3173,7 +3306,7 @@ function App() { // NOSONAR
       });
 
       setAreaDeleteModal({ open: false, areaName: "", label: "", error: "", submitting: false });
-      setToast({ message: "Área eliminada correctamente.", kind: "success" });
+      pushAppToast("Área eliminada correctamente.", "success");
     } catch (error) {
       setAreaDeleteModal((current) => ({
         ...current,
@@ -6562,9 +6695,9 @@ function App() { // NOSONAR
       etiqueta: Array.from(etiquetas).sort((a, b) => a.localeCompare(b, "es-MX")),
     };
   }, [allInventoryItems, inventoryModal.domain]);
-  const shouldShowTransferTargetEmptyState = !hasOrderTransferTargets;
+  const _shouldShowTransferTargetEmptyState = !hasOrderTransferTargets;
   const shouldShowTransferRemainingUnits = (movement) => movement.remainingUnits !== null;
-  const shouldShowTransferMovementEmptyState = orderInventoryTransferMovements.length === 0;
+  const _shouldShowTransferMovementEmptyState = orderInventoryTransferMovements.length === 0;
 
   const boardSectionOptions = useMemo(() => {
     const options = new Set(DEFAULT_BOARD_SECTION_OPTIONS);
@@ -6823,89 +6956,57 @@ function App() { // NOSONAR
     processAuditTemplates: Array.isArray(state.processAuditTemplates) ? state.processAuditTemplates : [],
     processAudits: Array.isArray(state.processAudits) ? state.processAudits : [],
     upsertProcessAuditTemplate: async (payload) => {
-      try {
-        const result = await requestJson("/warehouse/process-audits/templates", {
-          method: "POST",
-          body: JSON.stringify(payload || {}),
-        });
-        applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
-        return result.data.templateId;
-      } catch (error) {
-        throw error;
-      }
+      const result = await requestJson("/warehouse/process-audits/templates", {
+        method: "POST",
+        body: JSON.stringify(payload || {}),
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      return result.data.templateId;
     },
     deleteProcessAuditTemplate: async (templateId) => {
-      try {
-        const result = await requestJson(`/warehouse/process-audits/templates/${templateId}`, { method: "DELETE" });
-        applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
-      } catch (error) {
-        throw error;
-      }
+      const result = await requestJson(`/warehouse/process-audits/templates/${templateId}`, { method: "DELETE" });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
     },
     createProcessAudit: async (payload) => {
-      try {
-        const result = await requestJson("/warehouse/process-audits", {
-          method: "POST",
-          body: JSON.stringify(payload || {}),
-        });
-        applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
-        return result.data.auditId;
-      } catch (error) {
-        throw error;
-      }
+      const result = await requestJson("/warehouse/process-audits", {
+        method: "POST",
+        body: JSON.stringify(payload || {}),
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      return result.data.auditId;
     },
     updateProcessAudit: async (auditId, payload) => {
-      try {
-        const result = await requestJson(`/warehouse/process-audits/${auditId}`, {
-          method: "PATCH",
-          body: JSON.stringify(payload || {}),
-        });
-        applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
-        return result.data.auditId;
-      } catch (error) {
-        throw error;
-      }
+      const result = await requestJson(`/warehouse/process-audits/${auditId}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload || {}),
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      return result.data.auditId;
     },
     deleteProcessAudit: async (auditId, leadPassword) => {
-      try {
-        const result = await requestJson(`/warehouse/process-audits/${auditId}`, {
-          method: "DELETE",
-          body: JSON.stringify({ leadPassword }),
-        });
-        applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
-        return result.data.auditId;
-      } catch (error) {
-        throw error;
-      }
+      const result = await requestJson(`/warehouse/process-audits/${auditId}`, {
+        method: "DELETE",
+        body: JSON.stringify({ leadPassword }),
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      return result.data.auditId;
     },
     resetProcessAuditStats: async () => {
-      try {
-        const result = await requestJson("/warehouse/process-audits/reset-stats", { method: "POST" });
-        applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
-      } catch (error) {
-        throw error;
-      }
+      const result = await requestJson("/warehouse/process-audits/reset-stats", { method: "POST" });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
     },
     addProcessAuditEvidence: async (auditId, payload) => {
-      try {
-        const result = await requestJson(`/warehouse/process-audits/${auditId}/evidences`, {
-          method: "POST",
-          body: JSON.stringify(payload || {}),
-        });
-        applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
-        return result.data.evidenceId;
-      } catch (error) {
-        throw error;
-      }
+      const result = await requestJson(`/warehouse/process-audits/${auditId}/evidences`, {
+        method: "POST",
+        body: JSON.stringify(payload || {}),
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      return result.data.evidenceId;
     },
     removeProcessAuditEvidence: async (auditId, evidenceId) => {
-      try {
-        const result = await requestJson(`/warehouse/process-audits/${auditId}/evidences/${evidenceId}`, { method: "DELETE" });
-        applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
-        return result.data.evidenceId;
-      } catch (error) {
-        throw error;
-      }
+      const result = await requestJson(`/warehouse/process-audits/${auditId}/evidences/${evidenceId}`, { method: "DELETE" });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      return result.data.evidenceId;
     },
     Package,
     PAGE_CUSTOM_BOARDS,

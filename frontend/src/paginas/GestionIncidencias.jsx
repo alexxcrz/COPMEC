@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { useState, useMemo, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -227,7 +226,7 @@ function EvidenciaGrid({ evidencias, canEdit, onDelete, onUpload, uploading, upl
     </div>
   );
 }
-function CotizacionesPanel({ cotizaciones, canEdit, onAdd, onDelete, onSelect, requestJson, incidenciaId }) {
+function CotizacionesPanel({ cotizaciones, canEdit, onAdd, onDelete, onSelect, _requestJson, _incidenciaId }) {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState(EMPTY_COT);
   const [uploading, setUploading] = useState(false);

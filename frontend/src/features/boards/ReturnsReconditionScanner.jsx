@@ -329,7 +329,7 @@ function ReturnsReconditionScannerInner({
   // Estado para el orden de productos (drag & drop)
   const [productOrder, setProductOrder] = useState([]);
   const [productWidths, setProductWidths] = useState({});
-  const [hiddenTarimaIds, setHiddenTarimaIds] = useState([]);
+  const [hiddenTarimaIds, _setHiddenTarimaIds] = useState([]);
   const scanRef = useRef(null);
   const lotInputRef = useRef(null);
   const expiryInputRef = useRef(null);
@@ -663,7 +663,7 @@ function ReturnsReconditionScannerInner({
     })()
     : 0;
   const tarimaWorkflowBlocked = tarimaStatus === TARIMA_STATUS_PAUSED || tarimaStatus === TARIMA_STATUS_FINISHED;
-  const elapsedMs = activeBox?.startedAt
+  const _elapsedMs = activeBox?.startedAt
     ? (activeBox?.stoppedAt ? new Date(activeBox.stoppedAt).getTime() : nowTick) - new Date(activeBox.startedAt).getTime()
     : 0;
 
@@ -676,7 +676,7 @@ function ReturnsReconditionScannerInner({
     [boardView?.rows],
   );
 
-  const activeBoxStorageKey = `${ACTIVE_BOX_STORAGE_PREFIX}:${boardId || "default"}`;
+  const _activeBoxStorageKey = `${ACTIVE_BOX_STORAGE_PREFIX}:${boardId || "default"}`;
 
   useEffect(() => {
     const memory = new Map();
@@ -1814,7 +1814,7 @@ function ReturnsReconditionScannerInner({
     return payload;
   }
 
-  async function finishActiveBoxManually() {
+  async function _finishActiveBoxManually() {
     if (!activeBox) return;
     const hasProducts = Object.keys(activeBox.products || {}).length > 0;
     if (!hasProducts) {

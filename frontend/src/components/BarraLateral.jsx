@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 // ── Barra Lateral (Sidebar) ──────────────────────────────────────────────────
 // Sidebar: navegación principal colapsable con perfil de usuario.
 // InventoryActivityConsumptionEditor: editor de consumos por actividad.

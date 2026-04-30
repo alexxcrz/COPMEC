@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import ReturnsReconditionScanner from "../features/boards/ReturnsReconditionScanner.jsx";
 import { BoardEditableInventoryPropertyInput, BoardEvidenceCell, BoardMultiSelectDetailCell } from "../components/BoardRuntimeFieldCells.jsx";
 import {
@@ -58,9 +57,9 @@ function getInventoryPropertySuggestions(item, property, fallbackValue = "") {
 
 export default function MisTableros({ contexto }) {
   const {
-    visibleControlBoards,
-    customBoardSearch,
-    setCustomBoardSearch,
+    visibleControlBoards: _visibleControlBoards,
+    customBoardSearch: _customBoardSearch,
+    setCustomBoardSearch: _setCustomBoardSearch,
     selectedCustomBoard,
     filteredVisibleControlBoards,
     setSelectedCustomBoardId,
@@ -71,7 +70,7 @@ export default function MisTableros({ contexto }) {
     setSelectedCustomBoardViewId,
     isHistoricalCustomBoardView,
     canChangeSelectedBoardOperationalContext,
-    customBoardMetrics,
+    customBoardMetrics: _customBoardMetrics,
     StatTile,
     customBoardActionsMenuRef,
     createBoardRow,
@@ -85,7 +84,7 @@ export default function MisTableros({ contexto }) {
     previewSelectedBoardPdf,
     exportSelectedBoardToPdf,
     userMap,
-    boardRuntimeFeedback,
+    boardRuntimeFeedback: _boardRuntimeFeedback,
     selectedCustomBoardSections,
     renderBoardFieldLabel,
     canEditBoardRowRecord,
@@ -129,7 +128,7 @@ export default function MisTableros({ contexto }) {
     Trash2,
     LayoutDashboard,
     ROLE_JR,
-    isRootLead,
+    isRootLead: _isRootLead,
     canManageDashboardState,
     formatDate,
     formatTime,
@@ -200,7 +199,7 @@ export default function MisTableros({ contexto }) {
     return h * 3600 + m * 60;
   }
 
-  function secondsToHhmm(secs) {
+  function _secondsToHhmm(secs) {
     const s = Math.max(0, Math.round(Number(secs) || 0));
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
@@ -235,7 +234,7 @@ export default function MisTableros({ contexto }) {
     return baseDate.toISOString();
   }
 
-  const auxLabels = {
+  const _auxLabels = {
     assignee: "Player",
     status: "Estado",
     time: "Tiempo",
@@ -286,8 +285,8 @@ export default function MisTableros({ contexto }) {
   const columnWidthsOverrideRef = useRef({});
   const assigneeMenuRef = useRef(null);
   const assigneeTriggerRef = useRef(null);
-  const [assigneeMenuPosition, setAssigneeMenuPosition] = useState(null);
   const [pauseDetailsRow, setPauseDetailsRow] = useState(null);
+  const [fallbackNowMs] = useState(() => Date.now());
   // Local edit buffer for Lead time overrides: key = "rowId-colId", value = string being typed
   const [leadTimeEdits, setLeadTimeEdits] = useState({});
   const [fieldEditDrafts, setFieldEditDrafts] = useState({});
@@ -296,7 +295,7 @@ export default function MisTableros({ contexto }) {
   const systemOperationalSettings = normalizeSystemOperationalSettings(state?.system?.operational);
   const systemPauseControl = systemOperationalSettings.pauseControl;
   const nowMsForPause = Number.isFinite(Number(now)) ? Number(now) : new Date(now).getTime();
-  const effectiveNowMsForPause = Number.isFinite(nowMsForPause) ? nowMsForPause : Date.now();
+  const effectiveNowMsForPause = Number.isFinite(nowMsForPause) ? nowMsForPause : fallbackNowMs;
   const pauseWorkHours = systemPauseControl?.workHours || { startHour: 0, endHour: 24, startMinute: 0, endMinute: 0 };
   const pauseWindowStartMinutes = ((Number(pauseWorkHours.startHour) || 0) * 60) + (Number(pauseWorkHours.startMinute) || 0);
   const pauseWindowEndMinutes = ((Number(pauseWorkHours.endHour) || 24) * 60) + (Number(pauseWorkHours.endMinute) || 0);
@@ -307,7 +306,7 @@ export default function MisTableros({ contexto }) {
     ? new Date(systemPauseControl.globalPauseAutoDisabledUntil).getTime()
     : NaN;
   const hasActiveTemporaryDisable = Number.isFinite(autoDisabledUntilMs) && autoDisabledUntilMs > effectiveNowMsForPause;
-  const manualGlobalPause = Boolean(systemPauseControl?.forceGlobalPause)
+  const manualGlobalPause = systemPauseControl?.forceGlobalPause
     ? true
     : hasActiveTemporaryDisable
       ? false
@@ -400,7 +399,7 @@ export default function MisTableros({ contexto }) {
     });
 
     return scopedUsers;
-  }, [boardView?.accessUserIds, boardView?.createdById, boardView?.ownerId, state?.users, visibleUsers]);
+  }, [boardView, state, visibleUsers]);
   const targetOperationalDateKey = (() => {
     const nowDate = new Date();
     if (selectedWeekdayFilter === "auto") {
@@ -442,41 +441,6 @@ export default function MisTableros({ contexto }) {
     window.addEventListener("pointerdown", handlePointerDown);
     return () => window.removeEventListener("pointerdown", handlePointerDown);
   }, [openAssigneeMenuRowId]);
-
-  useEffect(() => {
-    if (!openAssigneeMenuRowId) {
-      setAssigneeMenuPosition(null);
-      return undefined;
-    }
-
-    function updateMenuPosition() {
-      const triggerElement = assigneeTriggerRef.current;
-      if (!triggerElement) return;
-      const rect = triggerElement.getBoundingClientRect();
-      const activeUsersCount = assigneeSelectableUsers.filter((user) => user.isActive).length;
-      const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1280;
-      const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 800;
-      const maxWidth = Math.max(220, Math.min(304, viewportWidth - 16));
-      const left = Math.min(Math.max(8, rect.right - maxWidth), Math.max(8, viewportWidth - maxWidth - 8));
-      const estimatedListHeight = Math.min(184, (activeUsersCount * 30) + 12);
-      const estimatedMenuHeight = 44 + estimatedListHeight + 48;
-      const spaceBelow = Math.max(0, viewportHeight - rect.bottom - 8);
-      const spaceAbove = Math.max(0, rect.top - 8);
-      const shouldOpenUp = spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
-      const top = shouldOpenUp
-        ? Math.max(8, rect.top - estimatedMenuHeight - 6)
-        : Math.min(viewportHeight - estimatedMenuHeight - 8, rect.bottom + 6);
-      setAssigneeMenuPosition({ top, left, width: maxWidth, openUp: shouldOpenUp });
-    }
-
-    updateMenuPosition();
-    window.addEventListener("resize", updateMenuPosition);
-    window.addEventListener("scroll", updateMenuPosition, true);
-    return () => {
-      window.removeEventListener("resize", updateMenuPosition);
-      window.removeEventListener("scroll", updateMenuPosition, true);
-    };
-  }, [assigneeSelectableUsers, openAssigneeMenuRowId]);
 
   // Handlers para redimensionamiento de columnas
   const getColumnMinWidth = (column) => {
@@ -546,7 +510,7 @@ export default function MisTableros({ contexto }) {
           });
           applyRemoteWarehouseState(response?.data?.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
           setBoardRuntimeFeedback({ tone: "success", message: "Ancho de columnas guardado." });
-        } catch (error) {
+        } catch {
           setBoardRuntimeFeedback({ tone: "danger", message: "No se pudieron guardar los anchos de columna" });
         }
       }
@@ -641,17 +605,14 @@ export default function MisTableros({ contexto }) {
     running: visibleRows.filter((row) => row.status === STATUS_RUNNING).length,
     completed: visibleRows.filter((row) => row.status === STATUS_FINISHED).length,
   };
-  const pauseDetailsLogs = Array.isArray(pauseDetailsRow?.pauseLogs)
-    ? pauseDetailsRow.pauseLogs
-    : [];
-
-  useEffect(() => {
-    if (!pauseDetailsRow?.id || !selectedCustomBoard?.rows) return;
-    const refreshedRow = (selectedCustomBoard.rows || []).find((row) => row.id === pauseDetailsRow.id);
-    if (refreshedRow && refreshedRow !== pauseDetailsRow) {
-      setPauseDetailsRow(refreshedRow);
-    }
+  const effectivePauseDetailsRow = useMemo(() => {
+    if (!pauseDetailsRow?.id || !selectedCustomBoard?.rows) return pauseDetailsRow;
+    return (selectedCustomBoard.rows || []).find((row) => row.id === pauseDetailsRow.id) || pauseDetailsRow;
   }, [pauseDetailsRow, selectedCustomBoard]);
+
+  const pauseDetailsLogs = Array.isArray(effectivePauseDetailsRow?.pauseLogs)
+    ? effectivePauseDetailsRow.pauseLogs
+    : [];
 
   const getRowPauseSeconds = (rowRecord, referenceNow) => {
     if (!rowRecord) return 0;
@@ -880,17 +841,9 @@ export default function MisTableros({ contexto }) {
                                       <span className="board-assignee-trigger-label">{assigneeDisplayLabel}</span>
                                       <span className="board-assignee-trigger-caret" aria-hidden="true">▾</span>
                                     </button>
-                                    {assigneeMenuOpen && assigneeMenuPosition && typeof document !== "undefined"
-                                      ? createPortal(
-                                        <div
-                                          ref={assigneeMenuRef}
-                                          className={`board-assignee-menu floating${assigneeMenuPosition.openUp ? " open-up" : ""}`}
-                                          style={{
-                                            top: `${assigneeMenuPosition.top}px`,
-                                            left: `${assigneeMenuPosition.left}px`,
-                                            width: `${assigneeMenuPosition.width}px`,
-                                          }}
-                                        >
+                                    {assigneeMenuOpen
+                                      ? (
+                                        <div ref={assigneeMenuRef} className="board-assignee-menu">
                                           <div className="board-assignee-menu-head">
                                             <span>Selecciona player(s)</span>
                                             <strong>{rowResponsibleIds.length}</strong>
@@ -920,8 +873,7 @@ export default function MisTableros({ contexto }) {
                                             <button type="button" className="icon-button board-assignee-clear" onClick={() => updateRowResponsibleAssignments(row.id, [])}>Limpiar</button>
                                             <button type="button" className="primary-button board-assignee-close" onClick={() => setOpenAssigneeMenuRowId("")}>Cerrar</button>
                                           </div>
-                                        </div>,
-                                        document.body,
+                                        </div>
                                       )
                                       : null}
                                   </div>
@@ -1317,7 +1269,7 @@ export default function MisTableros({ contexto }) {
                                       return next;
                                     });
                                   }}
-                                  onBlur={(event) => {
+                                  onBlur={() => {
                                     if (!timeFieldEditable) return;
                                     if (isLeadPrincipal && isAutoManagedTimeField) {
                                       setLeadTimeEdits((prev) => {

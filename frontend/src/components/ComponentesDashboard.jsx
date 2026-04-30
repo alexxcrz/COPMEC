@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+
 // ── Componentes de Dashboard ─────────────────────────────────────────────────
 // StatusBadge, MetricCard, InventoryStockBar, DashboardKpiCard, DashboardBarRow,
 // DashboardRankItem, DashboardProgressMetric, DashboardParetoRow, DashboardCauseCard,
@@ -59,7 +59,7 @@ export function InventoryStockBar({ current, minimum, unitLabel = "pzas", target
   );
 }
 
-export function DashboardKpiCard({ title, value, valueMeta, subtitle, tone, icon: Icon }) {
+export function DashboardKpiCard({ title, value, valueMeta, _subtitle, tone, icon: _Icon }) {
   const palette = KPI_STYLES[tone] || KPI_STYLES.cyan;
   return (
     <article className="dashboard-kpi-card">
@@ -155,7 +155,7 @@ export function DashboardCauseCard({ title, share, count, examples }) {
   );
 }
 
-export function DashboardSection({ title, subtitle, summary, icon: Icon, open = true, onToggle, children }) {
+export function DashboardSection({ title, _subtitle, summary, icon: _Icon, open = true, onToggle, children }) {
   return (
     <details className="dashboard-section" open={open}>
       <summary className="dashboard-section-summary" onClick={(event) => {
@@ -194,7 +194,7 @@ export function DashboardPieChart({ rows }) {
     const color = item.solidColor || DASHBOARD_CHART_PALETTE[index % DASHBOARD_CHART_PALETTE.length];
     const end = start + item.percent;
     const segment = `${color} ${start}% ${end}%`;
-    start = end;
+    start = end; // eslint-disable-line react-hooks/immutability
     return segment;
   });
 

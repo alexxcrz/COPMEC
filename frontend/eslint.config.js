@@ -24,12 +24,18 @@ export default defineConfig([
     },
     rules: {
       // ── Errores reales ──────────────────────────────────────────
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]', argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
 
       // ── Advertencias de estilo — desactivadas ───────────────────
       'react/prop-types': 'off',
       'no-restricted-globals': 'off',
       'sonarjs/cognitive-complexity': 'off',
+
+      // ── React Compiler ─────────────────────────────────────────
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/no-deriving-state-in-effects': 'warn',
+      'no-empty': 'warn',
+      'no-constant-binary-expression': 'warn',
 
       // ── Advertencias de accesibilidad — desactivadas ────────────
       'jsx-a11y/no-noninteractive-element-interactions': 'off',
