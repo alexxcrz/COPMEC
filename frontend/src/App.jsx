@@ -5741,11 +5741,12 @@ function App() { // NOSONAR
       if (board.settings?.showDates !== false) {
         const snapshotNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : Date.now();
         const prodSecs = getElapsedSeconds(row, snapshotNow, operationalPauseState);
-        const computedTotalSecs = row.status === STATUS_PAUSED
-          ? prodSecs
-          : row.startTime
-            ? Math.max(prodSecs, getOperationalElapsedSeconds(row.startTime, snapshotNow, operationalPauseState))
-            : prodSecs;
+        const persistedPauseLogs = Array.isArray(row.pauseLogs) ? row.pauseLogs : [];
+        const persistedPauseSecs = persistedPauseLogs.reduce((sum, entry) => sum + Math.max(0, Number(entry?.pauseDurationSeconds || 0)), 0);
+        const livePauseSecs = row.status === STATUS_PAUSED && row.pauseStartedAt
+          ? Math.max(0, getOperationalElapsedSeconds(row.pauseStartedAt, snapshotNow, operationalPauseState))
+          : 0;
+        const computedTotalSecs = Math.max(0, prodSecs + persistedPauseSecs + livePauseSecs);
         const overriddenTotalSecs = Number(row.totalElapsedSecondsOverride);
         const totalSecs = Number.isFinite(overriddenTotalSecs) && overriddenTotalSecs >= 0
           ? Math.max(prodSecs, Math.max(0, overriddenTotalSecs))

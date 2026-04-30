@@ -289,6 +289,7 @@ export default function MisTableros({ contexto }) {
   const [pauseDetailsRow, setPauseDetailsRow] = useState(null);
   // Local edit buffer for Lead time overrides: key = "rowId-colId", value = string being typed
   const [leadTimeEdits, setLeadTimeEdits] = useState({});
+  const [fieldEditDrafts, setFieldEditDrafts] = useState({});
   const [pauseDurationEdits, setPauseDurationEdits] = useState({});
   const boardColumns = boardView ? getOrderedBoardColumns(boardView, isBoardOwner) : [];
   const systemOperationalSettings = normalizeSystemOperationalSettings(state?.system?.operational);
@@ -649,6 +650,16 @@ export default function MisTableros({ contexto }) {
     }
   }, [pauseDetailsRow, selectedCustomBoard]);
 
+  const getRowPauseSeconds = (rowRecord, referenceNow) => {
+    if (!rowRecord) return 0;
+    const persistedPauseLogs = Array.isArray(rowRecord.pauseLogs) ? rowRecord.pauseLogs : [];
+    const persistedPauseSeconds = persistedPauseLogs.reduce((sum, entry) => sum + Math.max(0, Number(entry?.pauseDurationSeconds || 0)), 0);
+    const livePauseSeconds = rowRecord.status === STATUS_PAUSED && rowRecord.pauseStartedAt
+      ? Math.max(0, getOperationalElapsedSeconds(rowRecord.pauseStartedAt, referenceNow, pauseState, rowRecord.cleaningSite))
+      : 0;
+    return Math.max(0, persistedPauseSeconds + livePauseSeconds);
+  };
+
   return (
     <section className="admin-page-layout mis-tableros-shell">
       {selectedCustomBoard ? (
@@ -917,11 +928,7 @@ export default function MisTableros({ contexto }) {
 
                             if (column.id === "status") {
                               const persistedPauseLogs = Array.isArray(row.pauseLogs) ? row.pauseLogs : [];
-                              const persistedPauseSeconds = persistedPauseLogs.reduce((sum, entry) => sum + Math.max(0, Number(entry?.pauseDurationSeconds || 0)), 0);
-                              const livePauseSeconds = row.status === STATUS_PAUSED && row.pauseStartedAt
-                                ? Math.max(0, getOperationalElapsedSeconds(row.pauseStartedAt, now, pauseState, row.cleaningSite))
-                                : 0;
-                              const totalPauseSeconds = persistedPauseSeconds + livePauseSeconds;
+                              const totalPauseSeconds = getRowPauseSeconds(row, now);
                               const pauseCount = persistedPauseLogs.length + (row.status === STATUS_PAUSED && row.pauseStartedAt && !persistedPauseLogs.some((entry) => !entry?.resumedAt) ? 1 : 0);
                               const pauseReasonLabel = String(
                                 row.lastPauseReason
@@ -979,11 +986,8 @@ export default function MisTableros({ contexto }) {
                                         setLeadTimeEdits((prev) => { const next = { ...prev }; delete next[editKey]; return next; });
                                         const secs = parseHhmmToSeconds(event.target.value);
                                         if (secs !== null) {
-                                          const computedTotalSecs = row.status === STATUS_PAUSED
-                                            ? computedSecs
-                                            : row.startTime
-                                              ? Math.max(computedSecs, getOperationalElapsedSeconds(row.startTime, effectiveNow, pauseState))
-                                              : 0;
+                                          const computedPauseSecs = getRowPauseSeconds(row, effectiveNow);
+                                          const computedTotalSecs = Math.max(0, computedSecs + computedPauseSecs);
                                           const existingOverride = Number(row.totalElapsedSecondsOverride);
                                           const preservedTotalSecs = Math.max(
                                             computedSecs,
@@ -1008,10 +1012,8 @@ export default function MisTableros({ contexto }) {
                               const effectiveNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : now;
                               const prodSecs = getElapsedSeconds(row, effectiveNow, pauseState);
                               const computedTotalSecs = row.status === STATUS_PAUSED
-                                ? prodSecs
-                                : row.startTime
-                                  ? Math.max(prodSecs, getOperationalElapsedSeconds(row.startTime, effectiveNow, pauseState))
-                                  : 0;
+                                ? Math.max(0, prodSecs + getRowPauseSeconds(row, effectiveNow))
+                                : Math.max(0, prodSecs + getRowPauseSeconds(row, effectiveNow));
                               const overriddenTotalSecs = Number(row.totalElapsedSecondsOverride);
                               const totalSecs = Number.isFinite(overriddenTotalSecs) && overriddenTotalSecs >= 0
                                 ? Math.max(prodSecs, Math.max(0, overriddenTotalSecs))
@@ -1045,10 +1047,8 @@ export default function MisTableros({ contexto }) {
                               const effectiveNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : now;
                               const prodSecs = getElapsedSeconds(row, effectiveNow, pauseState);
                               const computedTotalSecs = row.status === STATUS_PAUSED
-                                ? prodSecs
-                                : row.startTime
-                                  ? Math.max(prodSecs, getOperationalElapsedSeconds(row.startTime, effectiveNow, pauseState))
-                                  : prodSecs;
+                                ? Math.max(0, prodSecs + getRowPauseSeconds(row, effectiveNow))
+                                : Math.max(0, prodSecs + getRowPauseSeconds(row, effectiveNow));
                               const overriddenTotalSecs = Number(row.totalElapsedSecondsOverride);
                               const totalSecs = Number.isFinite(overriddenTotalSecs) && overriddenTotalSecs >= 0
                                 ? Math.max(prodSecs, Math.max(0, overriddenTotalSecs))
@@ -1177,14 +1177,32 @@ export default function MisTableros({ contexto }) {
                           }
 
                           if (["number", "currency", "percentage"].includes(field.type)) {
+                            const fieldEditKey = `${row.id}-${field.id}`;
+                            const hasDraft = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey);
+                            const inputValue = hasDraft ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] ?? "");
                             return (
                               <td key={field.id} style={columnStyle}>
                                 <input
                                   type="number"
-                                  value={row.values?.[field.id] ?? ""}
-                                  onChange={(event) => {
-                                    const rawValue = event.target.value;
+                                  value={inputValue}
+                                  onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))}
+                                  onBlur={() => setFieldEditDrafts((prev) => {
+                                    const next = { ...prev };
+                                    delete next[fieldEditKey];
+                                    return next;
+                                  })}
+                                  onKeyDown={(event) => {
+                                    if (event.key !== "Enter") return;
+                                    event.preventDefault();
+                                    const rawValue = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey)
+                                      ? fieldEditDrafts[fieldEditKey]
+                                      : row.values?.[field.id] ?? "";
                                     updateBoardRowValue(selectedCustomBoard.id, row.id, field, rawValue === "" ? "" : Number(rawValue));
+                                    setFieldEditDrafts((prev) => {
+                                      const next = { ...prev };
+                                      delete next[fieldEditKey];
+                                      return next;
+                                    });
                                   }}
                                   placeholder={field.placeholder || "Escribe un valor"}
                                   style={controlStyle}
@@ -1196,11 +1214,17 @@ export default function MisTableros({ contexto }) {
                           }
 
                           if (field.type === "textarea") {
-                            return <td key={field.id} style={columnStyle}><input value={row.values?.[field.id] || ""} onChange={(event) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, event.target.value)} placeholder={field.placeholder || "Escribe una nota"} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
+                            const fieldEditKey = `${row.id}-${field.id}`;
+                            const hasDraft = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey);
+                            const inputValue = hasDraft ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || "");
+                            return <td key={field.id} style={columnStyle}><input value={inputValue} onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))} onBlur={() => setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; })} onKeyDown={(event) => { if (event.key !== "Enter") return; event.preventDefault(); const nextValue = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey) ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || ""); updateBoardRowValue(selectedCustomBoard.id, row.id, field, nextValue); setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; }); }} placeholder={field.placeholder || "Escribe una nota"} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
                           }
 
                           if (field.type === "date") {
-                            return <td key={field.id} style={columnStyle}><input type="date" value={row.values?.[field.id] || ""} onChange={(event) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, event.target.value)} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
+                            const fieldEditKey = `${row.id}-${field.id}`;
+                            const hasDraft = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey);
+                            const inputValue = hasDraft ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || "");
+                            return <td key={field.id} style={columnStyle}><input type="date" value={inputValue} onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))} onBlur={() => setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; })} onKeyDown={(event) => { if (event.key !== "Enter") return; event.preventDefault(); const nextValue = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey) ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || ""); updateBoardRowValue(selectedCustomBoard.id, row.id, field, nextValue); setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; }); }} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
                           }
 
                           if (field.type === "time") {
@@ -1222,6 +1246,8 @@ export default function MisTableros({ contexto }) {
                             let displayTimeValue;
                             if (isLeadPrincipal && isAutoManagedTimeField && leadEditKey in leadTimeEdits) {
                               displayTimeValue = leadTimeEdits[leadEditKey];
+                            } else if (!isLeadPrincipal && Object.prototype.hasOwnProperty.call(fieldEditDrafts, leadEditKey)) {
+                              displayTimeValue = fieldEditDrafts[leadEditKey];
                             } else if (isStartTimeField && hasStartTimeMs) {
                               displayTimeValue = formatTime(startTimeMs);
                             } else if (isEndTimeField && row.status === STATUS_FINISHED && row.endTime) {
@@ -1240,13 +1266,17 @@ export default function MisTableros({ contexto }) {
                                     if (isLeadPrincipal && isAutoManagedTimeField) {
                                       setLeadTimeEdits((prev) => ({ ...prev, [leadEditKey]: event.target.value }));
                                     } else {
-                                      updateBoardRowValue(selectedCustomBoard.id, row.id, field, normalizeTimeInput24h(event.target.value, false));
+                                      setFieldEditDrafts((prev) => ({
+                                        ...prev,
+                                        [leadEditKey]: normalizeTimeInput24h(event.target.value, false),
+                                      }));
                                     }
                                   }}
-                                  onBlur={(event) => {
-                                    if (!timeFieldEditable) return;
+                                  onKeyDown={(event) => {
+                                    if (event.key !== "Enter") return;
+                                    event.preventDefault();
                                     if (isLeadPrincipal && isAutoManagedTimeField) {
-                                      const hhmm = normalizeTimeInput24h(event.target.value, true);
+                                      const hhmm = normalizeTimeInput24h(event.currentTarget.value, true);
                                       setLeadTimeEdits((prev) => {
                                         const next = { ...prev };
                                         delete next[leadEditKey];
@@ -1277,11 +1307,36 @@ export default function MisTableros({ contexto }) {
                                         }
                                       }
                                       updateBoardRowTimeOverride(selectedCustomBoard.id, row.id, overrides);
+                                      return;
+                                    }
+
+                                    const typedValue = Object.prototype.hasOwnProperty.call(fieldEditDrafts, leadEditKey)
+                                      ? fieldEditDrafts[leadEditKey]
+                                      : normalizeTimeInput24h(event.currentTarget.value, false);
+                                    const normalizedValue = normalizeTimeInput24h(typedValue, true);
+                                    if (normalizedValue && normalizedValue !== rawTimeValue) {
+                                      updateBoardRowValue(selectedCustomBoard.id, row.id, field, normalizedValue);
+                                    }
+                                    setFieldEditDrafts((prev) => {
+                                      const next = { ...prev };
+                                      delete next[leadEditKey];
+                                      return next;
+                                    });
+                                  }}
+                                  onBlur={(event) => {
+                                    if (!timeFieldEditable) return;
+                                    if (isLeadPrincipal && isAutoManagedTimeField) {
+                                      setLeadTimeEdits((prev) => {
+                                        const next = { ...prev };
+                                        delete next[leadEditKey];
+                                        return next;
+                                      });
                                     } else {
-                                      const normalizedValue = normalizeTimeInput24h(event.target.value, true);
-                                      if (normalizedValue && normalizedValue !== rawTimeValue) {
-                                        updateBoardRowValue(selectedCustomBoard.id, row.id, field, normalizedValue);
-                                      }
+                                      setFieldEditDrafts((prev) => {
+                                        const next = { ...prev };
+                                        delete next[leadEditKey];
+                                        return next;
+                                      });
                                     }
                                   }}
                                   placeholder={field.placeholder || "HH:mm"}
@@ -1294,15 +1349,24 @@ export default function MisTableros({ contexto }) {
                           }
 
                           if (field.type === "email") {
-                            return <td key={field.id} style={columnStyle}><input type="email" value={row.values?.[field.id] || ""} onChange={(event) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, event.target.value)} placeholder={field.placeholder || "nombre@empresa.com"} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
+                            const fieldEditKey = `${row.id}-${field.id}`;
+                            const hasDraft = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey);
+                            const inputValue = hasDraft ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || "");
+                            return <td key={field.id} style={columnStyle}><input type="email" value={inputValue} onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))} onBlur={() => setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; })} onKeyDown={(event) => { if (event.key !== "Enter") return; event.preventDefault(); const nextValue = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey) ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || ""); updateBoardRowValue(selectedCustomBoard.id, row.id, field, nextValue); setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; }); }} placeholder={field.placeholder || "nombre@empresa.com"} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
                           }
 
                           if (field.type === "phone") {
-                            return <td key={field.id} style={columnStyle}><input type="tel" value={row.values?.[field.id] || ""} onChange={(event) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, event.target.value)} placeholder={field.placeholder || "Ej: 5512345678"} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
+                            const fieldEditKey = `${row.id}-${field.id}`;
+                            const hasDraft = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey);
+                            const inputValue = hasDraft ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || "");
+                            return <td key={field.id} style={columnStyle}><input type="tel" value={inputValue} onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))} onBlur={() => setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; })} onKeyDown={(event) => { if (event.key !== "Enter") return; event.preventDefault(); const nextValue = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey) ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || ""); updateBoardRowValue(selectedCustomBoard.id, row.id, field, nextValue); setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; }); }} placeholder={field.placeholder || "Ej: 5512345678"} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
                           }
 
                           if (field.type === "url") {
-                            return <td key={field.id} style={columnStyle}><input type="url" value={row.values?.[field.id] || ""} onChange={(event) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, event.target.value)} placeholder={field.placeholder || "https://..."} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
+                            const fieldEditKey = `${row.id}-${field.id}`;
+                            const hasDraft = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey);
+                            const inputValue = hasDraft ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || "");
+                            return <td key={field.id} style={columnStyle}><input type="url" value={inputValue} onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))} onBlur={() => setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; })} onKeyDown={(event) => { if (event.key !== "Enter") return; event.preventDefault(); const nextValue = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey) ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || ""); updateBoardRowValue(selectedCustomBoard.id, row.id, field, nextValue); setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; }); }} placeholder={field.placeholder || "https://..."} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
                           }
 
                           if (field.type === "boolean") {
@@ -1410,11 +1474,28 @@ export default function MisTableros({ contexto }) {
                           }
 
                           if (field.type === "tags") {
+                            const fieldEditKey = `${row.id}-${field.id}`;
+                            const hasDraft = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey);
+                            const inputValue = hasDraft ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || "");
                             return (
                               <td key={field.id} style={columnStyle}>
                                 <input
-                                  value={row.values?.[field.id] || ""}
-                                  onChange={(event) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, event.target.value)}
+                                  value={inputValue}
+                                  onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))}
+                                  onBlur={() => setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; })}
+                                  onKeyDown={(event) => {
+                                    if (event.key !== "Enter") return;
+                                    event.preventDefault();
+                                    const nextValue = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey)
+                                      ? fieldEditDrafts[fieldEditKey]
+                                      : (row.values?.[field.id] || "");
+                                    updateBoardRowValue(selectedCustomBoard.id, row.id, field, nextValue);
+                                    setFieldEditDrafts((prev) => {
+                                      const next = { ...prev };
+                                      delete next[fieldEditKey];
+                                      return next;
+                                    });
+                                  }}
                                   placeholder={field.placeholder || "tag1, tag2, tag3"}
                                   style={controlStyle}
                                   title={field.helpText || field.label}
@@ -1460,7 +1541,10 @@ export default function MisTableros({ contexto }) {
                             return <td key={field.id} style={columnStyle}><span style={style}>{String(value || 0)}</span></td>;
                           }
 
-                          return <td key={field.id} style={columnStyle}><input value={row.values?.[field.id] || ""} onChange={(event) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, event.target.value)} placeholder={field.placeholder || "Captura un valor"} style={rule ? { ...controlStyle, backgroundColor: rule.color, color: rule.textColor || "inherit" } : controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
+                          const fieldEditKey = `${row.id}-${field.id}`;
+                          const hasDraft = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey);
+                          const inputValue = hasDraft ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || "");
+                          return <td key={field.id} style={columnStyle}><input value={inputValue} onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))} onBlur={() => setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; })} onKeyDown={(event) => { if (event.key !== "Enter") return; event.preventDefault(); const nextValue = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey) ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || ""); updateBoardRowValue(selectedCustomBoard.id, row.id, field, nextValue); setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; }); }} placeholder={field.placeholder || "Captura un valor"} style={rule ? { ...controlStyle, backgroundColor: rule.color, color: rule.textColor || "inherit" } : controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
                         })}
                       </tr>
                     );
@@ -1500,6 +1584,18 @@ export default function MisTableros({ contexto }) {
                 return activityLabel ? `Actividad: ${activityLabel}` : "Actividad sin nombre";
               })()}
             </p>
+            {canManageDashboardState && pauseDetailsLogs.length ? (
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  className="board-pdf-hide"
+                  style={{ background: "none", border: "none", padding: 0, color: "#b05050", fontSize: "0.78rem", cursor: "pointer", textDecoration: "underline", textAlign: "right" }}
+                  onClick={() => updateBoardRowTimeOverride(selectedCustomBoard.id, pauseDetailsRow.id, { clearPauseLogs: true })}
+                >
+                  Eliminar pausas
+                </button>
+              </div>
+            ) : null}
             {pauseDetailsLogs.length ? (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "0.45rem", maxHeight: "42vh", overflowY: "auto", paddingRight: "0.1rem" }}>
                 {pauseDetailsLogs.map((entry, index) => {
@@ -1532,7 +1628,9 @@ export default function MisTableros({ contexto }) {
                             placeholder="HH:mm:ss"
                             style={{ width: "100%" }}
                             onChange={(event) => setPauseDurationEdits((prev) => ({ ...prev, [durationEditKey]: event.target.value }))}
-                            onBlur={(event) => {
+                            onKeyDown={(event) => {
+                              if (event.key !== "Enter") return;
+                              event.preventDefault();
                               const nextSeconds = parseHhmmssToSeconds(event.target.value);
                               if (nextSeconds === null) {
                                 setPauseDurationEdits((prev) => ({ ...prev, [durationEditKey]: formatDurationClock(durationSeconds) }));
@@ -1552,6 +1650,9 @@ export default function MisTableros({ contexto }) {
                                 totalElapsedSecondsOverride: liveProductionSeconds + totalPauseSeconds,
                               });
                               setPauseDurationEdits((prev) => ({ ...prev, [durationEditKey]: formatDurationClock(nextSeconds) }));
+                            }}
+                            onBlur={() => {
+                              setPauseDurationEdits((prev) => ({ ...prev, [durationEditKey]: formatDurationClock(durationSeconds) }));
                             }}
                           />
                         </label>
