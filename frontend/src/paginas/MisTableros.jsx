@@ -878,17 +878,11 @@ export default function MisTableros({ contexto }) {
                                 : 0;
                               const totalPauseSeconds = persistedPauseSeconds + livePauseSeconds;
                               const pauseCount = persistedPauseLogs.length + (row.status === STATUS_PAUSED && row.pauseStartedAt && !persistedPauseLogs.some((entry) => !entry?.resumedAt) ? 1 : 0);
-                              const pauseReasonLabel = String(
-                                row.lastPauseReason
-                                || persistedPauseLogs[persistedPauseLogs.length - 1]?.reason
-                                || "",
-                              ).trim();
                               return (
                                 <td key={`${row.id}-${column.token}`} style={getEffectiveColumnWidth(column)}>
                                   <div style={{ display: "grid", gap: "0.2rem" }}>
                                     <StatusBadge status={row.status || STATUS_PENDING} />
                                     {pauseCount > 0 ? <small className="subtle-line">{pauseCount} pausa(s) · {formatDurationClock(totalPauseSeconds)}</small> : null}
-                                    {row.status === STATUS_PAUSED && pauseReasonLabel ? <small className="subtle-line">Motivo: {pauseReasonLabel}</small> : null}
                                     {pauseCount > 0 ? (
                                       <button
                                         type="button"
@@ -1000,7 +994,7 @@ export default function MisTableros({ contexto }) {
                                     </button>
                                   ) : null}
                                   {canPauseRow ? (
-                                    <button type="button" className="board-action-button pause icon-only" title="Pausar" aria-label="Pausar" onClick={() => openBoardPauseModal(selectedCustomBoard.id, row.id)} disabled={!rowWorkflowEnabled}>
+                                    <button type="button" className="board-action-button pause icon-only" title="Pausar" aria-label="Pausar" onClick={() => changeBoardRowStatus(selectedCustomBoard.id, row.id, STATUS_PAUSED)} disabled={!rowWorkflowEnabled}>
                                       <PauseCircle size={13} />
                                     </button>
                                   ) : null}
@@ -1445,7 +1439,6 @@ export default function MisTableros({ contexto }) {
                       <span style={{ fontSize: "0.76rem" }}>Inicio: {startLabel}</span>
                       <span style={{ fontSize: "0.76rem" }}>Fin: {endLabel}</span>
                       <span style={{ fontSize: "0.76rem" }}>Duración: {formatDurationClock(durationSeconds)}</span>
-                      {entry?.reason ? <span style={{ fontSize: "0.74rem", color: "#4b6b66" }}>Motivo: {entry.reason}</span> : null}
                     </article>
                   );
                 })}

@@ -2000,7 +2000,7 @@ function App() { // NOSONAR
     const boardMap = new Map((dashboardVisibleControlBoards || []).map((board) => [board.id, board]));
     const productKeywords = ["producto", "sku", "articulo", "item", "codigo", "clave", "material", "modelo"];
     const timeKeywords = ["tiempo", "duracion", "min", "revision", "ciclo", "proceso"];
-    const piecesKeywords = ["pieza", "pzas", "pz", "cantidad", "unidades", "qty", "total pz"];
+    const piecesKeywords = ["pieza", "pzas", "pz", "cantidad", "unidades", "qty", "total pz", "caja", "revisad"];
     const piecesReceivedKeywords = ["recib", "recep", "entrada", "ingreso", "total pz", "piezas por caja"];
     const piecesMermaKeywords = ["merma", "mala", "dano", "danad", "defect", "rechazo"];
     const piecesAptasKeywords = ["apta", "buen estado", "real", "ok", "liberada", "buenas"];

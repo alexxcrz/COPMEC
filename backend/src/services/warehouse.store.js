@@ -2725,13 +2725,11 @@ function syncBoardRowPauseLogsWithCounters(row, nowIso, pauseControl) {
   const targetPauseSeconds = Math.max(0, elapsedSeconds - productionSeconds);
   if (targetPauseSeconds <= 0) return [];
 
-  const reason = String(row.lastPauseReason || "Ajuste manual de contadores").trim() || "Ajuste manual de contadores";
   const pausedAt = row.startTime || nowIso;
   const resumedAt = row.status === "Pausado" ? null : referenceEndIso;
   return [
     {
       id: makeId("pause"),
-      reason,
       pausedAt,
       resumedAt,
       pauseDurationSeconds: targetPauseSeconds,
