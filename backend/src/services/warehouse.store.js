@@ -2408,12 +2408,6 @@ function getEffectiveOperationalNowMs(nowIso, pauseControl) {
   if (!Number.isFinite(effectiveNow)) {
     effectiveNow = Date.now();
   }
-  if (pauseControl?.globalPauseEnabled && pauseControl?.globalPauseActivatedAt) {
-    const pausedAt = new Date(pauseControl.globalPauseActivatedAt).getTime();
-    if (!Number.isNaN(pausedAt)) {
-      effectiveNow = Math.min(effectiveNow, pausedAt);
-    }
-  }
   return effectiveNow;
 }
 
@@ -2470,26 +2464,6 @@ function getOperationalElapsedSeconds(startIso, nowIso, pauseControl, cleaningSi
   const startMs = parseOperationalTimestamp(startIso, nowIso);
   if (!Number.isFinite(startMs)) return 0;
   const effectiveNow = getEffectiveOperationalNowMs(nowIso, pauseControl);
-  
-  // Check if there's an area-specific pause active for this cleaning site
-  let activeWorkHours = pauseControl?.workHours;
-  if (cleaningSite && pauseControl?.areaPauseControls?.[cleaningSite]?.enabled) {
-    const areaControl = pauseControl.areaPauseControls[cleaningSite];
-    if (areaControl.workHours) {
-      activeWorkHours = areaControl.workHours;
-    }
-  }
-  
-  if (activeWorkHours && typeof activeWorkHours.startHour === "number" && typeof activeWorkHours.endHour === "number") {
-    return calcWorkSeconds(
-      startMs,
-      effectiveNow,
-      activeWorkHours.startHour,
-      activeWorkHours.endHour,
-      activeWorkHours.startMinute || 0,
-      activeWorkHours.endMinute || 0
-    );
-  }
   return Math.max(0, Math.floor((effectiveNow - startMs) / 1000));
 }
 

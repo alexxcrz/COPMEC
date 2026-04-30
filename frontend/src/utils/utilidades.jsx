@@ -3390,19 +3390,9 @@ export function getOperationalElapsedSeconds(startTime, now, pauseState) {
   if (!startTime) return 0;
   const startMs = parseOperationalTimestamp(startTime, now);
   if (!Number.isFinite(startMs)) return 0;
-  const effectiveNow = getEffectiveOperationalNow(now, pauseState);
-  const workHours = pauseState?.workHours;
-  if (workHours && typeof workHours.startHour === "number" && typeof workHours.endHour === "number") {
-    return calcWorkSeconds(
-      startMs,
-      effectiveNow,
-      workHours.startHour,
-      workHours.endHour,
-      workHours.startMinute || 0,
-      workHours.endMinute || 0,
-    );
-  }
-  return Math.max(0, Math.floor((effectiveNow - startMs) / 1000));
+  const effectiveNow = typeof now === "number" ? now : new Date(now).getTime();
+  const resolvedNow = Number.isFinite(effectiveNow) ? effectiveNow : Date.now();
+  return Math.max(0, Math.floor((resolvedNow - startMs) / 1000));
 }
 
 function resolveWorkHoursForArea(pauseState, areaKey) {
@@ -3448,21 +3438,9 @@ export function getElapsedSeconds(activity, now, pauseState) {
     return Math.max(0, accumulatedSeconds);
   }
 
-  const effectiveNow = getEffectiveOperationalNow(now, pauseState);
-  const workHours = resolveWorkHoursForArea(pauseState, activity.cleaningSite);
-  let delta;
-  if (workHours && typeof workHours.startHour === "number" && typeof workHours.endHour === "number") {
-    delta = calcWorkSeconds(
-      resumedMs,
-      effectiveNow,
-      workHours.startHour,
-      workHours.endHour,
-      workHours.startMinute || 0,
-      workHours.endMinute || 0,
-    );
-  } else {
-    delta = Math.max(0, Math.floor((effectiveNow - resumedMs) / 1000));
-  }
+  const effectiveNow = typeof now === "number" ? now : new Date(now).getTime();
+  const resolvedNow = Number.isFinite(effectiveNow) ? effectiveNow : Date.now();
+  const delta = Math.max(0, Math.floor((resolvedNow - resumedMs) / 1000));
   return Math.max(0, accumulatedSeconds + delta);
 }
 
