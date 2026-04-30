@@ -4631,6 +4631,9 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
     }
     if (hasOwn(patch, "accumulatedSeconds")) {
       nextRow.accumulatedSeconds = Math.max(0, Number(patch.accumulatedSeconds || 0));
+      if (String(nextRow.status || "") === "En curso") {
+        nextRow.lastResumedAt = nowIso;
+      }
     }
     if (hasOwn(patch, "totalElapsedSecondsOverride")) {
       const totalOverride = Number(patch.totalElapsedSecondsOverride);

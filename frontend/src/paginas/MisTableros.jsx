@@ -1007,7 +1007,7 @@ export default function MisTableros({ contexto }) {
                                 : Math.max(0, prodSecs + getRowPauseSeconds(row, effectiveNow));
                               const overriddenTotalSecs = Number(row.totalElapsedSecondsOverride);
                               const totalSecs = Number.isFinite(overriddenTotalSecs) && overriddenTotalSecs >= 0
-                                ? Math.max(prodSecs, Math.max(0, overriddenTotalSecs))
+                                ? Math.max(computedTotalSecs, Math.max(0, overriddenTotalSecs))
                                 : computedTotalSecs;
                               if (isLeadPrincipal) {
                                 const editKey = `${row.id}-totalTime`;
@@ -1042,7 +1042,7 @@ export default function MisTableros({ contexto }) {
                                 : Math.max(0, prodSecs + getRowPauseSeconds(row, effectiveNow));
                               const overriddenTotalSecs = Number(row.totalElapsedSecondsOverride);
                               const totalSecs = Number.isFinite(overriddenTotalSecs) && overriddenTotalSecs >= 0
-                                ? Math.max(prodSecs, Math.max(0, overriddenTotalSecs))
+                                ? Math.max(computedTotalSecs, Math.max(0, overriddenTotalSecs))
                                 : computedTotalSecs;
                               const pct = totalSecs > 0 ? Math.round((prodSecs / totalSecs) * 100) : (row.startTime ? 100 : 0);
                               const color = pct >= 80 ? "#16a34a" : pct >= 50 ? "#15803d" : "#dc2626";

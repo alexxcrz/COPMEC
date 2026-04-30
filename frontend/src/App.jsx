@@ -5749,7 +5749,7 @@ function App() { // NOSONAR
         const computedTotalSecs = Math.max(0, prodSecs + persistedPauseSecs + livePauseSecs);
         const overriddenTotalSecs = Number(row.totalElapsedSecondsOverride);
         const totalSecs = Number.isFinite(overriddenTotalSecs) && overriddenTotalSecs >= 0
-          ? Math.max(prodSecs, Math.max(0, overriddenTotalSecs))
+          ? Math.max(computedTotalSecs, Math.max(0, overriddenTotalSecs))
           : computedTotalSecs;
         const pauseSecs = Math.max(0, totalSecs - prodSecs);
         const efficiencyPct = totalSecs > 0 ? Math.round((prodSecs / totalSecs) * 100) : (row.startTime ? 100 : 0);
