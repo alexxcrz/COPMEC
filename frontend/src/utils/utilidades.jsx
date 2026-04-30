@@ -3409,15 +3409,8 @@ export function getElapsedSeconds(activity, now, pauseState) {
   const accumulatedSeconds = Number(activity.accumulatedSeconds || 0);
   if (activity.status !== STATUS_RUNNING) {
     if (activity.status === STATUS_PAUSED) {
-      const authorizedPauseSeconds = Math.max(0, Number(activity.pauseAuthorizedSeconds || 0));
-      if (authorizedPauseSeconds > 0 && activity.pauseStartedAt) {
-        const pausedElapsedSeconds = getOperationalElapsedSeconds(
-          activity.pauseStartedAt,
-          now,
-          pauseState,
-          activity.cleaningSite,
-        );
-        const overflowPausedSeconds = Math.max(0, pausedElapsedSeconds - authorizedPauseSeconds);
+      const overflowPausedSeconds = getLivePauseOverflowSeconds(activity, now, pauseState);
+      if (overflowPausedSeconds > 0) {
         return Math.max(0, accumulatedSeconds + overflowPausedSeconds);
       }
     }
@@ -3442,6 +3435,19 @@ export function getElapsedSeconds(activity, now, pauseState) {
   const resolvedNow = Number.isFinite(effectiveNow) ? effectiveNow : Date.now();
   const delta = Math.max(0, Math.floor((resolvedNow - resumedMs) / 1000));
   return Math.max(0, accumulatedSeconds + delta);
+}
+
+export function getLivePauseOverflowSeconds(activity, now, pauseState) {
+  if (!activity?.pauseStartedAt) return 0;
+  const authorizedPauseSeconds = Math.max(0, Number(activity.pauseAuthorizedSeconds || 0));
+  const pausedElapsedSeconds = getOperationalElapsedSeconds(
+    activity.pauseStartedAt,
+    now,
+    pauseState,
+    activity.cleaningSite,
+  );
+  if (authorizedPauseSeconds <= 0) return Math.max(0, pausedElapsedSeconds);
+  return Math.max(0, pausedElapsedSeconds - authorizedPauseSeconds);
 }
 
 const SYSTEM_OPERATIONAL_NAVE_KEYS = ["C1", "C2", "C3", "P"];

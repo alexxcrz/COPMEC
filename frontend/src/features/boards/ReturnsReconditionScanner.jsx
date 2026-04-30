@@ -230,6 +230,64 @@ function downloadPdfBlob(blob, fileName) {
   URL.revokeObjectURL(blobUrl);
 }
 
+function normalizeClosedTarimaSnapshots(snapshots) {
+  if (!Array.isArray(snapshots)) return [];
+
+  const repaired = [];
+  snapshots.forEach((snapshot, snapshotIndex) => {
+    if (!snapshot || typeof snapshot !== "object") return;
+
+    const normalizedBoxes = (Array.isArray(snapshot?.boxes) ? snapshot.boxes : [])
+      .map((box) => ({
+        ...box,
+        products: Array.isArray(box?.products) ? box.products : Object.values(box?.products || {}),
+      }));
+
+    if (!normalizedBoxes.length) {
+      repaired.push({
+        ...snapshot,
+        id: String(snapshot?.id || `${String(snapshot?.sourceTarimaId || snapshot?.tarimaNumber || "tarima")}-${snapshotIndex}`),
+        boxes: [],
+        boxCount: 0,
+        totalPieces: 0,
+      });
+      return;
+    }
+
+    const groupedByTarima = new Map();
+    normalizedBoxes.forEach((box, boxIndex) => {
+      const tarimaIdentity = String(box?.tarimaId || box?.tarimaNumber || snapshot?.sourceTarimaId || snapshot?.tarimaNumber || `tarima-${snapshotIndex}`);
+      const key = normalizeKey(tarimaIdentity) || `tarima-${snapshotIndex}-${boxIndex}`;
+      if (!groupedByTarima.has(key)) groupedByTarima.set(key, []);
+      groupedByTarima.get(key).push(box);
+    });
+
+    const groupedEntries = Array.from(groupedByTarima.entries());
+    groupedEntries.forEach(([groupKey, boxes], groupIndex) => {
+      const firstBox = boxes[0] || {};
+      const resolvedTarimaNumber = String(firstBox?.tarimaNumber || snapshot?.tarimaNumber || "-").trim() || "-";
+      const resolvedSourceTarimaId = String(firstBox?.tarimaId || snapshot?.sourceTarimaId || "").trim();
+      const baseId = String(snapshot?.id || `${String(snapshot?.sourceTarimaId || snapshot?.tarimaNumber || "tarima")}-${snapshotIndex}`);
+      const id = groupedEntries.length === 1
+        ? baseId
+        : `${baseId}-${groupKey}-${groupIndex}`;
+
+      repaired.push({
+        ...snapshot,
+        id,
+        sourceTarimaId: resolvedSourceTarimaId,
+        tarimaNumber: resolvedTarimaNumber,
+        flowType: firstBox?.flowType || snapshot?.flowType || "devolucion",
+        boxes,
+        boxCount: boxes.length,
+        totalPieces: boxes.reduce((acc, box) => acc + Number(box?.totalPieces || 0), 0),
+      });
+    });
+  });
+
+  return repaired.slice(0, 50);
+}
+
 // ...existing code...
 // Error boundary solo en desarrollo para evitar ReferenceError y mostrar mensaje amigable
 function DevErrorBoundary({ children }) {
@@ -256,6 +314,7 @@ function ReturnsReconditionScannerInner({
   boardView,
   currentUser,
   inventoryItems,
+  state,
   requestJson,
   applyRemoteWarehouseState,
   setState,
@@ -307,6 +366,7 @@ function ReturnsReconditionScannerInner({
   const [lotForm, setLotForm] = useState({ lot: "", expiry: "", etiqueta: "", pieces: 1, selectedLotKey: "" });
   const [lotHistoryVersion, setLotHistoryVersion] = useState(0);
   const lotHistoryMemoryRef = useRef(new Map());
+  const previousWeekStorageKeyRef = useRef("");
   
   const [nowTick, setNowTick] = useState(() => Date.now());
   const effectiveGlobalPause = Boolean(manualGlobalPause || (systemPaused && !globalForceActive));
@@ -403,7 +463,9 @@ function ReturnsReconditionScannerInner({
     });
   }, [activeBox?.products]);
 
+  const boardId = boardView?.id || "";
   const boardLabel = String(boardView?.name || "Proceso").trim() || "Proceso";
+  const activeWeekKey = String(state?.boardWeeklyCycle?.activeWeekKey || "").trim();
 
   useEffect(() => {
     scanRef.current?.focus();
@@ -414,6 +476,44 @@ function ReturnsReconditionScannerInner({
     const timer = globalThis.setInterval(() => setNowTick(Date.now()), 1000);
     return () => globalThis.clearInterval(timer);
   }, [activeTarima, effectiveGlobalPause]);
+
+  useEffect(() => {
+    if (!boardId || !activeWeekKey) return;
+    const currentWeekStorageKey = `${boardId}:${activeWeekKey}`;
+    if (!previousWeekStorageKeyRef.current) {
+      previousWeekStorageKeyRef.current = currentWeekStorageKey;
+      return;
+    }
+    const [previousBoardId, previousWeekKey] = String(previousWeekStorageKeyRef.current).split(":");
+    if (previousBoardId !== boardId) {
+      previousWeekStorageKeyRef.current = currentWeekStorageKey;
+      return;
+    }
+    if (previousWeekKey === activeWeekKey) return;
+
+    previousWeekStorageKeyRef.current = currentWeekStorageKey;
+    setActiveTarima(null);
+    setActiveBoxId(null);
+    setCompletedBoxes([]);
+    setSelectedClosedTarimaId("");
+    setClosedTarimas([]);
+    setCollapsedProducts(new Set());
+    setExpandedClosedBoxes(new Set());
+    setPendingItem(null);
+    setTarimaModalOpen(false);
+    setBoxModalOpen(false);
+    setLotModalOpen(false);
+
+    try {
+      localStorage.removeItem(`${ACTIVE_TARIMA_STORAGE_PREFIX}:${boardId}`);
+      localStorage.removeItem(`${COMPLETED_BOXES_STORAGE_PREFIX}:${boardId}`);
+      localStorage.removeItem(`${CLOSED_TARIMAS_STORAGE_PREFIX}:${boardId}`);
+    } catch {
+      // Ignore localStorage cleanup failures.
+    }
+
+    setBoardRuntimeFeedback({ tone: "success", message: "Se aplicó corte semanal. Flujo limpio para nueva semana." });
+  }, [activeWeekKey, boardId, setBoardRuntimeFeedback]);
 
   useEffect(() => {
     if (!activeTarima) return;
@@ -493,7 +593,7 @@ function ReturnsReconditionScannerInner({
   // Ordenar productos según productOrder
   const activeProducts = useMemo(() => {
     const products = Object.values(activeBox?.products || {})
-      .filter((p) => !p.tarimaId || !hiddenTarimaIds.includes(p.tarimaId) === false);
+      .filter((p) => !p.tarimaId || !hiddenTarimaIds.includes(p.tarimaId));
     if (!productOrder.length) return products.sort((a, b) => Number(a.firstCapturedAt || 0) - Number(b.firstCapturedAt || 0));
     const map = new Map(products.map((p) => [p.itemId, p]));
     return productOrder.map((id) => map.get(id)).filter(Boolean).concat(products.filter((p) => !productOrder.includes(p.itemId)));
@@ -576,7 +676,6 @@ function ReturnsReconditionScannerInner({
     [boardView?.rows],
   );
 
-  const boardId = boardView?.id || "";
   const activeBoxStorageKey = `${ACTIVE_BOX_STORAGE_PREFIX}:${boardId || "default"}`;
 
   useEffect(() => {
@@ -768,7 +867,7 @@ function ReturnsReconditionScannerInner({
       if (!raw) { setClosedTarimasHydrated(true); return; }
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        const normalized = parsed.slice(0, 20).map((tarima, index) => ({
+        const normalized = normalizeClosedTarimaSnapshots(parsed).slice(0, 20).map((tarima, index) => ({
           ...tarima,
           id: String(tarima?.id || `${String(tarima?.sourceTarimaId || tarima?.tarimaNumber || "tarima")}-${String(tarima?.closedAt || "")}-${index}`),
           boxes: Array.isArray(tarima?.boxes) ? tarima.boxes : [],
@@ -948,6 +1047,8 @@ function ReturnsReconditionScannerInner({
     const localClosed = Array.isArray(completedBoxes) ? completedBoxes : [];
     // Si hay una tarima activa, solo mostrar cajas locales de esa tarima para evitar mezcla con otras tarimas
     if (activeTarima) return localClosed;
+    // Si ya hay snapshots de tarimas cerradas, no intentar reconstruir desde filas para evitar cruces entre tarimas.
+    if (Array.isArray(closedTarimas) && closedTarimas.length > 0) return localClosed;
     const rows = Array.isArray(boardView?.rows) ? boardView.rows : [];
     const finishedRows = rows.filter((row) => {
       const normalizedStatus = String(row?.status || "").toLowerCase();
@@ -1019,19 +1120,31 @@ function ReturnsReconditionScannerInner({
       box.totalPieces += pieces;
     });
 
-    const localByPallet = new Map(
-      localClosed.map((box) => [normalizeKey(String(box?.palletNumber || "")), box]),
+    const localByIdentity = new Map(
+      localClosed.map((box) => {
+        const identity = [
+          normalizeKey(String(box?.tarimaId || box?.tarimaNumber || "")),
+          normalizeKey(String(box?.palletNumber || "")),
+          String(box?.closedAt || box?.stoppedAt || ""),
+        ].join("|");
+        return [identity, box];
+      }),
     );
     const merged = [...localClosed];
     recoveredByBox.forEach((box) => {
-      const key = normalizeKey(String(box?.palletNumber || ""));
-      if (!localByPallet.has(key)) {
+      const identity = [
+        normalizeKey(String(box?.tarimaId || box?.tarimaNumber || "")),
+        normalizeKey(String(box?.palletNumber || "")),
+        String(box?.closedAt || box?.stoppedAt || ""),
+      ].join("|");
+      if (!localByIdentity.has(identity)) {
         merged.push(box);
       }
     });
     return merged;
   }, [
     completedBoxes,
+    closedTarimas,
     boardView?.rows,
     boardFieldMap,
     boardId,
@@ -1419,19 +1532,19 @@ function ReturnsReconditionScannerInner({
       let y = 48;
 
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(14);
+      doc.setFontSize(22);
       doc.text(`${boardLabel} · Caja ${box.palletNumber}`, marginX, y);
-      y += 18;
+      y += 26;
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
+      doc.setFontSize(14);
       doc.text(`Revisó: ${box.reviewerName}`, marginX, y);
-      y += 13;
+      y += 18;
       doc.text(`Flujo: ${box.flowType === "reacondicionado" ? "Reacondicionado" : "Devolución"}`, marginX, y);
-      y += 13;
+      y += 18;
       doc.text(`Piezas objetivo: ${box.targetPieces} · Piezas reales: ${box.totalPieces}`, marginX, y);
       y += 18;
       doc.text(`Tiempo total: ${formatElapsedMs(new Date(box.stoppedAt).getTime() - new Date(box.startedAt).getTime())}`, marginX, y);
-      y += 18;
+      y += 22;
 
       const productCodes = Array.from(new Set(
         box.products.map((product) => String(product.code || "").trim()).filter(Boolean),
@@ -1491,17 +1604,17 @@ function ReturnsReconditionScannerInner({
           { header: "Etiqueta", dataKey: "etiqueta" },
           { header: "Piezas", dataKey: "pieces" },
         ],
-        styles: { fontSize: 8, cellPadding: 4, valign: "middle" },
-        headStyles: { fillColor: [3, 33, 33] },
+        styles: { fontSize: 14, cellPadding: 3, valign: "middle", overflow: "linebreak" },
+        headStyles: { fillColor: [3, 33, 33], fontSize: 13 },
         columnStyles: {
-          qrDataUrl: { cellWidth: 56, minCellHeight: 44 },
-          code: { cellWidth: 80 },
-          name: { cellWidth: 176 },
+          qrDataUrl: { cellWidth: 100, minCellHeight: 96 },
+          code: { cellWidth: 96 },
+          name: { cellWidth: 164 },
           presentation: { cellWidth: 96 },
-          lot: { cellWidth: 86 },
+          lot: { cellWidth: 88 },
           expiry: { cellWidth: 84 },
-          etiqueta: { cellWidth: 82 },
-          pieces: { cellWidth: 60, halign: "right" },
+          etiqueta: { cellWidth: 68, halign: "center" },
+          pieces: { cellWidth: 58, halign: "center" },
         },
         didParseCell: (data) => {
           if (data.section === "body" && data.column.dataKey === "qrDataUrl") {
@@ -1512,7 +1625,7 @@ function ReturnsReconditionScannerInner({
           if (data.section !== "body" || data.column.dataKey !== "qrDataUrl") return;
           const qrDataUrl = data.row.raw?.qrDataUrl;
           if (!qrDataUrl) return;
-          const qrSize = Math.min(34, data.cell.height - 8, data.cell.width - 8);
+          const qrSize = Math.min(88, data.cell.height - 6, data.cell.width - 6);
           const qrX = data.cell.x + ((data.cell.width - qrSize) / 2);
           const qrY = data.cell.y + ((data.cell.height - qrSize) / 2);
           doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
@@ -1536,7 +1649,7 @@ function ReturnsReconditionScannerInner({
     try {
       const [{ jsPDF }, autoTableModule] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
       const autoTable = autoTableModule.default || autoTableModule;
-      const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+      const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
       const marginX = 40;
       let y = 48;
 
@@ -1588,7 +1701,7 @@ function ReturnsReconditionScannerInner({
           });
         });
 
-        if (y > 470) {
+        if (y > 740) {
           doc.addPage();
           y = 48;
         }
@@ -1599,23 +1712,24 @@ function ReturnsReconditionScannerInner({
         y += 14;
         doc.setFont("helvetica", "normal");
         doc.setFontSize(9);
-        doc.text(`Meta: ${Number(box?.targetPieces || 0)} · Reales: ${Number(box?.totalPieces || 0)} · Revisó: ${String(box?.reviewerName || "N/A")}`, marginX, y);
+        doc.text(`Meta: ${Number(box?.targetPieces || 0)} · Reales: ${Number(box?.totalPieces || 0)} · Revisó: ${String(box?.reviewerName || "N/A")}`, marginX, y, { maxWidth: 500 });
         y += 10;
 
         autoTable(doc, {
           startY: y,
           head: [["Código", "Nombre", "Presentación", "Lote", "Caducidad", "Etiqueta", "Piezas"]],
           body: rows,
-          styles: { fontSize: 8, cellPadding: 4, valign: "middle" },
+          margin: { left: marginX, right: marginX },
+          styles: { fontSize: 7, cellPadding: 3, valign: "middle" },
           headStyles: { fillColor: [3, 33, 33] },
           columnStyles: {
-            0: { cellWidth: 82 },
-            1: { cellWidth: 180 },
-            2: { cellWidth: 100 },
-            3: { cellWidth: 96 },
-            4: { cellWidth: 92 },
-            5: { cellWidth: 90 },
-            6: { cellWidth: 60, halign: "right" },
+            0: { cellWidth: 62 },
+            1: { cellWidth: 140 },
+            2: { cellWidth: 75 },
+            3: { cellWidth: 65 },
+            4: { cellWidth: 60 },
+            5: { cellWidth: 60 },
+            6: { cellWidth: 38, halign: "right" },
           },
         });
 
@@ -1737,29 +1851,38 @@ function ReturnsReconditionScannerInner({
       }
     }
 
+    const tarimaToClose = activeTarima;
     const previouslyClosedBoxes = (closedForTarima || []).map((box) => ({
       ...box,
       products: Array.isArray(box?.products) ? box.products : Object.values(box?.products || {}),
     }));
     const allClosedBoxesForPdf = [...previouslyClosedBoxes, ...newlyClosedBoxes];
-    if (allClosedBoxesForPdf.length) {
-      await exportTarimaPdf(activeTarima, allClosedBoxesForPdf);
-    }
-    
-    // Guardar snapshot de tarima cerrada para mostrar como pestaña
-    const closedSnapshot = buildClosedTarimaSnapshot(activeTarima, allClosedBoxesForPdf);
-    setClosedTarimas((prev) => [closedSnapshot, ...prev].slice(0, 20));
-    setSelectedClosedTarimaId(closedSnapshot.id);
 
-    // Marcar tarima como cerrada
-    setActiveTarima((current) => (current ? { ...current, closedAt: new Date().toISOString(), stoppedAt: new Date().toISOString(), workflowStatus: TARIMA_STATUS_FINISHED } : null));
+    // Guardar snapshot de tarima cerrada para mostrar como pestaña
+    const closedSnapshot = buildClosedTarimaSnapshot(tarimaToClose, allClosedBoxesForPdf);
+    setClosedTarimas((prev) => [closedSnapshot, ...prev].slice(0, 20));
+    setSelectedClosedTarimaId("");
+
+    // Cerrar flujo actual y dejar listo el inicio de una nueva tarima sin recargar.
+    setActiveTarima(null);
     setActiveBoxId(null);
     setCompletedBoxes([]);
+    setCollapsedProducts(new Set());
+    setExpandedClosedBoxes(new Set());
+    setPendingItem(null);
+    setTarimaModalOpen(true);
+    globalThis.setTimeout(() => scanRef.current?.focus(), 0);
+
+    // La impresión no debe bloquear el cierre de la tarima.
+    if (allClosedBoxesForPdf.length) {
+      void exportTarimaPdf(tarimaToClose, allClosedBoxesForPdf);
+    }
+
     setBoardRuntimeFeedback({
       tone: "success",
       message: generatedFromOpenBoxes
-        ? `Tarima ${activeTarima.tarimaNumber} cerrada completamente. PDF consolidado generado.`
-        : `Tarima ${activeTarima.tarimaNumber} cerrada con cajas previamente terminadas.`,
+        ? `Tarima ${tarimaToClose.tarimaNumber} cerrada completamente. Lista para iniciar una nueva tarima.`
+        : `Tarima ${tarimaToClose.tarimaNumber} cerrada. Puedes continuar con una nueva tarima.`,
     });
   }
 

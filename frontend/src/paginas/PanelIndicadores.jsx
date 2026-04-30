@@ -1660,6 +1660,7 @@ export default function PanelIndicadores({ contexto }) {
                   <tr>
                     <th>Área</th>
                     <th>Tablero</th>
+                    <th>Proceso</th>
                     <th>Producto / SKU</th>
                     <th>Tarima</th>
                     <th>Piezas</th>
@@ -1678,6 +1679,7 @@ export default function PanelIndicadores({ contexto }) {
                     <tr key={item.key}>
                       <td>{item.area}</td>
                       <td>{item.boardName}</td>
+                      <td>{item.process || "General"}</td>
                       <td>{item.product}</td>
                       <td>{item.tarima || "Sin tarima"}</td>
                       <td>{formatMetricNumber(item.totalPieces || 0, 0)}</td>

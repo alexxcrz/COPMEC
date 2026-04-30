@@ -1,10 +1,170 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
+function toDateParts(value) {
+  const date = new Date(value || "");
+  if (Number.isNaN(date.getTime())) return null;
+  const year = String(date.getFullYear());
+  const month = `${year}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  const day = `${month}-${String(date.getDate()).padStart(2, "0")}`;
+  return { date, year, month, day };
+}
+
+function monthLabel(monthKey) {
+  const [year, month] = String(monthKey || "").split("-");
+  const safeDate = new Date(`${year || "1970"}-${month || "01"}-01T00:00:00`);
+  if (Number.isNaN(safeDate.getTime())) return monthKey;
+  return safeDate.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
+}
+
+function getMonthKeyFromWeek(week) {
+  const baseDate = week?.startDate || week?.endDate || "";
+  return toDateParts(baseDate)?.month || "";
+}
+
+function getBoardRowHistoryDateValue(snapshot, row) {
+  const dateField = (snapshot?.fields || []).find((field) => field?.type === "date");
+  const fieldValue = dateField ? String(row?.values?.[dateField.id] || "").trim() : "";
+  if (fieldValue) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(fieldValue) ? `${fieldValue}T00:00:00` : fieldValue;
+  }
+  return row?.endTime || row?.startTime || row?.createdAt || snapshot?.endDate || snapshot?.startDate;
+}
+
+function buildFallbackWeekReportSections(week) {
+  const start = week?.startDate ? new Date(week.startDate) : null;
+  const end = week?.endDate ? new Date(week.endDate) : null;
+  if (!start || !end || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return [];
+
+  const normalizedStart = new Date(start);
+  normalizedStart.setHours(0, 0, 0, 0);
+  const normalizedEnd = new Date(end);
+  normalizedEnd.setHours(0, 0, 0, 0);
+
+  const yearMap = new Map();
+  for (let cursor = new Date(normalizedStart); cursor <= normalizedEnd; cursor.setDate(cursor.getDate() + 1)) {
+    const parts = toDateParts(cursor.toISOString());
+    if (!parts) continue;
+
+    if (!yearMap.has(parts.year)) {
+      yearMap.set(parts.year, {
+        yearKey: parts.year,
+        total: 0,
+        completed: 0,
+        totalSeconds: 0,
+        months: new Map(),
+      });
+    }
+
+    const yearEntry = yearMap.get(parts.year);
+    if (!yearEntry.months.has(parts.month)) {
+      yearEntry.months.set(parts.month, {
+        monthKey: parts.month,
+        total: 0,
+        completed: 0,
+        totalSeconds: 0,
+        days: new Map(),
+      });
+    }
+
+    const monthEntry = yearEntry.months.get(parts.month);
+    monthEntry.days.set(parts.day, {
+      dayKey: parts.day,
+      total: 0,
+      completed: 0,
+      totalSeconds: 0,
+    });
+  }
+
+  return Array.from(yearMap.values())
+    .map((yearEntry) => ({
+      ...yearEntry,
+      months: Array.from(yearEntry.months.values())
+        .map((monthEntry) => ({
+          ...monthEntry,
+          days: Array.from(monthEntry.days.values()).sort((left, right) => right.dayKey.localeCompare(left.dayKey)),
+        }))
+        .sort((left, right) => right.monthKey.localeCompare(left.monthKey)),
+    }))
+    .sort((left, right) => right.yearKey.localeCompare(left.yearKey));
+}
+
+function buildWeekDaySections(week, activities, finishedStatus) {
+  const grouped = new Map();
+
+  activities.forEach((activity) => {
+    const parts = toDateParts(activity.activityDate);
+    if (!parts) return;
+
+    if (!grouped.has(parts.day)) {
+      grouped.set(parts.day, {
+        dayKey: parts.day,
+        total: 0,
+        completed: 0,
+        totalSeconds: 0,
+        activities: [],
+      });
+    }
+
+    const entry = grouped.get(parts.day);
+    entry.total += 1;
+    entry.completed += activity.status === finishedStatus ? 1 : 0;
+    entry.totalSeconds += Number(activity.accumulatedSeconds || 0);
+    entry.activities.push(activity);
+  });
+
+  let start = week?.startDate ? new Date(week.startDate) : null;
+  let end = week?.endDate ? new Date(week.endDate) : null;
+
+  if (!start || Number.isNaN(start.getTime())) start = null;
+  if (!end || Number.isNaN(end.getTime())) end = null;
+
+  if (!start && end) {
+    start = new Date(end);
+    start.setDate(start.getDate() - 6);
+  }
+  if (!end && start) {
+    end = new Date(start);
+    end.setDate(end.getDate() + 6);
+  }
+
+  if (!start || !end) {
+    return Array.from(grouped.values())
+      .map((entry) => ({
+        ...entry,
+        activities: [...entry.activities].sort((left, right) => new Date(left.activityDate).getTime() - new Date(right.activityDate).getTime()),
+      }))
+      .sort((left, right) => left.dayKey.localeCompare(right.dayKey));
+  }
+
+  const normalizedStart = new Date(start);
+  normalizedStart.setHours(0, 0, 0, 0);
+  const normalizedEnd = new Date(end);
+  normalizedEnd.setHours(0, 0, 0, 0);
+
+  const sections = [];
+  for (const cursor = new Date(normalizedStart); cursor <= normalizedEnd; cursor.setDate(cursor.getDate() + 1)) {
+    const parts = toDateParts(cursor.toISOString());
+    if (!parts) continue;
+
+    const existing = grouped.get(parts.day);
+    sections.push({
+      dayKey: parts.day,
+      total: existing?.total || 0,
+      completed: existing?.completed || 0,
+      totalSeconds: existing?.totalSeconds || 0,
+      activities: existing
+        ? [...existing.activities].sort((left, right) => new Date(left.activityDate).getTime() - new Date(right.activityDate).getTime())
+        : [],
+    });
+  }
+
+  return sections;
+}
+
 export default function HistorialSemanas({ contexto }) {
   const {
     state,
-    activeWeek,
     StatTile,
     STATUS_FINISHED,
     formatDate,
@@ -31,10 +191,28 @@ export default function HistorialSemanas({ contexto }) {
 
   const [deleteWeekModal, setDeleteWeekModal] = useState({ open: false, weekId: "", weekName: "", isSubmitting: false });
   const [selectedAreaTab, setSelectedAreaTab] = useState("all");
+  const [selectedBoardTab, setSelectedBoardTab] = useState("all");
+  const [selectedPlayerTab, setSelectedPlayerTab] = useState("all");
+  const [selectedYearFilter, setSelectedYearFilter] = useState("all");
+  const [selectedMonthFilter, setSelectedMonthFilter] = useState("all");
   const [selectedDayFilter, setSelectedDayFilter] = useState("all");
-  const [selectedNaveFilter, setSelectedNaveFilter] = useState("all");
-  const [detailViewMode, setDetailViewMode] = useState("activities");
+  const [detailViewMode, setDetailViewMode] = useState("dates");
   const [fallbackHistoryWeekId, setFallbackHistoryWeekId] = useState("");
+  const [openReportMonth, setOpenReportMonth] = useState("");
+  const [openReportYear, setOpenReportYear] = useState("");
+  const [expandedDayKey, setExpandedDayKey] = useState("");
+  const [openHistoryMonth, setOpenHistoryMonth] = useState("");
+
+  function resolveBoardHistoryAreaLabel(snapshot, responsibleUser) {
+    const boardArea = String(snapshot?.settings?.ownerArea || snapshot?.ownerArea || "").trim();
+    if (boardArea) return boardArea;
+    return String(getUserArea(responsibleUser) || "Sin area").trim() || "Sin area";
+  }
+
+  function resolveBoardHistoryAreaRoot(snapshot, responsibleUser) {
+    const areaLabel = resolveBoardHistoryAreaLabel(snapshot, responsibleUser);
+    return areaLabel.split("/")[0]?.trim() || areaLabel;
+  }
 
   const derivedBoardWeeks = useMemo(() => {
     const grouped = new Map();
@@ -73,6 +251,19 @@ export default function HistorialSemanas({ contexto }) {
     ? (effectiveWeeks.find((week) => week.id === fallbackHistoryWeekId) || effectiveWeeks[0] || null)
     : historyWeek;
 
+  const selectedWeekIndex = useMemo(() => {
+    if (!effectiveHistoryWeek?.id) return -1;
+    return effectiveWeeks.findIndex((week) => week.id === effectiveHistoryWeek.id);
+  }, [effectiveHistoryWeek?.id, effectiveWeeks]);
+
+  function selectWeek(weekId) {
+    if (!weekId) return;
+    setSelectedHistoryWeekId(weekId);
+    if (useBoardHistoryFallback) {
+      setFallbackHistoryWeekId(weekId);
+    }
+  }
+
   function resolveHistoryActivityLabel(activity) {
     if (activity?.derivedFromBoardHistory) return String(activity.activityLabel || "Actividad").trim() || "Actividad";
     return getActivityLabel(activity, catalogMap);
@@ -83,32 +274,75 @@ export default function HistorialSemanas({ contexto }) {
     return getTimeLimitMinutes(activity, catalogMap);
   }
 
+  function getHistoryPlayerKey(activity) {
+    if (!activity?.responsibleId) return "__sin_player__";
+    return String(activity.responsibleId);
+  }
+
+  function resolveHistoryPlayerLabel(activity) {
+    if (!activity?.responsibleId) return "Sin player";
+    return String(userMap.get(activity.responsibleId)?.name || "Sin player").trim() || "Sin player";
+  }
+
   const weekAreaMap = useMemo(() => {
     const map = new Map();
     effectiveWeeks.forEach((week) => {
-      const areas = new Set(
-        (() => {
-          if (!useBoardHistoryFallback) {
-            return (state.activities || []).filter((activity) => activity.weekId === week.id);
-          }
-          return (state.boardWeekHistory || [])
-            .filter((snapshot) => String(snapshot?.weekKey || "").trim() === week.id)
-            .flatMap((snapshot) => (snapshot?.rows || []))
-            .concat(
-              week.id === state?.boardWeeklyCycle?.activeWeekKey
-                ? (state.controlBoards || []).flatMap((board) => (board?.rows || []))
-                : [],
-            );
-        })()
-          .map((activity) => {
+      const areas = new Set();
+
+      if (!useBoardHistoryFallback) {
+        (state.activities || [])
+          .filter((activity) => activity.weekId === week.id)
+          .forEach((activity) => {
             const areaValue = getUserArea(userMap.get(activity.responsibleId));
-            return String(areaValue || "Sin area").trim() || "Sin area";
-          }),
-      );
+            areas.add(String(areaValue || "Sin area").trim() || "Sin area");
+          });
+      } else {
+        (state.boardWeekHistory || [])
+          .filter((snapshot) => String(snapshot?.weekKey || "").trim() === week.id)
+          .forEach((snapshot) => {
+            (snapshot?.rows || []).forEach((row) => {
+              const responsibleUser = userMap.get(row.responsibleId);
+              areas.add(resolveBoardHistoryAreaRoot(snapshot, responsibleUser));
+            });
+          });
+
+        if (week.id === state?.boardWeeklyCycle?.activeWeekKey) {
+          (state.controlBoards || []).forEach((board) => {
+            (board?.rows || []).forEach((row) => {
+              const responsibleUser = userMap.get(row.responsibleId);
+              areas.add(resolveBoardHistoryAreaRoot(board, responsibleUser));
+            });
+          });
+        }
+      }
+
       map.set(week.id, areas.size);
     });
     return map;
   }, [effectiveWeeks, getUserArea, state.activities, state.boardWeekHistory, state.controlBoards, state?.boardWeeklyCycle?.activeWeekKey, useBoardHistoryFallback, userMap]);
+
+  const weekStatsMap = useMemo(() => {
+    const map = new Map();
+    effectiveWeeks.forEach((week) => {
+      const weekRows = useBoardHistoryFallback
+        ? (state.boardWeekHistory || [])
+          .filter((snapshot) => String(snapshot?.weekKey || "").trim() === week.id)
+          .flatMap((snapshot) => (snapshot?.rows || []).map((row) => ({ ...row, weekId: week.id })))
+          .concat(
+            week.id === state?.boardWeeklyCycle?.activeWeekKey
+              ? (state.controlBoards || []).flatMap((board) => (board?.rows || []).map((row) => ({ ...row, weekId: week.id })))
+              : [],
+          )
+        : (state.activities || []).filter((activity) => activity.weekId === week.id);
+
+      map.set(week.id, {
+        total: weekRows.length,
+        completed: weekRows.filter((activity) => activity.status === STATUS_FINISHED).length,
+        areas: weekAreaMap.get(week.id) || 0,
+      });
+    });
+    return map;
+  }, [STATUS_FINISHED, effectiveWeeks, state.activities, state.boardWeekHistory, state.controlBoards, state?.boardWeeklyCycle?.activeWeekKey, useBoardHistoryFallback, weekAreaMap]);
 
   const historyActivities = useMemo(() => {
     if (!effectiveHistoryWeek?.id) return [];
@@ -121,8 +355,11 @@ export default function HistorialSemanas({ contexto }) {
       const liveBoardsForWeek = effectiveHistoryWeek.id === activeWeekKey
         ? (state.controlBoards || []).map((board) => ({
           id: `${board.id}-live`,
+          ownerId: board.ownerId,
+          ownerArea: board.ownerArea,
           boardName: board.name,
           rows: board.rows || [],
+          fields: board.fields || [],
           settings: board.settings || {},
           startDate: state?.boardWeeklyCycle?.activeWeekStartDate || null,
           endDate: state?.boardWeeklyCycle?.activeWeekEndDate || null,
@@ -133,11 +370,12 @@ export default function HistorialSemanas({ contexto }) {
 
       return allSources.flatMap((snapshot) => {
         const boardContext = String(snapshot?.settings?.operationalContextValue || "").trim();
+        const boardName = String(snapshot?.boardName || "Tablero").trim() || "Tablero";
         return (snapshot?.rows || []).map((row) => {
           const user = userMap.get(row.responsibleId);
-          const areaLabel = String(getUserArea(user) || "Sin area").trim() || "Sin area";
-          const areaRoot = areaLabel.split("/")[0]?.trim() || areaLabel;
-          const rowDateIso = row?.endTime || row?.startTime || row?.createdAt || snapshot?.endDate || snapshot?.startDate;
+          const areaLabel = resolveBoardHistoryAreaLabel(snapshot, user);
+          const areaRoot = resolveBoardHistoryAreaRoot(snapshot, user);
+          const rowDateIso = getBoardRowHistoryDateValue(snapshot, row);
           const activityDate = new Date(rowDateIso);
           const hasValidDate = !Number.isNaN(activityDate.getTime());
           const dayLabel = hasValidDate
@@ -157,9 +395,10 @@ export default function HistorialSemanas({ contexto }) {
             accumulatedSeconds: Number(row.accumulatedSeconds || 0),
             areaLabel,
             areaRoot,
-            naveLabel: boardContext || String(snapshot?.boardName || "Sin nave").trim() || "Sin nave",
+            boardName,
+            naveLabel: boardContext || boardName,
             dayLabel: normalizedDayLabel,
-            activityLabel: String(rowValueText || snapshot?.boardName || "Actividad").trim() || "Actividad",
+            activityLabel: String(rowValueText || boardName || "Actividad").trim() || "Actividad",
             lastPauseReason: String(row?.lastPauseReason || "").trim(),
             derivedFromBoardHistory: true,
           };
@@ -174,12 +413,13 @@ export default function HistorialSemanas({ contexto }) {
         const areaLabel = String(getUserArea(user) || "Sin area").trim() || "Sin area";
         const areaRoot = areaLabel.split("/")[0]?.trim() || areaLabel;
         const catalogItem = catalogMap.get(activity.catalogActivityId);
+        const boardName = String(catalogItem?.category || catalogItem?.area || "General").trim() || "General";
         const cleaningSites = Array.isArray(catalogItem?.cleaningSites)
           ? catalogItem.cleaningSites.map((site) => String(site || "").trim()).filter(Boolean)
           : [];
         const naveLabel = cleaningSites.length
           ? cleaningSites.join(", ")
-          : (areaRoot || "Sin nave");
+          : (boardName || "Sin nave");
 
         const activityDate = new Date(activity.activityDate);
         const hasValidDate = !Number.isNaN(activityDate.getTime());
@@ -192,6 +432,7 @@ export default function HistorialSemanas({ contexto }) {
           ...activity,
           areaLabel,
           areaRoot,
+          boardName,
           naveLabel,
           dayLabel: normalizedDayLabel,
           derivedFromBoardHistory: false,
@@ -217,68 +458,328 @@ export default function HistorialSemanas({ contexto }) {
       .sort((left, right) => left.label.localeCompare(right.label, "es-MX"));
   }, [historyActivities, state.areaCatalog]);
 
-  useEffect(() => {
-    setSelectedAreaTab("all");
-    setSelectedDayFilter("all");
-    setSelectedNaveFilter("all");
-    setDetailViewMode("activities");
-  }, [effectiveHistoryWeek?.id]);
-
-  useEffect(() => {
-    if (selectedAreaTab === "all") return;
-    if (!areaTabs.some((tab) => tab.value === selectedAreaTab)) {
-      setSelectedAreaTab("all");
-    }
-  }, [areaTabs, selectedAreaTab]);
-
   const areaScopedActivities = useMemo(() => {
     if (selectedAreaTab === "all") return historyActivities;
     return historyActivities.filter((activity) => activity.areaRoot === selectedAreaTab);
   }, [historyActivities, selectedAreaTab]);
 
+  const boardTabs = useMemo(() => {
+    const grouped = new Map();
+    areaScopedActivities.forEach((activity) => {
+      const boardName = String(activity.boardName || "General").trim() || "General";
+      grouped.set(boardName, (grouped.get(boardName) || 0) + 1);
+    });
+    return Array.from(grouped.entries())
+      .map(([boardName, total]) => ({ value: boardName, label: boardName, total }))
+      .sort((left, right) => left.label.localeCompare(right.label, "es-MX"));
+  }, [areaScopedActivities]);
+
+  const boardSummaryRows = useMemo(() => {
+    const grouped = new Map();
+    areaScopedActivities.forEach((activity) => {
+      const boardName = String(activity.boardName || "General").trim() || "General";
+      if (!grouped.has(boardName)) {
+        grouped.set(boardName, {
+          boardName,
+          total: 0,
+          completed: 0,
+          totalSeconds: 0,
+          lastActivityAt: "",
+        });
+      }
+
+      const entry = grouped.get(boardName);
+      entry.total += 1;
+      entry.completed += activity.status === STATUS_FINISHED ? 1 : 0;
+      entry.totalSeconds += Number(activity.accumulatedSeconds || 0);
+      const activityDate = String(activity.activityDate || "");
+      if (activityDate && activityDate > entry.lastActivityAt) {
+        entry.lastActivityAt = activityDate;
+      }
+    });
+
+    return Array.from(grouped.values()).sort((left, right) => {
+      if (right.total !== left.total) return right.total - left.total;
+      return left.boardName.localeCompare(right.boardName, "es-MX");
+    });
+  }, [areaScopedActivities, STATUS_FINISHED]);
+
+  const boardScopedActivities = useMemo(() => {
+    if (selectedBoardTab === "all") return areaScopedActivities;
+    return areaScopedActivities.filter((activity) => String(activity.boardName || "") === selectedBoardTab);
+  }, [areaScopedActivities, selectedBoardTab]);
+
+  const playerTabs = useMemo(() => {
+    const grouped = new Map();
+
+    boardScopedActivities.forEach((activity) => {
+      const playerKey = getHistoryPlayerKey(activity);
+      const playerLabel = resolveHistoryPlayerLabel(activity);
+      if (!grouped.has(playerKey)) {
+        grouped.set(playerKey, { value: playerKey, label: playerLabel, total: 0 });
+      }
+      grouped.get(playerKey).total += 1;
+    });
+
+    return Array.from(grouped.values()).sort((left, right) => left.label.localeCompare(right.label, "es-MX"));
+  }, [boardScopedActivities, userMap]);
+
+  const playerScopedActivities = useMemo(() => {
+    if (selectedPlayerTab === "all") return boardScopedActivities;
+    return boardScopedActivities.filter((activity) => getHistoryPlayerKey(activity) === selectedPlayerTab);
+  }, [boardScopedActivities, selectedPlayerTab]);
+
+  const yearOptions = useMemo(() => {
+    const years = new Set();
+    playerScopedActivities.forEach((activity) => {
+      const parts = toDateParts(activity.activityDate);
+      if (parts) years.add(parts.year);
+    });
+    return Array.from(years.values()).sort((left, right) => right.localeCompare(left));
+  }, [playerScopedActivities]);
+
+  const monthOptions = useMemo(() => {
+    const months = new Set();
+    playerScopedActivities.forEach((activity) => {
+      const parts = toDateParts(activity.activityDate);
+      if (!parts) return;
+      if (selectedYearFilter !== "all" && parts.year !== selectedYearFilter) return;
+      months.add(parts.month);
+    });
+    return Array.from(months.values()).sort((left, right) => right.localeCompare(left));
+  }, [playerScopedActivities, selectedYearFilter]);
+
   const dayOptions = useMemo(() => {
-    const values = new Set(areaScopedActivities.map((activity) => activity.dayLabel));
-    return Array.from(values.values()).sort((left, right) => left.localeCompare(right, "es-MX"));
-  }, [areaScopedActivities]);
-
-  const naveOptions = useMemo(() => {
-    const values = new Set(areaScopedActivities.map((activity) => activity.naveLabel));
-    return Array.from(values.values()).sort((left, right) => left.localeCompare(right, "es-MX"));
-  }, [areaScopedActivities]);
-
-  useEffect(() => {
-    if (selectedDayFilter !== "all" && !dayOptions.includes(selectedDayFilter)) {
-      setSelectedDayFilter("all");
-    }
-  }, [dayOptions, selectedDayFilter]);
-
-  useEffect(() => {
-    if (selectedNaveFilter !== "all" && !naveOptions.includes(selectedNaveFilter)) {
-      setSelectedNaveFilter("all");
-    }
-  }, [naveOptions, selectedNaveFilter]);
+    const days = new Set();
+    playerScopedActivities.forEach((activity) => {
+      const parts = toDateParts(activity.activityDate);
+      if (!parts) return;
+      if (selectedYearFilter !== "all" && parts.year !== selectedYearFilter) return;
+      if (selectedMonthFilter !== "all" && parts.month !== selectedMonthFilter) return;
+      days.add(parts.day);
+    });
+    return Array.from(days.values()).sort((left, right) => right.localeCompare(left));
+  }, [playerScopedActivities, selectedMonthFilter, selectedYearFilter]);
 
   const visibleHistoryActivities = useMemo(() => {
-    const filtered = areaScopedActivities
-      .filter((activity) => selectedDayFilter === "all" || activity.dayLabel === selectedDayFilter)
-      .filter((activity) => selectedNaveFilter === "all" || activity.naveLabel === selectedNaveFilter);
+    return [...playerScopedActivities]
+      .filter((activity) => {
+        const parts = toDateParts(activity.activityDate);
+        if (!parts) return false;
+        if (selectedYearFilter !== "all" && parts.year !== selectedYearFilter) return false;
+        if (selectedMonthFilter !== "all" && parts.month !== selectedMonthFilter) return false;
+        if (selectedDayFilter !== "all" && parts.day !== selectedDayFilter) return false;
+        return true;
+      })
+      .sort((left, right) => {
+        const leftTime = new Date(left.activityDate).getTime();
+        const rightTime = new Date(right.activityDate).getTime();
+        if (leftTime !== rightTime) return leftTime - rightTime;
+        return String(left.boardName || "").localeCompare(String(right.boardName || ""), "es-MX");
+      });
+  }, [playerScopedActivities, selectedDayFilter, selectedMonthFilter, selectedYearFilter]);
 
-    return [...filtered].sort((left, right) => {
-      const leftTime = new Date(left.activityDate).getTime();
-      const rightTime = new Date(right.activityDate).getTime();
-      if (leftTime !== rightTime) return leftTime - rightTime;
-      return left.naveLabel.localeCompare(right.naveLabel, "es-MX");
+  const groupedDateRows = useMemo(() => {
+    const grouped = new Map();
+
+    playerScopedActivities.forEach((activity) => {
+      const parts = toDateParts(activity.activityDate);
+      if (!parts) return;
+      if (selectedYearFilter !== "all" && parts.year !== selectedYearFilter) return;
+      if (selectedMonthFilter !== "all" && parts.month !== selectedMonthFilter) return;
+
+      const key = `${parts.year}|${parts.month}|${parts.day}`;
+      const current = grouped.get(key) || {
+        key,
+        year: parts.year,
+        month: parts.month,
+        day: parts.day,
+        total: 0,
+        completed: 0,
+        totalSeconds: 0,
+      };
+
+      current.total += 1;
+      current.completed += activity.status === STATUS_FINISHED ? 1 : 0;
+      current.totalSeconds += Number(activity.accumulatedSeconds || 0);
+      grouped.set(key, current);
     });
-  }, [areaScopedActivities, selectedDayFilter, selectedNaveFilter]);
+
+    return Array.from(grouped.values()).sort((left, right) => right.day.localeCompare(left.day));
+  }, [playerScopedActivities, selectedMonthFilter, selectedYearFilter, STATUS_FINISHED]);
+
+  const reportYearSections = useMemo(() => {
+    const grouped = new Map();
+
+    playerScopedActivities.forEach((activity) => {
+      const parts = toDateParts(activity.activityDate);
+      if (!parts) return;
+
+      const yearKey = parts.year;
+      const monthKey = parts.month;
+      const dayKey = parts.day;
+
+      if (!grouped.has(yearKey)) {
+        grouped.set(yearKey, {
+          yearKey,
+          total: 0,
+          completed: 0,
+          totalSeconds: 0,
+          months: new Map(),
+        });
+      }
+
+      const yearEntry = grouped.get(yearKey);
+      yearEntry.total += 1;
+      yearEntry.completed += activity.status === STATUS_FINISHED ? 1 : 0;
+      yearEntry.totalSeconds += Number(activity.accumulatedSeconds || 0);
+
+      if (!yearEntry.months.has(monthKey)) {
+        yearEntry.months.set(monthKey, {
+          monthKey,
+          total: 0,
+          completed: 0,
+          totalSeconds: 0,
+          days: new Map(),
+        });
+      }
+
+      const monthEntry = yearEntry.months.get(monthKey);
+      monthEntry.total += 1;
+      monthEntry.completed += activity.status === STATUS_FINISHED ? 1 : 0;
+      monthEntry.totalSeconds += Number(activity.accumulatedSeconds || 0);
+
+      if (!monthEntry.days.has(dayKey)) {
+        monthEntry.days.set(dayKey, {
+          dayKey,
+          total: 0,
+          completed: 0,
+          totalSeconds: 0,
+        });
+      }
+
+      const dayEntry = monthEntry.days.get(dayKey);
+      dayEntry.total += 1;
+      dayEntry.completed += activity.status === STATUS_FINISHED ? 1 : 0;
+      dayEntry.totalSeconds += Number(activity.accumulatedSeconds || 0);
+    });
+
+    const computed = Array.from(grouped.values())
+      .map((yearEntry) => ({
+        ...yearEntry,
+        months: Array.from(yearEntry.months.values())
+          .map((monthEntry) => ({
+            ...monthEntry,
+            days: Array.from(monthEntry.days.values()).sort((left, right) => right.dayKey.localeCompare(left.dayKey)),
+          }))
+          .sort((left, right) => right.monthKey.localeCompare(left.monthKey)),
+      }))
+      .sort((left, right) => right.yearKey.localeCompare(left.yearKey));
+
+    if (computed.length) return computed;
+    return buildFallbackWeekReportSections(effectiveHistoryWeek);
+  }, [STATUS_FINISHED, effectiveHistoryWeek, playerScopedActivities]);
+
+  const activeReportYear = useMemo(() => {
+    if (selectedYearFilter !== "all") return selectedYearFilter;
+    if (openReportYear) return openReportYear;
+    return reportYearSections[0]?.yearKey || "";
+  }, [openReportYear, reportYearSections, selectedYearFilter]);
+
+  const reportMonthSections = useMemo(() => {
+    const activeYearSection = reportYearSections.find((entry) => entry.yearKey === activeReportYear);
+    if (!activeYearSection) return [];
+    if (selectedMonthFilter === "all") return activeYearSection.months;
+    return activeYearSection.months.filter((entry) => entry.monthKey === selectedMonthFilter);
+  }, [activeReportYear, reportYearSections, selectedMonthFilter]);
 
   const totalEffectiveMinutes = useMemo(() => {
     const totalSeconds = visibleHistoryActivities.reduce((sum, activity) => sum + (activity.accumulatedSeconds || 0), 0);
     return totalSeconds / 60;
   }, [visibleHistoryActivities]);
 
+  const selectedDayActivities = useMemo(() => {
+    if (selectedDayFilter === "all") return [];
+    return visibleHistoryActivities.filter((activity) => {
+      const parts = toDateParts(activity.activityDate);
+      return parts?.day === selectedDayFilter;
+    });
+  }, [selectedDayFilter, visibleHistoryActivities]);
+
+  const selectedDaySummary = useMemo(() => {
+    if (!selectedDayActivities.length) return null;
+    const boardSet = new Set();
+    const playerSet = new Set();
+    let totalSeconds = 0;
+    let completed = 0;
+
+    selectedDayActivities.forEach((activity) => {
+      boardSet.add(String(activity.boardName || "General").trim() || "General");
+      if (activity.responsibleId) playerSet.add(activity.responsibleId);
+      totalSeconds += Number(activity.accumulatedSeconds || 0);
+      if (activity.status === STATUS_FINISHED) completed += 1;
+    });
+
+    return {
+      total: selectedDayActivities.length,
+      completed,
+      totalSeconds,
+      boardCount: boardSet.size,
+      playerCount: playerSet.size,
+    };
+  }, [STATUS_FINISHED, selectedDayActivities]);
+
   const completedCount = useMemo(() => {
     return visibleHistoryActivities.filter((activity) => activity.status === STATUS_FINISHED).length;
   }, [visibleHistoryActivities, STATUS_FINISHED]);
+
+  const currentWeekStats = useMemo(() => {
+    if (!effectiveHistoryWeek?.id) return { total: 0, completed: 0, areas: 0 };
+    return weekStatsMap.get(effectiveHistoryWeek.id) || { total: 0, completed: 0, areas: 0 };
+  }, [effectiveHistoryWeek?.id, weekStatsMap]);
+
+  const monthWeekSections = useMemo(() => {
+    const grouped = new Map();
+
+    effectiveWeeks.forEach((week) => {
+      const monthKey = getMonthKeyFromWeek(week);
+      if (!monthKey) return;
+
+      if (!grouped.has(monthKey)) {
+        grouped.set(monthKey, {
+          monthKey,
+          weeks: [],
+        });
+      }
+
+      grouped.get(monthKey).weeks.push(week);
+    });
+
+    return Array.from(grouped.values())
+      .map((entry) => ({
+        ...entry,
+        weeks: [...entry.weeks].sort((left, right) => String(left.startDate || left.id).localeCompare(String(right.startDate || right.id))),
+      }))
+      .sort((left, right) => right.monthKey.localeCompare(left.monthKey));
+  }, [effectiveWeeks]);
+
+  const activeHistoryMonthKey = useMemo(() => {
+    if (openHistoryMonth && monthWeekSections.some((entry) => entry.monthKey === openHistoryMonth)) return openHistoryMonth;
+    return "";
+  }, [monthWeekSections, openHistoryMonth]);
+
+  const activeMonthWeeks = useMemo(() => {
+    return monthWeekSections.find((entry) => entry.monthKey === activeHistoryMonthKey)?.weeks || [];
+  }, [activeHistoryMonthKey, monthWeekSections]);
+
+  const selectedWeekIndexInMonth = useMemo(() => {
+    if (!effectiveHistoryWeek?.id) return -1;
+    return activeMonthWeeks.findIndex((week) => week.id === effectiveHistoryWeek.id);
+  }, [activeMonthWeeks, effectiveHistoryWeek?.id]);
+
+  const weeklyDaySections = useMemo(() => {
+    return buildWeekDaySections(effectiveHistoryWeek, playerScopedActivities, STATUS_FINISHED);
+  }, [STATUS_FINISHED, effectiveHistoryWeek, playerScopedActivities]);
 
   const outsideLimitCount = useMemo(() => {
     return visibleHistoryActivities.filter((activity) => {
@@ -288,38 +789,86 @@ export default function HistorialSemanas({ contexto }) {
     }).length;
   }, [visibleHistoryActivities]);
 
-  const dailyHistoryRows = useMemo(() => {
-    const grouped = new Map();
-
-    areaScopedActivities.forEach((activity) => {
-      const activityDate = new Date(activity.activityDate);
-      const hasValidDate = !Number.isNaN(activityDate.getTime());
-      if (!hasValidDate) return;
-
-      const dateKey = activityDate.toISOString().slice(0, 10);
-      const dayLabel = activity.dayLabel || activityDate.toLocaleDateString("es-MX", { weekday: "long" });
-      const current = grouped.get(dateKey) || {
-        dateKey,
-        dayLabel,
-        total: 0,
-        completed: 0,
-        totalSeconds: 0,
-        outsideLimit: 0,
-      };
-
-      const timeLimitMinutes = resolveHistoryTimeLimitMinutes(activity);
-      current.total += 1;
-      current.completed += activity.status === STATUS_FINISHED ? 1 : 0;
-      current.totalSeconds += Number(activity.accumulatedSeconds || 0);
-      current.outsideLimit += timeLimitMinutes > 0 && Number(activity.accumulatedSeconds || 0) > (timeLimitMinutes * 60) ? 1 : 0;
-
-      grouped.set(dateKey, current);
-    });
-
-    return Array.from(grouped.values()).sort((left, right) => right.dateKey.localeCompare(left.dateKey));
-  }, [areaScopedActivities, STATUS_FINISHED]);
-
   const canEditHistoricalWeekActivities = !useBoardHistoryFallback && Boolean(actionPermissions.manageWeeks || actionPermissions.deleteWeekActivity);
+
+  useEffect(() => {
+    setSelectedAreaTab("all");
+    setSelectedBoardTab("all");
+    setSelectedPlayerTab("all");
+    setSelectedYearFilter("all");
+    setSelectedMonthFilter("all");
+    setSelectedDayFilter("all");
+    setDetailViewMode("dates");
+    setOpenReportMonth("");
+    setOpenReportYear("");
+    setExpandedDayKey("");
+  }, [effectiveHistoryWeek?.id]);
+
+  useEffect(() => {
+    if (!reportMonthSections.length) {
+      setOpenReportMonth("");
+      return;
+    }
+    if (openReportMonth && reportMonthSections.some((entry) => entry.monthKey === openReportMonth)) return;
+    setOpenReportMonth(reportMonthSections[0]?.monthKey || "");
+  }, [openReportMonth, reportMonthSections]);
+
+  useEffect(() => {
+    if (!reportYearSections.length) {
+      setOpenReportYear("");
+      return;
+    }
+    if (activeReportYear && reportYearSections.some((entry) => entry.yearKey === activeReportYear)) return;
+    setOpenReportYear(reportYearSections[0]?.yearKey || "");
+  }, [activeReportYear, reportYearSections]);
+
+  useEffect(() => {
+    if (selectedAreaTab === "all") return;
+    if (!areaTabs.some((tab) => tab.value === selectedAreaTab)) {
+      setSelectedAreaTab("all");
+    }
+  }, [areaTabs, selectedAreaTab]);
+
+  useEffect(() => {
+    setSelectedBoardTab("all");
+    setSelectedPlayerTab("all");
+  }, [selectedAreaTab]);
+
+  useEffect(() => {
+    setSelectedPlayerTab("all");
+  }, [selectedBoardTab]);
+
+  useEffect(() => {
+    if (selectedBoardTab === "all") return;
+    if (!boardTabs.some((tab) => tab.value === selectedBoardTab)) {
+      setSelectedBoardTab("all");
+    }
+  }, [boardTabs, selectedBoardTab]);
+
+  useEffect(() => {
+    if (selectedPlayerTab === "all") return;
+    if (!playerTabs.some((tab) => tab.value === selectedPlayerTab)) {
+      setSelectedPlayerTab("all");
+    }
+  }, [playerTabs, selectedPlayerTab]);
+
+  useEffect(() => {
+    if (selectedYearFilter !== "all" && !yearOptions.includes(selectedYearFilter)) {
+      setSelectedYearFilter("all");
+    }
+  }, [selectedYearFilter, yearOptions]);
+
+  useEffect(() => {
+    if (selectedMonthFilter !== "all" && !monthOptions.includes(selectedMonthFilter)) {
+      setSelectedMonthFilter("all");
+    }
+  }, [monthOptions, selectedMonthFilter]);
+
+  useEffect(() => {
+    if (selectedDayFilter !== "all" && !dayOptions.includes(selectedDayFilter)) {
+      setSelectedDayFilter("all");
+    }
+  }, [dayOptions, selectedDayFilter]);
 
   useEffect(() => {
     if (!deleteWeekModal.open) return undefined;
@@ -362,7 +911,7 @@ export default function HistorialSemanas({ contexto }) {
       <article className="history-summary-card">
         <div>
           <h3>Historial de Semanas</h3>
-          <p>Consulta semanas cerradas y revisa sus actividades con datos reales del histórico.</p>
+          <p>Consulta el histórico operativo con navegación por semana, área, tablero y fecha.</p>
         </div>
         <span className="chip">{effectiveWeeks.length} semanas</span>
       </article>
@@ -373,111 +922,22 @@ export default function HistorialSemanas({ contexto }) {
         <StatTile label="Actividades históricas" value={historyActivities.length} tone="success" />
       </div>
 
-      <section className="page-grid history-grid">
-        <article className="surface-card table-card history-surface-card">
-          <div className="card-header-row">
-            <div>
-              <h3>Todas las semanas</h3>
-              <p>Consulta de solo lectura del histórico operativo.</p>
-            </div>
-            <span className="chip">{effectiveWeeks.length} semanas registradas</span>
+      <article className="surface-card table-card history-detail-card" style={{ display: "grid", gap: "1rem" }}>
+        <div className="card-header-row" style={{ alignItems: "flex-start", gap: "1rem", flexWrap: "wrap" }}>
+          <div>
+            <h3>Historial por mes</h3>
+            <p>Abre un mes y revisa una sola semana a la vez con flechas para avanzar o retroceder.</p>
           </div>
-          <div className="table-wrap">
-            <table className="history-table-clean">
-              <thead>
-                <tr>
-                  <th>Semana</th>
-                  <th>Fechas</th>
-                  <th>Actividades</th>
-                  <th>Completadas</th>
-                  <th>Areas</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {effectiveWeeks.map((week) => {
-                  const weekRows = useBoardHistoryFallback
-                    ? (state.boardWeekHistory || [])
-                      .filter((snapshot) => String(snapshot?.weekKey || "").trim() === week.id)
-                      .flatMap((snapshot) => (snapshot?.rows || []).map((row) => ({ ...row, weekId: week.id })))
-                      .concat(
-                        week.id === state?.boardWeeklyCycle?.activeWeekKey
-                          ? (state.controlBoards || []).flatMap((board) => (board?.rows || []).map((row) => ({ ...row, weekId: week.id })))
-                          : [],
-                      )
-                    : state.activities.filter((activity) => activity.weekId === week.id);
-                  const completed = weekRows.filter((activity) => activity.status === STATUS_FINISHED).length;
-                  return (
-                    <tr key={week.id}>
-                      <td>{week.name}</td>
-                      <td>{week.startDate && week.endDate ? `${formatDate(week.startDate)} - ${formatDate(week.endDate)}` : "Sin rango"}</td>
-                      <td>{weekRows.length}</td>
-                      <td>{completed}</td>
-                      <td>{weekAreaMap.get(week.id) || 0}</td>
-                      <td><span className={week.isActive ? "chip success" : "chip"}>{week.isActive ? "Activa" : "Histórica"}</span></td>
-                      <td>
-                        <div className="history-week-actions">
-                          <button
-                            type="button"
-                            className="icon-button"
-                            onClick={() => {
-                              setSelectedHistoryWeekId(week.id);
-                              if (useBoardHistoryFallback) {
-                                setFallbackHistoryWeekId(week.id);
-                              }
-                            }}
-                          ><Search size={15} /> Ver detalle</button>
-                          {!useBoardHistoryFallback && actionPermissions.deleteWeek ? (
-                            <button
-                              type="button"
-                              className="icon-button danger"
-                              onClick={() => setDeleteWeekModal({ open: true, weekId: week.id, weekName: week.name, isSubmitting: false })}
-                            >
-                              <Trash2 size={15} /> Borrar
-                            </button>
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </article>
+          {effectiveHistoryWeek && canEditHistoricalWeekActivities ? (
+            <button type="button" className="icon-button" onClick={() => setEditWeekId(effectiveHistoryWeek.id)}>
+              Editar actividades
+            </button>
+          ) : null}
+        </div>
 
-        <article className="surface-card table-card detail-panel history-detail-card">
-          <div className="card-header-row">
-            <div>
-              <h3>{effectiveHistoryWeek?.name || "Selecciona una semana"}</h3>
-              <p>Vista de solo lectura del desempeño semanal.</p>
-            </div>
-            {effectiveHistoryWeek && canEditHistoricalWeekActivities ? (
-              <button type="button" className="icon-button" onClick={() => setEditWeekId(effectiveHistoryWeek.id)}>
-                Editar actividades
-              </button>
-            ) : null}
-          </div>
-          {effectiveHistoryWeek ? (
-            <>
-              <div className="history-area-tabs">
-                <button
-                  type="button"
-                  className={`tab ${detailViewMode === "activities" ? "active" : ""}`}
-                  onClick={() => setDetailViewMode("activities")}
-                >
-                  Actividades
-                </button>
-                <button
-                  type="button"
-                  className={`tab ${detailViewMode === "days" ? "active" : ""}`}
-                  onClick={() => setDetailViewMode("days")}
-                >
-                  Días anteriores
-                </button>
-              </div>
-
+        {effectiveHistoryWeek ? (
+          <>
+            <div style={{ display: "grid", gap: "0.75rem" }}>
               <div className="history-area-tabs">
                 <button
                   type="button"
@@ -488,8 +948,8 @@ export default function HistorialSemanas({ contexto }) {
                 </button>
                 {areaTabs.map((tab) => (
                   <button
-                    type="button"
                     key={tab.value}
+                    type="button"
                     className={`tab ${selectedAreaTab === tab.value ? "active" : ""}`}
                     onClick={() => setSelectedAreaTab(tab.value)}
                   >
@@ -498,134 +958,220 @@ export default function HistorialSemanas({ contexto }) {
                 ))}
               </div>
 
-              <div className="history-detail-filters">
-                <label className="board-top-select min-width">
-                  <span>Dia</span>
-                  <select value={selectedDayFilter} onChange={(event) => setSelectedDayFilter(event.target.value)}>
-                    <option value="all">Todos</option>
-                    {dayOptions.map((day) => <option key={day} value={day}>{day}</option>)}
-                  </select>
-                </label>
-
-                <label className="board-top-select min-width">
-                  <span>Nave</span>
-                  <select value={selectedNaveFilter} onChange={(event) => setSelectedNaveFilter(event.target.value)}>
-                    <option value="all">Todas</option>
-                    {naveOptions.map((nave) => <option key={nave} value={nave}>{nave}</option>)}
-                  </select>
-                </label>
+              <div className="history-area-tabs" style={{ paddingLeft: "0.35rem" }}>
+                <button
+                  type="button"
+                  className={`tab ${selectedBoardTab === "all" ? "active" : ""}`}
+                  onClick={() => setSelectedBoardTab("all")}
+                >
+                  Todos los tableros ({areaScopedActivities.length})
+                </button>
+                {boardTabs.map((tab) => (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    className={`tab ${selectedBoardTab === tab.value ? "active" : ""}`}
+                    onClick={() => setSelectedBoardTab(tab.value)}
+                  >
+                    {tab.label} ({tab.total})
+                  </button>
+                ))}
               </div>
 
-              {detailViewMode === "activities" ? (
-                <>
-                  <div className="metric-grid three-up">
-                    <MetricCard label="Tiempo total efectivo" value={formatMinutes(totalEffectiveMinutes)} hint="Suma total del filtro actual" />
-                    <MetricCard label="Actividades completadas" value={String(completedCount)} hint="Terminadas en el filtro actual" />
-                    <MetricCard label="Fuera de tiempo limite" value={String(outsideLimitCount)} hint="Desviaciones detectadas" tone="danger" />
-                  </div>
+              <div className="history-area-tabs" style={{ paddingLeft: "0.7rem" }}>
+                <button
+                  type="button"
+                  className={`tab ${selectedPlayerTab === "all" ? "active" : ""}`}
+                  onClick={() => setSelectedPlayerTab("all")}
+                >
+                  Todos los players ({boardScopedActivities.length})
+                </button>
+                {playerTabs.map((tab) => (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    className={`tab ${selectedPlayerTab === tab.value ? "active" : ""}`}
+                    onClick={() => setSelectedPlayerTab(tab.value)}
+                  >
+                    {tab.label} ({tab.total})
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                  <div className="table-wrap compact-table">
-                    <table className="history-table-clean">
-                      <thead>
-                        <tr>
-                          <th>Fecha</th>
-                          <th>Dia</th>
-                          <th>Area</th>
-                          <th>Nave</th>
-                          <th>Actividad</th>
-                          <th>Player</th>
-                          <th>Estado</th>
-                          <th>Inicio</th>
-                          <th>Fin</th>
-                          <th>Tiempo</th>
-                          <th>Límite</th>
-                          <th>Pausas</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {visibleHistoryActivities.map((activity) => (
-                          <tr key={activity.id}>
-                            <td>{formatDate(activity.activityDate)}</td>
-                            <td>{activity.dayLabel}</td>
-                            <td>{activity.areaRoot}</td>
-                            <td>{activity.naveLabel}</td>
-                            <td>{resolveHistoryActivityLabel(activity)}</td>
-                            <td title={userMap.get(activity.responsibleId)?.name || "Sin player"}>{userMap.get(activity.responsibleId)?.name || "Sin player"}</td>
-                            <td><StatusBadge status={activity.status} /></td>
-                            <td>{formatTime(activity.startTime)}</td>
-                            <td>{formatTime(activity.endTime)}</td>
-                            <td>{formatDurationClock(activity.accumulatedSeconds)}</td>
-                            <td>{resolveHistoryTimeLimitMinutes(activity) > 0 ? `${resolveHistoryTimeLimitMinutes(activity)} min` : "N/A"}</td>
-                            <td>
-                              {activity.derivedFromBoardHistory
-                                ? (activity.lastPauseReason || "Sin detalle")
-                                : <button type="button" className="icon-button" onClick={() => setHistoryPauseActivityId(activity.id)}>Ver pausas</button>}
-                            </td>
-                          </tr>
-                        ))}
-                        {!visibleHistoryActivities.length ? (
-                          <tr>
-                            <td colSpan={12}>
-                              <span className="subtle-line">No hay actividades para el area, dia o nave seleccionados.</span>
-                            </td>
-                          </tr>
-                        ) : null}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              ) : (
-                <div className="table-wrap compact-table">
-                  <table className="history-table-clean">
-                    <thead>
-                      <tr>
-                        <th>Fecha</th>
-                        <th>Dia</th>
-                        <th>Actividades</th>
-                        <th>Completadas</th>
-                        <th>Tiempo total</th>
-                        <th>Fuera de tiempo</th>
-                        <th>Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dailyHistoryRows.map((dayRow) => (
-                        <tr key={dayRow.dateKey}>
-                          <td>{formatDate(`${dayRow.dateKey}T00:00:00.000Z`)}</td>
-                          <td>{dayRow.dayLabel}</td>
-                          <td>{dayRow.total}</td>
-                          <td>{dayRow.completed}</td>
-                          <td>{formatDurationClock(dayRow.totalSeconds)}</td>
-                          <td>{dayRow.outsideLimit}</td>
-                          <td>
-                            <button
-                              type="button"
-                              className="icon-button"
-                              onClick={() => {
-                                setSelectedDayFilter(dayRow.dayLabel);
-                                setDetailViewMode("activities");
-                              }}
-                            >
-                              Ver actividades
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                      {!dailyHistoryRows.length ? (
-                        <tr>
-                          <td colSpan={7}>
-                            <span className="subtle-line">No hay días históricos para el filtro seleccionado.</span>
-                          </td>
-                        </tr>
-                      ) : null}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          ) : null}
-        </article>
-      </section>
+            <div style={{ display: "grid", gap: "0.9rem" }}>
+              {monthWeekSections.map((monthEntry) => {
+                const isOpen = activeHistoryMonthKey === monthEntry.monthKey;
+                const monthWeekIsSelected = monthEntry.weeks.some((week) => week.id === effectiveHistoryWeek.id);
+                const shownWeek = monthWeekIsSelected ? effectiveHistoryWeek : monthEntry.weeks[0] || null;
+
+                return (
+                  <article key={monthEntry.monthKey} className="surface-card" style={{ padding: "1rem 1.1rem", display: "grid", gap: "0.9rem" }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isOpen) {
+                          setOpenHistoryMonth("");
+                          return;
+                        }
+                        setOpenHistoryMonth(monthEntry.monthKey);
+                        if (shownWeek?.id && shownWeek.id !== effectiveHistoryWeek.id) {
+                          selectWeek(shownWeek.id);
+                        }
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "1rem",
+                        width: "100%",
+                        background: "transparent",
+                        border: "none",
+                        padding: 0,
+                        cursor: "pointer",
+                        textAlign: "left",
+                      }}
+                    >
+                      <div>
+                        <h3 style={{ margin: 0, color: "#032121", fontSize: "1rem" }}>{monthLabel(monthEntry.monthKey)}</h3>
+                        <p className="subtle-line" style={{ margin: "0.25rem 0 0" }}>{monthEntry.weeks.length} semanas registradas</p>
+                      </div>
+                      <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                        <span className="chip">{monthEntry.weeks.length} semanas</span>
+                        <span className="chip primary">{isOpen ? "Ocultar" : "Ver mes"}</span>
+                      </div>
+                    </button>
+
+                    {isOpen && shownWeek ? (
+                      <>
+                        <div className="history-summary-card" style={{ marginBottom: 0 }}>
+                          <button
+                            type="button"
+                            className="icon-button"
+                            onClick={() => selectWeek(activeMonthWeeks[selectedWeekIndexInMonth - 1]?.id)}
+                            disabled={selectedWeekIndexInMonth <= 0}
+                          >
+                            ← Semana anterior
+                          </button>
+                          <div>
+                            <h3>{effectiveHistoryWeek.name}</h3>
+                            <p>{effectiveHistoryWeek.startDate && effectiveHistoryWeek.endDate ? `${formatDate(effectiveHistoryWeek.startDate)} - ${formatDate(effectiveHistoryWeek.endDate)}` : "Semana sin rango definido"}</p>
+                          </div>
+                          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                            <span className="chip">{currentWeekStats.total} registros</span>
+                            <span className="chip">{currentWeekStats.completed} completadas</span>
+                            <span className="chip">{formatDurationClock(historyActivities.reduce((sum, activity) => sum + Number(activity.accumulatedSeconds || 0), 0))}</span>
+                          </div>
+                          <button
+                            type="button"
+                            className="icon-button"
+                            onClick={() => selectWeek(activeMonthWeeks[selectedWeekIndexInMonth + 1]?.id)}
+                            disabled={selectedWeekIndexInMonth < 0 || selectedWeekIndexInMonth >= activeMonthWeeks.length - 1}
+                          >
+                            Semana siguiente →
+                          </button>
+                        </div>
+
+                        <div style={{ display: "grid", gap: "0.9rem" }}>
+                          {weeklyDaySections.map((dayEntry) => {
+                            const isExpanded = expandedDayKey === dayEntry.dayKey;
+                            const weekday = new Date(`${dayEntry.dayKey}T00:00:00`).toLocaleDateString("es-MX", { weekday: "long" });
+                            const weekdayLabel = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+                            return (
+                              <article key={dayEntry.dayKey} className="surface-card" style={{ padding: "1rem 1.1rem", display: "grid", gap: "0.9rem" }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedDayKey(isExpanded ? "" : dayEntry.dayKey)}
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    gap: "1rem",
+                                    width: "100%",
+                                    background: "transparent",
+                                    border: "none",
+                                    padding: 0,
+                                    cursor: "pointer",
+                                    textAlign: "left",
+                                  }}
+                                >
+                                  <div>
+                                    <h3 style={{ margin: 0, color: "#032121", fontSize: "1rem" }}>{weekdayLabel}</h3>
+                                    <p className="subtle-line" style={{ margin: "0.25rem 0 0" }}>{formatDate(`${dayEntry.dayKey}T00:00:00.000Z`)}</p>
+                                  </div>
+                                  <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                                    <span className="chip">{dayEntry.total} actividades</span>
+                                    <span className="chip">{dayEntry.completed} completadas</span>
+                                    <span className="chip">{formatDurationClock(dayEntry.totalSeconds)}</span>
+                                    <span className="chip primary">{isExpanded ? "Ocultar" : "Ver día"}</span>
+                                  </div>
+                                </button>
+
+                                {isExpanded ? (
+                                  dayEntry.activities.length ? (
+                                    <div className="table-wrap compact-table">
+                                      <table className="history-table-clean">
+                                        <thead>
+                                          <tr>
+                                            <th>Área</th>
+                                            <th>Tablero</th>
+                                            <th>Actividad</th>
+                                            <th>Player</th>
+                                            <th>Estado</th>
+                                            <th>Inicio</th>
+                                            <th>Fin</th>
+                                            <th>Tiempo</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {dayEntry.activities.map((activity) => (
+                                            <tr key={activity.id}>
+                                              <td>{activity.areaRoot}</td>
+                                              <td>{activity.boardName || "General"}</td>
+                                              <td>{resolveHistoryActivityLabel(activity)}</td>
+                                              <td title={resolveHistoryPlayerLabel(activity)}>{resolveHistoryPlayerLabel(activity)}</td>
+                                              <td><StatusBadge status={activity.status} /></td>
+                                              <td>{formatTime(activity.startTime)}</td>
+                                              <td>{formatTime(activity.endTime)}</td>
+                                              <td>{formatDurationClock(activity.accumulatedSeconds)}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  ) : (
+                                    <span className="subtle-line">No hay actividades registradas para este día.</span>
+                                  )
+                                ) : null}
+                              </article>
+                            );
+                          })}
+                        </div>
+                      </>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+
+            {!useBoardHistoryFallback && actionPermissions.deleteWeek && effectiveHistoryWeek ? (
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  className="icon-button danger"
+                  onClick={() => setDeleteWeekModal({ open: true, weekId: effectiveHistoryWeek.id, weekName: effectiveHistoryWeek.name, isSubmitting: false })}
+                >
+                  <Trash2 size={15} /> Borrar semana
+                </button>
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <article className="surface-card" style={{ padding: "1rem 1.2rem" }}>
+            <span className="subtle-line">Selecciona una semana para ver el historial.</span>
+          </article>
+        )}
+      </article>
 
       {deleteWeekModal.open ? createPortal(
         <div role="dialog" aria-modal="true" aria-labelledby="delete-week-title" style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", padding: "1rem" }}>

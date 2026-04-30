@@ -4,6 +4,7 @@ import ReturnsReconditionScanner from "../features/boards/ReturnsReconditionScan
 import { BoardEditableInventoryPropertyInput, BoardEvidenceCell, BoardMultiSelectDetailCell } from "../components/BoardRuntimeFieldCells.jsx";
 import {
   formatBoardRowAssigneeLabel,
+  getLivePauseOverflowSeconds,
   getBoardRowResponsibleIds,
   getOperationalElapsedSeconds,
   normalizeSystemOperationalSettings,
@@ -657,7 +658,7 @@ export default function MisTableros({ contexto }) {
     const persistedPauseLogs = Array.isArray(rowRecord.pauseLogs) ? rowRecord.pauseLogs : [];
     const persistedPauseSeconds = persistedPauseLogs.reduce((sum, entry) => sum + Math.max(0, Number(entry?.pauseDurationSeconds || 0)), 0);
     const livePauseSeconds = rowRecord.status === STATUS_PAUSED && rowRecord.pauseStartedAt
-      ? Math.max(0, getOperationalElapsedSeconds(rowRecord.pauseStartedAt, referenceNow, pauseState, rowRecord.cleaningSite))
+      ? Math.max(0, getLivePauseOverflowSeconds(rowRecord, referenceNow, pauseState))
       : 0;
     return Math.max(0, persistedPauseSeconds + livePauseSeconds);
   };
@@ -1655,7 +1656,7 @@ export default function MisTableros({ contexto }) {
                             });
                             const totalPauseSeconds = nextPauseLogs.reduce((sum, logEntry) => sum + Math.max(0, Number(logEntry?.pauseDurationSeconds || 0)), 0);
                             const livePauseSecondsForRow = pauseDetailsRow?.status === STATUS_PAUSED && pauseDetailsRow?.pauseStartedAt
-                              ? Math.max(0, getOperationalElapsedSeconds(pauseDetailsRow.pauseStartedAt, now, pauseState, pauseDetailsRow?.cleaningSite))
+                              ? Math.max(0, getLivePauseOverflowSeconds(pauseDetailsRow, now, pauseState))
                               : 0;
                             updateBoardRowTimeOverride(selectedCustomBoard.id, pauseDetailsRow.id, {
                               pauseLogs: nextPauseLogs,

@@ -2007,11 +2007,12 @@ function App() { // NOSONAR
     const boardMap = new Map((dashboardVisibleControlBoards || []).map((board) => [board.id, board]));
     const productKeywords = ["producto", "sku", "articulo", "item", "codigo", "clave", "material", "modelo"];
     const timeKeywords = ["tiempo", "duracion", "min", "revision", "ciclo", "proceso"];
-    const piecesKeywords = ["pieza", "pzas", "pz", "cantidad", "unidades", "qty", "total pz"];
-    const piecesReceivedKeywords = ["recib", "recep", "entrada", "ingreso", "total pz"];
-    const piecesMermaKeywords = ["merma", "mala", "dano", "danad", "defect", "rechazo"];
+    const piecesKeywords = ["pieza", "pzas", "pz", "cantidad", "unidades", "qty", "total pz", "contad", "esperad", "buen estado"];
+    const piecesReceivedKeywords = ["recib", "recep", "entrada", "ingreso", "total pz", "esperad", "contad"];
+    const piecesMermaKeywords = ["merma", "mala", "dano", "danad", "defect", "rechazo", "faltan"];
     const piecesAptasKeywords = ["apta", "buen estado", "real", "ok", "liberada", "buenas"];
     const palletKeywords = ["tarima", "pallet", "palet"];
+    const processKeywords = ["tipo de flujo", "proceso", "flujo", "clasificacion"];
     const ignoredTimeLabelKeywords = ["hora inicio", "hora fin", "inicio", "fin"];
     const aggregated = new Map();
     const inventoryItemById = new Map((state.inventoryItems || []).map((item) => [String(item.id || ""), item]));
@@ -2027,6 +2028,13 @@ function App() { // NOSONAR
     function parseNumericQuantity(rawValue) {
       if (typeof rawValue === "number") {
         return Number.isFinite(rawValue) ? rawValue : null;
+      }
+      if (rawValue && typeof rawValue === "object") {
+        const objectCandidates = [rawValue.value, rawValue.total, rawValue.count, rawValue.amount, rawValue.quantity];
+        for (const candidate of objectCandidates) {
+          const parsedCandidate = parseNumericQuantity(candidate);
+          if (Number.isFinite(parsedCandidate)) return parsedCandidate;
+        }
       }
       const text = String(rawValue || "").trim();
       if (!text) return null;
@@ -2120,6 +2128,48 @@ function App() { // NOSONAR
       return name || code || raw;
     }
 
+    function scorePieceCandidate(normalizedLabel) {
+      let score = 0;
+      if (normalizedLabel.includes("contad")) score += 6;
+      if (normalizedLabel.includes("total pz")) score += 5;
+      if (normalizedLabel.includes("cantidad")) score += 4;
+      if (normalizedLabel.includes("esperad")) score += 4;
+      if (normalizedLabel.includes("piezas")) score += 3;
+      if (normalizedLabel.includes("unidades")) score += 2;
+      if (normalizedLabel.includes("por caja")) score -= 4;
+      if (normalizedLabel.includes("merma")) score -= 5;
+      if (normalizedLabel.includes("faltan")) score -= 4;
+      return score;
+    }
+
+    function scoreReceivedCandidate(normalizedLabel) {
+      let score = 0;
+      if (normalizedLabel.includes("recib")) score += 6;
+      if (normalizedLabel.includes("entrada") || normalizedLabel.includes("ingreso")) score += 5;
+      if (normalizedLabel.includes("esperad")) score += 4;
+      if (normalizedLabel.includes("contad")) score += 3;
+      if (normalizedLabel.includes("por caja")) score -= 3;
+      return score;
+    }
+
+    function scoreMermaCandidate(normalizedLabel) {
+      let score = 0;
+      if (normalizedLabel.includes("merma")) score += 8;
+      if (normalizedLabel.includes("rechazo") || normalizedLabel.includes("defect")) score += 6;
+      if (normalizedLabel.includes("faltan")) score += 3;
+      return score;
+    }
+
+    function scoreAptasCandidate(normalizedLabel) {
+      let score = 0;
+      if (normalizedLabel.includes("buen estado")) score += 8;
+      if (normalizedLabel.includes("apta") || normalizedLabel.includes("buenas")) score += 7;
+      if (normalizedLabel.includes("liberad") || normalizedLabel.includes("ok")) score += 5;
+      if (normalizedLabel.includes("total pz")) score += 2;
+      if (normalizedLabel.includes("merma") || normalizedLabel.includes("faltan")) score -= 6;
+      return score;
+    }
+
     inventoryRecords.forEach((record) => {
       const board = boardMap.get(record.boardId);
       if (!board) return;
@@ -2138,12 +2188,16 @@ function App() { // NOSONAR
       let piecesMermaValue = null;
       let piecesAptasValue = null;
       let tarimaValue = "";
+      let processValue = "";
+      let bestPiecesScore = Number.NEGATIVE_INFINITY;
+      let bestReceivedScore = Number.NEGATIVE_INFINITY;
+      let bestMermaScore = Number.NEGATIVE_INFINITY;
+      let bestAptasScore = Number.NEGATIVE_INFINITY;
 
       (board.fields || board.columns || []).forEach((field) => {
         const fieldLabel = String(field?.label || "").trim();
         const normalizedLabel = normalizeToken(fieldLabel);
         const rawValue = row.values?.[field.id];
-
         const normalizedType = normalizeToken(field?.type || "");
 
         if (!productValue && (
@@ -2165,17 +2219,33 @@ function App() { // NOSONAR
 
         const parsedPieces = parseNumericQuantity(rawValue);
         if (Number.isFinite(parsedPieces) && parsedPieces >= 0) {
-          if (piecesMermaValue === null && piecesMermaKeywords.some((token) => normalizedLabel.includes(token))) {
-            piecesMermaValue = parsedPieces;
+          if (piecesMermaKeywords.some((token) => normalizedLabel.includes(token))) {
+            const score = scoreMermaCandidate(normalizedLabel);
+            if (score >= bestMermaScore) {
+              bestMermaScore = score;
+              piecesMermaValue = parsedPieces;
+            }
           }
-          if (piecesAptasValue === null && piecesAptasKeywords.some((token) => normalizedLabel.includes(token))) {
-            piecesAptasValue = parsedPieces;
+          if (piecesAptasKeywords.some((token) => normalizedLabel.includes(token))) {
+            const score = scoreAptasCandidate(normalizedLabel);
+            if (score >= bestAptasScore) {
+              bestAptasScore = score;
+              piecesAptasValue = parsedPieces;
+            }
           }
-          if (piecesReceivedValue === null && piecesReceivedKeywords.some((token) => normalizedLabel.includes(token))) {
-            piecesReceivedValue = parsedPieces;
+          if (piecesReceivedKeywords.some((token) => normalizedLabel.includes(token))) {
+            const score = scoreReceivedCandidate(normalizedLabel);
+            if (score >= bestReceivedScore) {
+              bestReceivedScore = score;
+              piecesReceivedValue = parsedPieces;
+            }
           }
-          if (piecesValue === null && piecesKeywords.some((token) => normalizedLabel.includes(token))) {
-            piecesValue = parsedPieces;
+          if (piecesKeywords.some((token) => normalizedLabel.includes(token))) {
+            const score = scorePieceCandidate(normalizedLabel);
+            if (score >= bestPiecesScore) {
+              bestPiecesScore = score;
+              piecesValue = parsedPieces;
+            }
           }
         }
 
@@ -2183,7 +2253,16 @@ function App() { // NOSONAR
           const candidateTarima = String(rawValue || "").trim();
           if (candidateTarima) tarimaValue = candidateTarima;
         }
+
+        if (!processValue && processKeywords.some((token) => normalizedLabel.includes(token))) {
+          const processCandidate = String(rawValue || "").trim();
+          if (processCandidate) processValue = processCandidate;
+        }
       });
+
+      if (!processValue) {
+        processValue = String(board?.settings?.operationalContextValue || board?.settings?.operationalContextLabel || "General").trim() || "General";
+      }
 
       if (!Number.isFinite(timeMinutes) && Number.isFinite(fallbackTimeMinutes)) {
         timeMinutes = fallbackTimeMinutes;
@@ -2194,20 +2273,27 @@ function App() { // NOSONAR
       if (!Number.isFinite(piecesValue)) {
         if (Number.isFinite(piecesReceivedValue)) {
           piecesValue = piecesReceivedValue;
-        } else if (Number.isFinite(piecesAptasValue)) {
-          piecesValue = piecesAptasValue;
+        } else if (Number.isFinite(piecesAptasValue) || Number.isFinite(piecesMermaValue)) {
+          piecesValue = (Number.isFinite(piecesAptasValue) ? piecesAptasValue : 0) + (Number.isFinite(piecesMermaValue) ? piecesMermaValue : 0);
         }
+      }
+
+      if (Number.isFinite(piecesValue) && piecesValue === 0) {
+        const nonZeroFallback = [piecesReceivedValue, piecesAptasValue, piecesMermaValue].find((value) => Number.isFinite(value) && value > 0);
+        if (Number.isFinite(nonZeroFallback)) piecesValue = nonZeroFallback;
       }
 
       const normalizedProduct = normalizeToken(productRawValue || productValue);
       const normalizedTarima = normalizeToken(tarimaValue || "sin-tarima");
-      const key = `${record.area}::${board.id}::${normalizedProduct}::${normalizedTarima}`;
+      const normalizedProcess = normalizeToken(processValue || "general");
+      const key = `${record.area}::${board.id}::${normalizedProcess}::${normalizedProduct}::${normalizedTarima}`;
       if (!aggregated.has(key)) {
         aggregated.set(key, {
           key,
           area: record.area || "Sin área",
           boardId: board.id,
           boardName: board.name || record.boardName || "Tablero",
+          process: processValue || "General",
           product: productValue,
           tarima: tarimaValue || "Sin tarima",
           count: 0,
@@ -2244,6 +2330,8 @@ function App() { // NOSONAR
       .sort((left, right) => {
         if (right.totalMinutes !== left.totalMinutes) return right.totalMinutes - left.totalMinutes;
         if (right.averageMinutes !== left.averageMinutes) return right.averageMinutes - left.averageMinutes;
+        if (left.boardName !== right.boardName) return left.boardName.localeCompare(right.boardName, "es-MX");
+        if (left.process !== right.process) return left.process.localeCompare(right.process, "es-MX");
         return left.product.localeCompare(right.product, "es-MX");
       });
   }, [dashboardVisibleControlBoards, filteredDashboardRecords, state.inventoryItems]);

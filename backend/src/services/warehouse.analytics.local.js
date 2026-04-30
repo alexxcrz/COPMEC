@@ -18,6 +18,15 @@ function toIsoOrNull(value) {
   return date.toISOString();
 }
 
+function getBoardRowDateFieldIso(board, row) {
+  const dateField = (board?.fields || []).find((field) => field?.type === "date");
+  const rawValue = dateField ? String(row?.values?.[dateField.id] || "").trim() : "";
+  if (!rawValue) return null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(rawValue)
+    ? toIsoOrNull(`${rawValue}T00:00:00`)
+    : toIsoOrNull(rawValue);
+}
+
 function normalizeStatus(rawStatus) {
   const raw = String(rawStatus || "").trim().toLowerCase();
   if (["c", "terminado", "finalizado", "finished"].includes(raw)) return "Finalizado";
@@ -182,7 +191,9 @@ function mapBoardRowsAsActivities(state, nowIso, catalogByName) {
   (state?.controlBoards || []).forEach((board) => {
     (board?.rows || []).forEach((row) => {
       const status = normalizeStatus(row.status);
-      const startIso = toIsoOrNull(row.startTime || row.createdAt);
+      const rowDayIso = getBoardRowDateFieldIso(board, row);
+      const fallbackStartIso = rowDayIso || toIsoOrNull(row.createdAt);
+      const startIso = toIsoOrNull(row.startTime || fallbackStartIso);
       const endIso = toIsoOrNull(
         row.endTime
         || (status === "Pausado" && row.startTime ? new Date(new Date(row.startTime).getTime() + (clampNonNegativeInteger(row.accumulatedSeconds) * 1000)).toISOString() : null)
@@ -198,7 +209,7 @@ function mapBoardRowsAsActivities(state, nowIso, catalogByName) {
         actividad_ref_id: row.id,
         board_id: board.id,
         usuario_id: row.responsibleId || null,
-        area_id: null,
+        area_id: String(board?.settings?.ownerArea || board?.ownerArea || "").trim() || null,
         estado_raw: row.status || "",
         estado_norm: status,
         fecha_inicio: startIso,

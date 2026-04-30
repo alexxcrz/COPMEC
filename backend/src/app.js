@@ -46,7 +46,9 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],        // Vite inline styles
+      // Keep inline styles for Vite and allow Google Translate injected stylesheet.
+      styleSrc: ["'self'", "'unsafe-inline'", "https://www.gstatic.com"],
+      styleSrcElem: ["'self'", "'unsafe-inline'", "https://www.gstatic.com"],
       imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com", "https://*.onrender.com", "https://cdn.jsdelivr.net"],
       mediaSrc: ["'self'", "blob:", "data:", "https://*.onrender.com"],
       connectSrc: ["'self'", "ws:", "wss:", "blob:"],
