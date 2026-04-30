@@ -966,11 +966,17 @@ export default function PanelIndicadores({ contexto }) {
     }
   }
 
+  const hasActivityUsage = Number(dashboardMetrics.activityRecords || 0) > 0;
+  const hasBoardUsage = Number(dashboardMetrics.boardRecords || 0) > 0;
+  const hasAnyUsage = Number(dashboardMetrics.total || 0) > 0;
+  const hasPauseUsage = Number(dashboardMetrics.pauseCount || 0) > 0 || Number(dashboardMetrics.pauseHours || 0) > 0 || Number(dashboardMetrics.paused || 0) > 0;
+  const hasSlaUsage = Number(dashboardMetrics.withinPercent || 0) > 0 || Number(dashboardMetrics.outsidePercent || 0) > 0 || Number(dashboardMetrics.exceeded?.length || 0) > 0;
+
   const executiveKpiCards = [
-    { title: "Registros analizados", value: String(dashboardMetrics.total), subtitle: "actividades y filas dentro del filtro", tone: "cyan", icon: ClipboardList },
-    { title: "Cerrados", value: String(dashboardMetrics.completed), subtitle: "registros terminados", tone: "green", icon: CircleCheckBig },
-    { title: "En curso", value: String(dashboardMetrics.running), subtitle: "operaciones activas", tone: "amber", icon: Play },
-    { title: "Pausados", value: String(dashboardMetrics.paused), subtitle: "registros detenidos", tone: "red", icon: PauseCircle },
+    { title: "Registros analizados", value: String(dashboardMetrics.total), subtitle: "actividades y filas dentro del filtro", tone: "cyan", icon: ClipboardList, visible: true },
+    { title: "Cerrados", value: String(dashboardMetrics.completed), subtitle: "registros terminados", tone: "green", icon: CircleCheckBig, visible: true },
+    { title: "En curso", value: String(dashboardMetrics.running), subtitle: "operaciones activas", tone: "amber", icon: Play, visible: true },
+    { title: "Pausados", value: String(dashboardMetrics.paused), subtitle: "registros detenidos", tone: "red", icon: PauseCircle, visible: true },
     {
       title: "Tiempo promedio",
       value: `${formatMetricNumber(dashboardMetrics.averageMinutes, 2)} min`,
@@ -978,6 +984,7 @@ export default function PanelIndicadores({ contexto }) {
       subtitle: "promedio de cierre",
       tone: "cyan",
       icon: Gauge,
+      visible: hasAnyUsage,
     },
     {
       title: "Mediana",
@@ -986,20 +993,21 @@ export default function PanelIndicadores({ contexto }) {
       subtitle: "punto medio del ciclo",
       tone: "slate",
       icon: Clock3,
+      visible: hasAnyUsage,
     },
-    { title: "Horas productivas", value: `${formatMetricNumber(dashboardMetrics.productionHours ?? dashboardMetrics.totalHours, 1)} h`, subtitle: "tiempo real de producción", tone: "green", icon: CalendarDays },
-    { title: "Horas en pausa", value: `${formatMetricNumber(dashboardMetrics.pauseHours, 1)} h`, subtitle: "tiempo no productivo acumulado", tone: "red", icon: OctagonAlert },
-    { title: "Eficiencia operativa", value: `${formatMetricNumber(dashboardMetrics.efficiency ?? 100, 1)}%`, subtitle: "producción / tiempo total", tone: dashboardMetrics.efficiency >= 80 ? "lime" : dashboardMetrics.efficiency >= 60 ? "amber" : "red", icon: Zap },
-    { title: "Cumplimiento SLA", value: `${formatMetricNumber(dashboardMetrics.withinPercent, 1)}%`, subtitle: "porcentaje dentro del límite", tone: "lime", icon: Zap },
-    { title: "Fuera de SLA", value: `${formatMetricNumber(dashboardMetrics.outsidePercent, 1)}%`, subtitle: "proporción fuera del objetivo", tone: "amber", icon: AlertTriangle },
-    { title: "Pausas registradas", value: String(dashboardMetrics.pauseCount), subtitle: "interrupciones con log", tone: "slate", icon: Pause },
-    { title: "Áreas activas", value: String(dashboardMetrics.areaCount), subtitle: "áreas con movimiento operativo", tone: "cyan", icon: Users },
-    { title: "Catálogo activo", value: String(dashboardMetrics.catalogActiveCount), subtitle: "actividades disponibles", tone: "slate", icon: ClipboardList },
-    { title: "Obligatorias", value: String(dashboardMetrics.catalogMandatoryCount), subtitle: "actividades base", tone: "green", icon: CircleCheckBig },
-    { title: "Ocasionales", value: String(dashboardMetrics.catalogOptionalCount), subtitle: "actividades complementarias", tone: "amber", icon: PauseCircle },
-    { title: "Horas totales", value: `${formatMetricNumber(dashboardMetrics.totalHours, 1)} h`, subtitle: "tiempo completado acumulado", tone: "cyan", icon: CalendarDays },
-    { title: "Frecuencias activas", value: String(dashboardMetrics.catalogFrequencyTypes), subtitle: "tipos de periodicidad en uso", tone: "cyan", icon: CalendarDays },
-  ];
+    { title: "Horas productivas", value: `${formatMetricNumber(dashboardMetrics.productionHours ?? dashboardMetrics.totalHours, 1)} h`, subtitle: "tiempo real de producción", tone: "green", icon: CalendarDays, visible: hasAnyUsage },
+    { title: "Horas en pausa", value: `${formatMetricNumber(dashboardMetrics.pauseHours, 1)} h`, subtitle: "tiempo no productivo acumulado", tone: "red", icon: OctagonAlert, visible: hasPauseUsage },
+    { title: "Eficiencia operativa", value: `${formatMetricNumber(dashboardMetrics.efficiency ?? 100, 1)}%`, subtitle: "producción / tiempo total", tone: dashboardMetrics.efficiency >= 80 ? "lime" : dashboardMetrics.efficiency >= 60 ? "amber" : "red", icon: Zap, visible: hasAnyUsage },
+    { title: "Cumplimiento SLA", value: `${formatMetricNumber(dashboardMetrics.withinPercent, 1)}%`, subtitle: "porcentaje dentro del límite", tone: "lime", icon: Zap, visible: hasSlaUsage && hasActivityUsage },
+    { title: "Fuera de SLA", value: `${formatMetricNumber(dashboardMetrics.outsidePercent, 1)}%`, subtitle: "proporción fuera del objetivo", tone: "amber", icon: AlertTriangle, visible: hasSlaUsage && hasActivityUsage },
+    { title: "Pausas registradas", value: String(dashboardMetrics.pauseCount), subtitle: "interrupciones con log", tone: "slate", icon: Pause, visible: hasPauseUsage },
+    { title: "Áreas activas", value: String(dashboardMetrics.areaCount), subtitle: "áreas con movimiento operativo", tone: "cyan", icon: Users, visible: hasAnyUsage },
+    { title: "Catálogo activo", value: String(dashboardMetrics.catalogActiveCount), subtitle: "actividades disponibles", tone: "slate", icon: ClipboardList, visible: hasActivityUsage },
+    { title: "Obligatorias", value: String(dashboardMetrics.catalogMandatoryCount), subtitle: "actividades base", tone: "green", icon: CircleCheckBig, visible: hasActivityUsage },
+    { title: "Ocasionales", value: String(dashboardMetrics.catalogOptionalCount), subtitle: "actividades complementarias", tone: "amber", icon: PauseCircle, visible: hasActivityUsage },
+    { title: "Horas totales", value: `${formatMetricNumber(dashboardMetrics.totalHours, 1)} h`, subtitle: "tiempo completado acumulado", tone: "cyan", icon: CalendarDays, visible: hasAnyUsage },
+    { title: "Frecuencias activas", value: String(dashboardMetrics.catalogFrequencyTypes), subtitle: "tipos de periodicidad en uso", tone: "cyan", icon: CalendarDays, visible: hasActivityUsage },
+  ].filter((item) => item.visible !== false);
 
   return (
     <section ref={dashboardExportRef} className="dashboard-page">
@@ -1119,19 +1127,14 @@ export default function PanelIndicadores({ contexto }) {
             />
           ))}
         </div>
+        {areaPriorityKpiCards.length ? (
         <div className="dashboard-kpi-priority-shell">
           <div className="dashboard-panel-header">
             <h3>KPIs priorizados de {activeAreaLabel}</h3>
             <Gauge size={18} />
           </div>
           <div className="dashboard-kpi-grid dashboard-kpi-grid-executive">
-            {(areaPriorityKpiCards.length ? areaPriorityKpiCards : [{
-              title: "Sin métricas detectadas",
-              value: "0",
-              subtitle: "Crea o captura campos medibles en tableros para ver KPIs automáticos.",
-              tone: "slate",
-              icon: Gauge,
-            }]).map((item) => (
+            {areaPriorityKpiCards.map((item) => (
               <DashboardKpiCard
                 key={`${item.title}-${item.subtitle}`}
                 title={item.title}
@@ -1144,6 +1147,7 @@ export default function PanelIndicadores({ contexto }) {
             ))}
           </div>
         </div>
+        ) : null}
       </DashboardSection>
 
       <DashboardSection title="Análisis por player" subtitle="Desempeño individual, carga y cumplimiento por persona." summary={`${dashboardResponsibleRows.length} players con métricas`} icon={Users} open={dashboardSectionsOpen.people} onToggle={() => setDashboardSectionsOpen((current) => ({ ...current, people: !current.people }))}>
@@ -1215,6 +1219,8 @@ export default function PanelIndicadores({ contexto }) {
           </aside>
         </div>
 
+        {hasActivityUsage ? (
+        <>
         <div className="dashboard-main-grid dashboard-lower-middle-grid">
           <article className="dashboard-panel dashboard-panel-half">
             <div className="dashboard-panel-header">
@@ -1372,6 +1378,8 @@ export default function PanelIndicadores({ contexto }) {
             )}
           </article>
         </div>
+        </>
+        ) : null}
       </DashboardSection>
 
       <DashboardSection title="Tendencias y áreas" subtitle="Evolución del flujo y consolidado por área para comparar capacidad y carga." summary={`${dashboardTrendRows.length} periodos · ${dashboardAreaRows.length} áreas`} icon={BarChart3} open={dashboardSectionsOpen.trends} onToggle={() => setDashboardSectionsOpen((current) => ({ ...current, trends: !current.trends }))}>
@@ -1512,6 +1520,7 @@ export default function PanelIndicadores({ contexto }) {
         </div>
 
         {/* Panel completo: gráfica de líneas multi-serie — Horas productivas por periodo */}
+        {dashboardDynamicMetricRows.length ? (
         <div className="dashboard-main-grid">
           <article className="dashboard-panel dashboard-panel-full">
             <div className="dashboard-panel-header">
@@ -1551,7 +1560,9 @@ export default function PanelIndicadores({ contexto }) {
             />
           </article>
         </div>
+        ) : null}
 
+        {scopedInventoryProductTimeRows.length ? (
         <div className="dashboard-main-grid">
           <article className="dashboard-panel dashboard-panel-full">
             <div className="dashboard-panel-header">
@@ -1602,7 +1613,10 @@ export default function PanelIndicadores({ contexto }) {
             </div>
           </article>
         </div>
+        ) : null}
 
+        {(scopedInventoryProductTimeRows.length || filteredAreaBoardDetailedRows.length) ? (
+        <>
         <div className="dashboard-main-grid">
           <article className="dashboard-panel dashboard-panel-full">
             <div className="dashboard-panel-header">
@@ -1818,8 +1832,11 @@ export default function PanelIndicadores({ contexto }) {
             )}
           </article>
         </div>
+        </>
+        ) : null}
       </DashboardSection>
 
+      {(dashboardParetoRows.length || dashboardIshikawaRows.length) ? (
       <DashboardSection title="Incidencias y causa raíz" subtitle="Pareto de impacto y análisis Ishikawa para aislar las causas más pesadas." summary={`${dashboardParetoRows.length} incidencias priorizadas · ${dashboardIshikawaRows.length} categorías`} icon={Search} open={dashboardSectionsOpen.causes} onToggle={() => setDashboardSectionsOpen((current) => ({ ...current, causes: !current.causes }))}>
         <div className="dashboard-main-grid dashboard-lower-middle-grid">
           <article className="dashboard-panel dashboard-panel-half">
@@ -1849,7 +1866,9 @@ export default function PanelIndicadores({ contexto }) {
           </article>
         </div>
       </DashboardSection>
+      ) : null}
 
+      {(dashboardMetrics.exceeded.length || pauseAnalysis.length) ? (
       <DashboardSection title="Alertas y tablas ejecutivas" subtitle="Excepciones, pausas críticas y consolidado por área para revisión puntual." summary={`${dashboardMetrics.exceeded.length} alertas · ${pauseAnalysis.length} causas de pausa`} icon={OctagonAlert} open={dashboardSectionsOpen.alerts} onToggle={() => setDashboardSectionsOpen((current) => ({ ...current, alerts: !current.alerts }))}>
         <div className="dashboard-main-grid dashboard-bottom-grid">
           <article className="dashboard-panel dashboard-panel-wide">
@@ -1950,6 +1969,7 @@ export default function PanelIndicadores({ contexto }) {
           </div>
         </article>
       </DashboardSection>
+      ) : null}
 
       {confirmResetOpen ? createPortal(
         <div role="dialog" aria-modal="true" aria-labelledby="reset-confirm-title" style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", padding: "1rem" }}>

@@ -1770,6 +1770,8 @@ function App() { // NOSONAR
         return Boolean(selectedRoot) && selectedRoot !== "Sin área" && itemRoot === selectedRoot;
       });
     const total = filteredDashboardRecords.length;
+    const activityRecords = filteredDashboardRecords.filter((record) => record.source === "activity").length;
+    const boardRecords = filteredDashboardRecords.filter((record) => record.source === "board").length;
     const completed = filteredDashboardRecords.filter((record) => record.status === STATUS_FINISHED).length;
     const running = filteredDashboardRecords.filter((record) => record.status === STATUS_RUNNING).length;
     const paused = filteredDashboardRecords.filter((record) => record.status === STATUS_PAUSED).length;
@@ -1791,6 +1793,8 @@ function App() { // NOSONAR
     const catalogFrequencyTypes = new Set(catalogItemsSnapshot.map((item) => String(item.frequency || "daily"))).size;
     return {
       total,
+      activityRecords,
+      boardRecords,
       completed,
       running,
       paused,
