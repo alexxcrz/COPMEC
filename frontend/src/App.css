@@ -6252,6 +6252,46 @@ tbody tr:hover {
   gap: 0.12rem;
 }
 
+.returns-scan-cards-closed {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.returns-scan-context-menu {
+  position: fixed;
+  z-index: 9999;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.13);
+  padding: 0.35rem 0;
+  min-width: 170px;
+}
+
+.returns-scan-context-menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 1.1rem;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 0.92rem;
+  cursor: pointer;
+  color: #032121;
+  border-radius: 0.6rem;
+  transition: background 0.12s;
+}
+
+.returns-scan-context-menu-item:hover {
+  background: #f0fdf4;
+}
+
+.returns-scan-cards-closed .returns-scan-card {
+  width: 100%;
+  min-width: 0;
+}
+
 .returns-scan-card {
   display: grid;
   gap: 0.28rem;
@@ -6290,6 +6330,16 @@ tbody tr:hover {
 
   .returns-scan-head-meta-row {
     gap: 0.32rem;
+  }
+
+  .returns-scan-cards-closed {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .returns-scan-cards-closed {
+    grid-template-columns: 1fr;
   }
 }
 

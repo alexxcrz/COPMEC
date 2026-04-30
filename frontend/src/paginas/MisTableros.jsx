@@ -586,6 +586,8 @@ export default function MisTableros({ contexto }) {
     )
     : null;
   const visibleRows = (boardView?.rows || []).filter((row) => {
+    // Tableros de devoluciones/reacondicionado: ocultar filas ya cerradas (pertenecen a tarimas anteriores)
+    if (boardLooksReturnsRecondition && row.status === STATUS_FINISHED) return false;
     if (showCleaningNaveSelector && boardDateField && targetOperationalDateKey) {
       const rowDate = String(row?.values?.[boardDateField.id] || "").trim();
       if (rowDate && rowDate !== targetOperationalDateKey) return false;

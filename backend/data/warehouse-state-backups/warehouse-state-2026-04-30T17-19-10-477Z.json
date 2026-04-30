@@ -1,5 +1,5 @@
 {
-  "revision": 2809,
+  "revision": 2837,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro",
@@ -10629,7 +10629,7 @@
           "status": "En curso",
           "startTime": "2026-04-30T14:27:24.778Z",
           "endTime": null,
-          "accumulatedSeconds": 1860,
+          "accumulatedSeconds": 3660,
           "lastResumedAt": "2026-04-30T14:28:04.028Z",
           "pauseUsageByDay": {
             "2026-04-30::material": 1
@@ -10639,7 +10639,8 @@
           "pauseStartedAt": null,
           "pauseAffectsTimer": false,
           "pauseAuthorizedSeconds": 0,
-          "lastPauseReason": "Sanitario"
+          "lastPauseReason": "Sanitario",
+          "totalElapsedSecondsOverride": 7200
         },
         {
           "id": "row-12151b5cd85f",
@@ -10670,14 +10671,26 @@
           "status": "En curso",
           "startTime": "2026-04-30T14:28:26.993Z",
           "endTime": null,
-          "accumulatedSeconds": 0,
-          "lastResumedAt": "2026-04-30T14:28:26.993Z",
-          "pauseUsageByDay": {},
-          "pauseLogs": [],
+          "accumulatedSeconds": 4260,
+          "lastResumedAt": "2026-04-30T15:36:04.054Z",
+          "pauseUsageByDay": {
+            "2026-04-30::material": 2
+          },
+          "pauseLogs": [
+            {
+              "id": "pause-66f73095fa55",
+              "reason": "Sanitario",
+              "pausedAt": "2026-04-30T15:17:21.705Z",
+              "resumedAt": "2026-04-30T15:57:21.705Z",
+              "pauseDurationSeconds": 2400
+            }
+          ],
           "createdAt": "2026-04-30T14:27:55.570Z",
           "pauseStartedAt": null,
           "pauseAffectsTimer": false,
-          "pauseAuthorizedSeconds": 0
+          "pauseAuthorizedSeconds": 0,
+          "lastPauseReason": "Sanitario",
+          "totalElapsedSecondsOverride": 11940
         }
       ],
       "permissions": {
@@ -11063,6 +11076,33 @@
           "accumulatedSeconds": 5,
           "lastResumedAt": null,
           "createdAt": "2026-04-27T03:29:54.191Z"
+        },
+        {
+          "id": "row-149caa17fa3f",
+          "values": {
+            "fld-tdbazfyz": "1",
+            "fld-pqyzdboh": "Devolución",
+            "fld-288qq5dv": "inv-yz08uqei",
+            "fld-84knvz2z": "13456",
+            "fld-3iisyp99": "132465",
+            "fld-7tqz6rke": "D",
+            "fld-zapc1vgv": 1,
+            "fld-dnlcoahj": 50
+          },
+          "responsibleId": "",
+          "responsibleIds": [],
+          "status": "En curso",
+          "startTime": "2026-04-30T17:19:09.935Z",
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "totalElapsedSecondsOverride": null,
+          "lastResumedAt": "2026-04-30T17:19:09.935Z",
+          "pauseUsageByDay": {},
+          "pauseLogs": [],
+          "createdAt": "2026-04-30T17:19:09.461Z",
+          "pauseStartedAt": null,
+          "pauseAffectsTimer": false,
+          "pauseAuthorizedSeconds": 0
         }
       ],
       "permissions": {
@@ -11805,7 +11845,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-30T14:43:44.595Z",
+  "updatedAt": "2026-04-30T17:19:09.955Z",
   "permissions": {
     "pages": {
       "index": {

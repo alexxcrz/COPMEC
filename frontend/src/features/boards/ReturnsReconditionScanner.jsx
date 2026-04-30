@@ -12,6 +12,7 @@ import { findInventoryItemByQuery, normalizeKey, formatElapsedMs } from "../../u
 
 const ACTIVE_TARIMA_STORAGE_PREFIX = "copmec_returns_recondition_active_tarima";
 const COMPLETED_BOXES_STORAGE_PREFIX = "copmec_returns_recondition_completed_boxes";
+const CLOSED_TARIMAS_STORAGE_PREFIX = "copmec_returns_recondition_closed_tarimas";
 const TARIMA_STATUS_PENDING = "Pendiente";
 const TARIMA_STATUS_RUNNING = "En curso";
 const TARIMA_STATUS_PAUSED = "Pausado";
@@ -205,6 +206,30 @@ async function printPdfBlob(blob) {
   });
 }
 
+function sanitizeFileNamePart(value) {
+  return String(value || "")
+    .replace(/[\\/:*?"<>|]/g, "-")
+    .trim();
+}
+
+function buildBoxPdfFileName(box) {
+  const tarimaNumber = sanitizeFileNamePart(box?.tarimaNumber || box?.tarimaId || "-") || "-";
+  const boxNumber = sanitizeFileNamePart(box?.palletNumber || box?.id || "-") || "-";
+  return `Tarima ${tarimaNumber}-Caja ${boxNumber}.pdf`;
+}
+
+function downloadPdfBlob(blob, fileName) {
+  if (!(blob instanceof Blob)) return;
+  const blobUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = blobUrl;
+  anchor.download = fileName || "documento.pdf";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(blobUrl);
+}
+
 // ...existing code...
 // Error boundary solo en desarrollo para evitar ReferenceError y mostrar mensaje amigable
 function DevErrorBoundary({ children }) {
@@ -259,9 +284,13 @@ function ReturnsReconditionScannerInner({
   const [activeBoxId, setActiveBoxId] = useState(null);
   const [completedBoxes, setCompletedBoxes] = useState([]);
   const [completedBoxesHydrated, setCompletedBoxesHydrated] = useState(false);
+  const [closedTarimas, setClosedTarimas] = useState([]);
+  const [closedTarimasHydrated, setClosedTarimasHydrated] = useState(false);
+  const [selectedClosedTarimaId, setSelectedClosedTarimaId] = useState("");
   const [recentlyClosedBoxKeys, setRecentlyClosedBoxKeys] = useState(new Set());
   const [collapsedProducts, setCollapsedProducts] = useState(new Set());
   const [expandedClosedBoxes, setExpandedClosedBoxes] = useState(new Set());
+  const [pdfContextMenu, setPdfContextMenu] = useState(null); // { x, y, onDownload }
   const [pendingItem, setPendingItem] = useState(null);
   const [systemPaused, setSystemPaused] = useState(false);
   
@@ -731,6 +760,42 @@ function ReturnsReconditionScannerInner({
     }
   }, [boardId, completedBoxes, completedBoxesHydrated]);
 
+  // Cargar tarimas cerradas desde localStorage
+  useEffect(() => {
+    if (!boardId) return;
+    try {
+      const raw = localStorage.getItem(`${CLOSED_TARIMAS_STORAGE_PREFIX}:${boardId}`);
+      if (!raw) { setClosedTarimasHydrated(true); return; }
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const normalized = parsed.slice(0, 20).map((tarima, index) => ({
+          ...tarima,
+          id: String(tarima?.id || `${String(tarima?.sourceTarimaId || tarima?.tarimaNumber || "tarima")}-${String(tarima?.closedAt || "")}-${index}`),
+          boxes: Array.isArray(tarima?.boxes) ? tarima.boxes : [],
+        }));
+        setClosedTarimas(normalized);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setClosedTarimasHydrated(true);
+    }
+  }, [boardId]);
+
+  // Guardar tarimas cerradas en localStorage
+  useEffect(() => {
+    if (!boardId || !closedTarimasHydrated) return;
+    try {
+      if (closedTarimas.length) {
+        localStorage.setItem(`${CLOSED_TARIMAS_STORAGE_PREFIX}:${boardId}`, JSON.stringify(closedTarimas));
+      } else {
+        localStorage.removeItem(`${CLOSED_TARIMAS_STORAGE_PREFIX}:${boardId}`);
+      }
+    } catch {
+      // ignore
+    }
+  }, [boardId, closedTarimas, closedTarimasHydrated]);
+
   // Recuperar tarima desde filas remotas para consistencia entre dispositivos.
   useEffect(() => {
     if (!activeTarimaHydrated || activeTarima || !boardId || disabled) return;
@@ -881,6 +946,8 @@ function ReturnsReconditionScannerInner({
 
   const closedForTarima = useMemo(() => {
     const localClosed = Array.isArray(completedBoxes) ? completedBoxes : [];
+    // Si hay una tarima activa, solo mostrar cajas locales de esa tarima para evitar mezcla con otras tarimas
+    if (activeTarima) return localClosed;
     const rows = Array.isArray(boardView?.rows) ? boardView.rows : [];
     const finishedRows = rows.filter((row) => {
       const normalizedStatus = String(row?.status || "").toLowerCase();
@@ -984,6 +1051,118 @@ function ReturnsReconditionScannerInner({
   const tarimaDisplayedBoxCount = useMemo(() => {
     return Number((activeTarima?.boxes || []).length) + closedForTarima.length;
   }, [activeTarima?.boxes, closedForTarima]);
+
+  const selectedClosedTarima = useMemo(
+    () => closedTarimas.find((tarima) => tarima.id === selectedClosedTarimaId) || null,
+    [closedTarimas, selectedClosedTarimaId],
+  );
+  const viewingClosedTarima = Boolean(selectedClosedTarima);
+  const displayedTarima = selectedClosedTarima || activeTarima;
+  const displayedClosedBoxes = viewingClosedTarima
+    ? (Array.isArray(selectedClosedTarima?.boxes) ? selectedClosedTarima.boxes : [])
+    : closedForTarima;
+  const displayedTarimaTotalPieces = viewingClosedTarima
+    ? Number(selectedClosedTarima?.totalPieces || 0)
+    : tarimaDisplayedTotalPieces;
+  const displayedTarimaBoxCount = viewingClosedTarima
+    ? Number(selectedClosedTarima?.boxCount || displayedClosedBoxes.length)
+    : tarimaDisplayedBoxCount;
+
+  useEffect(() => {
+    if (!viewingClosedTarima) return;
+    const keys = (Array.isArray(selectedClosedTarima?.boxes) ? selectedClosedTarima.boxes : [])
+      .map((box) => `${box.id}-${box.closedAt}`);
+    setExpandedClosedBoxes(new Set(keys));
+  }, [viewingClosedTarima, selectedClosedTarima?.id]);
+
+  useEffect(() => {
+    if (closedTarimas.length > 0) return;
+    const rows = Array.isArray(boardView?.rows) ? boardView.rows : [];
+    const finishedRows = rows.filter((row) => {
+      const normalizedStatus = String(row?.status || "").toLowerCase();
+      return normalizedStatus === "terminado" || Boolean(row?.endTime);
+    });
+    if (!finishedRows.length) return;
+
+    const fieldTarima = boardFieldMap.get("tarima");
+    const fieldTipo = boardFieldMap.get("tipo de flujo");
+    const fieldProducto = boardFieldMap.get("producto");
+    const fieldLote = boardFieldMap.get("lote");
+    const fieldCaducidad = boardFieldMap.get("caducidad");
+    const fieldEtiqueta = boardFieldMap.get("etiqueta");
+    const fieldPiezas = boardFieldMap.get("piezas");
+    const fieldMeta = boardFieldMap.get("meta de caja");
+
+    const recoveredByBox = new Map();
+    finishedRows.forEach((row, index) => {
+      const values = row?.values || {};
+      const boxNumber = String(values[fieldTarima?.id] ?? "").trim() || `Caja-${index + 1}`;
+      const boxKey = normalizeKey(boxNumber) || `caja-${index + 1}`;
+      if (!recoveredByBox.has(boxKey)) {
+        const flowRaw = String(values[fieldTipo?.id] ?? "").toLowerCase();
+        const flowType = flowRaw.includes("reacond") ? "reacondicionado" : "devolucion";
+        recoveredByBox.set(boxKey, {
+          id: `legacy-closed-${boxKey}`,
+          boardId,
+          palletNumber: boxNumber,
+          targetPieces: Math.max(1, Number(values[fieldMeta?.id] || 50)),
+          tarimaId: `legacy-${boardId}`,
+          tarimaNumber: "1",
+          flowType,
+          reviewerName: currentUser?.name || currentUser?.username || "N/A",
+          products: {},
+          totalPieces: 0,
+          startedAt: row?.startTime || row?.createdAt || new Date().toISOString(),
+          closedAt: row?.endTime || row?.updatedAt || new Date().toISOString(),
+          stoppedAt: row?.endTime || row?.updatedAt || new Date().toISOString(),
+        });
+      }
+
+      const box = recoveredByBox.get(boxKey);
+      const productId = values[fieldProducto?.id];
+      if (!productId) return;
+      const item = inventoryMapById.get(productId) || { id: productId, code: String(productId), name: "Producto", presentation: "" };
+      const pieces = Math.max(0, Number(values[fieldPiezas?.id] || 0));
+      const lotSummary = String(values[fieldLote?.id] || "").split("|").map((value) => String(value || "").trim()).filter(Boolean);
+      const expirySummary = String(values[fieldCaducidad?.id] || "").split("|").map((value) => normalizeExpiryInput(value)).filter(Boolean);
+      const etiquetaSummary = String(values[fieldEtiqueta?.id] || "").split("|").map((value) => String(value || "").trim()).filter(Boolean);
+      const lots = lotSummary.length
+        ? lotSummary.map((lot, lotIndex) => ({
+          lot,
+          expiry: expirySummary[lotIndex] || expirySummary[0] || "-",
+          etiqueta: etiquetaSummary[lotIndex] || etiquetaSummary[0] || "",
+          pieces: lotIndex === 0 ? pieces : 0,
+        }))
+        : [{ lot: "-", expiry: "-", etiqueta: "", pieces }];
+
+      box.products[item.id] = {
+        itemId: item.id,
+        code: item.code || String(item.id),
+        name: item.name || "Producto",
+        presentation: item.presentation || "",
+        totalPieces: pieces,
+        targetPieces: box.targetPieces,
+        lots,
+      };
+      box.totalPieces += pieces;
+    });
+
+    const boxes = Array.from(recoveredByBox.values());
+    if (!boxes.length) return;
+    const maybeActiveNum = Number.parseInt(String(activeTarima?.tarimaNumber || ""), 10);
+    const guessedTarimaNumber = Number.isFinite(maybeActiveNum) && maybeActiveNum > 1 ? String(maybeActiveNum - 1) : "1";
+    const fallbackSnapshot = buildClosedTarimaSnapshot(
+      {
+        id: `legacy-${boardId}`,
+        tarimaNumber: guessedTarimaNumber,
+        flowType: boxes[0]?.flowType || "devolucion",
+        startedAt: boxes[0]?.startedAt,
+      },
+      boxes,
+      boxes[0]?.closedAt || new Date().toISOString(),
+    );
+    setClosedTarimas([fallbackSnapshot]);
+  }, [closedTarimas.length, boardView?.rows, boardFieldMap, boardId, currentUser?.name, currentUser?.username, inventoryMapById, activeTarima?.tarimaNumber]);
 
   function startTarimaWorkflow() {
     if (!canControlTarimaWorkflow) return;
@@ -1198,6 +1377,11 @@ function ReturnsReconditionScannerInner({
     }
   }
 
+  function openPdfContextMenu(event, onDownload) {
+    event.preventDefault();
+    setPdfContextMenu({ x: event.clientX, y: event.clientY, onDownload });
+  }
+
   async function generateSingleBoxPDF(box) {
     // Para reimprimir: crear snapshot de caja con timestamp
     const payload = {
@@ -1205,10 +1389,28 @@ function ReturnsReconditionScannerInner({
       closedAt: box.closedAt || new Date().toISOString(),
       stoppedAt: box.stoppedAt || new Date().toISOString(),
     };
-    await exportClosedBoxPdf(payload);
+    await exportClosedBoxPdf(payload, {
+      title: buildBoxPdfFileName(payload),
+    });
   }
 
-  async function exportClosedBoxPdf(box) {
+  async function downloadSingleBoxPDF(box) {
+    const payload = {
+      ...box,
+      closedAt: box.closedAt || new Date().toISOString(),
+      stoppedAt: box.stoppedAt || new Date().toISOString(),
+    };
+    await exportClosedBoxPdf(payload, {
+      downloadFileName: buildBoxPdfFileName(payload),
+      print: false,
+    });
+  }
+
+  async function downloadTarimaPdf(tarima, boxes) {
+    await exportTarimaPdf(tarima, boxes, { download: true, print: false });
+  }
+
+  async function exportClosedBoxPdf(box, options = {}) {
     try {
       const [{ jsPDF }, autoTableModule] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
       const autoTable = autoTableModule.default || autoTableModule;
@@ -1317,14 +1519,20 @@ function ReturnsReconditionScannerInner({
         },
       });
 
+      if (options.title) doc.setProperties({ title: options.title });
       const blob = doc.output("blob");
-      await printPdfBlob(blob);
+      if (options.downloadFileName) {
+        downloadPdfBlob(blob, options.downloadFileName);
+      }
+      if (options.print !== false) {
+        await printPdfBlob(blob);
+      }
     } catch (error) {
       setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo generar el PDF de la caja." });
     }
   }
 
-  async function exportTarimaPdf(tarima, boxes) {
+  async function exportTarimaPdf(tarima, boxes, options = {}) {
     try {
       const [{ jsPDF }, autoTableModule] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
       const autoTable = autoTableModule.default || autoTableModule;
@@ -1414,11 +1622,38 @@ function ReturnsReconditionScannerInner({
         y = (doc.lastAutoTable?.finalY || y) + 20;
       }
 
+      const tarimaTitle = `Tarima ${tarima?.tarimaNumber || "-"}.pdf`;
+      doc.setProperties({ title: tarimaTitle });
       const blob = doc.output("blob");
-      await printPdfBlob(blob);
+      if (options.download) {
+        downloadPdfBlob(blob, tarimaTitle);
+      }
+      if (options.print !== false) {
+        await printPdfBlob(blob);
+      }
     } catch (error) {
       setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo generar el PDF consolidado de la tarima." });
     }
+  }
+
+  function buildClosedTarimaSnapshot(tarima, boxes, closedAt = new Date().toISOString()) {
+    const normalizedBoxes = (Array.isArray(boxes) ? boxes : []).map((box) => ({
+      ...box,
+      products: Array.isArray(box?.products) ? box.products : Object.values(box?.products || {}),
+      closedAt: box?.closedAt || box?.stoppedAt || closedAt,
+      stoppedAt: box?.stoppedAt || box?.closedAt || closedAt,
+    }));
+    return {
+      id: `${String(tarima?.id || tarima?.tarimaNumber || "tarima")}-${Date.now()}`,
+      sourceTarimaId: String(tarima?.id || ""),
+      tarimaNumber: String(tarima?.tarimaNumber || "-") || "-",
+      flowType: tarima?.flowType || "devolucion",
+      closedAt,
+      startedAt: tarima?.startedAt || closedAt,
+      totalPieces: normalizedBoxes.reduce((acc, b) => acc + Number(b.totalPieces || 0), 0),
+      boxCount: normalizedBoxes.length,
+      boxes: normalizedBoxes,
+    };
   }
 
   async function closeCurrentBox(box, options = {}) {
@@ -1511,9 +1746,15 @@ function ReturnsReconditionScannerInner({
       await exportTarimaPdf(activeTarima, allClosedBoxesForPdf);
     }
     
+    // Guardar snapshot de tarima cerrada para mostrar como pestaña
+    const closedSnapshot = buildClosedTarimaSnapshot(activeTarima, allClosedBoxesForPdf);
+    setClosedTarimas((prev) => [closedSnapshot, ...prev].slice(0, 20));
+    setSelectedClosedTarimaId(closedSnapshot.id);
+
     // Marcar tarima como cerrada
     setActiveTarima((current) => (current ? { ...current, closedAt: new Date().toISOString(), stoppedAt: new Date().toISOString(), workflowStatus: TARIMA_STATUS_FINISHED } : null));
     setActiveBoxId(null);
+    setCompletedBoxes([]);
     setBoardRuntimeFeedback({
       tone: "success",
       message: generatedFromOpenBoxes
@@ -1562,6 +1803,22 @@ function ReturnsReconditionScannerInner({
       setBoardRuntimeFeedback({ tone: "danger", message: "Ingresa número de tarima." });
       return;
     }
+
+    // Si hay tarima activa con datos, guardar snapshot antes de reemplazarla
+    if (activeTarima && (activeTarima.boxes?.length > 0 || completedBoxes.length > 0)) {
+      const openBoxes = (activeTarima.boxes || []).map((b) => ({
+        ...b,
+        products: Array.isArray(b.products) ? b.products : Object.values(b.products || {}),
+      }));
+      const previousBoxes = completedBoxes.map((b) => ({
+        ...b,
+        products: Array.isArray(b.products) ? b.products : Object.values(b.products || {}),
+      }));
+      const allBoxesSnapshot = [...previousBoxes, ...openBoxes];
+      const closedSnapshot = buildClosedTarimaSnapshot(activeTarima, allBoxesSnapshot);
+      setClosedTarimas((prev) => [closedSnapshot, ...prev].slice(0, 20));
+    }
+
     const newTarima = {
       id: `tarima-${Date.now()}`,
       tarimaNumber: tarimaForm.tarimaNumber,
@@ -1578,10 +1835,12 @@ function ReturnsReconditionScannerInner({
     };
     setCompletedBoxes([]);
     setExpandedClosedBoxes(new Set());
+    setSelectedClosedTarimaId("");
     setActiveTarima(newTarima);
     setTarimaModalOpen(false);
     setTarimaForm({ tarimaNumber: "", flowType: "devolucion" });
     setBoxForm({ boxNumber: "", targetPieces: 50, lot: "", expiry: "", etiqueta: "", selectedLotKey: "" });
+    // No limpiar closedTarimas — se muestran como pestañas históricas
     setBoardRuntimeFeedback({ tone: "success", message: `Tarima ${tarimaForm.tarimaNumber} iniciada.` });
     setBoxModalOpen(true);
   }
@@ -1882,7 +2141,24 @@ function ReturnsReconditionScannerInner({
   }
 
   return (
-    <section className="returns-scan-shell board-pdf-hide">
+    <section className="returns-scan-shell board-pdf-hide" onClick={() => setPdfContextMenu(null)}>
+      {pdfContextMenu && (
+        <div
+          role="menu"
+          className="returns-scan-context-menu"
+          style={{ top: pdfContextMenu.y, left: pdfContextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className="returns-scan-context-menu-item"
+            onClick={() => { void pdfContextMenu.onDownload(); setPdfContextMenu(null); }}
+          >
+            ⬇ Descargar PDF
+          </button>
+        </div>
+      )}
       {activeTarima && canControlTarimaWorkflow ? (
         <div className="returns-scan-global-top">
           <span className="chip primary">Tarima</span>
@@ -1923,8 +2199,8 @@ function ReturnsReconditionScannerInner({
 
       <div className="returns-scan-head">
         <div>
-          <h4>Modo escaneo · {activeTarima ? `Tarima ${activeTarima.tarimaNumber}` : "Inicio escaneo"}</h4>
-          <p>{activeTarima ? `Flujo: ${activeTarima.flowType === "reacondicionado" ? "Reacondicionado" : "Devolución"}` : "Escanea un código para crear tarima"}</p>
+          <h4>{viewingClosedTarima ? "Vista tarima cerrada" : "Modo escaneo"} · {displayedTarima ? `Tarima ${displayedTarima.tarimaNumber}` : "Inicio escaneo"}</h4>
+          <p>{displayedTarima ? `Flujo: ${displayedTarima.flowType === "reacondicionado" ? "Reacondicionado" : "Devolución"}` : "Escanea un código para crear tarima"}</p>
         </div>
         <div className="saved-board-list">
           {manualGlobalPause ? (
@@ -1941,16 +2217,16 @@ function ReturnsReconditionScannerInner({
               ⏸ Pausa global por jornada
             </span>
           )}
-          {activeTarima && (
+          {displayedTarima && (
             <div className="returns-scan-head-meta">
               <div className="returns-scan-head-meta-row">
-                <span className="chip">Tarima: {activeTarima.tarimaNumber}</span>
-                <span className="chip">Cajas: {tarimaDisplayedBoxCount}</span>
-                <span className="chip primary">Total acumulado: {tarimaDisplayedTotalPieces}</span>
-                <span className="chip" style={tarimaStatusColor}>Workflow tarima: {tarimaStatus}</span>
-                <span className="chip">Tiempo tarima: {formatElapsedMs(Math.max(0, tarimaElapsedMs))}</span>
+                <span className="chip">Tarima: {displayedTarima.tarimaNumber}</span>
+                <span className="chip">Cajas: {displayedTarimaBoxCount}</span>
+                <span className="chip primary">Total acumulado: {displayedTarimaTotalPieces}</span>
+                <span className="chip" style={viewingClosedTarima ? { background: "#dcfce7", color: "#166534" } : tarimaStatusColor}>Workflow tarima: {viewingClosedTarima ? TARIMA_STATUS_FINISHED : tarimaStatus}</span>
+                <span className="chip">Tiempo tarima: {viewingClosedTarima ? "Cerrada" : formatElapsedMs(Math.max(0, tarimaElapsedMs))}</span>
               </div>
-              {activeBox ? (
+              {activeBox && !viewingClosedTarima ? (
                 <div className="returns-scan-head-meta-row">
                   <span className="chip">Caja activa: {activeBox.palletNumber}</span>
                   <span className="chip">Meta caja: {activeBox.targetPieces}</span>
@@ -1974,22 +2250,90 @@ function ReturnsReconditionScannerInner({
               handleScanSubmit();
             }
           }}
-          placeholder={disabled ? "Vista histórica en solo lectura" : effectiveGlobalPause ? "Pausa global activa" : tarimaWorkflowBlocked ? "Workflow de tarima en pausa/finalizado" : "Escanea o escribe código (auto-registro)"}
-          disabled={disabled || effectiveGlobalPause || tarimaWorkflowBlocked || lotModalOpen || tarimaModalOpen || boxModalOpen}
+          placeholder={disabled ? "Vista histórica en solo lectura" : viewingClosedTarima ? "Vista de tarima cerrada (solo lectura)" : effectiveGlobalPause ? "Pausa global activa" : tarimaWorkflowBlocked ? "Workflow de tarima en pausa/finalizado" : "Escanea o escribe código (auto-registro)"}
+          disabled={disabled || viewingClosedTarima || effectiveGlobalPause || tarimaWorkflowBlocked || lotModalOpen || tarimaModalOpen || boxModalOpen}
         />
       </div>
 
+      {/* Pestañas de tarimas cerradas */}
+      {(closedTarimas.length > 0 || activeTarima) ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", padding: "0.6rem 0", borderBottom: "1px solid rgba(3,33,33,0.12)", marginBottom: "0.75rem" }}>
+          {activeTarima ? (
+            <button
+              type="button"
+              className="chip"
+              onClick={() => setSelectedClosedTarimaId("")}
+              style={{ background: viewingClosedTarima ? "#e2e8f0" : "#dbeafe", color: viewingClosedTarima ? "#475569" : "#1d4ed8", border: "1px solid #93c5fd" }}
+            >
+              Activa T{activeTarima.tarimaNumber}
+            </button>
+          ) : null}
+          {closedTarimas.map((ct) => (
+            <div
+              key={ct.id}
+              style={{ display: "flex", alignItems: "center", gap: "0.35rem", background: selectedClosedTarimaId === ct.id ? "#ecfdf3" : "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: "999px", padding: "0.28rem 0.75rem", fontSize: "0.82rem", color: "#334155" }}
+            >
+              <button
+                type="button"
+                className="chip"
+                onClick={() => setSelectedClosedTarimaId(ct.id)}
+                style={{ background: selectedClosedTarimaId === ct.id ? "#bbf7d0" : "#e2e8f0", color: "#0f172a", border: "1px solid #cbd5e1" }}
+              >
+                T{ct.tarimaNumber}
+              </button>
+              <span style={{ opacity: 0.7 }}>·</span>
+              <span>{ct.totalPieces} pzas</span>
+              <span style={{ opacity: 0.7 }}>·</span>
+              <span>{ct.boxCount} cajas</span>
+              <button
+                type="button"
+                title="Reimprimir PDF de tarima (clic derecho: descargar)"
+                aria-label="Reimprimir PDF de tarima"
+                onClick={() => { void exportTarimaPdf(ct, ct.boxes || []); }}
+                onContextMenu={(e) => openPdfContextMenu(e, () => downloadTarimaPdf(ct, ct.boxes || []))}
+                style={{ marginLeft: "0.35rem", background: "#032121", color: "#fff", border: "none", borderRadius: "999px", padding: "0.18rem 0.55rem", cursor: "pointer", fontSize: "0.78rem", fontWeight: 600 }}
+              >
+                🖨 Reimprimir
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       {/* Cajas de Tarima - TODO EN UN CONTENEDOR */}
-      {activeTarima ? (
+      {displayedTarima ? (
         <div className="returns-scan-tarima-container">
           <div className="returns-scan-tarima-header">
             <div>
-              <strong>Tarima: {activeTarima.tarimaNumber}</strong>
+              <strong>Tarima: {displayedTarima.tarimaNumber}</strong>
               <p className="subtle-line">
-                Total acumulado: {tarimaDisplayedTotalPieces} pzas · {tarimaDisplayedBoxCount} cajas · Workflow tarima: {tarimaStatus} · Tiempo: {formatElapsedMs(Math.max(0, tarimaElapsedMs))}
+                Total acumulado: {displayedTarimaTotalPieces} pzas · {displayedTarimaBoxCount} cajas · Workflow tarima: {viewingClosedTarima ? TARIMA_STATUS_FINISHED : tarimaStatus} · Tiempo: {viewingClosedTarima ? "Cerrada" : formatElapsedMs(Math.max(0, tarimaElapsedMs))}
               </p>
             </div>
-            {canControlTarimaWorkflow ? (
+            {viewingClosedTarima ? (
+              <div className="row-actions compact board-workflow-actions">
+                <button
+                  type="button"
+                  className="board-action-button start"
+                  title="Volver a tarima activa"
+                  aria-label="Volver a tarima activa"
+                  onClick={() => setSelectedClosedTarimaId("")}
+                  disabled={!activeTarima}
+                >
+                  Volver activa
+                </button>
+                <button
+                  type="button"
+                  className="board-action-button finish"
+                  title="Reimprimir tarima (clic derecho: descargar)"
+                  aria-label="Reimprimir tarima"
+                  onClick={() => { void exportTarimaPdf(displayedTarima, displayedTarima.boxes || []); }}
+                  onContextMenu={(e) => openPdfContextMenu(e, () => downloadTarimaPdf(displayedTarima, displayedTarima.boxes || []))}
+                >
+                  Reimprimir tarima
+                </button>
+              </div>
+            ) : canControlTarimaWorkflow ? (
               <div className="row-actions compact board-workflow-actions">
                 <button
                   type="button"
@@ -2005,9 +2349,9 @@ function ReturnsReconditionScannerInner({
             ) : null}
           </div>
 
-          {closedForTarima.length ? (
+          {displayedClosedBoxes.length ? (
             <div className="returns-scan-closed-box-tabs">
-              {closedForTarima.map((box) => {
+              {displayedClosedBoxes.map((box) => {
                 const boxKey = `${box.id}-${box.closedAt}`;
                 const isExpanded = expandedClosedBoxes.has(boxKey);
                 return (
@@ -2018,10 +2362,9 @@ function ReturnsReconditionScannerInner({
                     <button
                       type="button"
                       className="icon-button returns-scan-icon-only"
-                      onClick={(event) => {
-                        void generateSingleBoxPDF(box);
-                      }}
-                      title="Reimprimir PDF de caja"
+                      onClick={() => { void generateSingleBoxPDF(box); }}
+                      onContextMenu={(e) => openPdfContextMenu(e, () => downloadSingleBoxPDF(box))}
+                      title="Reimprimir PDF de caja (clic derecho: descargar)"
                       aria-label="Reimprimir PDF de caja"
                     >
                       P
@@ -2032,40 +2375,57 @@ function ReturnsReconditionScannerInner({
             </div>
           ) : null}
 
-          {closedForTarima.filter((box) => expandedClosedBoxes.has(`${box.id}-${box.closedAt}`)).map((box) => (
-            <div className="returns-scan-cards" key={`expanded-${box.id}-${box.closedAt}`}>
-              {Object.values(box.products || {}).map((product) => (
-                <article key={`closed-${box.id}-${product.itemId}`} className="returns-scan-card" style={{ opacity: 0.82, background: "#f8fafc" }}>
-                  <div className="returns-scan-card-head">
-                    <strong>{product.code} · {product.name}</strong>
-                    <div className="saved-board-list">
-                      <span className="chip" style={{ background: "#ecfdf3", color: "#166534" }}>Caja cerrada: {box.palletNumber}</span>
+          {(() => {
+            const expandedBoxes = displayedClosedBoxes.filter((box) => expandedClosedBoxes.has(`${box.id}-${box.closedAt}`));
+            if (!expandedBoxes.length) return null;
+            const closedCards = expandedBoxes.flatMap((box) => (
+              Object.values(box.products || {}).map((product) => ({ box, product }))
+            ));
+            return (
+              <div className="returns-scan-cards returns-scan-cards-closed">
+                {closedCards.map(({ box, product }) => (
+                  <article key={`closed-${box.id}-${product.itemId}`} className="returns-scan-card" style={{ opacity: 0.82, background: "#f8fafc" }}>
+                    <div className="returns-scan-card-head">
+                      <strong>{product.code} · {product.name}</strong>
+                      <div className="saved-board-list">
+                        <span className="chip" style={{ background: "#ecfdf3", color: "#166534" }}>Caja cerrada: {box.palletNumber}</span>
+                        <button
+                          type="button"
+                          className="icon-button returns-scan-icon-only"
+                          onClick={() => { void generateSingleBoxPDF(box); }}
+                          onContextMenu={(e) => openPdfContextMenu(e, () => downloadSingleBoxPDF(box))}
+                          title={`Reimprimir PDF de caja ${box.palletNumber} (clic derecho: descargar)`}
+                          aria-label={`Reimprimir PDF de caja ${box.palletNumber}`}
+                        >
+                          P
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <p>{product.presentation || "Sin presentación"}</p>
-                  <div className="returns-scan-lot-table" role="table" aria-label={`Lotes cerrados de ${product.name}`}>
-                    <div className="returns-scan-lot-header" role="row">
-                      <span role="columnheader">Lote</span>
-                      <span role="columnheader">Caducidad</span>
-                      <span role="columnheader">Piezas</span>
+                    <p>{product.presentation || "Sin presentación"}</p>
+                    <div className="returns-scan-lot-table" role="table" aria-label={`Lotes cerrados de ${product.name}`}>
+                      <div className="returns-scan-lot-header" role="row">
+                        <span role="columnheader">Lote</span>
+                        <span role="columnheader">Caducidad</span>
+                        <span role="columnheader">Piezas</span>
+                      </div>
+                      <div className="returns-scan-lot-body" role="rowgroup">
+                        {(product.lots || []).map((lot) => (
+                          <div className="returns-scan-lot-row" role="row" key={`closed-${product.itemId}-${lot.lot}-${lot.expiry}`}>
+                            <span role="cell" data-label="Lote">{lot.lot}</span>
+                            <span role="cell" data-label="Caducidad">{lot.expiry}</span>
+                            <span role="cell" data-label="Piezas">{lot.pieces}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="returns-scan-lot-body" role="rowgroup">
-                      {(product.lots || []).map((lot) => (
-                        <div className="returns-scan-lot-row" role="row" key={`closed-${product.itemId}-${lot.lot}-${lot.expiry}`}>
-                          <span role="cell" data-label="Lote">{lot.lot}</span>
-                          <span role="cell" data-label="Caducidad">{lot.expiry}</span>
-                          <span role="cell" data-label="Piezas">{lot.pieces}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          ))}
+                  </article>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Pestañas de productos completados */}
-          {(() => {
+          {!viewingClosedTarima ? (() => {
             const completedProducts = [];
             (activeTarima.boxes || []).forEach((box) => {
               Object.values(box.products || {}).forEach((product) => {
@@ -2074,7 +2434,7 @@ function ReturnsReconditionScannerInner({
                 }
               });
             });
-            
+
             return completedProducts.length > 0 ? (
               <div style={{ borderBottom: "1px solid rgba(15, 77, 64, 0.2)", paddingBottom: "0.8rem", marginBottom: "0.8rem", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                 {completedProducts.map((product) => {
@@ -2103,128 +2463,133 @@ function ReturnsReconditionScannerInner({
                 })}
               </div>
             ) : null;
-          })()}
+          })() : null}
 
           {/* Todas las tarjetitas de la tarima */}
-          <div className="returns-scan-cards">
-            {(() => {
-              const allProducts = [];
-              (activeTarima.boxes || []).forEach((box) => {
-                Object.values(box.products || {}).forEach((product) => {
-                  allProducts.push({ ...product, boxId: box.id, boxNumber: box.palletNumber });
+          {!viewingClosedTarima ? (
+            <div className="returns-scan-cards">
+              {(() => {
+                const allProducts = [];
+                (activeTarima.boxes || []).forEach((box) => {
+                  Object.values(box.products || {}).forEach((product) => {
+                    allProducts.push({ ...product, boxId: box.id, boxNumber: box.palletNumber });
+                  });
                 });
-              });
-              
-              return allProducts.length ? allProducts.map((product, idx) => {
-                const width = productWidths[product.itemId] || 320;
-                const isProductActive = activeBoxId === product.boxId;
-                const productKey = `${product.boxId}-${product.itemId}`;
-                const isCollapsed = collapsedProducts.has(productKey);
-                const isCompleted = product.totalPieces >= product.targetPieces;
 
-                // No renderizar colapsadas en la vista principal
-                if (isCollapsed && isCompleted) return null;
-                
-                return (
-                  <article
-                    key={`${product.boxId}-${product.itemId}`}
-                    className="returns-scan-card"
-                    draggable={isProductActive && !isCompleted}
-                    onDragStart={isProductActive && !isCompleted ? e => {
-                      e.dataTransfer.effectAllowed = "move";
-                      e.dataTransfer.setData("text/plain", idx);
-                    } : undefined}
-                    onDragOver={isProductActive && !isCompleted ? e => e.preventDefault() : undefined}
-                    onDrop={isProductActive && !isCompleted ? e => {
-                      e.preventDefault();
-                      const fromIdx = Number(e.dataTransfer.getData("text/plain"));
-                      if (fromIdx !== idx) moveProduct(fromIdx, idx);
-                    } : undefined}
-                    style={{ cursor: isProductActive && !isCompleted ? "grab" : "default", opacity: 1, width: width + "px", minWidth: "180px", maxWidth: "800px", position: "relative", ...(isCompleted ? { opacity: 0.7, background: "#f0fdf4" } : {}) }}
-                  >
-                    <div className="returns-scan-card-head">
-                      <strong>{product.code} · {product.name}</strong>
-                      <div className="saved-board-list">
-                        <button
-                          type="button"
-                          className="icon-button returns-scan-icon-only returns-scan-close-box"
-                          onClick={() => { void closeBoxFromProductCard(product.boxId); }}
-                          title={`Cerrar caja ${product.boxNumber}`}
-                          aria-label={`Cerrar caja ${product.boxNumber}`}
-                        >
-                          x
-                        </button>
-                        <span className="chip" style={{ background: "#f0fdf4", color: "#15803d" }}>Caja: {product.boxNumber}</span>
-                        <span className="chip primary">{product.totalPieces}/{product.targetPieces} pzas</span>
-                        {!isCompleted && (
-                          <button type="button" className="icon-button" onClick={() => openLotModalForProduct(product)} disabled={!isProductActive}>
-                            Cambiar lote
+                return allProducts.length ? allProducts.map((product, idx) => {
+                  const width = productWidths[product.itemId] || 320;
+                  const isProductActive = activeBoxId === product.boxId;
+                  const productKey = `${product.boxId}-${product.itemId}`;
+                  const isCollapsed = collapsedProducts.has(productKey);
+                  const isCompleted = product.totalPieces >= product.targetPieces;
+
+                  // No renderizar colapsadas en la vista principal
+                  if (isCollapsed && isCompleted) return null;
+
+                  return (
+                    <article
+                      key={`${product.boxId}-${product.itemId}`}
+                      className="returns-scan-card"
+                      draggable={isProductActive && !isCompleted}
+                      onDragStart={isProductActive && !isCompleted ? e => {
+                        e.dataTransfer.effectAllowed = "move";
+                        e.dataTransfer.setData("text/plain", idx);
+                      } : undefined}
+                      onDragOver={isProductActive && !isCompleted ? e => e.preventDefault() : undefined}
+                      onDrop={isProductActive && !isCompleted ? e => {
+                        e.preventDefault();
+                        const fromIdx = Number(e.dataTransfer.getData("text/plain"));
+                        if (fromIdx !== idx) moveProduct(fromIdx, idx);
+                      } : undefined}
+                      style={{ cursor: isProductActive && !isCompleted ? "grab" : "default", opacity: 1, width: width + "px", minWidth: "180px", maxWidth: "800px", position: "relative", ...(isCompleted ? { opacity: 0.7, background: "#f0fdf4" } : {}) }}
+                    >
+                      <div className="returns-scan-card-head">
+                        <strong>{product.code} · {product.name}</strong>
+                        <div className="saved-board-list">
+                          <button
+                            type="button"
+                            className="icon-button returns-scan-icon-only returns-scan-close-box"
+                            onClick={() => { void closeBoxFromProductCard(product.boxId); }}
+                            title={`Cerrar caja ${product.boxNumber}`}
+                            aria-label={`Cerrar caja ${product.boxNumber}`}
+                          >
+                            x
                           </button>
-                        )}
-                        {isCompleted && (
-                          <button type="button" className="icon-button returns-scan-icon-only" onClick={() => {
-                            const box = activeTarima.boxes.find(b => b.id === product.boxId);
-                            if (box) void generateSingleBoxPDF(box);
-                          }} title="Reimprimir PDF" aria-label="Reimprimir PDF">
-                            P
-                          </button>
-                        )}
+                          <span className="chip" style={{ background: "#f0fdf4", color: "#15803d" }}>Caja: {product.boxNumber}</span>
+                          <span className="chip primary">{product.totalPieces}/{product.targetPieces} pzas</span>
+                          {!isCompleted && (
+                            <button type="button" className="icon-button" onClick={() => openLotModalForProduct(product)} disabled={!isProductActive}>
+                              Cambiar lote
+                            </button>
+                          )}
+                          {isCompleted && (
+                            <button type="button" className="icon-button returns-scan-icon-only" onClick={() => {
+                              const box = activeTarima.boxes.find((b) => b.id === product.boxId);
+                              if (box) void generateSingleBoxPDF(box);
+                            }} onContextMenu={(e) => {
+                              const box = activeTarima.boxes.find((b) => b.id === product.boxId);
+                              if (box) openPdfContextMenu(e, () => downloadSingleBoxPDF(box));
+                            }} title="Reimprimir PDF (clic derecho: descargar)" aria-label="Reimprimir PDF">
+                              P
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <p>{product.presentation || "Sin presentación"}</p>
-                    <div className="returns-scan-lot-table" role="table" aria-label={`Lotes de ${product.name}`}>
-                      <div className="returns-scan-lot-header" role="row">
-                        <span role="columnheader">Lote</span>
-                        <span role="columnheader">Caducidad</span>
-                        <span role="columnheader">Piezas</span>
+                      <p>{product.presentation || "Sin presentación"}</p>
+                      <div className="returns-scan-lot-table" role="table" aria-label={`Lotes de ${product.name}`}>
+                        <div className="returns-scan-lot-header" role="row">
+                          <span role="columnheader">Lote</span>
+                          <span role="columnheader">Caducidad</span>
+                          <span role="columnheader">Piezas</span>
+                        </div>
+                        <div className="returns-scan-lot-body" role="rowgroup">
+                          {product.lots.map((lot) => (
+                            <div className="returns-scan-lot-row" role="row" key={`${product.itemId}-${lot.lot}-${lot.expiry}`}>
+                              <span role="cell" data-label="Lote">{lot.lot}</span>
+                              <span role="cell" data-label="Caducidad">{lot.expiry}</span>
+                              <span role="cell" data-label="Piezas">{lot.pieces}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <div className="returns-scan-lot-body" role="rowgroup">
-                        {product.lots.map((lot) => (
-                          <div className="returns-scan-lot-row" role="row" key={`${product.itemId}-${lot.lot}-${lot.expiry}`}>
-                            <span role="cell" data-label="Lote">{lot.lot}</span>
-                            <span role="cell" data-label="Caducidad">{lot.expiry}</span>
-                            <span role="cell" data-label="Piezas">{lot.pieces}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    {isProductActive && !isCompleted && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: 0,
-                          right: 0,
-                          width: "10px",
-                          height: "100%",
-                          cursor: "ew-resize",
-                          zIndex: 10,
-                          userSelect: "none",
-                        }}
-                        onMouseDown={e => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          const startX = e.clientX;
-                          const startWidth = width;
-                          function onMouseMove(ev) {
-                            const delta = ev.clientX - startX;
-                            handleResizeProduct(product.itemId, startWidth + delta);
-                          }
-                          function onMouseUp() {
-                            window.removeEventListener("mousemove", onMouseMove);
-                            window.removeEventListener("mouseup", onMouseUp);
-                          }
-                          window.addEventListener("mousemove", onMouseMove);
-                          window.addEventListener("mouseup", onMouseUp);
-                        }}
-                        title="Arrastra para ajustar el ancho"
-                        aria-label="Arrastra para ajustar el ancho"
-                      />
-                    )}
-                  </article>
-                );
-              }) : <p className="subtle-line">Sin cajas activas. Las cajas cerradas permanecen arriba en pestañas.</p>;
-            })()}
-          </div>
+                      {isProductActive && !isCompleted && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            right: 0,
+                            width: "10px",
+                            height: "100%",
+                            cursor: "ew-resize",
+                            zIndex: 10,
+                            userSelect: "none",
+                          }}
+                          onMouseDown={e => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const startX = e.clientX;
+                            const startWidth = width;
+                            function onMouseMove(ev) {
+                              const delta = ev.clientX - startX;
+                              handleResizeProduct(product.itemId, startWidth + delta);
+                            }
+                            function onMouseUp() {
+                              window.removeEventListener("mousemove", onMouseMove);
+                              window.removeEventListener("mouseup", onMouseUp);
+                            }
+                            window.addEventListener("mousemove", onMouseMove);
+                            window.addEventListener("mouseup", onMouseUp);
+                          }}
+                          title="Arrastra para ajustar el ancho"
+                          aria-label="Arrastra para ajustar el ancho"
+                        />
+                      )}
+                    </article>
+                  );
+                }) : <p className="subtle-line">Sin cajas activas. Las cajas cerradas permanecen arriba en pestañas.</p>;
+              })()}
+            </div>
+          ) : null}
         </div>
       ) : (
         <p className="subtle-line">{activeTarima ? "Sin cajas aún. Escanea un código para crear la primera caja." : "Sin tarima activa."}</p>
