@@ -969,6 +969,11 @@ export default function PanelIndicadores({ contexto }) {
   const hasActivityUsage = Number(dashboardMetrics.activityRecords || 0) > 0;
   const hasBoardUsage = Number(dashboardMetrics.boardRecords || 0) > 0;
   const hasAnyUsage = Number(dashboardMetrics.total || 0) > 0;
+  const hasCatalogUsage = Number(dashboardMetrics.catalogActiveCount || 0) > 0;
+  const hasActivityGoalUsage = Array.isArray(dashboardActivityRows) && dashboardActivityRows.length > 0;
+  const hasDistributionUsage = Array.isArray(dashboardDistributionRows) && dashboardDistributionRows.length > 0;
+  const hasCatalogTypeUsage = Array.isArray(dashboardCatalogTypeRows) && dashboardCatalogTypeRows.some((item) => Number(item?.value || 0) > 0);
+  const hasCatalogFrequencyUsage = Array.isArray(dashboardCatalogFrequencyRows) && dashboardCatalogFrequencyRows.length > 0;
   const hasPauseUsage = Number(dashboardMetrics.pauseCount || 0) > 0 || Number(dashboardMetrics.pauseHours || 0) > 0 || Number(dashboardMetrics.paused || 0) > 0;
   const hasSlaUsage = Number(dashboardMetrics.withinPercent || 0) > 0 || Number(dashboardMetrics.outsidePercent || 0) > 0 || Number(dashboardMetrics.exceeded?.length || 0) > 0;
 
@@ -1002,11 +1007,11 @@ export default function PanelIndicadores({ contexto }) {
     { title: "Fuera de SLA", value: `${formatMetricNumber(dashboardMetrics.outsidePercent, 1)}%`, subtitle: "proporción fuera del objetivo", tone: "amber", icon: AlertTriangle, visible: hasSlaUsage && hasActivityUsage },
     { title: "Pausas registradas", value: String(dashboardMetrics.pauseCount), subtitle: "interrupciones con log", tone: "slate", icon: Pause, visible: hasPauseUsage },
     { title: "Áreas activas", value: String(dashboardMetrics.areaCount), subtitle: "áreas con movimiento operativo", tone: "cyan", icon: Users, visible: hasAnyUsage },
-    { title: "Catálogo activo", value: String(dashboardMetrics.catalogActiveCount), subtitle: "actividades disponibles", tone: "slate", icon: ClipboardList, visible: hasActivityUsage },
-    { title: "Obligatorias", value: String(dashboardMetrics.catalogMandatoryCount), subtitle: "actividades base", tone: "green", icon: CircleCheckBig, visible: hasActivityUsage },
-    { title: "Ocasionales", value: String(dashboardMetrics.catalogOptionalCount), subtitle: "actividades complementarias", tone: "amber", icon: PauseCircle, visible: hasActivityUsage },
+    { title: "Catálogo activo", value: String(dashboardMetrics.catalogActiveCount), subtitle: "actividades disponibles", tone: "slate", icon: ClipboardList, visible: hasCatalogUsage },
+    { title: "Obligatorias", value: String(dashboardMetrics.catalogMandatoryCount), subtitle: "actividades base", tone: "green", icon: CircleCheckBig, visible: hasCatalogUsage },
+    { title: "Ocasionales", value: String(dashboardMetrics.catalogOptionalCount), subtitle: "actividades complementarias", tone: "amber", icon: PauseCircle, visible: hasCatalogUsage },
     { title: "Horas totales", value: `${formatMetricNumber(dashboardMetrics.totalHours, 1)} h`, subtitle: "tiempo completado acumulado", tone: "cyan", icon: CalendarDays, visible: hasAnyUsage },
-    { title: "Frecuencias activas", value: String(dashboardMetrics.catalogFrequencyTypes), subtitle: "tipos de periodicidad en uso", tone: "cyan", icon: CalendarDays, visible: hasActivityUsage },
+    { title: "Frecuencias activas", value: String(dashboardMetrics.catalogFrequencyTypes), subtitle: "tipos de periodicidad en uso", tone: "cyan", icon: CalendarDays, visible: hasCatalogUsage },
   ].filter((item) => item.visible !== false);
 
   return (
@@ -1219,9 +1224,10 @@ export default function PanelIndicadores({ contexto }) {
           </aside>
         </div>
 
-        {hasActivityUsage ? (
+        {(hasActivityGoalUsage || hasDistributionUsage) ? (
         <>
         <div className="dashboard-main-grid dashboard-lower-middle-grid">
+          {hasActivityGoalUsage ? (
           <article className="dashboard-panel dashboard-panel-half">
             <div className="dashboard-panel-header">
               <h3>Actividad vs. Tiempo Objetivo</h3>
@@ -1233,7 +1239,9 @@ export default function PanelIndicadores({ contexto }) {
               ))}
             </div>
           </article>
+          ) : null}
 
+          {hasDistributionUsage ? (
           <article className="dashboard-panel dashboard-panel-half">
             <div className="dashboard-panel-header">
               <h3>Distribución de Carga</h3>
@@ -1269,9 +1277,15 @@ export default function PanelIndicadores({ contexto }) {
               />
             )}
           </article>
+          ) : null}
         </div>
+        </>
+        ) : null}
 
+        {(hasCatalogTypeUsage || hasCatalogFrequencyUsage) ? (
+        <>
         <div className="dashboard-main-grid dashboard-lower-middle-grid">
+          {hasCatalogTypeUsage ? (
           <article className="dashboard-panel dashboard-panel-half">
             <div className="dashboard-panel-header">
               <h3>Tipo de Actividades (Catálogo)</h3>
@@ -1324,7 +1338,9 @@ export default function PanelIndicadores({ contexto }) {
               />
             )}
           </article>
+          ) : null}
 
+          {hasCatalogFrequencyUsage ? (
           <article className="dashboard-panel dashboard-panel-half">
             <div className="dashboard-panel-header">
               <h3>Frecuencia de Actividades (Catálogo)</h3>
@@ -1377,6 +1393,7 @@ export default function PanelIndicadores({ contexto }) {
               />
             )}
           </article>
+          ) : null}
         </div>
         </>
         ) : null}
