@@ -24,6 +24,20 @@ function parseTimeValue(value, fallbackHour = 0, fallbackMinute = 0) {
   };
 }
 
+function isWithinWorkHoursWindow(workHours) {
+  const source = workHours && typeof workHours === "object" ? workHours : {};
+  const startHour = Math.min(23, Math.max(0, Math.round(Number(source.startHour ?? 0))));
+  const startMinute = Math.min(59, Math.max(0, Math.round(Number(source.startMinute ?? 0))));
+  const endHour = Math.min(24, Math.max(0, Math.round(Number(source.endHour ?? 24))));
+  const endMinute = Math.min(59, Math.max(0, Math.round(Number(source.endMinute ?? 0))));
+  const startTotal = (startHour * 60) + startMinute;
+  const endTotal = (endHour * 60) + endMinute;
+  if (startTotal === endTotal) return false;
+  const now = new Date();
+  const nowTotal = (now.getHours() * 60) + now.getMinutes();
+  return nowTotal >= startTotal && nowTotal < endTotal;
+}
+
 export default function ConfiguracionSistema({ contexto }) {
   const {
     actionPermissions,
@@ -126,6 +140,24 @@ export default function ConfiguracionSistema({ contexto }) {
     if (pauseDraft?.globalPauseEnabled) {
       if (pauseDraft?.forceGlobalPause) {
         pushAppToast("Desactiva primero la pausa forzada para aplicar una desactivación temporal.", "warning");
+        return;
+      }
+      if (isWithinWorkHoursWindow(pauseDraft?.workHours)) {
+        setIsSavingPause(true);
+        try {
+          await updateSystemOperationalSettings({
+            pauseControl: {
+              ...pauseDraft,
+              globalPauseEnabled: false,
+              globalPauseAutoDisabledUntil: null,
+            },
+          });
+          pushAppToast("Pausa global desactivada.", "success");
+        } catch (error) {
+          pushAppToast(error?.message || "No se pudo desactivar la pausa global.", "danger");
+        } finally {
+          setIsSavingPause(false);
+        }
         return;
       }
       setGlobalPauseDisableModal({ open: true, minutes: "60", error: "" });
