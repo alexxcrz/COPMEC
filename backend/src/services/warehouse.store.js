@@ -349,7 +349,7 @@ function normalizeSystemPauseControl(value) {
   const globalWorkHours = normalizeWorkHoursWithMinutes(source.workHours);
   
   const areaSource = source.areaPauseControls && typeof source.areaPauseControls === "object" ? source.areaPauseControls : {};
-  const areaKeys = Object.keys(areaSource).length ? Object.keys(areaSource) : ["C1", "C2", "C3", "P"];
+  const areaKeys = Object.keys(areaSource);
   const areaPauseControls = areaKeys.reduce((accumulator, areaKey) => {
     const normalizedArea = normalizeBoardOwnerArea(areaKey) || normalizeAreaOption(areaKey);
     if (!normalizedArea) return accumulator;
@@ -364,6 +364,10 @@ function normalizeSystemPauseControl(value) {
   
   const rawActivatedAt = source.globalPauseActivatedAt;
   const globalPauseActivatedAt = (rawActivatedAt && !Number.isNaN(Date.parse(rawActivatedAt))) ? String(rawActivatedAt) : null;
+  const rawAutoDisabledUntil = source.globalPauseAutoDisabledUntil;
+  const globalPauseAutoDisabledUntil = (rawAutoDisabledUntil && !Number.isNaN(Date.parse(rawAutoDisabledUntil)))
+    ? String(rawAutoDisabledUntil)
+    : null;
   return {
     globalPauseEnabled: Boolean(source.globalPauseEnabled),
     forceGlobalPause: Boolean(source.forceGlobalPause),
@@ -371,6 +375,74 @@ function normalizeSystemPauseControl(value) {
     workHours: globalWorkHours,
     areaPauseControls,
     globalPauseActivatedAt,
+    globalPauseAutoDisabledUntil,
+  };
+}
+
+function isWithinPauseControlWorkHours(nowMs, workHours) {
+  const source = workHours && typeof workHours === "object" ? workHours : EMPTY_OBJECT;
+  const startHour = Math.min(23, Math.max(0, Math.round(Number(source.startHour ?? 0))));
+  const startMinute = Math.min(59, Math.max(0, Math.round(Number(source.startMinute ?? 0))));
+  const endHour = Math.min(24, Math.max(0, Math.round(Number(source.endHour ?? 24))));
+  const endMinute = Math.min(59, Math.max(0, Math.round(Number(source.endMinute ?? 0))));
+  const startTotal = (startHour * 60) + startMinute;
+  const endTotal = (endHour * 60) + endMinute;
+  if (startTotal === endTotal) return false;
+
+  const now = new Date(nowMs);
+  const nowTotal = (now.getHours() * 60) + now.getMinutes();
+  return nowTotal >= startTotal && nowTotal < endTotal;
+}
+
+function resolveAutomatedGlobalPauseControl(pauseControl) {
+  const normalizedPauseControl = normalizeSystemPauseControl(pauseControl);
+  const nowMs = Date.now();
+  const autoDisabledUntilMs = normalizedPauseControl.globalPauseAutoDisabledUntil
+    ? new Date(normalizedPauseControl.globalPauseAutoDisabledUntil).getTime()
+    : NaN;
+  const hasActiveTemporaryDisable = Number.isFinite(autoDisabledUntilMs) && autoDisabledUntilMs > nowMs;
+  const isWithinGlobalWindow = isWithinPauseControlWorkHours(nowMs, normalizedPauseControl.workHours);
+  const desiredGlobalPauseEnabled = normalizedPauseControl.forceGlobalPause
+    ? true
+    : hasActiveTemporaryDisable
+      ? false
+      : !isWithinGlobalWindow;
+
+  const nextPauseControl = {
+    ...normalizedPauseControl,
+    globalPauseEnabled: desiredGlobalPauseEnabled,
+    globalPauseAutoDisabledUntil: hasActiveTemporaryDisable ? normalizedPauseControl.globalPauseAutoDisabledUntil : null,
+  };
+
+  if (!normalizedPauseControl.globalPauseEnabled && desiredGlobalPauseEnabled) {
+    nextPauseControl.globalPauseActivatedAt = new Date(nowMs).toISOString();
+  } else if (normalizedPauseControl.globalPauseEnabled && !desiredGlobalPauseEnabled) {
+    nextPauseControl.globalPauseActivatedAt = null;
+  }
+
+  return nextPauseControl;
+}
+
+function applyAutomatedGlobalPauseState(currentState) {
+  const currentOperational = normalizeSystemOperationalSettings(currentState?.system?.operational);
+  const nextPauseControl = resolveAutomatedGlobalPauseControl(currentOperational.pauseControl);
+  const changed = JSON.stringify(nextPauseControl) !== JSON.stringify(currentOperational.pauseControl);
+  if (!changed) {
+    return { state: currentState, changed: false };
+  }
+
+  return {
+    changed: true,
+    state: {
+      ...currentState,
+      system: {
+        ...(currentState?.system || EMPTY_OBJECT),
+        operational: {
+          ...currentOperational,
+          pauseControl: nextPauseControl,
+        },
+      },
+    },
   };
 }
 
@@ -1683,11 +1755,12 @@ export function getWarehouseState() {
 
 function getRawWarehouseState() {
   const currentState = readStore();
-  const { state: nextState, changed } = applyAutomatedBoardWeeklyCut(currentState);
-  if (!changed) return currentState;
+  const { state: boardState, changed: boardChanged } = applyAutomatedBoardWeeklyCut(currentState);
+  const { state: automatedPauseState, changed: pauseChanged } = applyAutomatedGlobalPauseState(boardState);
+  if (!boardChanged && !pauseChanged) return currentState;
 
   const persistedState = normalizeState({
-    ...nextState,
+    ...automatedPauseState,
     revision: Number(currentState.revision || 0) + 1,
     updatedAt: new Date().toISOString(),
   }, currentState);
@@ -4353,6 +4426,20 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
   const rowPauseLogs = Array.isArray(row?.pauseLogs) ? row.pauseLogs : [];
   nextRow.pauseLogs = rowPauseLogs.map((entry) => ({ ...entry }));
 
+  const isRunningStatus = (statusValue) => normalizeKey(statusValue) === "encurso";
+  const getRowResponsibleIds = (sourceRow) => {
+    const fromList = Array.isArray(sourceRow?.responsibleIds)
+      ? sourceRow.responsibleIds
+      : [];
+    const fallbackResponsible = String(sourceRow?.responsibleId || "").trim();
+    const fallbackCreator = String(sourceRow?.createdById || "").trim();
+    const merged = fromList
+      .concat([fallbackResponsible, fallbackCreator])
+      .map((value) => String(value || "").trim())
+      .filter(Boolean);
+    return [...new Set(merged)];
+  };
+
   if (hasOwn(patch, "responsibleIds")) {
     const responsibleIds = normalizeBoardResponsibleIds(patch.responsibleIds, "");
     nextRow.responsibleIds = responsibleIds;
@@ -4365,6 +4452,32 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
 
   if (hasOwn(patch, "status")) {
     if (patch.status === "En curso") {
+      const responsibleIdsToValidate = [...new Set([
+        ...getRowResponsibleIds(nextRow),
+        String(currentUser?.id || "").trim(),
+      ].filter(Boolean))];
+      if (responsibleIdsToValidate.length) {
+        const hasActiveWorkload = responsibleIdsToValidate.some((responsibleId) => {
+          const hasRunningActivity = (currentState.activities || []).some((activity) => (
+            String(activity?.responsibleId || "").trim() === responsibleId
+            && isRunningStatus(activity?.status)
+          ));
+          if (hasRunningActivity) return true;
+
+          return (currentState.controlBoards || []).some((controlBoard) => (
+            (controlBoard.rows || []).some((candidateRow) => (
+              String(candidateRow?.id || "").trim() !== String(row.id || "").trim()
+              && getRowResponsibleIds(candidateRow).includes(responsibleId)
+              && isRunningStatus(candidateRow?.status)
+            ))
+          ));
+        });
+
+        if (hasActiveWorkload && String(row.status || "") !== "En curso") {
+          return { ok: false, reason: "responsible_has_active_work" };
+        }
+      }
+
       (board.fields || []).forEach((field) => {
         if (field.type !== "time") return;
         const normalizedLabel = normalizeKey(field.label || "");

@@ -520,6 +520,7 @@ function App() { // NOSONAR
   const [editingDraftColumnId, setEditingDraftColumnId] = useState(null);
   const [boardRuntimeFeedback, setBoardRuntimeFeedback] = useState({ tone: "", message: "" });
   const [boardFinishConfirm, setBoardFinishConfirm] = useState({ open: false, boardId: null, rowId: null, message: "" });
+  const [boardStartConfirm, setBoardStartConfirm] = useState({ open: false, boardId: null, rowId: null, title: "", message: "" });
   const [deleteBoardRowState, setDeleteBoardRowState] = useState({ open: false, boardId: null, rowId: null });
   const [inventoryModal, setInventoryModal] = useState(() => createInventoryModalState());
   const [inventoryMovementModal, setInventoryMovementModal] = useState(() => createInventoryMovementModalState());
@@ -5566,10 +5567,52 @@ function App() { // NOSONAR
     }
   }
 
-  function changeBoardRowStatus(boardId, rowId, status) {
+  function changeBoardRowStatus(boardId, rowId, status, options = {}) {
     const board = (state.controlBoards || []).find((item) => item.id === boardId);
     const row = board?.rows?.find((item) => item.id === rowId);
     if (!board || !row || !canOperateBoardRowRecord(currentUser, board, row, normalizedPermissions)) return;
+
+    if (status === STATUS_RUNNING && row.status !== STATUS_RUNNING) {
+      const currentUserId = String(currentUser?.id || "").trim();
+      if (currentUserId) {
+        const hasRunningActivity = (state.activities || []).some((activity) => (
+          String(activity?.responsibleId || "").trim() === currentUserId
+          && String(activity?.status || "").trim() === STATUS_RUNNING
+        ));
+        const hasRunningBoardRow = (state.controlBoards || []).some((controlBoard) => (
+          (controlBoard.rows || []).some((candidateRow) => {
+            if (String(candidateRow?.status || "").trim() !== STATUS_RUNNING) return false;
+            if (String(candidateRow?.id || "").trim() === String(rowId || "").trim()) return false;
+            const candidateResponsibleIds = Array.isArray(candidateRow?.responsibleIds)
+              ? candidateRow.responsibleIds
+              : [];
+            return candidateResponsibleIds.map((value) => String(value || "").trim()).includes(currentUserId)
+              || String(candidateRow?.responsibleId || "").trim() === currentUserId
+              || String(candidateRow?.createdById || "").trim() === currentUserId;
+          })
+        ));
+        if (hasRunningActivity || hasRunningBoardRow) {
+          setBoardRuntimeFeedback({
+            tone: "danger",
+            message: "Ya tienes una actividad en curso. Finaliza o pausa la actual antes de iniciar otra.",
+          });
+          return;
+        }
+      }
+    }
+
+    if (status === STATUS_RUNNING && row.status !== STATUS_RUNNING && !options.skipStartConfirm) {
+      setBoardStartConfirm({
+        open: true,
+        boardId,
+        rowId,
+        title: row.status === STATUS_PAUSED ? "Confirmar reanudación" : "Confirmar inicio",
+        message: row.status === STATUS_PAUSED
+          ? "Vas a reanudar esta actividad."
+          : "Vas a iniciar esta actividad.",
+      });
+      return;
+    }
 
     // When starting a row, check if there are linked cleaning inventory items measured in piezas
     if (status === STATUS_RUNNING && row.status !== STATUS_RUNNING) {
@@ -5598,6 +5641,14 @@ function App() { // NOSONAR
     }
 
     executeBoardRowStatusChange(boardId, rowId, status);
+  }
+
+  function confirmStartBoardRow() {
+    if (!boardStartConfirm.boardId || !boardStartConfirm.rowId) return;
+    const boardId = boardStartConfirm.boardId;
+    const rowId = boardStartConfirm.rowId;
+    setBoardStartConfirm({ open: false, boardId: null, rowId: null, title: "", message: "" });
+    changeBoardRowStatus(boardId, rowId, STATUS_RUNNING, { skipStartConfirm: true });
   }
 
   function executeBoardRowStatusChange(boardId, rowId, status) {
@@ -6962,6 +7013,20 @@ function App() { // NOSONAR
             );
           })()}
           <p className="board-finish-confirm-note">{boardFinishConfirm.message}</p>
+        </div>
+      </Modal>
+
+      <Modal
+        open={boardStartConfirm.open}
+        title={boardStartConfirm.title || "Confirmar inicio"}
+        confirmLabel="Confirmar"
+        cancelLabel="Cancelar"
+        onClose={() => setBoardStartConfirm({ open: false, boardId: null, rowId: null, title: "", message: "" })}
+        onConfirm={confirmStartBoardRow}
+      >
+        <div className="modal-form-grid">
+          <p>{boardStartConfirm.message || "¿Deseas iniciar esta actividad?"}</p>
+          <p className="modal-footnote">Solo puedes tener una actividad en curso por player, entre actividades y tableros.</p>
         </div>
       </Modal>
 
