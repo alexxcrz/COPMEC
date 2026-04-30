@@ -2676,6 +2676,10 @@ function remapBoardRowValues(row, previousFields, nextFields, fallbackResponsibl
 function createBoardRowRecord(fields, responsibleId, partial = {}) {
   const responsibleIds = normalizeBoardResponsibleIds(partial?.responsibleIds, partial?.responsibleId || responsibleId);
   const effectiveResponsibleId = responsibleIds[0] || "";
+  const rawTotalOverride = Number(partial?.totalElapsedSecondsOverride);
+  const totalElapsedSecondsOverride = Number.isFinite(rawTotalOverride) && rawTotalOverride >= 0
+    ? Math.max(0, rawTotalOverride)
+    : null;
   const baseValues = (fields || []).reduce((accumulator, field) => {
     accumulator[field.id] = getBoardFieldDefaultValue(field, effectiveResponsibleId);
     return accumulator;
@@ -2693,6 +2697,7 @@ function createBoardRowRecord(fields, responsibleId, partial = {}) {
     startTime: partial?.startTime ?? null,
     endTime: partial?.endTime ?? null,
     accumulatedSeconds: Number(partial?.accumulatedSeconds || 0),
+    totalElapsedSecondsOverride,
     lastResumedAt: partial?.lastResumedAt ?? null,
     pauseUsageByDay: partial?.pauseUsageByDay && typeof partial.pauseUsageByDay === "object" ? partial.pauseUsageByDay : {},
     pauseLogs: Array.isArray(partial?.pauseLogs)
@@ -4641,7 +4646,7 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
 
   // Lead-only direct overrides for time fields (startTime, endTime, accumulatedSeconds).
   if (normalizeRole(currentUser.role) === ROLE_LEAD) {
-    const hasTimeOverride = hasOwn(patch, "startTime") || hasOwn(patch, "endTime") || hasOwn(patch, "accumulatedSeconds");
+    const hasTimeOverride = hasOwn(patch, "startTime") || hasOwn(patch, "endTime") || hasOwn(patch, "accumulatedSeconds") || hasOwn(patch, "totalElapsedSecondsOverride");
     if (hasOwn(patch, "startTime") && patch.startTime) {
       nextRow.startTime = patch.startTime;
     }
@@ -4650,6 +4655,12 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
     }
     if (hasOwn(patch, "accumulatedSeconds")) {
       nextRow.accumulatedSeconds = Math.max(0, Number(patch.accumulatedSeconds || 0));
+    }
+    if (hasOwn(patch, "totalElapsedSecondsOverride")) {
+      const totalOverride = Number(patch.totalElapsedSecondsOverride);
+      nextRow.totalElapsedSecondsOverride = Number.isFinite(totalOverride) && totalOverride >= 0
+        ? Math.max(0, totalOverride)
+        : null;
     }
     if (Boolean(patch.clearPauseLogs)) {
       nextRow.pauseLogs = [];

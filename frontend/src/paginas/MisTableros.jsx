@@ -945,11 +945,15 @@ export default function MisTableros({ contexto }) {
                             if (column.id === "totalTime") {
                               const effectiveNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : now;
                               const prodSecs = getElapsedSeconds(row, effectiveNow, pauseState);
-                              const totalSecs = row.status === STATUS_PAUSED
+                              const computedTotalSecs = row.status === STATUS_PAUSED
                                 ? prodSecs
                                 : row.startTime
                                   ? Math.max(prodSecs, getOperationalElapsedSeconds(row.startTime, effectiveNow, pauseState))
                                   : 0;
+                              const overriddenTotalSecs = Number(row.totalElapsedSecondsOverride);
+                              const totalSecs = Number.isFinite(overriddenTotalSecs) && overriddenTotalSecs >= 0
+                                ? Math.max(0, overriddenTotalSecs)
+                                : computedTotalSecs;
                               if (isLeadPrincipal) {
                                 const editKey = `${row.id}-totalTime`;
                                 const editingVal = leadTimeEdits[editKey];
@@ -966,7 +970,7 @@ export default function MisTableros({ contexto }) {
                                       onBlur={(event) => {
                                         setLeadTimeEdits((prev) => { const next = { ...prev }; delete next[editKey]; return next; });
                                         const secs = parseHhmmToSeconds(event.target.value);
-                                        if (secs !== null) updateBoardRowTimeOverride(selectedCustomBoard.id, row.id, { accumulatedSeconds: secs });
+                                        if (secs !== null) updateBoardRowTimeOverride(selectedCustomBoard.id, row.id, { totalElapsedSecondsOverride: secs });
                                       }}
                                     />
                                   </td>
