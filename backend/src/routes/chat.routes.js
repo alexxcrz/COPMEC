@@ -141,7 +141,6 @@ chatRouter.get("/usuarios/estados", requireAuth, (req, res) => {
       }
     });
     const activos = Object.entries(estados).filter(([, status]) => status === "activo" || status === "en-llamada").length;
-    console.log(`[chat/status] users=${Object.keys(estados).length} activeOrCall=${activos}`);
     res.json(estados);
   } catch (e) {
     res.status(500).json({ error: "Error obteniendo estados" });

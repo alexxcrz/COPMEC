@@ -4458,11 +4458,11 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
   if (isIdempotentStatusPatch) {
     return { ok: true, state: currentState, row };
   }
-  if (pauseControl?.globalPauseEnabled && normalizeRole(currentUser.role) !== ROLE_LEAD) {
-    return { ok: false, reason: "global_pause_active" };
-  }
 
   const isWorkflowPatch = hasOwn(patch, "status") || hasOwn(patch, "lastPauseReason");
+  if (pauseControl?.globalPauseEnabled && normalizeRole(currentUser.role) !== ROLE_LEAD && isWorkflowPatch) {
+    return { ok: false, reason: "global_pause_active" };
+  }
   const allowed = isWorkflowPatch
     ? canOperateWarehouseBoardRow(currentUser, board, row, currentState.permissions)
     : canEditWarehouseBoardRow(currentUser, board, row, currentState.permissions);

@@ -97,7 +97,6 @@ export function initSocket(httpServer) {
     socket.on("login_chat", ({ nickname, photo }) => {
       const safeNickname = String(nickname || "").trim();
       if (!safeNickname) return;
-      console.log(`[chat/login] socket=${socket.id} nickname=${safeNickname}`);
       usuarioNombre = safeNickname;
       socket.data.nickname = safeNickname;
 
