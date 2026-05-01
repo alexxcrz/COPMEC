@@ -325,6 +325,7 @@ function ReturnsReconditionScannerInner({
   setBoardRuntimeFeedback,
   manualGlobalPause = false,
   globalForceActive = false,
+  operationalWorkHours = null,
   disabled,
 }) {
   // Estado para el orden de productos (drag & drop)
@@ -378,6 +379,16 @@ function ReturnsReconditionScannerInner({
     return activeTarima.boxes?.find((b) => b.id === activeBoxId) || null;
   }, [activeTarima, activeBoxId]);
 
+  const operationalWorkWindowLabel = useMemo(() => {
+    const source = operationalWorkHours && typeof operationalWorkHours === "object" ? operationalWorkHours : null;
+    if (!source) return "";
+    const startHour = Math.min(23, Math.max(0, Number(source.startHour) || 0));
+    const startMinute = Math.min(59, Math.max(0, Number(source.startMinute) || 0));
+    const endHour = Math.min(24, Math.max(0, Number(source.endHour) || 24));
+    const endMinute = Math.min(59, Math.max(0, Number(source.endMinute) || 0));
+    return `${String(startHour).padStart(2, "0")}:${String(startMinute).padStart(2, "0")}-${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}`;
+  }, [operationalWorkHours]);
+
   // Pausa automática por horario configurable
   useEffect(() => {
     const checkPause = () => {
@@ -385,7 +396,25 @@ function ReturnsReconditionScannerInner({
       const tzHour = getHourInTimeZone(now, TARIMA_PAUSE_TIMEZONE);
       const localHour = now.getHours();
       const effectiveHour = Number.isFinite(tzHour) ? tzHour : localHour;
-      const shouldPause = isWithinPauseWindow(effectiveHour, TARIMA_PAUSE_START_HOUR, TARIMA_PAUSE_END_HOUR);
+      const source = operationalWorkHours && typeof operationalWorkHours === "object" ? operationalWorkHours : null;
+      let shouldPause;
+      if (source) {
+        const startHour = Math.min(23, Math.max(0, Number(source.startHour) || 0));
+        const startMinute = Math.min(59, Math.max(0, Number(source.startMinute) || 0));
+        const endHour = Math.min(24, Math.max(0, Number(source.endHour) || 24));
+        const endMinute = Math.min(59, Math.max(0, Number(source.endMinute) || 0));
+        const startTotal = (startHour * 60) + startMinute;
+        const endTotal = (endHour * 60) + endMinute;
+        const nowTotal = (effectiveHour * 60) + (Number.isFinite(tzHour) ? Number(new Intl.DateTimeFormat("en-US", { timeZone: TARIMA_PAUSE_TIMEZONE, minute: "2-digit" }).format(now)) : now.getMinutes());
+        const isWithinWorkWindow = startTotal === endTotal
+          ? false
+          : startTotal < endTotal
+            ? nowTotal >= startTotal && nowTotal < endTotal
+            : nowTotal >= startTotal || nowTotal < endTotal;
+        shouldPause = !isWithinWorkWindow;
+      } else {
+        shouldPause = isWithinPauseWindow(effectiveHour, TARIMA_PAUSE_START_HOUR, TARIMA_PAUSE_END_HOUR);
+      }
       setSystemPaused(shouldPause);
     };
     checkPause();
@@ -393,7 +422,7 @@ function ReturnsReconditionScannerInner({
     return () => {
       if (pauseCheckIntervalRef.current) clearInterval(pauseCheckIntervalRef.current);
     };
-  }, []);
+  }, [operationalWorkHours]);
 
   // Toggle collapse/expand producto
   const toggleProductCollapsed = (productKey) => {
@@ -2396,7 +2425,7 @@ function ReturnsReconditionScannerInner({
             <span
               className="chip"
               style={{ background: "#fee2e2", color: "#991b1b" }}
-              title={`Horario activo: ${TARIMA_PAUSE_WINDOW_LABEL} · ${TARIMA_PAUSE_TIMEZONE}`}
+              title={`Horario activo: ${operationalWorkWindowLabel || TARIMA_PAUSE_WINDOW_LABEL} · ${TARIMA_PAUSE_TIMEZONE}`}
             >
               ⏸ Pausa global por jornada
             </span>

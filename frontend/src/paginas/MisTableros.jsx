@@ -775,6 +775,7 @@ export default function MisTableros({ contexto }) {
                 setBoardRuntimeFeedback={setBoardRuntimeFeedback}
                 manualGlobalPause={manualGlobalPause}
                 globalForceActive={globalForceActive}
+                operationalWorkHours={effectiveWorkHours}
                 disabled={isHistoricalCustomBoardView}
               />
             ) : null}
