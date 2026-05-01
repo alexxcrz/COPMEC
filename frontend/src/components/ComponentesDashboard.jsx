@@ -59,13 +59,13 @@ export function InventoryStockBar({ current, minimum, unitLabel = "pzas", target
   );
 }
 
-export function DashboardKpiCard({ title, value, valueMeta, _subtitle, tone, icon: _Icon }) {
+export function DashboardKpiCard({ title, value, valueMeta, _subtitle, tone, icon: Icon }) {
   const palette = KPI_STYLES[tone] || KPI_STYLES.cyan;
   return (
     <article className="dashboard-kpi-card">
       <div className="dashboard-kpi-head">
         <div className="dashboard-kpi-icon" style={{ backgroundColor: palette.iconBg, color: palette.iconColor }}>
-          <Icon size={14} strokeWidth={2.1} />
+          {Icon ? <Icon size={14} strokeWidth={2.1} /> : null}
         </div>
       </div>
       <span>{title}</span>
