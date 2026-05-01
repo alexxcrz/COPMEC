@@ -155,7 +155,7 @@ export function DashboardCauseCard({ title, share, count, examples }) {
   );
 }
 
-export function DashboardSection({ title, _subtitle, summary, icon: _Icon, open = true, onToggle, children }) {
+export function DashboardSection({ title, _subtitle, summary, icon: Icon, open = true, onToggle, children }) {
   return (
     <details className="dashboard-section" open={open}>
       <summary className="dashboard-section-summary" onClick={(event) => {
@@ -164,7 +164,7 @@ export function DashboardSection({ title, _subtitle, summary, icon: _Icon, open 
       }}>
         <div className="dashboard-section-summary-main">
           <div className="dashboard-section-summary-icon">
-            <Icon size={18} />
+            {Icon ? <Icon size={18} /> : null}
           </div>
           <div>
             <strong>{title}</strong>
