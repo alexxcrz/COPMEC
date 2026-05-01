@@ -818,6 +818,8 @@ function App() { // NOSONAR
   const [transferLeadTargetId, setTransferLeadTargetId] = useState(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [resetUserPasswordModal, setResetUserPasswordModal] = useState({ open: false, userId: null, userName: "", password: "", message: "" });
+  const [showUserModalPassword, setShowUserModalPassword] = useState(false);
+  const [showResetUserPassword, setShowResetUserPassword] = useState(false);
   const [userSearch, setUserSearch] = useState("");
   const [userRoleFilter, setUserRoleFilter] = useState("Todos los roles");
   const [usersViewTab, setUsersViewTab] = useState("table");
@@ -4304,6 +4306,7 @@ function App() { // NOSONAR
   }
 
   function closeUserModal() {
+    setShowUserModalPassword(false);
     setUserModal(createUserModalState());
   }
 
@@ -6702,6 +6705,7 @@ function App() { // NOSONAR
 
   function openResetUserPassword(user) {
     if (!actionPermissions.resetPasswords) return;
+    setShowResetUserPassword(false);
     setResetUserPasswordModal({
       open: true,
       userId: user.id,
@@ -6727,6 +6731,7 @@ function App() { // NOSONAR
         body: JSON.stringify({ password: resetUserPasswordModal.password.trim() }),
       });
       applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setShowResetUserPassword(false);
       setResetUserPasswordModal({ open: false, userId: null, userName: "", password: "", message: "" });
     } catch (error) {
       setResetUserPasswordModal((current) => ({ ...current, message: error?.message || "No se pudo restablecer la contraseña." }));
@@ -7757,12 +7762,22 @@ function App() { // NOSONAR
             {userModal.mode === "create" ? (
               <label className="app-modal-field">
                 <span>Contraseña temporal</span>
-                <input
-                  type="password"
-                  value={userModal.password}
-                  onChange={(event) => setUserModal((current) => ({ ...current, password: event.target.value }))}
-                  placeholder="Mínimo 4 caracteres"
-                />
+                <div className="password-visibility-field">
+                  <input
+                    type={showUserModalPassword ? "text" : "password"}
+                    value={userModal.password}
+                    onChange={(event) => setUserModal((current) => ({ ...current, password: event.target.value }))}
+                    placeholder="Mínimo 4 caracteres"
+                  />
+                  <button
+                    type="button"
+                    className="password-visibility-toggle"
+                    aria-label={showUserModalPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                    onClick={() => setShowUserModalPassword((current) => !current)}
+                  >
+                    {showUserModalPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </label>
             ) : null}
             <fieldset className="app-modal-field user-status-switch-field">
@@ -8153,12 +8168,36 @@ function App() { // NOSONAR
 
       {isForcedPasswordChange ? <ForcedPasswordChangeModal passwordForm={passwordForm} onPasswordChange={setPasswordForm} onSubmit={submitPasswordReset} /> : null}
 
-      <Modal open={resetUserPasswordModal.open} title="Restablecer contraseña" confirmLabel="Guardar contraseña temporal" cancelLabel="Cancelar" onClose={() => setResetUserPasswordModal({ open: false, userId: null, userName: "", password: "", message: "" })} onConfirm={submitUserPasswordReset}>
+      <Modal
+        open={resetUserPasswordModal.open}
+        title="Restablecer contraseña"
+        confirmLabel="Guardar contraseña temporal"
+        cancelLabel="Cancelar"
+        onClose={() => {
+          setShowResetUserPassword(false);
+          setResetUserPasswordModal({ open: false, userId: null, userName: "", password: "", message: "" });
+        }}
+        onConfirm={submitUserPasswordReset}
+      >
         <div className="modal-form-grid">
           <p className="modal-footnote">La sesión activa de {resetUserPasswordModal.userName || "este player"} se cerrará y en su siguiente acceso deberá capturar una contraseña nueva.</p>
           <label className="app-modal-field">
             <span>Contraseña temporal</span>
-            <input type="password" value={resetUserPasswordModal.password} onChange={(event) => setResetUserPasswordModal((current) => ({ ...current, password: event.target.value, message: "" }))} />
+            <div className="password-visibility-field">
+              <input
+                type={showResetUserPassword ? "text" : "password"}
+                value={resetUserPasswordModal.password}
+                onChange={(event) => setResetUserPasswordModal((current) => ({ ...current, password: event.target.value, message: "" }))}
+              />
+              <button
+                type="button"
+                className="password-visibility-toggle"
+                aria-label={showResetUserPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                onClick={() => setShowResetUserPassword((current) => !current)}
+              >
+                {showResetUserPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </label>
           {resetUserPasswordModal.message ? <p className="validation-text">{resetUserPasswordModal.message}</p> : null}
           <p className="modal-footnote">Solo Lead y Senior pueden restablecer la contraseña de otros players. La contraseña temporal puede tener desde {TEMPORARY_PASSWORD_MIN_LENGTH} caracteres.</p>

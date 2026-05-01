@@ -1,12 +1,12 @@
 {
-  "revision": 2846,
+  "revision": 2862,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro",
     "operational": {
       "naveWeekSchedules": {},
       "pauseControl": {
-        "globalPauseEnabled": false,
+        "globalPauseEnabled": true,
         "forceGlobalPause": false,
         "reasons": [
           {
@@ -41,7 +41,7 @@
           "endMinute": 0
         },
         "areaPauseControls": {
-          "C1": {
+          "CALIDAD": {
             "enabled": false,
             "workHours": {
               "startHour": 0,
@@ -50,7 +50,7 @@
               "endMinute": 0
             }
           },
-          "C2": {
+          "ESTO": {
             "enabled": false,
             "workHours": {
               "startHour": 0,
@@ -59,7 +59,16 @@
               "endMinute": 0
             }
           },
-          "C3": {
+          "INVENTARIO": {
+            "enabled": true,
+            "workHours": {
+              "startHour": 16,
+              "startMinute": 0,
+              "endHour": 6,
+              "endMinute": 0
+            }
+          },
+          "LIMPIEZA": {
             "enabled": false,
             "workHours": {
               "startHour": 0,
@@ -68,7 +77,34 @@
               "endMinute": 0
             }
           },
-          "P": {
+          "PEDIDOS": {
+            "enabled": false,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          },
+          "REGULATORIO": {
+            "enabled": false,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          },
+          "RETAIL": {
+            "enabled": false,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          },
+          "TRANSPORTE": {
             "enabled": false,
             "workHours": {
               "startHour": 0,
@@ -78,7 +114,7 @@
             }
           }
         },
-        "globalPauseActivatedAt": null,
+        "globalPauseActivatedAt": "2026-04-30T22:00:00.410Z",
         "globalPauseAutoDisabledUntil": null
       }
     }
@@ -1718,10 +1754,10 @@
       "activityConsumptions": [],
       "consumptionPerStart": 0,
       "customFields": {
-        "lote": "13456",
-        "caducidad": "132465",
+        "lote": "4567",
+        "caducidad": "08/06/2029",
         "etiqueta": "D",
-        "lotesCaducidades": "[{\"lot\":\"13456\",\"expiry\":\"132465\",\"etiqueta\":\"D\",\"updatedAt\":\"2026-04-30T17:19:10.057Z\"}]"
+        "lotesCaducidades": "[{\"lot\":\"4567\",\"expiry\":\"08/06/2029\",\"etiqueta\":\"D\",\"updatedAt\":\"2026-04-30T19:11:13.204Z\"},{\"lot\":\"13456\",\"expiry\":\"132465\",\"etiqueta\":\"D\",\"updatedAt\":\"2026-04-30T17:19:10.057Z\"}]"
       }
     },
     {
@@ -10017,7 +10053,7 @@
           "Reacondicionado"
         ],
         "operationalContextValue": "Devolución",
-        "ownerArea": ""
+        "ownerArea": "INVENTARIO"
       },
       "fields": [
         {
@@ -10040,7 +10076,8 @@
           "required": true,
           "groupName": "Control",
           "groupColor": "#ede9fe",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-9bea415de1a5",
@@ -10065,7 +10102,8 @@
           "required": true,
           "groupName": "Control",
           "groupColor": "#ede9fe",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-deed11450949",
@@ -10087,7 +10125,8 @@
           "required": true,
           "groupName": "Producto",
           "groupColor": "#e0f2fe",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-e747f4fdc722",
@@ -10109,7 +10148,8 @@
           "required": true,
           "groupName": "Lote",
           "groupColor": "#dcfce7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-51772c4b11e4",
@@ -10131,7 +10171,8 @@
           "required": true,
           "groupName": "Lote",
           "groupColor": "#dcfce7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-b364ca096dad",
@@ -10153,7 +10194,8 @@
           "required": false,
           "groupName": "Lote",
           "groupColor": "#dcfce7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-99f7f325f67a",
@@ -10175,7 +10217,8 @@
           "required": true,
           "groupName": "Cantidad",
           "groupColor": "#fef3c7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-658916511807",
@@ -10197,7 +10240,8 @@
           "required": false,
           "groupName": "Cantidad",
           "groupColor": "#fef3c7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         }
       ],
       "rows": [
@@ -10213,20 +10257,71 @@
             "fld-99f7f325f67a": 3,
             "fld-658916511807": 3
           },
-          "responsibleId": "",
-          "responsibleIds": [],
-          "status": "En curso",
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Terminado",
           "startTime": "2026-04-30T19:07:51.456Z",
-          "endTime": null,
-          "accumulatedSeconds": 0,
-          "totalElapsedSecondsOverride": null,
-          "lastResumedAt": "2026-04-30T19:07:51.456Z",
+          "endTime": "2026-04-30T19:08:01.976Z",
+          "accumulatedSeconds": 10,
+          "totalElapsedSecondsOverride": 0,
+          "lastResumedAt": null,
           "pauseUsageByDay": {},
           "pauseLogs": [],
-          "createdAt": "2026-04-30T19:07:50.154Z",
-          "pauseStartedAt": null,
-          "pauseAffectsTimer": false,
-          "pauseAuthorizedSeconds": 0
+          "createdAt": "2026-04-30T19:07:50.154Z"
+        },
+        {
+          "id": "row-ed0cf57ab4ce",
+          "values": {
+            "fld-5002a07e601e": "",
+            "fld-9bea415de1a5": "",
+            "fld-deed11450949": "",
+            "fld-e747f4fdc722": "",
+            "fld-51772c4b11e4": "",
+            "fld-b364ca096dad": "",
+            "fld-99f7f325f67a": 1,
+            "fld-658916511807": 50
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Pendiente",
+          "startTime": null,
+          "endTime": null,
+          "accumulatedSeconds": 0,
+          "totalElapsedSecondsOverride": 0,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "pauseLogs": [],
+          "createdAt": "2026-04-30T19:10:13.847Z"
+        },
+        {
+          "id": "row-ee57d7b192c6",
+          "values": {
+            "fld-5002a07e601e": "1",
+            "fld-9bea415de1a5": "Devolución",
+            "fld-deed11450949": "inv-yz08uqei",
+            "fld-e747f4fdc722": "4567",
+            "fld-51772c4b11e4": "08/06/2029",
+            "fld-b364ca096dad": "D",
+            "fld-99f7f325f67a": 4,
+            "fld-658916511807": 4
+          },
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Terminado",
+          "startTime": "2026-04-30T19:11:12.308Z",
+          "endTime": "2026-04-30T19:11:30.218Z",
+          "accumulatedSeconds": 17,
+          "totalElapsedSecondsOverride": 0,
+          "lastResumedAt": null,
+          "pauseUsageByDay": {},
+          "pauseLogs": [],
+          "createdAt": "2026-04-30T19:11:11.076Z"
         }
       ],
       "permissions": {
@@ -11779,7 +11874,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-30T19:08:01.132Z",
+  "updatedAt": "2026-05-01T12:28:26.597Z",
   "permissions": {
     "pages": {
       "index": {

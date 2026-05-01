@@ -1,12 +1,12 @@
 {
-  "revision": 2859,
+  "revision": 2872,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro",
     "operational": {
       "naveWeekSchedules": {},
       "pauseControl": {
-        "globalPauseEnabled": true,
+        "globalPauseEnabled": false,
         "forceGlobalPause": false,
         "reasons": [
           {
@@ -114,7 +114,7 @@
             }
           }
         },
-        "globalPauseActivatedAt": "2026-04-30T22:00:00.410Z",
+        "globalPauseActivatedAt": null,
         "globalPauseAutoDisabledUntil": null
       }
     }
@@ -10970,7 +10970,7 @@
             "fld-qsz13t42": "1",
             "fld-qb54r8d9": "1",
             "fld-tfrpbe0m": "inv-3s48ng1m",
-            "fld-0dkj3b5x": "fgdfgdfgdf",
+            "fld-0dkj3b5x": "fgdfgdfghbnmfghedhgdf",
             "fld-m7ncgvx9": "123456",
             "fld-2poaolyx": "",
             "fld-k2bb0z18": "",
@@ -10997,7 +10997,8 @@
           "accumulatedSeconds": 420,
           "lastResumedAt": null,
           "pauseUsageByDay": {},
-          "createdAt": "2026-04-27T15:09:36.477Z"
+          "createdAt": "2026-04-27T15:09:36.477Z",
+          "pauseLogs": []
         },
         {
           "id": "row-785eda9588f7",
@@ -11010,7 +11011,7 @@
             "fld-m7ncgvx9": "",
             "fld-2poaolyx": "",
             "fld-k2bb0z18": "",
-            "fld-sf0ku94c": 0,
+            "fld-sf0ku94c": 40,
             "fld-kxjv1tti": "",
             "fld-w7l359e5": "",
             "fld-t4lc3uib": "12:36",
@@ -11043,14 +11044,14 @@
           "id": "row-fe46b9037de1",
           "values": {
             "fld-0mdfs1q6": "2026-04-30",
-            "fld-qsz13t42": "",
+            "fld-qsz13t42": "1",
             "fld-qb54r8d9": "",
-            "fld-tfrpbe0m": "",
+            "fld-tfrpbe0m": "inv-65laluje",
             "fld-0dkj3b5x": "",
             "fld-m7ncgvx9": "",
             "fld-2poaolyx": "",
             "fld-k2bb0z18": "",
-            "fld-sf0ku94c": 0,
+            "fld-sf0ku94c": 50,
             "fld-kxjv1tti": "",
             "fld-w7l359e5": "",
             "fld-t4lc3uib": "08:27",
@@ -11058,7 +11059,7 @@
             "fld-wfufcb0c": 0,
             "fld-6p7nqzmd": "",
             "fld-3qiexh33": 0,
-            "fld-98i7zceh": "",
+            "fld-98i7zceh": "10:28",
             "fld-dgx50xpd": "",
             "fld-c7zlre4d": "",
             "fld-iz637z6b": ""
@@ -11067,11 +11068,11 @@
           "responsibleIds": [
             "usr-lead-nu7wt83h"
           ],
-          "status": "En curso",
+          "status": "Terminado",
           "startTime": "2026-04-30T14:27:24.778Z",
-          "endTime": null,
-          "accumulatedSeconds": 3660,
-          "lastResumedAt": "2026-04-30T14:28:04.028Z",
+          "endTime": "2026-05-01T16:28:21.360Z",
+          "accumulatedSeconds": 97277,
+          "lastResumedAt": null,
           "pauseUsageByDay": {
             "2026-04-30::material": 1
           },
@@ -11874,7 +11875,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-05-01T12:20:03.484Z",
+  "updatedAt": "2026-05-01T17:20:28.970Z",
   "permissions": {
     "pages": {
       "index": {

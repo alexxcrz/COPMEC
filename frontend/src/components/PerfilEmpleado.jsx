@@ -1,6 +1,7 @@
 // ── Perfil de Empleado ───────────────────────────────────────────────────────
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { Modal } from "./Modal";
 import { parseEncryptedCopmecHistoryPackage, triggerCopmecDownload } from "../utils/copmecFiles.js";
 
@@ -136,6 +137,8 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
   const [form, setForm]               = useState(() => createIdentityFormFromUser(currentUser));
   const [message, setMessage]         = useState("");
   const [pwOpen, setPwOpen]           = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [saving, setSaving]           = useState(false);
   const [copmecPreview, setCopmecPreview] = useState(null);
   const [copmecDecisionOpen, setCopmecDecisionOpen] = useState(false);
@@ -579,11 +582,31 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
               <div className="ep-grid ep-grid--1">
                 <div className="ep-field ep-field--wide">
                   <label className="ep-field__label">Nueva contraseña</label>
-                  <input className="ep-input" type="password" value={passwordForm.password} onChange={(e) => onPasswordChange((c) => ({ ...c, password: e.target.value, message: "" }))} />
+                  <div className="password-visibility-field">
+                    <input className="ep-input" type={showPassword ? "text" : "password"} value={passwordForm.password} onChange={(e) => onPasswordChange((c) => ({ ...c, password: e.target.value, message: "" }))} />
+                    <button
+                      type="button"
+                      className="password-visibility-toggle"
+                      aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                      onClick={() => setShowPassword((current) => !current)}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </div>
                 <div className="ep-field ep-field--wide">
                   <label className="ep-field__label">Confirmar contraseña</label>
-                  <input className="ep-input" type="password" value={passwordForm.confirmPassword} onChange={(e) => onPasswordChange((c) => ({ ...c, confirmPassword: e.target.value, message: "" }))} />
+                  <div className="password-visibility-field">
+                    <input className="ep-input" type={showConfirmPassword ? "text" : "password"} value={passwordForm.confirmPassword} onChange={(e) => onPasswordChange((c) => ({ ...c, confirmPassword: e.target.value, message: "" }))} />
+                    <button
+                      type="button"
+                      className="password-visibility-toggle"
+                      aria-label={showConfirmPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                      onClick={() => setShowConfirmPassword((current) => !current)}
+                    >
+                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </div>
                 <button type="button" className="ep-btn ep-btn--primary" onClick={onSubmit}>Guardar contraseña</button>
                 {passwordForm.message && <p className="ep-msg">{passwordForm.message}</p>}
@@ -707,6 +730,9 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
 }
 
 export function ForcedPasswordChangeModal({ passwordForm, onPasswordChange, onSubmit }) {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   return (
     <Modal
       open
@@ -722,11 +748,31 @@ export function ForcedPasswordChangeModal({ passwordForm, onPasswordChange, onSu
         <div className="ep-grid ep-grid--1">
           <div className="ep-field ep-field--wide">
             <label className="ep-field__label">Nueva contraseña</label>
-            <input className="ep-input" type="password" value={passwordForm.password} onChange={(e) => onPasswordChange((c) => ({ ...c, password: e.target.value, message: "" }))} />
+            <div className="password-visibility-field">
+              <input className="ep-input" type={showPassword ? "text" : "password"} value={passwordForm.password} onChange={(e) => onPasswordChange((c) => ({ ...c, password: e.target.value, message: "" }))} />
+              <button
+                type="button"
+                className="password-visibility-toggle"
+                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                onClick={() => setShowPassword((current) => !current)}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
           <div className="ep-field ep-field--wide">
             <label className="ep-field__label">Confirmar contraseña</label>
-            <input className="ep-input" type="password" value={passwordForm.confirmPassword} onChange={(e) => onPasswordChange((c) => ({ ...c, confirmPassword: e.target.value, message: "" }))} />
+            <div className="password-visibility-field">
+              <input className="ep-input" type={showConfirmPassword ? "text" : "password"} value={passwordForm.confirmPassword} onChange={(e) => onPasswordChange((c) => ({ ...c, confirmPassword: e.target.value, message: "" }))} />
+              <button
+                type="button"
+                className="password-visibility-toggle"
+                aria-label={showConfirmPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                onClick={() => setShowConfirmPassword((current) => !current)}
+              >
+                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
           <p className="ep-footnote">Debe incluir mayúscula, minúscula, número, símbolo y al menos 10 caracteres.</p>
           {passwordForm.message && <p className="ep-msg">{passwordForm.message}</p>}

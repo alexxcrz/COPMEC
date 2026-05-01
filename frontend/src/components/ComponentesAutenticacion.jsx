@@ -135,6 +135,8 @@ export function LoginScreen({ loginForm, onChange, onSubmit, error, demoUsers })
 }
 
 export function BootstrapLeadSetup({ setupForm, onChange, onSubmit, error, areaOptions, onAddArea }) {
+  const [showSetupPassword, setShowSetupPassword] = useState(false);
+
   return (
     <main className="login-shell">
       <div className="login-aurora login-aurora-one" />
@@ -192,7 +194,17 @@ export function BootstrapLeadSetup({ setupForm, onChange, onSubmit, error, areaO
             </label>
             <label className="app-modal-field login-field">
               <span>Contraseña inicial</span>
-              <input type="password" value={setupForm.password} onChange={(event) => onChange("password", event.target.value)} placeholder="Contraseña segura" />
+              <div className="login-password-field">
+                <input type={showSetupPassword ? "text" : "password"} value={setupForm.password} onChange={(event) => onChange("password", event.target.value)} placeholder="Contraseña segura" />
+                <button
+                  type="button"
+                  className="login-password-toggle"
+                  aria-label={showSetupPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  onClick={() => setShowSetupPassword((current) => !current)}
+                >
+                  {showSetupPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </label>
             {error ? <p className="validation-text">{error}</p> : null}
             <button type="submit" className="primary-button login-submit-button">Crear player principal y cerrar acceso maestro</button>

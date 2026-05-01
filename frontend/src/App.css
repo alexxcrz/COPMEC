@@ -1487,6 +1487,35 @@ html {
   color: #1f5b4d;
 }
 
+.password-visibility-field {
+  position: relative;
+}
+
+.password-visibility-field input,
+.password-visibility-field .ep-input {
+  width: 100%;
+  padding-right: 2.8rem;
+}
+
+.password-visibility-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.75rem;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: #2f6f60;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0.2rem;
+}
+
+.password-visibility-toggle:hover {
+  color: #1f5b4d;
+}
+
 .login-field input:focus {
   border-color: #1c7c64;
   box-shadow: 0 0 0 4px rgba(42, 143, 113, 0.12);

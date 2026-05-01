@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BarChart3, Camera, Check, ChevronLeft, ChevronRight, ClipboardList, ExternalLink, Image as ImageIcon, Plus, RotateCcw, Settings, Trash2, Upload, X } from "lucide-react";
+import { BarChart3, Camera, Check, ChevronLeft, ChevronRight, ClipboardList, ExternalLink, Eye, EyeOff, Image as ImageIcon, Plus, RotateCcw, Settings, Trash2, Upload, X } from "lucide-react";
 import { Modal } from "../components/Modal";
 import { uploadFileToCloudinary } from "../services/upload.service";
 
@@ -1085,6 +1085,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     leadPassword: "",
     submitting: false,
   });
+  const [showDeleteAuditLeadPassword, setShowDeleteAuditLeadPassword] = useState(false);
   const [resetStatsModal, setResetStatsModal] = useState({ open: false, submitting: false });
   const [auditViewerModal, setAuditViewerModal] = useState({ open: false, audit: null });
   const [auditRichEditorState, setAuditRichEditorState] = useState({});
@@ -1424,6 +1425,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
   }
 
   function openDeleteAuditModal(audit) {
+    setShowDeleteAuditLeadPassword(false);
     setDeleteAuditModal({
       open: true,
       auditId: audit?.id || "",
@@ -1434,6 +1436,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
   }
 
   function closeDeleteAuditModal() {
+    setShowDeleteAuditLeadPassword(false);
     setDeleteAuditModal({
       open: false,
       auditId: "",
@@ -2236,12 +2239,22 @@ export default function AuditoriasProcesosCompact({ contexto }) {
         </div>
         <label className="app-modal-field">
           <span>Contraseña del Lead</span>
-          <input
-            type="password"
-            value={deleteAuditModal.leadPassword}
-            onChange={(event) => setDeleteAuditModal((current) => ({ ...current, leadPassword: event.target.value }))}
-            placeholder="Ingresa la contraseña"
-          />
+          <div className="password-visibility-field">
+            <input
+              type={showDeleteAuditLeadPassword ? "text" : "password"}
+              value={deleteAuditModal.leadPassword}
+              onChange={(event) => setDeleteAuditModal((current) => ({ ...current, leadPassword: event.target.value }))}
+              placeholder="Ingresa la contraseña"
+            />
+            <button
+              type="button"
+              className="password-visibility-toggle"
+              aria-label={showDeleteAuditLeadPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+              onClick={() => setShowDeleteAuditLeadPassword((current) => !current)}
+            >
+              {showDeleteAuditLeadPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
         </label>
       </Modal>
 
