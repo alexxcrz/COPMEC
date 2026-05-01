@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Modal } from "./Modal";
-import { parseEncryptedCopmecHistoryPackage, triggerCopmecDownload } from "../utils/copmecFiles.js";
+import { parseEncryptedCopmecHistoryPackage, parseEncryptedCopmecPackage, triggerCopmecDownload } from "../utils/copmecFiles.js";
 
 // ── Constantes y utilidades ───────────────────────────────────────────────────
 
@@ -77,22 +77,39 @@ function normalizeCopmecHistoryFiles(entries) {
       id: String(entry?.id || `copmec-${index + 1}`).trim(),
       fileName: String(entry?.fileName || "archivo.cop").trim() || "archivo.cop",
       importedAt: String(entry?.importedAt || new Date().toISOString()).trim() || new Date().toISOString(),
-      periodLabel: String(entry?.periodLabel || "Periodo").trim() || "Periodo",
+      periodLabel: String(entry?.periodLabel || "Archivo .cop").trim() || "Archivo .cop",
       records: Math.max(0, Number(entry?.records || 0)),
+      fileType: String(entry?.fileType || "unknown").trim(),
       packageText: String(entry?.packageText || "").trim(),
     }))
     .filter((entry) => entry.packageText)
     .slice(0, MAX_PROFILE_COPMEC_FILES);
 }
 
-function buildProfileCopmecHistoryEntry({ packageText, payload, fileName }) {
+function buildProfileCopmecHistoryEntry({ packageText, payload, fileName, fileType }) {
   const safeFileName = String(fileName || "historial.cop").trim() || "historial.cop";
+  let periodLabel = "Archivo .cop";
+  let records = 0;
+  const ft = String(fileType || "unknown");
+  if (ft === "history") {
+    periodLabel = String(payload?.period?.label || "Historial").trim() || "Historial";
+    records = Math.max(0, Number(payload?.summary?.records || (Array.isArray(payload?.rows) ? payload.rows.length : 0)));
+  } else if (ft === "board") {
+    periodLabel = `Tablero · ${String(payload?.name || payload?.format || "").trim()}`.replace(/ · $/, "") || "Tablero Operativo";
+  } else if (ft === "process-audit") {
+    const a = payload?.audit;
+    periodLabel = `Auditoría · ${String(a?.area || a?.process || "").trim()}`.replace(/ · $/, "") || "Auditoría de Proceso";
+    records = (a?.questions || []).length;
+  } else {
+    periodLabel = String(payload?.type || payload?.format || "Archivo .cop").trim() || "Archivo .cop";
+  }
   return {
     id: `copmec-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
     fileName: safeFileName,
     importedAt: new Date().toISOString(),
-    periodLabel: String(payload?.period?.label || "Periodo").trim() || "Periodo",
-    records: Math.max(0, Number(payload?.summary?.records || (Array.isArray(payload?.rows) ? payload.rows.length : 0))),
+    periodLabel,
+    records,
+    fileType: ft,
     packageText: String(packageText || "").trim(),
   };
 }
@@ -272,34 +289,37 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
     if (!file) return;
     try {
       const packageText = await file.text();
-      const payload = await parseEncryptedCopmecHistoryPackage(packageText);
-      setCopmecPreview({
-        payload,
-        packageText,
-        fileName: String(file.name || "historial.cop"),
-        source: "upload",
-      });
-      setCopmecDecisionOpen(false);
-      setMessage("Archivo .cop cargado. Revisa el contenido antes de decidir si guardarlo.");
-    } catch (error) {
-      const rawMsg = error?.message || "";
-      if (rawMsg.includes("no compatible") || rawMsg.includes("incompatible") || rawMsg.includes("no contiene")) {
-        setMessage("Archivo inválido. Solo se pueden abrir archivos .cop exportados desde Tableros Operativos de COPMEC. Los archivos .cop de auditorías no son compatibles con esta sección.");
-      } else {
-        setMessage(rawMsg || "No se pudo abrir el archivo .cop.");
+      let payload = null;
+      let fileType = "unknown";
+      // Try history encrypted
+      try { payload = await parseEncryptedCopmecHistoryPackage(packageText); fileType = "history"; } catch {}
+      // Try generic encrypted (boards)
+      if (!payload) { try { payload = await parseEncryptedCopmecPackage(packageText); fileType = "board"; } catch {} }
+      // Try plain JSON (auditorías u otros)
+      if (!payload) {
+        try {
+          const parsed = JSON.parse(packageText);
+          if (parsed && typeof parsed === "object") { payload = parsed; fileType = parsed.type || "json"; }
+        } catch {}
       }
+      if (!payload) throw new Error("El archivo no es un .cop válido de COPMEC.");
+      setCopmecPreview({ payload, packageText, fileName: String(file.name || "archivo.cop"), fileType, source: "upload" });
+      setCopmecDecisionOpen(false);
+      setMessage("Archivo .cop cargado. Revisa el contenido antes de guardarlo.");
+    } catch (error) {
+      setMessage(error?.message || "No se pudo abrir el archivo .cop.");
     }
   }
 
   async function openSavedCopmecFile(entry) {
     try {
-      const payload = await parseEncryptedCopmecHistoryPackage(entry.packageText);
-      setCopmecPreview({
-        payload,
-        packageText: entry.packageText,
-        fileName: entry.fileName,
-        source: "saved",
-      });
+      let payload = null;
+      let fileType = entry.fileType || "unknown";
+      try { payload = await parseEncryptedCopmecHistoryPackage(entry.packageText); fileType = "history"; } catch {}
+      if (!payload) { try { payload = await parseEncryptedCopmecPackage(entry.packageText); fileType = "board"; } catch {} }
+      if (!payload) { try { const p = JSON.parse(entry.packageText); if (p && typeof p === "object") { payload = p; fileType = p.type || "json"; } } catch {} }
+      if (!payload) throw new Error("No se pudo leer el archivo guardado.");
+      setCopmecPreview({ payload, packageText: entry.packageText, fileName: entry.fileName, fileType, source: "saved" });
       setCopmecDecisionOpen(false);
     } catch (error) {
       setMessage(error?.message || "No se pudo abrir este archivo guardado.");
@@ -325,6 +345,7 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
       packageText: copmecPreview.packageText,
       payload: copmecPreview.payload,
       fileName: copmecPreview.fileName,
+      fileType: copmecPreview.fileType,
     });
     const nextFiles = [newEntry].concat(savedCopmecFiles).slice(0, MAX_PROFILE_COPMEC_FILES);
     const ok = await persistCopmecFiles(nextFiles, "Archivo .cop guardado en tu perfil.");
