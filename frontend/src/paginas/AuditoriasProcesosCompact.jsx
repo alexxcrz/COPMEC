@@ -1448,13 +1448,6 @@ export default function AuditoriasProcesosCompact({ contexto }) {
   const [historyRichEditorState, setHistoryRichEditorState] = useState({});
   const galleryEvidenceInputRef = useRef(null);
   const mobileCameraInputRef = useRef(null);
-  const watermarkTiles = useMemo(() => Array.from({ length: 12 }, (_, index) => index), []);
-
-  const auditShieldWatermark = useMemo(() => {
-    const stamp = formatDateTime(new Date(auditShieldTick).toISOString());
-    return `${currentUser?.name || "Usuario"} · ${stamp} · Confidencial`;
-  }, [auditShieldTick, currentUser?.name]);
-
   function openAuditViewer(audit) {
     prewarmAuditEvidenceMedia(audit?.evidences || [], 30);
     setAuditViewerModal({ open: true, audit });
@@ -3118,9 +3111,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
             onCut={(event) => event.preventDefault()}
             onDragStart={(event) => event.preventDefault()}
           >
-            <div className="audit-viewer-watermark-layer" aria-hidden="true">
-              {watermarkTiles.map((tileId) => <span key={`wm-${tileId}`}>{auditShieldWatermark}</span>)}
-            </div>
+
             {auditShieldActive ? (
               <div className="audit-viewer-shield" aria-live="polite">
                 <strong>Contenido protegido</strong>

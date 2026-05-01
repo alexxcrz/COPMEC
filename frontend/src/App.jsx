@@ -4532,7 +4532,7 @@ function App() { // NOSONAR
     const existingFiles = Array.isArray(currentUser.copmecHistoryFiles) ? currentUser.copmecHistoryFiles : [];
     const newEntry = {
       id: `copmec-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-      fileName: String(fileName || "historial.copmec").trim() || "historial.copmec",
+      fileName: String(fileName || "historial.cop").trim() || "historial.cop",
       importedAt: new Date().toISOString(),
       periodLabel: String(payload?.period?.label || "Periodo").trim() || "Periodo",
       records: Math.max(0, Number(payload?.summary?.records || (Array.isArray(payload?.rows) ? payload.rows.length : 0))),
@@ -6422,10 +6422,10 @@ function App() { // NOSONAR
       if (!payload) throw new Error("copmec_export_unavailable");
       const packageText = await buildEncryptedCopmecPackage(payload);
       const fileBaseName = sanitizeCopmecFileBaseName(selectedCustomBoard.name, "tablero-operativo");
-      triggerCopmecDownload(packageText, `${fileBaseName}.copmec`);
-      setBoardRuntimeFeedback({ tone: "success", message: `Se exportó ${selectedCustomBoard.name} en formato .copmec.` });
+      triggerCopmecDownload(packageText, `${fileBaseName}.cop`);
+      setBoardRuntimeFeedback({ tone: "success", message: `Se exportó ${selectedCustomBoard.name} en formato .cop.` });
     } catch {
-      setBoardRuntimeFeedback({ tone: "danger", message: "No se pudo exportar el tablero en formato .copmec." });
+      setBoardRuntimeFeedback({ tone: "danger", message: "No se pudo exportar el tablero en formato .cop." });
     }
   }
 

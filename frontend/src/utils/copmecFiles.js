@@ -48,7 +48,7 @@ export function sanitizeCopmecFileBaseName(value, fallback = "archivo_copmec") {
 }
 
 export function triggerCopmecDownload(packageText, fileName) {
-  const safeFileName = String(fileName || "archivo.copmec").trim() || "archivo.copmec";
+  const safeFileName = String(fileName || "archivo.cop").trim() || "archivo.cop";
   const blob = new Blob([String(packageText || "")], { type: "application/octet-stream" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -101,7 +101,7 @@ export async function parseEncryptedCopmecPackage(packageText, options = {}) {
 
 export function buildCopmecHistoryFileName(fileSuffix = "historial") {
   const safeSuffix = sanitizeCopmecFileBaseName(fileSuffix, "historial");
-  return `copmec_${safeSuffix}.copmec`;
+  return `copmec_${safeSuffix}.cop`;
 }
 
 export async function buildEncryptedCopmecHistoryPackage(payload) {
@@ -117,7 +117,7 @@ export async function parseEncryptedCopmecHistoryPackage(packageText) {
     secret: COPMEC_HISTORY_PACKAGE_SECRET,
   });
   if (String(payload?.format || "") !== "COPMEC_HISTORY_V1") {
-    throw new Error("El archivo .copmec no contiene un historial válido.");
+    throw new Error("El archivo .cop no contiene un historial válido.");
   }
   return payload;
 }
