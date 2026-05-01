@@ -4519,6 +4519,30 @@ function App() { // NOSONAR
     }
   }
 
+  async function saveCopmecFileToProfile({ packageText, payload, fileName }) {
+    if (!currentUser) return { ok: false };
+    const existingFiles = Array.isArray(currentUser.copmecHistoryFiles) ? currentUser.copmecHistoryFiles : [];
+    const newEntry = {
+      id: `copmec-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      fileName: String(fileName || "historial.copmec").trim() || "historial.copmec",
+      importedAt: new Date().toISOString(),
+      periodLabel: String(payload?.period?.label || "Periodo").trim() || "Periodo",
+      records: Math.max(0, Number(payload?.summary?.records || (Array.isArray(payload?.rows) ? payload.rows.length : 0))),
+      packageText: String(packageText || "").trim(),
+    };
+    const nextFiles = [newEntry, ...existingFiles].slice(0, 20);
+    return updateCurrentUserIdentity({
+      name: String(currentUser.name || "").trim(),
+      username: String(currentUser.email || "").trim(),
+      area: getUserArea(currentUser),
+      jobTitle: getUserJobTitle(currentUser),
+      telefono: String(currentUser.telefono || "").trim(),
+      telefono_visible: Boolean(currentUser.telefono_visible),
+      birthday: String(currentUser.birthday || "").trim(),
+      copmecHistoryFiles: nextFiles,
+    });
+  }
+
   async function deleteUser(userId) {
     if (!userId || userId === currentUser?.id || !actionPermissions.deleteUsers) return;
     try {
@@ -7044,6 +7068,7 @@ function App() { // NOSONAR
     activateDemoMode,
     deactivateDemoMode,
     pushAppToast,
+    saveCopmecFileToProfile,
     requestJson,
     ROLE_LEAD,
     ROLE_JR,

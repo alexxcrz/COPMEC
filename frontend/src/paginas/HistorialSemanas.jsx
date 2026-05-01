@@ -340,6 +340,7 @@ export default function HistorialSemanas({ contexto }) {
     deleteWeek,
     pushAppToast,
     Trash2,
+    saveCopmecFileToProfile,
   } = contexto;
 
   const [deleteWeekModal, setDeleteWeekModal] = useState({ open: false, weekId: "", weekName: "", isSubmitting: false });
@@ -922,6 +923,9 @@ export default function HistorialSemanas({ contexto }) {
       document.body.removeChild(anchor);
       URL.revokeObjectURL(url);
       pushAppToast(`Se descargó ${fileName}.`, "success");
+      if (typeof saveCopmecFileToProfile === "function") {
+        void saveCopmecFileToProfile({ packageText: encryptedContent, payload, fileName });
+      }
     } catch (error) {
       pushAppToast(error?.message || "No se pudo generar el archivo .copmec.", "danger");
     }
