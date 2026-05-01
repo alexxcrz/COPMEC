@@ -1,5 +1,5 @@
 {
-  "revision": 2882,
+  "revision": 2883,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro",
@@ -139,7 +139,17 @@
       "sessionVersion": 2,
       "telefono": "2224562420",
       "telefono_visible": false,
-      "birthday": "1993-12-27"
+      "birthday": "1993-12-27",
+      "copmecHistoryFiles": [
+        {
+          "id": "copmec-moncz39o-98jqp1",
+          "fileName": "copmec_historial_semana_2026-04-26.copmec",
+          "importedAt": "2026-05-01T20:21:40.812Z",
+          "periodLabel": "Semana activa 2026-04-27",
+          "records": 10,
+          "packageText": "COPMEC::HISTORY::V1\n{\"version\":1,\"salt\":\"f4DcD3IHwUhDeJnYzOZbyA==\",\"iv\":\"Ruq4NdFCppGVRngD\",\"data\":\"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\"}"
+        }
+      ]
     },
     {
       "id": "usr-a2hd8qtb",
@@ -11875,7 +11885,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-05-01T19:49:36.327Z",
+  "updatedAt": "2026-05-01T20:21:41.265Z",
   "permissions": {
     "pages": {
       "index": {
@@ -14523,7 +14533,7 @@
           "ownerName": "Líder de almacén",
           "evidences": [],
           "createdAt": "2026-05-01T19:27:27.242Z",
-          "updatedAt": "2026-05-01T19:49:36.351Z"
+          "updatedAt": "2026-05-01T20:21:41.270Z"
         },
         {
           "id": "papr-3fc781cb7acb",
@@ -14539,7 +14549,7 @@
           "ownerName": "Supervisor de turno",
           "evidences": [],
           "createdAt": "2026-05-01T19:27:27.242Z",
-          "updatedAt": "2026-05-01T19:49:36.351Z"
+          "updatedAt": "2026-05-01T20:21:41.270Z"
         }
       ],
       "followUp": [
@@ -14550,7 +14560,7 @@
           "evidences": [],
           "dueDate": "",
           "createdAt": "2026-05-01T19:27:27.242Z",
-          "updatedAt": "2026-05-01T19:49:36.351Z"
+          "updatedAt": "2026-05-01T20:21:41.270Z"
         },
         {
           "id": "pafu-53fc6ff1a23d",
@@ -14559,7 +14569,7 @@
           "evidences": [],
           "dueDate": "",
           "createdAt": "2026-05-01T19:27:27.242Z",
-          "updatedAt": "2026-05-01T19:49:36.351Z"
+          "updatedAt": "2026-05-01T20:21:41.270Z"
         }
       ],
       "implementationPlan": {
@@ -14819,7 +14829,7 @@
           "ownerName": "Lider Operativo",
           "evidences": [],
           "createdAt": "2026-05-01T18:57:19.677Z",
-          "updatedAt": "2026-05-01T19:49:36.351Z"
+          "updatedAt": "2026-05-01T20:21:41.270Z"
         },
         {
           "id": "papr-d91c3ac08470",
@@ -14835,7 +14845,7 @@
           "ownerName": "Supervisor Calidad",
           "evidences": [],
           "createdAt": "2026-05-01T18:57:19.677Z",
-          "updatedAt": "2026-05-01T19:49:36.351Z"
+          "updatedAt": "2026-05-01T20:21:41.270Z"
         }
       ],
       "followUp": [
@@ -14846,7 +14856,7 @@
           "evidences": [],
           "dueDate": "",
           "createdAt": "2026-05-01T18:57:19.677Z",
-          "updatedAt": "2026-05-01T19:49:36.351Z"
+          "updatedAt": "2026-05-01T20:21:41.270Z"
         },
         {
           "id": "pafu-61b398c13c2b",
@@ -14855,7 +14865,7 @@
           "evidences": [],
           "dueDate": "",
           "createdAt": "2026-05-01T18:57:19.677Z",
-          "updatedAt": "2026-05-01T19:49:36.351Z"
+          "updatedAt": "2026-05-01T20:21:41.270Z"
         }
       ],
       "implementationPlan": {

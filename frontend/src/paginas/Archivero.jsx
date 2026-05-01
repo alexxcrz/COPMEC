@@ -106,6 +106,15 @@ function fileTypeChip(ft) {
   return map[ft] || { label: "Archivo", bg: "#f3f4f6", color: "#374151" };
 }
 
+function sanitizePdfBaseName(name) {
+  const raw = String(name || "documento").replace(/\.pdf$/i, "").trim();
+  return raw
+    .replace(/\s*-\s*Documentos\s+de\s+Google$/i, "")
+    .replace(/\s*-\s*Google\s+Docs$/i, "")
+    .replace(/\s+/g, " ")
+    .trim() || "documento";
+}
+
 const MAX_FILES = 50;
 
 // ── Component ─────────────────────────────────────────────────────────────
@@ -122,6 +131,7 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
   const [pdfFile, setPdfFile] = useState(null);
   const [pdfConverting, setPdfConverting] = useState(false);
   const [pdfMsg, setPdfMsg] = useState("");
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState("");
 
   const importRef = useRef(null);
   const pdfRef = useRef(null);
@@ -129,6 +139,26 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
   useEffect(() => {
     setFiles(normalizeArchiveroFiles(currentUser?.copmecHistoryFiles));
   }, [currentUser?.copmecHistoryFiles]);
+
+  useEffect(() => {
+    if (preview?.fileType !== "pdf-document" || !preview?.payload?.data) {
+      setPdfPreviewUrl("");
+      return;
+    }
+
+    try {
+      const binary = atob(preview.payload.data);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      setPdfPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } catch {
+      setPdfPreviewUrl("");
+      return;
+    }
+  }, [preview]);
 
   async function persistFiles(nextFiles) {
     setSaving(true);
@@ -219,13 +249,13 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
       const base64Data = btoa(binary);
       const payload = {
         type: "pdf-document",
-        originalName: pdfFile.name,
+        originalName: `${sanitizePdfBaseName(pdfFile.name)}.pdf`,
         size: pdfFile.size,
         importedAt: new Date().toISOString(),
         data: base64Data,
       };
       const packageText = await buildEncryptedCopmecPdfPackage(payload);
-      const copName = pdfFile.name.replace(/\.pdf$/i, ".cop");
+      const copName = `${sanitizePdfBaseName(pdfFile.name)}.cop`;
       const entry = buildArchiveroEntry({ packageText, payload, fileName: copName, fileType: "pdf-document" });
       const nextFiles = [entry, ...files].slice(0, MAX_FILES);
       await persistFiles(nextFiles);
@@ -382,15 +412,30 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
     }
 
     if (fileType === "pdf-document") {
+      const displayName = `${sanitizePdfBaseName(payload?.originalName || preview.fileName)}.pdf`;
       return (
         <div style={{ display: "grid", gap: "0.5rem" }}>
-          <p style={{ margin: 0, color: "#666", fontSize: "0.85rem" }}>PDF: {payload?.originalName || preview.fileName}</p>
+          <p style={{ margin: 0, color: "#666", fontSize: "0.85rem" }}>PDF: {displayName}</p>
           <p style={{ margin: 0, color: "#aaa", fontSize: "0.82rem" }}>
             Tamaño: {payload?.size ? `${(payload.size / 1024).toFixed(1)} KB` : "-"}
           </p>
-          <p style={{ margin: 0, color: "#aaa", fontSize: "0.82rem" }}>
-            Usa "Descargar PDF" para recuperar el archivo original.
-          </p>
+          {pdfPreviewUrl ? (
+            <iframe
+              title={`Vista previa ${displayName}`}
+              src={pdfPreviewUrl}
+              style={{
+                width: "100%",
+                minHeight: "72vh",
+                border: "1px solid #e5e7eb",
+                borderRadius: "0.9rem",
+                background: "#fff",
+              }}
+            />
+          ) : (
+            <p style={{ margin: 0, color: "#aaa", fontSize: "0.82rem" }}>
+              No se pudo generar la vista previa. Puedes usar "Descargar PDF".
+            </p>
+          )}
         </div>
       );
     }
@@ -633,7 +678,7 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
 
       <Modal
         open={Boolean(preview)}
-        title={`Vista — ${preview?.fileName || "archivo.cop"}`}
+        title={`Vista — ${preview?.fileType === "pdf-document" ? `${sanitizePdfBaseName(preview?.payload?.originalName || preview?.fileName)}.cop` : (preview?.fileName || "archivo.cop")}`}
         confirmLabel="Cerrar"
         hideCancel
         onClose={() => setPreview(null)}
