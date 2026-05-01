@@ -1,5 +1,5 @@
 {
-  "revision": 2851,
+  "revision": 2880,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro",
@@ -41,7 +41,7 @@
           "endMinute": 0
         },
         "areaPauseControls": {
-          "C1": {
+          "CALIDAD": {
             "enabled": false,
             "workHours": {
               "startHour": 0,
@@ -50,7 +50,7 @@
               "endMinute": 0
             }
           },
-          "C2": {
+          "ESTO": {
             "enabled": false,
             "workHours": {
               "startHour": 0,
@@ -59,7 +59,16 @@
               "endMinute": 0
             }
           },
-          "C3": {
+          "INVENTARIO": {
+            "enabled": true,
+            "workHours": {
+              "startHour": 6,
+              "startMinute": 0,
+              "endHour": 16,
+              "endMinute": 0
+            }
+          },
+          "LIMPIEZA": {
             "enabled": false,
             "workHours": {
               "startHour": 0,
@@ -68,7 +77,34 @@
               "endMinute": 0
             }
           },
-          "P": {
+          "PEDIDOS": {
+            "enabled": false,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          },
+          "REGULATORIO": {
+            "enabled": false,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          },
+          "RETAIL": {
+            "enabled": false,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          },
+          "TRANSPORTE": {
             "enabled": false,
             "workHours": {
               "startHour": 0,
@@ -10017,7 +10053,7 @@
           "Reacondicionado"
         ],
         "operationalContextValue": "Devolución",
-        "ownerArea": ""
+        "ownerArea": "INVENTARIO"
       },
       "fields": [
         {
@@ -10040,7 +10076,8 @@
           "required": true,
           "groupName": "Control",
           "groupColor": "#ede9fe",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-9bea415de1a5",
@@ -10065,7 +10102,8 @@
           "required": true,
           "groupName": "Control",
           "groupColor": "#ede9fe",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-deed11450949",
@@ -10087,7 +10125,8 @@
           "required": true,
           "groupName": "Producto",
           "groupColor": "#e0f2fe",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-e747f4fdc722",
@@ -10109,7 +10148,8 @@
           "required": true,
           "groupName": "Lote",
           "groupColor": "#dcfce7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-51772c4b11e4",
@@ -10131,7 +10171,8 @@
           "required": true,
           "groupName": "Lote",
           "groupColor": "#dcfce7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-b364ca096dad",
@@ -10153,7 +10194,8 @@
           "required": false,
           "groupName": "Lote",
           "groupColor": "#dcfce7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-99f7f325f67a",
@@ -10175,7 +10217,8 @@
           "required": true,
           "groupName": "Cantidad",
           "groupColor": "#fef3c7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-658916511807",
@@ -10197,7 +10240,8 @@
           "required": false,
           "groupName": "Cantidad",
           "groupColor": "#fef3c7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         }
       ],
       "rows": [
@@ -10213,20 +10257,19 @@
             "fld-99f7f325f67a": 3,
             "fld-658916511807": 3
           },
-          "responsibleId": "",
-          "responsibleIds": [],
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
           "status": "Terminado",
           "startTime": "2026-04-30T19:07:51.456Z",
           "endTime": "2026-04-30T19:08:01.976Z",
           "accumulatedSeconds": 10,
-          "totalElapsedSecondsOverride": null,
+          "totalElapsedSecondsOverride": 0,
           "lastResumedAt": null,
           "pauseUsageByDay": {},
           "pauseLogs": [],
-          "createdAt": "2026-04-30T19:07:50.154Z",
-          "pauseStartedAt": null,
-          "pauseAffectsTimer": false,
-          "pauseAuthorizedSeconds": 0
+          "createdAt": "2026-04-30T19:07:50.154Z"
         },
         {
           "id": "row-ed0cf57ab4ce",
@@ -10240,13 +10283,15 @@
             "fld-99f7f325f67a": 1,
             "fld-658916511807": 50
           },
-          "responsibleId": "",
-          "responsibleIds": [],
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
           "status": "Pendiente",
           "startTime": null,
           "endTime": null,
           "accumulatedSeconds": 0,
-          "totalElapsedSecondsOverride": null,
+          "totalElapsedSecondsOverride": 0,
           "lastResumedAt": null,
           "pauseUsageByDay": {},
           "pauseLogs": [],
@@ -10261,23 +10306,22 @@
             "fld-e747f4fdc722": "4567",
             "fld-51772c4b11e4": "08/06/2029",
             "fld-b364ca096dad": "D",
-            "fld-99f7f325f67a": 1,
+            "fld-99f7f325f67a": 4,
             "fld-658916511807": 4
           },
-          "responsibleId": "",
-          "responsibleIds": [],
-          "status": "En curso",
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
+          "status": "Terminado",
           "startTime": "2026-04-30T19:11:12.308Z",
-          "endTime": null,
-          "accumulatedSeconds": 0,
-          "totalElapsedSecondsOverride": null,
-          "lastResumedAt": "2026-04-30T19:11:12.308Z",
+          "endTime": "2026-04-30T19:11:30.218Z",
+          "accumulatedSeconds": 17,
+          "totalElapsedSecondsOverride": 0,
+          "lastResumedAt": null,
           "pauseUsageByDay": {},
           "pauseLogs": [],
-          "createdAt": "2026-04-30T19:11:11.076Z",
-          "pauseStartedAt": null,
-          "pauseAffectsTimer": false,
-          "pauseAuthorizedSeconds": 0
+          "createdAt": "2026-04-30T19:11:11.076Z"
         }
       ],
       "permissions": {
@@ -10926,7 +10970,7 @@
             "fld-qsz13t42": "1",
             "fld-qb54r8d9": "1",
             "fld-tfrpbe0m": "inv-3s48ng1m",
-            "fld-0dkj3b5x": "fgdfgdfgdf",
+            "fld-0dkj3b5x": "fgdfgdfghbnmfghedhgdf",
             "fld-m7ncgvx9": "123456",
             "fld-2poaolyx": "",
             "fld-k2bb0z18": "",
@@ -10948,12 +10992,13 @@
             "usr-lead-nu7wt83h"
           ],
           "status": "Terminado",
-          "startTime": "2026-04-29T21:09:05.987Z",
+          "startTime": "2026-04-29T20:00:00.000Z",
           "endTime": "2026-04-29T21:25:00.000Z",
-          "accumulatedSeconds": 420,
+          "accumulatedSeconds": 5100,
           "lastResumedAt": null,
           "pauseUsageByDay": {},
-          "createdAt": "2026-04-27T15:09:36.477Z"
+          "createdAt": "2026-04-27T15:09:36.477Z",
+          "pauseLogs": []
         },
         {
           "id": "row-785eda9588f7",
@@ -10966,7 +11011,7 @@
             "fld-m7ncgvx9": "",
             "fld-2poaolyx": "",
             "fld-k2bb0z18": "",
-            "fld-sf0ku94c": 0,
+            "fld-sf0ku94c": 40,
             "fld-kxjv1tti": "",
             "fld-w7l359e5": "",
             "fld-t4lc3uib": "12:36",
@@ -10999,14 +11044,14 @@
           "id": "row-fe46b9037de1",
           "values": {
             "fld-0mdfs1q6": "2026-04-30",
-            "fld-qsz13t42": "",
+            "fld-qsz13t42": "1",
             "fld-qb54r8d9": "",
-            "fld-tfrpbe0m": "",
+            "fld-tfrpbe0m": "inv-65laluje",
             "fld-0dkj3b5x": "",
             "fld-m7ncgvx9": "",
             "fld-2poaolyx": "",
             "fld-k2bb0z18": "",
-            "fld-sf0ku94c": 0,
+            "fld-sf0ku94c": 50,
             "fld-kxjv1tti": "",
             "fld-w7l359e5": "",
             "fld-t4lc3uib": "08:27",
@@ -11014,7 +11059,7 @@
             "fld-wfufcb0c": 0,
             "fld-6p7nqzmd": "",
             "fld-3qiexh33": 0,
-            "fld-98i7zceh": "",
+            "fld-98i7zceh": "10:28",
             "fld-dgx50xpd": "",
             "fld-c7zlre4d": "",
             "fld-iz637z6b": ""
@@ -11023,11 +11068,11 @@
           "responsibleIds": [
             "usr-lead-nu7wt83h"
           ],
-          "status": "En curso",
+          "status": "Terminado",
           "startTime": "2026-04-30T14:27:24.778Z",
-          "endTime": null,
-          "accumulatedSeconds": 3660,
-          "lastResumedAt": "2026-04-30T14:28:04.028Z",
+          "endTime": "2026-05-01T16:28:21.360Z",
+          "accumulatedSeconds": 97277,
+          "lastResumedAt": null,
           "pauseUsageByDay": {
             "2026-04-30::material": 1
           },
@@ -11830,7 +11875,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-30T19:11:13.631Z",
+  "updatedAt": "2026-05-01T19:27:27.251Z",
   "permissions": {
     "pages": {
       "index": {
@@ -14328,5 +14373,825 @@
     }
   ],
   "processAuditTemplates": [],
-  "processAudits": []
+  "processAudits": [
+    {
+      "id": "auditp-b423bafd00fd",
+      "area": "INVENTARIO",
+      "subArea": "PRUEBA FLUJO PASOS COPILOT",
+      "process": "Almacén",
+      "templateId": null,
+      "status": "closed",
+      "lifecycleStatus": "closed",
+      "startedAt": "2026-05-01T19:27:27.181Z",
+      "closedAt": "2026-05-01T19:27:27.242Z",
+      "reAuditAt": "",
+      "auditorId": "usr-lead-nu7wt83h",
+      "auditorName": "Alejandro Cruz Martinez",
+      "questions": [
+        {
+          "id": "paq-097b66e7594b",
+          "type": "yesno",
+          "text": "¿Cumple con el estándar definido?",
+          "required": true,
+          "placeholder": "",
+          "category": "Ejecución",
+          "isActive": true,
+          "conditionalQuestionId": "",
+          "conditionalAnswer": "",
+          "allowNote": false,
+          "options": [],
+          "minValue": 1,
+          "maxValue": 10,
+          "answer": false,
+          "issueDetected": true,
+          "impactLevel": "high",
+          "observations": "El operador omitió validación del checklist estándar.",
+          "evidenceRequired": false,
+          "evidenceIds": []
+        },
+        {
+          "id": "paq-cfbfb2a0507b",
+          "type": "yesno",
+          "text": "¿Se valida evidencia antes del cierre del paso?",
+          "required": true,
+          "placeholder": "",
+          "category": "Control",
+          "isActive": true,
+          "conditionalQuestionId": "",
+          "conditionalAnswer": "",
+          "allowNote": false,
+          "options": [],
+          "minValue": 1,
+          "maxValue": 10,
+          "answer": false,
+          "issueDetected": true,
+          "impactLevel": "medium",
+          "observations": "Se cerró el paso sin adjuntar evidencia completa.",
+          "evidenceRequired": false,
+          "evidenceIds": []
+        },
+        {
+          "id": "paq-9408363efc75",
+          "type": "text",
+          "text": "¿Cuál fue la principal desviación detectada?",
+          "required": false,
+          "placeholder": "Describe desviación y causa",
+          "category": "Hallazgo",
+          "isActive": true,
+          "conditionalQuestionId": "",
+          "conditionalAnswer": "",
+          "allowNote": false,
+          "options": [],
+          "minValue": 1,
+          "maxValue": 10,
+          "answer": "Desviación: se ejecutó secuencia incompleta por presión de tiempo.",
+          "issueDetected": true,
+          "impactLevel": "medium",
+          "observations": "Falta compuerta de control en cierre.",
+          "evidenceRequired": false,
+          "evidenceIds": []
+        },
+        {
+          "id": "paq-ad85ac781da8",
+          "type": "text",
+          "text": "¿Qué acción inmediata aplicarás en este turno?",
+          "required": false,
+          "placeholder": "Acción, responsable y fecha",
+          "category": "Acción",
+          "isActive": true,
+          "conditionalQuestionId": "",
+          "conditionalAnswer": "",
+          "allowNote": false,
+          "options": [],
+          "minValue": 1,
+          "maxValue": 10,
+          "answer": "Acción inmediata: checklist obligatorio firmado por responsable de turno.",
+          "issueDetected": false,
+          "impactLevel": "low",
+          "observations": "Implementar desde próximo corte operativo.",
+          "evidenceRequired": false,
+          "evidenceIds": []
+        }
+      ],
+      "evidences": [],
+      "notes": "Paso 2 - Problemas detectados y validados. Paso 3 - Propuestas registradas. Paso 4 - Seguimiento asignado. Paso 5 - Cierre de ciclo.",
+      "executiveSummary": "Auditoría de ejemplo completa: se identificaron 3 desviaciones, se asignaron propuestas y seguimiento, y se cerró el ciclo.",
+      "detectedProblems": [
+        {
+          "id": "paproblem-5177e9d6a524",
+          "questionId": "paq-097b66e7594b",
+          "category": "Ejecución",
+          "impactLevel": "high",
+          "problem": "¿Cumple con el estándar definido?",
+          "observations": "El operador omitió validación del checklist estándar.",
+          "createdAt": "2026-05-01T19:27:27.241Z",
+          "status": "open"
+        },
+        {
+          "id": "paproblem-b8326b869db3",
+          "questionId": "paq-cfbfb2a0507b",
+          "category": "Control",
+          "impactLevel": "medium",
+          "problem": "¿Se valida evidencia antes del cierre del paso?",
+          "observations": "Se cerró el paso sin adjuntar evidencia completa.",
+          "createdAt": "2026-05-01T19:27:27.241Z",
+          "status": "open"
+        },
+        {
+          "id": "paproblem-19887b4bf304",
+          "questionId": "paq-9408363efc75",
+          "category": "Hallazgo",
+          "impactLevel": "medium",
+          "problem": "¿Cuál fue la principal desviación detectada?",
+          "observations": "Falta compuerta de control en cierre.",
+          "createdAt": "2026-05-01T19:27:27.241Z",
+          "status": "open"
+        }
+      ],
+      "proposals": [
+        {
+          "id": "papr-ff63f6b588b2",
+          "problemId": "problem-paq-097b66e7594b",
+          "problem": "Incumplimiento del estándar definido",
+          "rootCause": "Checklist no obligatorio en operación",
+          "proposal": "Bloquear cierre del paso sin checklist validado",
+          "type": "correction",
+          "expectedImpact": "Reducir incumplimiento del estándar en 70% en 2 semanas",
+          "effort": "low",
+          "status": "pending",
+          "ownerId": "",
+          "ownerName": "Líder de almacén",
+          "evidences": [],
+          "createdAt": "2026-05-01T19:27:27.242Z",
+          "updatedAt": "2026-05-01T19:27:27.254Z"
+        },
+        {
+          "id": "papr-3fc781cb7acb",
+          "problemId": "problem-paq-cfbfb2a0507b",
+          "problem": "Cierre sin evidencia",
+          "rootCause": "No hay verificación previa de evidencia",
+          "proposal": "Doble validación de evidencia antes del cierre",
+          "type": "improvement",
+          "expectedImpact": "Eliminar cierres sin evidencia",
+          "effort": "medium",
+          "status": "pending",
+          "ownerId": "",
+          "ownerName": "Supervisor de turno",
+          "evidences": [],
+          "createdAt": "2026-05-01T19:27:27.242Z",
+          "updatedAt": "2026-05-01T19:27:27.254Z"
+        }
+      ],
+      "followUp": [
+        {
+          "id": "pafu-3e8d1ad1f447",
+          "status": "pending",
+          "note": "",
+          "evidences": [],
+          "dueDate": "",
+          "createdAt": "2026-05-01T19:27:27.242Z",
+          "updatedAt": "2026-05-01T19:27:27.254Z"
+        },
+        {
+          "id": "pafu-53fc6ff1a23d",
+          "status": "pending",
+          "note": "",
+          "evidences": [],
+          "dueDate": "",
+          "createdAt": "2026-05-01T19:27:27.242Z",
+          "updatedAt": "2026-05-01T19:27:27.254Z"
+        }
+      ],
+      "implementationPlan": {
+        "processDefinition": "Proceso de cierre con checklist y evidencia obligatoria",
+        "responsibles": [],
+        "instructions": "1) Ejecutar checklist. 2) Adjuntar evidencia. 3) Validar por supervisor. 4) Cerrar paso.",
+        "estimatedTime": ""
+      },
+      "boardLinks": [],
+      "scoring": {
+        "questionScores": [
+          {
+            "questionId": "paq-097b66e7594b",
+            "category": "Ejecución",
+            "impactLevel": "high",
+            "hasProblem": true,
+            "color": "red"
+          },
+          {
+            "questionId": "paq-cfbfb2a0507b",
+            "category": "Control",
+            "impactLevel": "medium",
+            "hasProblem": true,
+            "color": "yellow"
+          },
+          {
+            "questionId": "paq-9408363efc75",
+            "category": "Hallazgo",
+            "impactLevel": "medium",
+            "hasProblem": true,
+            "color": "yellow"
+          },
+          {
+            "questionId": "paq-ad85ac781da8",
+            "category": "Acción",
+            "impactLevel": "low",
+            "hasProblem": false,
+            "color": "green"
+          }
+        ],
+        "categoryScores": [
+          {
+            "category": "Ejecución",
+            "total": 1,
+            "red": 1,
+            "yellow": 0,
+            "green": 0,
+            "color": "red",
+            "scorePercent": 0
+          },
+          {
+            "category": "Control",
+            "total": 1,
+            "red": 0,
+            "yellow": 1,
+            "green": 0,
+            "color": "yellow",
+            "scorePercent": 0
+          },
+          {
+            "category": "Hallazgo",
+            "total": 1,
+            "red": 0,
+            "yellow": 1,
+            "green": 0,
+            "color": "yellow",
+            "scorePercent": 0
+          },
+          {
+            "category": "Acción",
+            "total": 1,
+            "red": 0,
+            "yellow": 0,
+            "green": 1,
+            "color": "green",
+            "scorePercent": 100
+          }
+        ],
+        "global": {
+          "total": 4,
+          "red": 1,
+          "yellow": 2,
+          "green": 1,
+          "color": "red",
+          "scorePercent": 25
+        }
+      },
+      "updatedAt": "2026-05-01T19:27:27.242Z"
+    },
+    {
+      "id": "auditp-a3b10e247eca",
+      "area": "REGULATORIO",
+      "subArea": "PRUEBA PRO 2026-05-01",
+      "process": "Trazabilidad",
+      "templateId": null,
+      "status": "open",
+      "lifecycleStatus": "in_implementation",
+      "startedAt": "2026-05-01T18:57:19.630Z",
+      "closedAt": null,
+      "reAuditAt": "",
+      "auditorId": "usr-lead-nu7wt83h",
+      "auditorName": "Alejandro Cruz Martinez",
+      "questions": [
+        {
+          "id": "paq-0533ca95131f",
+          "type": "yesno",
+          "text": "¿Se rastrea lote completo sin huecos?",
+          "required": true,
+          "placeholder": "",
+          "category": "Control",
+          "isActive": true,
+          "conditionalQuestionId": "",
+          "conditionalAnswer": "",
+          "allowNote": false,
+          "options": [],
+          "minValue": 1,
+          "maxValue": 10,
+          "answer": false,
+          "issueDetected": true,
+          "impactLevel": "high",
+          "observations": "No se registró cambio de lote en traspaso nocturno.",
+          "evidenceRequired": false,
+          "evidenceIds": []
+        },
+        {
+          "id": "paq-b21532345361",
+          "type": "yesno",
+          "text": "¿Se bloquea liberación cuando falta evidencia?",
+          "required": true,
+          "placeholder": "",
+          "category": "Control",
+          "isActive": true,
+          "conditionalQuestionId": "",
+          "conditionalAnswer": "",
+          "allowNote": false,
+          "options": [],
+          "minValue": 1,
+          "maxValue": 10,
+          "answer": false,
+          "issueDetected": true,
+          "impactLevel": "high",
+          "observations": "Se liberó embarque sin evidencia fotográfica firmada.",
+          "evidenceRequired": false,
+          "evidenceIds": []
+        },
+        {
+          "id": "paq-a87268a27f79",
+          "type": "yesno",
+          "text": "¿Se usa solo formato vigente?",
+          "required": true,
+          "placeholder": "",
+          "category": "Cumplimiento",
+          "isActive": true,
+          "conditionalQuestionId": "",
+          "conditionalAnswer": "",
+          "allowNote": false,
+          "options": [],
+          "minValue": 1,
+          "maxValue": 10,
+          "answer": true,
+          "issueDetected": false,
+          "impactLevel": "medium",
+          "observations": "Formato vigente visible en estación de trabajo.",
+          "evidenceRequired": false,
+          "evidenceIds": []
+        },
+        {
+          "id": "paq-d2f5bd85219b",
+          "type": "text",
+          "text": "¿Qué causa raíz explica la desviación más crítica?",
+          "required": false,
+          "placeholder": "Detalla causa y punto del flujo",
+          "category": "Mejora",
+          "isActive": true,
+          "conditionalQuestionId": "",
+          "conditionalAnswer": "",
+          "allowNote": false,
+          "options": [],
+          "minValue": 1,
+          "maxValue": 10,
+          "answer": "Causa raíz: no existe puerta de control al cierre de turno y la revisión se hace tarde.",
+          "issueDetected": true,
+          "impactLevel": "medium",
+          "observations": "Definir control de cierre obligatorio.",
+          "evidenceRequired": false,
+          "evidenceIds": []
+        },
+        {
+          "id": "paq-944fc8f716d4",
+          "type": "text",
+          "text": "¿Qué acción inmediata evita recurrencia esta semana?",
+          "required": false,
+          "placeholder": "Define acción, responsable y fecha",
+          "category": "Implementación",
+          "isActive": true,
+          "conditionalQuestionId": "",
+          "conditionalAnswer": "",
+          "allowNote": false,
+          "options": [],
+          "minValue": 1,
+          "maxValue": 10,
+          "answer": "Activar checklist digital y bloqueo de cierre sin evidencia antes del fin del turno.",
+          "issueDetected": false,
+          "impactLevel": "low",
+          "observations": "Implementación inmediata con responsable SR.",
+          "evidenceRequired": false,
+          "evidenceIds": []
+        }
+      ],
+      "evidences": [],
+      "notes": "Se confirmó desviación de trazabilidad con impacto alto. Se activa plan de contención y seguimiento diario.",
+      "executiveSummary": "Auditoría pro: 2 hallazgos críticos, 1 riesgo medio. Se aprueba plan correctivo con seguimiento semanal.",
+      "detectedProblems": [
+        {
+          "id": "paproblem-46858821cc5f",
+          "questionId": "paq-0533ca95131f",
+          "category": "Control",
+          "impactLevel": "high",
+          "problem": "¿Se rastrea lote completo sin huecos?",
+          "observations": "No se registró cambio de lote en traspaso nocturno.",
+          "createdAt": "2026-05-01T18:57:19.676Z",
+          "status": "open"
+        },
+        {
+          "id": "paproblem-9f4b8014a931",
+          "questionId": "paq-b21532345361",
+          "category": "Control",
+          "impactLevel": "high",
+          "problem": "¿Se bloquea liberación cuando falta evidencia?",
+          "observations": "Se liberó embarque sin evidencia fotográfica firmada.",
+          "createdAt": "2026-05-01T18:57:19.676Z",
+          "status": "open"
+        },
+        {
+          "id": "paproblem-3d78b790fbf7",
+          "questionId": "paq-d2f5bd85219b",
+          "category": "Mejora",
+          "impactLevel": "medium",
+          "problem": "¿Qué causa raíz explica la desviación más crítica?",
+          "observations": "Definir control de cierre obligatorio.",
+          "createdAt": "2026-05-01T18:57:19.676Z",
+          "status": "open"
+        }
+      ],
+      "proposals": [
+        {
+          "id": "papr-568403220b42",
+          "problemId": "problem-1",
+          "problem": "Huecos en trazabilidad de lote",
+          "rootCause": "Captura tardía y sin validación en cierre",
+          "proposal": "Checklist digital obligatorio + bloqueo en liberación",
+          "type": "redesign",
+          "expectedImpact": "Reducir 80% incidencias de trazabilidad en 4 semanas",
+          "effort": "medium",
+          "status": "pending",
+          "ownerId": "",
+          "ownerName": "Lider Operativo",
+          "evidences": [],
+          "createdAt": "2026-05-01T18:57:19.677Z",
+          "updatedAt": "2026-05-01T19:27:27.255Z"
+        },
+        {
+          "id": "papr-d91c3ac08470",
+          "problemId": "problem-2",
+          "problem": "Liberación sin evidencia completa",
+          "rootCause": "No existe compuerta de control previa a salida",
+          "proposal": "Regla de no salida sin evidencia validada por responsable",
+          "type": "correction",
+          "expectedImpact": "Eliminar salidas sin respaldo documental",
+          "effort": "low",
+          "status": "pending",
+          "ownerId": "",
+          "ownerName": "Supervisor Calidad",
+          "evidences": [],
+          "createdAt": "2026-05-01T18:57:19.677Z",
+          "updatedAt": "2026-05-01T19:27:27.255Z"
+        }
+      ],
+      "followUp": [
+        {
+          "id": "pafu-d2183382f658",
+          "status": "pending",
+          "note": "",
+          "evidences": [],
+          "dueDate": "",
+          "createdAt": "2026-05-01T18:57:19.677Z",
+          "updatedAt": "2026-05-01T19:27:27.255Z"
+        },
+        {
+          "id": "pafu-61b398c13c2b",
+          "status": "pending",
+          "note": "",
+          "evidences": [],
+          "dueDate": "",
+          "createdAt": "2026-05-01T18:57:19.677Z",
+          "updatedAt": "2026-05-01T19:27:27.255Z"
+        }
+      ],
+      "implementationPlan": {
+        "processDefinition": "",
+        "responsibles": [],
+        "instructions": "",
+        "estimatedTime": ""
+      },
+      "boardLinks": [
+        "https://ejemplo.local/board/auditoria-trazabilidad"
+      ],
+      "scoring": {
+        "questionScores": [
+          {
+            "questionId": "paq-0533ca95131f",
+            "category": "Control",
+            "impactLevel": "high",
+            "hasProblem": true,
+            "color": "red"
+          },
+          {
+            "questionId": "paq-b21532345361",
+            "category": "Control",
+            "impactLevel": "high",
+            "hasProblem": true,
+            "color": "red"
+          },
+          {
+            "questionId": "paq-a87268a27f79",
+            "category": "Cumplimiento",
+            "impactLevel": "medium",
+            "hasProblem": false,
+            "color": "green"
+          },
+          {
+            "questionId": "paq-d2f5bd85219b",
+            "category": "Mejora",
+            "impactLevel": "medium",
+            "hasProblem": true,
+            "color": "yellow"
+          },
+          {
+            "questionId": "paq-944fc8f716d4",
+            "category": "Implementación",
+            "impactLevel": "low",
+            "hasProblem": false,
+            "color": "green"
+          }
+        ],
+        "categoryScores": [
+          {
+            "category": "Control",
+            "total": 2,
+            "red": 2,
+            "yellow": 0,
+            "green": 0,
+            "color": "red",
+            "scorePercent": 0
+          },
+          {
+            "category": "Cumplimiento",
+            "total": 1,
+            "red": 0,
+            "yellow": 0,
+            "green": 1,
+            "color": "green",
+            "scorePercent": 100
+          },
+          {
+            "category": "Mejora",
+            "total": 1,
+            "red": 0,
+            "yellow": 1,
+            "green": 0,
+            "color": "yellow",
+            "scorePercent": 0
+          },
+          {
+            "category": "Implementación",
+            "total": 1,
+            "red": 0,
+            "yellow": 0,
+            "green": 1,
+            "color": "green",
+            "scorePercent": 100
+          }
+        ],
+        "global": {
+          "total": 5,
+          "red": 2,
+          "yellow": 1,
+          "green": 2,
+          "color": "red",
+          "scorePercent": 40
+        }
+      },
+      "updatedAt": "2026-05-01T18:57:19.677Z"
+    },
+    {
+      "id": "auditp-cbf5656d6735",
+      "area": "INVENTARIO",
+      "subArea": "PRUEBA SWITCH",
+      "process": "Revisión",
+      "templateId": null,
+      "status": "closed",
+      "lifecycleStatus": "pending",
+      "startedAt": "2026-05-01T18:20:44.522Z",
+      "closedAt": "2026-05-01T18:20:59.930Z",
+      "reAuditAt": "",
+      "auditorId": "usr-lead-nu7wt83h",
+      "auditorName": "Alejandro Cruz Martinez",
+      "questions": [
+        {
+          "id": "paq-d56cb7f36227",
+          "type": "yesno",
+          "text": "¿El proceso depende del conocimiento de una sola persona?",
+          "required": true,
+          "placeholder": "",
+          "category": "General",
+          "isActive": true,
+          "conditionalQuestionId": "",
+          "conditionalAnswer": "",
+          "allowNote": false,
+          "options": [],
+          "minValue": 1,
+          "maxValue": 10,
+          "answer": true,
+          "issueDetected": false,
+          "impactLevel": "medium",
+          "observations": "",
+          "evidenceRequired": false,
+          "evidenceIds": []
+        },
+        {
+          "id": "paq-9f8d2bc268b2",
+          "type": "yesno",
+          "text": "¿Se detectan variaciones entre turnos?",
+          "required": true,
+          "placeholder": "",
+          "category": "General",
+          "isActive": true,
+          "conditionalQuestionId": "",
+          "conditionalAnswer": "",
+          "allowNote": false,
+          "options": [],
+          "minValue": 1,
+          "maxValue": 10,
+          "answer": false,
+          "issueDetected": true,
+          "impactLevel": "high",
+          "observations": "Diferencia entre turnos en criterios",
+          "evidenceRequired": false,
+          "evidenceIds": []
+        },
+        {
+          "id": "paq-cefec6c8333a",
+          "type": "text",
+          "text": "¿Qué falla ocurre más y dónde se origina?",
+          "required": false,
+          "placeholder": "Describe patrón y causa",
+          "category": "General",
+          "isActive": true,
+          "conditionalQuestionId": "",
+          "conditionalAnswer": "",
+          "allowNote": false,
+          "options": [],
+          "minValue": 1,
+          "maxValue": 10,
+          "answer": "Falla en validación final por falta de checklist",
+          "issueDetected": true,
+          "impactLevel": "medium",
+          "observations": "",
+          "evidenceRequired": false,
+          "evidenceIds": []
+        }
+      ],
+      "evidences": [],
+      "notes": "Prueba funcional de switches y preguntas mejoradas",
+      "executiveSummary": "",
+      "detectedProblems": [
+        {
+          "id": "paproblem-7ff7b048e03f",
+          "questionId": "paq-9f8d2bc268b2",
+          "category": "General",
+          "impactLevel": "high",
+          "problem": "¿Se detectan variaciones entre turnos?",
+          "observations": "Diferencia entre turnos en criterios",
+          "createdAt": "2026-05-01T18:20:59.930Z",
+          "status": "open"
+        },
+        {
+          "id": "paproblem-82b322628de3",
+          "questionId": "paq-cefec6c8333a",
+          "category": "General",
+          "impactLevel": "medium",
+          "problem": "¿Qué falla ocurre más y dónde se origina?",
+          "observations": "",
+          "createdAt": "2026-05-01T18:20:59.930Z",
+          "status": "open"
+        }
+      ],
+      "proposals": [],
+      "followUp": [],
+      "implementationPlan": {
+        "processDefinition": "",
+        "responsibles": [],
+        "instructions": "",
+        "estimatedTime": ""
+      },
+      "boardLinks": [],
+      "scoring": {
+        "questionScores": [
+          {
+            "questionId": "paq-d56cb7f36227",
+            "category": "General",
+            "impactLevel": "medium",
+            "hasProblem": false,
+            "color": "green"
+          },
+          {
+            "questionId": "paq-9f8d2bc268b2",
+            "category": "General",
+            "impactLevel": "high",
+            "hasProblem": true,
+            "color": "red"
+          },
+          {
+            "questionId": "paq-cefec6c8333a",
+            "category": "General",
+            "impactLevel": "medium",
+            "hasProblem": true,
+            "color": "yellow"
+          }
+        ],
+        "categoryScores": [
+          {
+            "category": "General",
+            "total": 3,
+            "red": 1,
+            "yellow": 1,
+            "green": 1,
+            "color": "red",
+            "scorePercent": 33
+          }
+        ],
+        "global": {
+          "total": 3,
+          "red": 1,
+          "yellow": 1,
+          "green": 1,
+          "color": "red",
+          "scorePercent": 33
+        }
+      },
+      "updatedAt": "2026-05-01T18:20:59.930Z"
+    },
+    {
+      "id": "auditp-9a00ad00ddde",
+      "area": "INVENTARIO",
+      "subArea": "",
+      "process": "ALMACEN",
+      "templateId": null,
+      "status": "open",
+      "lifecycleStatus": "pending",
+      "startedAt": "2026-05-01T18:17:23.319Z",
+      "closedAt": null,
+      "reAuditAt": "",
+      "auditorId": "usr-lead-nu7wt83h",
+      "auditorName": "Alejandro Cruz Martinez",
+      "questions": [
+        {
+          "id": "paq-a59466dbeee5",
+          "type": "yesno",
+          "text": "¿Cumple con el estándar definido?",
+          "required": true,
+          "placeholder": "",
+          "category": "General",
+          "isActive": true,
+          "conditionalQuestionId": "",
+          "conditionalAnswer": "",
+          "allowNote": false,
+          "options": [],
+          "minValue": 1,
+          "maxValue": 10,
+          "answer": null,
+          "issueDetected": null,
+          "impactLevel": "medium",
+          "observations": "",
+          "evidenceRequired": false,
+          "evidenceIds": []
+        }
+      ],
+      "evidences": [],
+      "notes": "",
+      "executiveSummary": "",
+      "detectedProblems": [],
+      "proposals": [],
+      "followUp": [],
+      "implementationPlan": {
+        "processDefinition": "",
+        "responsibles": [],
+        "instructions": "",
+        "estimatedTime": ""
+      },
+      "boardLinks": [],
+      "scoring": {
+        "questionScores": [
+          {
+            "questionId": "paq-a59466dbeee5",
+            "category": "General",
+            "impactLevel": "medium",
+            "hasProblem": false,
+            "color": "green"
+          }
+        ],
+        "categoryScores": [
+          {
+            "category": "General",
+            "total": 1,
+            "red": 0,
+            "yellow": 0,
+            "green": 1,
+            "color": "green",
+            "scorePercent": 100
+          }
+        ],
+        "global": {
+          "total": 1,
+          "red": 0,
+          "yellow": 0,
+          "green": 1,
+          "color": "green",
+          "scorePercent": 100
+        }
+      },
+      "updatedAt": "2026-05-01T18:17:23.319Z"
+    }
+  ]
 }

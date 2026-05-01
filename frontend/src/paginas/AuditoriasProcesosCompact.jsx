@@ -9,108 +9,198 @@ const FALLBACK_PROCESS_TEMPLATES = [
     area: "Inventario",
     process: "Revisión",
     questions: [
-      { type: "yesno", text: "¿El proceso sigue el estándar vigente?", required: true },
-      { type: "yesno", text: "¿La captura coincide con la evidencia física?", required: true },
-      { type: "text", text: "Hallazgo principal", required: false, placeholder: "Describe la desviación o mejora" },
+      { type: "yesno", text: "¿El proceso depende del conocimiento de una sola persona para ejecutarse correctamente?", required: true },
+      { type: "yesno", text: "¿Se detectan variaciones de ejecución entre turnos para la misma revisión?", required: true },
+      { type: "text", text: "¿Qué falla ocurre más y en qué punto exacto del flujo se origina?", required: false, placeholder: "Describe causa probable, impacto y propuesta inicial" },
     ],
   },
   {
     area: "Inventario",
     process: "Acomodo",
     questions: [
-      { type: "yesno", text: "¿Los pasillos están libres y señalizados?", required: true },
-      { type: "yesno", text: "¿Se respeta FIFO/PEPS en el acomodo?", required: true },
-      { type: "text", text: "Observación de acomodo", required: false, placeholder: "Ej. rack 4 con producto fuera de ubicación" },
+      { type: "yesno", text: "¿Se respeta el criterio de ubicación estándar o depende del criterio personal?", required: true },
+      { type: "yesno", text: "¿Existen errores repetitivos de ubicación que obligan retrabajo?", required: true },
+      { type: "text", text: "¿Qué parte del acomodo genera más errores y por qué?", required: false, placeholder: "Describe patrón, causa raíz y riesgo operativo" },
     ],
   },
   {
     area: "Inventario",
     process: "Recepción",
     questions: [
-      { type: "yesno", text: "¿La mercancía llegó sin daño visible?", required: true },
-      { type: "yesno", text: "¿La cantidad coincide con el documento?", required: true },
-      { type: "text", text: "Incidencia en recepción", required: false, placeholder: "Describe faltantes, daños o bloqueos" },
+      { type: "yesno", text: "¿Se valida documento, condición física y lote antes de liberar la recepción?", required: true },
+      { type: "yesno", text: "¿Hay cuellos de botella recurrentes que retrasan la recepción?", required: true },
+      { type: "text", text: "¿Qué provoca recapturas o ajustes posteriores en recepción?", required: false, placeholder: "Describe en qué etapa se rompe el control" },
     ],
   },
   {
     area: "Inventario",
     process: "Devoluciones",
     questions: [
-      { type: "yesno", text: "¿La devolución fue identificada y separada?", required: true },
-      { type: "yesno", text: "¿Se registró el motivo correctamente?", required: true },
-      { type: "text", text: "Detalle de devolución", required: false, placeholder: "Cliente, lote o causa" },
+      { type: "yesno", text: "¿El criterio de aceptación/rechazo de devoluciones está estandarizado?", required: true },
+      { type: "yesno", text: "¿Se identifica causa raíz de la devolución o solo se corrige el síntoma?", required: true },
+      { type: "text", text: "Patrón de devoluciones", required: false, placeholder: "Indica recurrencias, causa y mejora preventiva" },
     ],
   },
   {
     area: "Inventario",
     process: "Reingresos",
     questions: [
-      { type: "yesno", text: "¿El producto reingresado cumple condición aceptable?", required: true },
-      { type: "yesno", text: "¿El reingreso quedó documentado?", required: true },
-      { type: "text", text: "Observación de reingreso", required: false, placeholder: "Indica lote, ubicación o restricción" },
+      { type: "yesno", text: "¿Se valida trazabilidad y condición del producto antes del reingreso?", required: true },
+      { type: "yesno", text: "¿Se rechazan reingresos sin evidencia suficiente?", required: true },
+      { type: "text", text: "Riesgo en reingresos", required: false, placeholder: "Describe riesgos, controles faltantes y decisión recomendada" },
     ],
   },
   {
     area: "Inventario",
     process: "Traspasos",
     questions: [
-      { type: "yesno", text: "¿El origen y destino están validados?", required: true },
-      { type: "yesno", text: "¿La cantidad traspasada coincide?", required: true },
-      { type: "text", text: "Comentario del traspaso", required: false, placeholder: "Explica diferencias o bloqueos" },
+      { type: "yesno", text: "¿Existe control robusto para asegurar coincidencia entre origen y destino?", required: true },
+      { type: "yesno", text: "¿Hay diferencias recurrentes de inventario por fallas en traspaso?", required: true },
+      { type: "text", text: "Fuga de control en traspasos", required: false, placeholder: "¿Dónde se pierde información o producto y por qué?" },
     ],
   },
   {
     area: "Limpieza",
     process: "General",
     questions: [
-      { type: "yesno", text: "¿El área quedó limpia y ordenada?", required: true },
-      { type: "yesno", text: "¿Se usaron los insumos correctos?", required: true },
-      { type: "text", text: "Pendiente detectado", required: false, placeholder: "Zona, insumo o seguimiento" },
+      { type: "yesno", text: "¿El estándar de limpieza se interpreta igual en todos los turnos?", required: true },
+      { type: "yesno", text: "¿Se omiten tareas críticas cuando aumenta la carga operativa?", required: true },
+      { type: "text", text: "Brecha de limpieza", required: false, placeholder: "Describe zona crítica, causa y acción de contención" },
     ],
   },
   {
     area: "Limpieza",
     process: "Limpieza de naves",
     questions: [
-      { type: "yesno", text: "¿Se limpiaron pasillos, racks y esquinas?", required: true },
-      { type: "yesno", text: "¿No quedan residuos o derrames?", required: true },
-      { type: "text", text: "Hallazgo en nave", required: false, placeholder: "Indica zona y acción requerida" },
+      { type: "yesno", text: "¿La ruta de limpieza reduce recontaminación entre zonas?", required: true },
+      { type: "yesno", text: "¿Existen puntos ciegos que reinciden con hallazgos?", required: true },
+      { type: "text", text: "Hallazgo crítico en nave", required: false, placeholder: "Describe zona reincidente y causa raíz" },
     ],
   },
   {
     area: "Limpieza",
     process: "Oficinas y baños",
     questions: [
-      { type: "yesno", text: "¿Se sanitizaron superficies de contacto?", required: true },
-      { type: "yesno", text: "¿Hay insumos suficientes y repuestos?", required: true },
-      { type: "text", text: "Observación de sanitización", required: false, placeholder: "Indica faltante o corrección" },
+      { type: "yesno", text: "¿El cumplimiento se valida con evidencia y no por percepción?", required: true },
+      { type: "yesno", text: "¿Se anticipa reposición de insumos para evitar quiebres?", required: true },
+      { type: "text", text: "Desviación de sanitización", required: false, placeholder: "Indica causa, impacto y propuesta" },
     ],
   },
   {
     area: "Pedidos",
     process: "Picking",
     questions: [
-      { type: "yesno", text: "¿El surtido coincide contra el pedido?", required: true },
-      { type: "yesno", text: "¿El empaque final es correcto?", required: true },
-      { type: "text", text: "Observación de picking", required: false, placeholder: "SKU, caja o tiempo detectado" },
+      { type: "yesno", text: "¿El error de picking se detecta antes del embarque en todos los casos?", required: true },
+      { type: "yesno", text: "¿El proceso depende de operadores expertos para cumplir sin fallas?", required: true },
+      { type: "text", text: "Punto de falla en picking", required: false, placeholder: "Indica etapa, causa raíz y costo de error" },
     ],
   },
   {
     area: "Pedidos",
     process: "Clientes",
     questions: [
-      { type: "yesno", text: "¿La preparación cumple prioridad y ventana?", required: true },
-      { type: "yesno", text: "¿Se validó documentación y salida?", required: true },
-      { type: "text", text: "Comentario del pedido", required: false, placeholder: "Anota bloqueo o ajuste" },
+      { type: "yesno", text: "¿La priorización de pedidos responde a criterios claros y medibles?", required: true },
+      { type: "yesno", text: "¿Se documentan desviaciones de tiempo con causa y responsable?", required: true },
+      { type: "text", text: "Riesgo en atención a clientes", required: false, placeholder: "Describe reclamo recurrente y cómo prevenirlo" },
     ],
   },
   {
     area: "Pedidos",
     process: "Paqueterías",
     questions: [
-      { type: "yesno", text: "¿La guía y el bulto coinciden?", required: true },
-      { type: "yesno", text: "¿El cierre fue registrado sin incidencias?", required: true },
-      { type: "text", text: "Detalle de paquetería", required: false, placeholder: "Transportista, guía o incidencia" },
+      { type: "yesno", text: "¿Se valida guía, bulto y contenido antes de cerrar embarque?", required: true },
+      { type: "yesno", text: "¿Las incidencias de entrega se analizan con causa raíz?", required: true },
+      { type: "text", text: "Hallazgo de paquetería", required: false, placeholder: "Describe desviación, impacto y acción correctiva" },
+    ],
+  },
+  {
+    area: "Inventario",
+    process: "Almacén",
+    questions: [
+      { type: "yesno", text: "¿Existe control visual y digital para ubicar producto sin depender de memoria del operador?", required: true },
+      { type: "yesno", text: "¿Se registran movimientos internos en tiempo real sin pendientes al cierre del turno?", required: true },
+      { type: "text", text: "Principal fuga de control en almacén", required: false, placeholder: "Describe dónde se pierde trazabilidad y cómo corregirlo" },
+    ],
+  },
+  {
+    area: "Calidad",
+    process: "Inspección",
+    questions: [
+      { type: "yesno", text: "¿El criterio de aceptación/rechazo se aplica igual por todos los inspectores?", required: true },
+      { type: "yesno", text: "¿Se documenta evidencia objetiva de cada no conformidad detectada?", required: true },
+      { type: "text", text: "Riesgo de calidad recurrente", required: false, placeholder: "Describe defecto, frecuencia y punto de origen" },
+    ],
+  },
+  {
+    area: "Calidad",
+    process: "Liberación",
+    questions: [
+      { type: "yesno", text: "¿Ningún producto se libera sin checklist completo y firma responsable?", required: true },
+      { type: "yesno", text: "¿Se bloquea automáticamente producto con desviación crítica?", required: true },
+      { type: "text", text: "Brecha en liberación", required: false, placeholder: "Describe riesgo liberado, causa y contención" },
+    ],
+  },
+  {
+    area: "Regulatorio",
+    process: "Documentación",
+    questions: [
+      { type: "yesno", text: "¿Los documentos críticos vigentes están controlados y accesibles en punto de uso?", required: true },
+      { type: "yesno", text: "¿Se evita uso de formatos obsoletos en la operación diaria?", required: true },
+      { type: "text", text: "Riesgo documental", required: false, placeholder: "Indica documento crítico, brecha y plan de corrección" },
+    ],
+  },
+  {
+    area: "Regulatorio",
+    process: "Trazabilidad",
+    questions: [
+      { type: "yesno", text: "¿Se puede rastrear lote desde recepción hasta salida sin huecos de información?", required: true },
+      { type: "yesno", text: "¿Los cambios de estatus de lote quedan registrados con usuario y hora?", required: true },
+      { type: "text", text: "Pérdida de trazabilidad", required: false, placeholder: "Describe en qué etapa se rompe el rastro" },
+    ],
+  },
+  {
+    area: "Transporte",
+    process: "Carga",
+    questions: [
+      { type: "yesno", text: "¿La unidad se valida contra pedido, ruta y condiciones antes de cargar?", required: true },
+      { type: "yesno", text: "¿Existe doble verificación de estiba para evitar daño y devoluciones?", required: true },
+      { type: "text", text: "Riesgo en carga", required: false, placeholder: "Describe error típico, impacto y acción preventiva" },
+    ],
+  },
+  {
+    area: "Transporte",
+    process: "Entrega",
+    questions: [
+      { type: "yesno", text: "¿Se confirma evidencia de entrega completa y sin discrepancias?", required: true },
+      { type: "yesno", text: "¿Las incidencias de última milla se documentan con causa raíz?", required: true },
+      { type: "text", text: "Incidencia de entrega", required: false, placeholder: "Detalla desvío, cliente afectado y corrección" },
+    ],
+  },
+  {
+    area: "Retail",
+    process: "Surtido",
+    questions: [
+      { type: "yesno", text: "¿El surtido en piso respeta prioridad comercial y rotación real?", required: true },
+      { type: "yesno", text: "¿Se detectan quiebres de anaquel antes de afectar venta?", required: true },
+      { type: "text", text: "Brecha en surtido retail", required: false, placeholder: "Describe SKU crítico, causa y plan inmediato" },
+    ],
+  },
+  {
+    area: "Retail",
+    process: "Merma",
+    questions: [
+      { type: "yesno", text: "¿La merma se clasifica por causa real y no como categoría genérica?", required: true },
+      { type: "yesno", text: "¿Se ejecutan acciones preventivas sobre las 3 causas principales?", required: true },
+      { type: "text", text: "Patrón de merma", required: false, placeholder: "Indica causa predominante y control faltante" },
+    ],
+  },
+  {
+    area: "ESTO",
+    process: "Operación diaria",
+    questions: [
+      { type: "yesno", text: "¿Las actividades críticas del área se cierran en tiempo y con evidencia?", required: true },
+      { type: "yesno", text: "¿Existen desvíos repetitivos sin dueño claro de corrección?", required: true },
+      { type: "text", text: "Hallazgo operativo ESTO", required: false, placeholder: "Describe desvío, responsable y fecha compromiso" },
     ],
   },
 ];
@@ -231,6 +321,7 @@ function buildDefaultProposal(problem = {}) {
     type: "improvement",
     expectedImpact: "",
     effort: "medium",
+    responsible: "",
     status: "pending",
   };
 }
@@ -1106,17 +1197,20 @@ function TemplateQuestionEditor({
                 />
               </label>
               <label className="app-modal-field" style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
-                <input
-                  type="checkbox"
-                  checked={question.isActive !== false}
-                  onChange={(event) => setDraft((current) => ({
+                <button
+                  type="button"
+                  className={`switch-button ${question.isActive !== false ? "on" : ""}`}
+                  onClick={() => setDraft((current) => ({
                     ...current,
-                    questions: current.questions.map((item) => (item.id === question.id ? { ...item, isActive: event.target.checked } : item)),
+                    questions: current.questions.map((item) => (item.id === question.id ? { ...item, isActive: !(question.isActive !== false) } : item)),
                   }))}
                   disabled={disabled}
-                  style={{ width: "auto" }}
-                />
-                <span>Pregunta activa</span>
+                  aria-pressed={question.isActive !== false}
+                  aria-label="Alternar pregunta activa"
+                >
+                  <span className="switch-thumb" />
+                </button>
+                <span>{question.isActive !== false ? "Activa" : "Inactiva"}</span>
               </label>
               <label className="app-modal-field">
                 <span>Mostrar si</span>
@@ -1165,31 +1259,37 @@ function TemplateQuestionEditor({
               ) : null}
               {question.type === "yesno" ? (
                 <label className="app-modal-field audit-field-span-2" style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(question.allowNote)}
-                    onChange={(event) => setDraft((current) => ({
+                  <button
+                    type="button"
+                    className={`switch-button ${Boolean(question.allowNote) ? "on" : ""}`}
+                    onClick={() => setDraft((current) => ({
                       ...current,
-                      questions: current.questions.map((item) => (item.id === question.id ? { ...item, allowNote: event.target.checked } : item)),
+                      questions: current.questions.map((item) => (item.id === question.id ? { ...item, allowNote: !Boolean(question.allowNote) } : item)),
                     }))}
                     disabled={disabled}
-                    style={{ width: "auto" }}
-                  />
-                  <span>Permitir nota opcional</span>
+                    aria-pressed={Boolean(question.allowNote)}
+                    aria-label="Permitir nota opcional"
+                  >
+                    <span className="switch-thumb" />
+                  </button>
+                  <span>{Boolean(question.allowNote) ? "Nota opcional activada" : "Nota opcional desactivada"}</span>
                 </label>
               ) : null}
               <label className="app-modal-field audit-field-span-2" style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
-                <input
-                  type="checkbox"
-                  checked={Boolean(question.evidenceRequired)}
-                  onChange={(event) => setDraft((current) => ({
+                <button
+                  type="button"
+                  className={`switch-button ${Boolean(question.evidenceRequired) ? "on" : ""}`}
+                  onClick={() => setDraft((current) => ({
                     ...current,
-                    questions: current.questions.map((item) => (item.id === question.id ? { ...item, evidenceRequired: event.target.checked } : item)),
+                    questions: current.questions.map((item) => (item.id === question.id ? { ...item, evidenceRequired: !Boolean(question.evidenceRequired) } : item)),
                   }))}
                   disabled={disabled}
-                  style={{ width: "auto" }}
-                />
-                <span>Requiere evidencia</span>
+                  aria-pressed={Boolean(question.evidenceRequired)}
+                  aria-label="Requerir evidencia"
+                >
+                  <span className="switch-thumb" />
+                </button>
+                <span>{Boolean(question.evidenceRequired) ? "Evidencia requerida" : "Evidencia opcional"}</span>
               </label>
               {question.type === "scale" ? (
                 <>
@@ -1339,6 +1439,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
   const [auditViewerRichEditorState, setAuditViewerRichEditorState] = useState({});
   const [auditShieldActive, setAuditShieldActive] = useState(false);
   const [auditShieldTick, setAuditShieldTick] = useState(() => Date.now());
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const galleryEvidenceInputRef = useRef(null);
   const mobileCameraInputRef = useRef(null);
   const watermarkTiles = useMemo(() => Array.from({ length: 12 }, (_, index) => index), []);
@@ -1354,11 +1455,15 @@ export default function AuditoriasProcesosCompact({ contexto }) {
   }
 
   const resolvedTemplates = useMemo(() => {
-    return (Array.isArray(processAuditTemplates) ? processAuditTemplates : []).map((template) => ({
+    const normalizedTemplates = (Array.isArray(processAuditTemplates) ? processAuditTemplates : []).map((template) => ({
       ...template,
       isFallback: false,
       questions: (template.questions || []).map((question) => buildQuestionDraft(question)),
     }));
+    if (normalizedTemplates.length > 0) {
+      return normalizedTemplates;
+    }
+    return _buildFallbackTemplates();
   }, [processAuditTemplates]);
 
   const areaOptions = useMemo(() => {
@@ -1403,14 +1508,19 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     [sortedAudits],
   );
 
+  const actionableAudits = useMemo(
+    () => sortedAudits.filter((entry) => entry.status !== "closed" || normalizeLifecycleStatus(entry.lifecycleStatus) !== "closed"),
+    [sortedAudits],
+  );
+
   const closedAudits = useMemo(
-    () => sortedAudits.filter((entry) => entry.status === "closed"),
+    () => sortedAudits.filter((entry) => entry.status === "closed" && normalizeLifecycleStatus(entry.lifecycleStatus) === "closed"),
     [sortedAudits],
   );
 
   const selectedAudit = useMemo(
-    () => openAudits.find((entry) => entry.id === selectedAuditId) || openAudits[0] || null,
-    [openAudits, selectedAuditId],
+    () => actionableAudits.find((entry) => entry.id === selectedAuditId) || actionableAudits[0] || null,
+    [actionableAudits, selectedAuditId],
   );
 
   const visibleAuditEvidences = useMemo(() => {
@@ -1510,6 +1620,184 @@ export default function AuditoriasProcesosCompact({ contexto }) {
       withoutProposal: Math.max(0, detectedProblems.length - linked.length),
     };
   }, [auditDraft?.proposals, detectedProblems.length, detectedProblemsById]);
+
+  const isAuditClosed = auditDraft?.status === "closed";
+  const lifecycleStatus = normalizeLifecycleStatus(auditDraft?.lifecycleStatus || "pending");
+  const canWorkProblemsStep = isAuditClosed && ["in_review", "proposal_sent", "accepted", "in_implementation", "in_validation", "closed"].includes(lifecycleStatus);
+  const canWorkProposalsStep = isAuditClosed && ["proposal_sent", "accepted", "in_implementation", "in_validation", "closed"].includes(lifecycleStatus);
+  const canWorkFollowUpStep = isAuditClosed && ["in_implementation", "in_validation", "closed"].includes(lifecycleStatus);
+
+  async function handleAdvancePostCloseStep(nextLifecycleStatus) {
+    if (!canManageAudits || !auditDraft) return;
+    try {
+      await updateProcessAudit(auditDraft.id, {
+        lifecycleStatus: normalizeLifecycleStatus(nextLifecycleStatus),
+      });
+      pushAppToast("Paso actualizado.", "success");
+    } catch (error) {
+      pushAppToast(error?.message || "No se pudo avanzar el paso.", "danger");
+    }
+  }
+
+  function handleExportAuditCopmec(audit = auditDraft) {
+    if (!audit) return;
+    const data = JSON.stringify({ version: "1.0", type: "process-audit", exportedAt: new Date().toISOString(), audit }, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    const safeName = String(audit.subArea || audit.area || "auditoria").replace(/[^a-z0-9]/gi, "_").toLowerCase();
+    link.download = `auditoria_${safeName}_${audit.id.slice(-6)}.copmec`;
+    link.click();
+    URL.revokeObjectURL(url);
+    pushAppToast("Archivo .copmec exportado.", "success");
+  }
+
+  async function handleExportAuditPdf(audit = auditDraft) {
+    if (!audit || isExportingPdf) return;
+    try {
+      setIsExportingPdf(true);
+      const [{ jsPDF }, autoTableModule] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
+      const autoTable = autoTableModule.default || autoTableModule.autoTable;
+      const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+      const brandColor = [3, 33, 33];
+      const pageWidth = pdf.internal.pageSize.getWidth();
+
+      pdf.setFillColor(...brandColor);
+      pdf.rect(0, 0, pageWidth, 54, "F");
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(15);
+      pdf.text("COPMEC — Auditoría de Proceso", 36, 32);
+      pdf.setFontSize(9);
+      pdf.text(`Exportado: ${new Date().toLocaleString("es-MX")}`, 36, 46);
+
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFontSize(11);
+      pdf.text(`Área: ${audit.area || "-"}  ·  Proceso: ${audit.process || "-"}  ·  Subárea: ${audit.subArea || "-"}`, 36, 74);
+      pdf.setFontSize(9);
+      pdf.text(`Auditor: ${audit.auditorName || "-"}  ·  Inicio: ${formatDateTime(audit.startedAt)}  ·  Cierre: ${audit.closedAt ? formatDateTime(audit.closedAt) : "-"}`, 36, 88);
+      const lcLabel = PROCESS_AUDIT_STATUS_OPTIONS.find((opt) => opt.value === normalizeLifecycleStatus(audit.lifecycleStatus))?.label || "-";
+      pdf.text(`Ciclo: ${lcLabel}  ·  Duración: ${formatDuration(getAuditDurationSeconds(audit))}`, 36, 102);
+
+      const problems = buildDetectedProblems(audit.questions || []);
+      const scoring = buildAuditScoring(audit.questions || []);
+
+      pdf.setFontSize(10);
+      pdf.setFont(undefined, "bold");
+      pdf.text("Semáforo", 36, 120);
+      pdf.setFont(undefined, "normal");
+      pdf.text(`Global: ${scoring.global.scorePercent}% OK  ·  🔴 ${scoring.global.red}  🟡 ${scoring.global.yellow}  🟢 ${scoring.global.green}`, 36, 133);
+
+      let yPos = 148;
+
+      // Preguntas
+      pdf.setFontSize(10);
+      pdf.setFont(undefined, "bold");
+      pdf.text("Preguntas capturadas", 36, yPos);
+      yPos += 6;
+      pdf.setFont(undefined, "normal");
+      const activeQs = (audit.questions || []).filter((q) => q?.isActive !== false);
+      const qBody = activeQs.map((q) => {
+        let answerStr = "";
+        if (q.type === "yesno") answerStr = q.answer === true ? "Sí" : q.answer === false ? "No" : "-";
+        else if (q.type === "multi") answerStr = Array.isArray(q.answer) ? q.answer.join(", ") : "-";
+        else answerStr = q.answer != null ? String(q.answer) : "-";
+        const problem = resolveQuestionHasProblem(q);
+        return [q.text || "-", answerStr, problem ? "Sí" : "No", q.observations || ""];
+      });
+      autoTable(pdf, {
+        startY: yPos,
+        head: [["Pregunta", "Respuesta", "Problema", "Observaciones"]],
+        body: qBody,
+        styles: { fontSize: 7, cellPadding: 3 },
+        headStyles: { fillColor: brandColor, textColor: [255, 255, 255] },
+        columnStyles: { 0: { cellWidth: 200 }, 3: { cellWidth: 120 } },
+        theme: "grid",
+        margin: { left: 36, right: 36 },
+      });
+      yPos = pdf.lastAutoTable.finalY + 14;
+
+      // Problemas detectados
+      if (problems.length) {
+        pdf.setFontSize(10);
+        pdf.setFont(undefined, "bold");
+        pdf.text(`Problemas detectados (${problems.length})`, 36, yPos);
+        yPos += 6;
+        pdf.setFont(undefined, "normal");
+        const probBody = problems.map((p) => [p.problem, p.category, p.impactLevel === "high" ? "Alto" : p.impactLevel === "medium" ? "Medio" : "Bajo", p.observations || ""]);
+        autoTable(pdf, {
+          startY: yPos,
+          head: [["Problema", "Categoría", "Impacto", "Observaciones"]],
+          body: probBody,
+          styles: { fontSize: 7, cellPadding: 3 },
+          headStyles: { fillColor: [150, 0, 0], textColor: [255, 255, 255] },
+          theme: "grid",
+          margin: { left: 36, right: 36 },
+        });
+        yPos = pdf.lastAutoTable.finalY + 14;
+      }
+
+      // Propuestas
+      const proposals = Array.isArray(audit.proposals) ? audit.proposals : [];
+      if (proposals.length) {
+        pdf.setFontSize(10);
+        pdf.setFont(undefined, "bold");
+        pdf.text(`Propuestas de mejora (${proposals.length})`, 36, yPos);
+        yPos += 6;
+        pdf.setFont(undefined, "normal");
+        const propBody = proposals.map((p) => [
+          p.problem || "-",
+          PROPOSAL_TYPE_OPTIONS.find((o) => o.value === p.type)?.label || p.type || "-",
+          p.rootCause ? String(p.rootCause).replace(/<[^>]+>/g, " ").trim() : "-",
+          p.proposal ? String(p.proposal).replace(/<[^>]+>/g, " ").trim() : "-",
+          p.responsible || "-",
+          EFFORT_OPTIONS.find((o) => o.value === p.effort)?.label || p.effort || "-",
+        ]);
+        autoTable(pdf, {
+          startY: yPos,
+          head: [["Problema", "Tipo", "Causa raíz", "Propuesta", "Responsable", "Esfuerzo"]],
+          body: propBody,
+          styles: { fontSize: 7, cellPadding: 3 },
+          headStyles: { fillColor: [0, 80, 80], textColor: [255, 255, 255] },
+          columnStyles: { 2: { cellWidth: 80 }, 3: { cellWidth: 90 } },
+          theme: "grid",
+          margin: { left: 36, right: 36 },
+        });
+        yPos = pdf.lastAutoTable.finalY + 14;
+      }
+
+      // Plan de implementación
+      const plan = audit.implementationPlan || {};
+      if (plan.processDefinition || plan.instructions || plan.deadline) {
+        pdf.setFontSize(10);
+        pdf.setFont(undefined, "bold");
+        pdf.text("Plan de implementación", 36, yPos);
+        yPos += 6;
+        pdf.setFont(undefined, "normal");
+        const planBody = [
+          ["Fecha límite", plan.deadline || "-"],
+          ["Nuevo proceso", plan.processDefinition ? String(plan.processDefinition).replace(/<[^>]+>/g, " ").trim() : "-"],
+          ["Instrucciones", plan.instructions ? String(plan.instructions).replace(/<[^>]+>/g, " ").trim() : "-"],
+        ];
+        autoTable(pdf, {
+          startY: yPos,
+          body: planBody,
+          styles: { fontSize: 7, cellPadding: 3 },
+          theme: "grid",
+          margin: { left: 36, right: 36 },
+        });
+        yPos = pdf.lastAutoTable.finalY + 14;
+      }
+
+      const safeName = String(audit.subArea || audit.area || "auditoria").replace(/[^a-z0-9]/gi, "_").toLowerCase();
+      pdf.save(`auditoria_${safeName}_${audit.id.slice(-6)}.pdf`);
+      pushAppToast("PDF exportado correctamente.", "success");
+    } catch (error) {
+      pushAppToast(error?.message || "No se pudo exportar el PDF.", "danger");
+    } finally {
+      setIsExportingPdf(false);
+    }
+  }
 
   useEffect(() => {
     if (!selectedAudit) {
@@ -1872,20 +2160,15 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     try {
       await updateProcessAudit(auditDraft.id, {
         status: "closed",
-        lifecycleStatus: "closed",
+        lifecycleStatus: "in_review",
         notes: auditDraft.notes || "",
         questions: normalizeQuestionsForSave(auditDraft.questions || []),
       });
       setAuditEditorOpen(false);
-      setSelectedAuditId("");
-      setAuditDraft(null);
       setAuditQuestionsDraft(null);
-      setNewAuditArea("");
-      setNewAuditSubArea("");
-      setNewAuditProcess("");
-      setNewAuditTemplateId("");
-      setActiveTab("history");
-      pushAppToast("Auditoría cerrada.", "success");
+      setSelectedAuditId(auditDraft.id);
+      setActiveTab("capture");
+      pushAppToast("Paso 1 completado. Continúa con problemas, propuestas y seguimiento.", "success");
     } catch (error) {
       pushAppToast(error?.message || "No se pudo cerrar la auditoría.", "danger");
     }
@@ -2114,6 +2397,25 @@ export default function AuditoriasProcesosCompact({ contexto }) {
               {auditDraft ? (
                 <div className="audit-topbar-actions">
                   <span className={auditDraft.status === "closed" ? "chip success" : "chip warning"}>{auditDraft.status === "closed" ? "Cerrada" : "Abierta"}</span>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    onClick={() => {
+                      const quickQuestion = buildQuestionDraft({ type: "yesno", text: "", category: "General" });
+                      setAuditDraft((current) => ({
+                        ...current,
+                        questions: [...(current?.questions || []), quickQuestion],
+                      }));
+                      setAuditQuestionsDraft((current) => ({
+                        questions: [...(current?.questions || []), quickQuestion],
+                      }));
+                      setIsAuditDirty(true);
+                      setAuditEditorOpen(true);
+                    }}
+                    disabled={!canManageAudits}
+                  >
+                    <Plus size={15} /> Agregar pregunta
+                  </button>
                   <button type="button" className="icon-button" onClick={() => setAuditEditorOpen(true)} disabled={!canManageAudits}>
                     <Settings size={15} /> Preguntas
                   </button>
@@ -2225,20 +2527,15 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                         <div className="audit-answer-toggle-row">
                           <button
                             type="button"
-                            className={question.answer === true ? "primary-button" : "icon-button"}
-                            onClick={() => updateAuditAnswer(question.id, true)}
+                            className={`switch-button ${question.answer === true ? "on" : ""}`}
+                            onClick={() => updateAuditAnswer(question.id, question.answer === true ? false : true)}
                             disabled={!canManageAudits}
+                            aria-pressed={question.answer === true}
+                            aria-label="Alternar respuesta Sí/No"
                           >
-                            <Check size={15} /> Sí
+                            <span className="switch-thumb" />
                           </button>
-                          <button
-                            type="button"
-                            className={question.answer === false ? "primary-button" : "icon-button"}
-                            onClick={() => updateAuditAnswer(question.id, false)}
-                            disabled={!canManageAudits}
-                          >
-                            <X size={15} /> No
-                          </button>
+                          <strong>{question.answer === true ? "Sí" : "No"}</strong>
                         </div>
                       ) : null}
 
@@ -2319,17 +2616,21 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                               const checked = currentAnswer.includes(option);
                               return (
                                 <label key={option} className="audit-multi-option-item">
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={(event) => {
-                                      const next = event.target.checked
-                                        ? [...currentAnswer, option]
-                                        : currentAnswer.filter((entry) => entry !== option);
+                                  <button
+                                    type="button"
+                                    className={`switch-button ${checked ? "on" : ""}`}
+                                    onClick={() => {
+                                      const next = checked
+                                        ? currentAnswer.filter((entry) => entry !== option)
+                                        : [...currentAnswer, option];
                                       updateAuditAnswer(question.id, next);
                                     }}
                                     disabled={!canManageAudits}
-                                  />
+                                    aria-pressed={checked}
+                                    aria-label={`Alternar opción ${option}`}
+                                  >
+                                    <span className="switch-thumb" />
+                                  </button>
                                   <span>{option}</span>
                                 </label>
                               );
@@ -2339,13 +2640,13 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                       ) : null}
 
                       <div className="audit-question-evaluation-grid">
-                        <label className="app-modal-field">
+                        <label className="app-modal-field" style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
                           <span>¿Se detecta problema?</span>
-                          <select
-                            value={question.issueDetected === true ? "yes" : question.issueDetected === false ? "no" : ""}
-                            onChange={(event) => {
-                              const value = event.target.value;
-                              const issueDetected = value === "yes" ? true : value === "no" ? false : null;
+                          <button
+                            type="button"
+                            className={`switch-button ${question.issueDetected === true ? "on" : ""}`}
+                            onClick={() => {
+                              const issueDetected = question.issueDetected === true ? false : true;
                               setAuditDraft((current) => ({
                                 ...current,
                                 questions: current.questions.map((item) => (item.id === question.id ? { ...item, issueDetected } : item)),
@@ -2353,11 +2654,12 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                               setIsAuditDirty(true);
                             }}
                             disabled={!canManageAudits}
+                            aria-pressed={question.issueDetected === true}
+                            aria-label="Alternar detección de problema"
                           >
-                            <option value="">Auto</option>
-                            <option value="yes">Sí</option>
-                            <option value="no">No</option>
-                          </select>
+                            <span className="switch-thumb" />
+                          </button>
+                          <strong>{question.issueDetected === true ? "Sí" : "No"}</strong>
                         </label>
 
                         <label className="app-modal-field">
@@ -2402,28 +2704,36 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                   ))}
                 </div>
 
-                <section className="surface-card audit-analysis-card">
-                  <div className="card-header-row">
-                    <div>
-                      <h3>Semáforo automático</h3>
-                      <p>Score por pregunta, categoría y global.</p>
-                    </div>
-                    <span className={`chip ${auditScoring.global.color === "red" ? "danger" : auditScoring.global.color === "yellow" ? "warning" : "success"}`}>
-                      {getScoreChipLabel(auditScoring.global.color)} · {auditScoring.global.scorePercent}%
-                    </span>
-                  </div>
-                  <div className="audit-active-meta-grid">
-                    {auditScoring.categoryScores.map((item) => (
-                      <article key={item.category} className="surface-card audit-mini-stat">
-                        <p>{item.category}</p>
-                        <strong>{item.scorePercent}%</strong>
-                        <small>{item.red}R · {item.yellow}A · {item.green}V</small>
-                      </article>
-                    ))}
-                  </div>
-                </section>
+                {isAuditClosed ? (
+                  <>
+                    <section className="surface-card audit-analysis-card">
+                      <div className="card-header-row">
+                        <div>
+                          <h3>Flujo posterior al cierre</h3>
+                          <p>Paso actual: {PROCESS_AUDIT_STATUS_OPTIONS.find((option) => option.value === lifecycleStatus)?.label || "Pendiente"}</p>
+                        </div>
+                        <div className="audit-inline-actions">
+                          <button type="button" className="icon-button" onClick={() => handleExportAuditPdf(auditDraft)} disabled={isExportingPdf} title="Exportar PDF">
+                            <Upload size={14} /> {isExportingPdf ? "Generando…" : "PDF"}
+                          </button>
+                          <button type="button" className="icon-button" onClick={() => handleExportAuditCopmec(auditDraft)} title="Exportar .copmec">
+                            <ExternalLink size={14} /> .copmec
+                          </button>
+                          {lifecycleStatus === "in_review" ? (
+                            <button type="button" className="primary-button" onClick={() => handleAdvancePostCloseStep("proposal_sent")} disabled={!canManageAudits}>Continuar a Propuestas</button>
+                          ) : null}
+                          {lifecycleStatus === "proposal_sent" || lifecycleStatus === "accepted" ? (
+                            <button type="button" className="primary-button" onClick={() => handleAdvancePostCloseStep("in_implementation")} disabled={!canManageAudits}>Continuar a Seguimiento</button>
+                          ) : null}
+                          {lifecycleStatus === "in_implementation" || lifecycleStatus === "in_validation" ? (
+                            <button type="button" className="primary-button" onClick={() => handleAdvancePostCloseStep("closed")} disabled={!canManageAudits}>Cerrar ciclo completo</button>
+                          ) : null}
+                        </div>
+                      </div>
+                    </section>
 
-                <section className="surface-card audit-analysis-card">
+                    {canWorkProblemsStep ? (
+                    <section className="surface-card audit-analysis-card">
                   <div className="card-header-row">
                     <div>
                       <h3>Problemas detectados</h3>
@@ -2447,8 +2757,10 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                     ))}
                   </div>
                 </section>
+                    ) : null}
 
-                <section className="surface-card audit-analysis-card">
+                    {canWorkProposalsStep ? (
+                    <section className="surface-card audit-analysis-card">
                   <div className="card-header-row">
                     <div>
                       <h3>Propuestas de mejora</h3>
@@ -2529,6 +2841,23 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                               {EFFORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                             </select>
                           </label>
+                          <label className="app-modal-field">
+                            <span>Responsable</span>
+                            <input
+                              type="text"
+                              value={proposal.responsible || ""}
+                              placeholder="Nombre del responsable"
+                              onChange={(event) => {
+                                const nextValue = event.target.value;
+                                setAuditDraft((current) => ({
+                                  ...current,
+                                  proposals: (current.proposals || []).map((item) => (item.id === proposal.id ? { ...item, responsible: nextValue } : item)),
+                                }));
+                                setIsAuditDirty(true);
+                              }}
+                              disabled={!canManageAudits}
+                            />
+                          </label>
                           <RichTextResponseField
                             label="Causa raíz"
                             value={proposal.rootCause || ""}
@@ -2597,15 +2926,39 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                     {!auditDraft.proposals?.length ? <p className="subtle-line">Aún no hay propuestas registradas.</p> : null}
                   </div>
                 </section>
+                    ) : null}
 
-                <section className="surface-card audit-analysis-card">
+                    {canWorkFollowUpStep ? (
+                    <section className="surface-card audit-analysis-card">
                   <div className="card-header-row">
                     <div>
                       <h3>Seguimiento e implementación</h3>
                       <p>Define el nuevo proceso, responsables e instrucciones.</p>
                     </div>
+                    {auditDraft.implementationPlan?.deadline ? (
+                      <span className={`chip ${new Date(auditDraft.implementationPlan.deadline) < new Date() && lifecycleStatus !== "closed" ? "danger" : "success"}`}>
+                        Límite: {auditDraft.implementationPlan.deadline}
+                        {new Date(auditDraft.implementationPlan.deadline) < new Date() && lifecycleStatus !== "closed" ? " ⚠ Vencido" : ""}
+                      </span>
+                    ) : null}
                   </div>
                   <div className="audit-form-grid">
+                    <label className="app-modal-field">
+                      <span>Fecha límite de implementación</span>
+                      <input
+                        type="date"
+                        value={auditDraft.implementationPlan?.deadline || ""}
+                        onChange={(event) => {
+                          const nextValue = event.target.value;
+                          setAuditDraft((current) => ({
+                            ...current,
+                            implementationPlan: { ...(current.implementationPlan || {}), deadline: nextValue },
+                          }));
+                          setIsAuditDirty(true);
+                        }}
+                        disabled={!canManageAudits}
+                      />
+                    </label>
                     <RichTextResponseField
                       label="Resumen ejecutivo"
                       value={auditDraft.executiveSummary || ""}
@@ -2653,6 +3006,9 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                     />
                   </div>
                 </section>
+                    ) : null}
+                  </>
+                ) : null}
 
                 <div className="audit-inline-actions">
                   <button type="button" className="icon-button danger" onClick={() => openDeleteAuditModal(auditDraft)} disabled={!canManageAudits}>Eliminar</button>
@@ -2827,20 +3183,15 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                     <div className="audit-answer-toggle-row">
                       <button
                         type="button"
-                        className={question.answer === true ? "primary-button" : "icon-button"}
-                        onClick={() => handleSaveViewerBinaryAnswer(question.id, true)}
+                        className={`switch-button ${question.answer === true ? "on" : ""}`}
+                        onClick={() => handleSaveViewerBinaryAnswer(question.id, question.answer === true ? false : true)}
                         disabled={!canManageAudits || auditViewerSaving}
+                        aria-pressed={question.answer === true}
+                        aria-label="Alternar respuesta Sí/No"
                       >
-                        <Check size={15} /> Sí
+                        <span className="switch-thumb" />
                       </button>
-                      <button
-                        type="button"
-                        className={question.answer === false ? "primary-button" : "icon-button"}
-                        onClick={() => handleSaveViewerBinaryAnswer(question.id, false)}
-                        disabled={!canManageAudits || auditViewerSaving}
-                      >
-                        <X size={15} /> No
-                      </button>
+                      <strong>{question.answer === true ? "Sí" : "No"}</strong>
                     </div>
                   ) : (
                     <RichTextResponseField

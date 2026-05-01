@@ -10669,11 +10669,11 @@ tbody tr:hover {
 
 .audit-topbar-card,
 .audit-surface-compact {
-  gap: 1.15rem;
+  gap: 0.62rem;
 }
 
 .audit-capture-card {
-  padding: 0.88rem 1rem;
+  padding: 0.52rem 0.6rem;
 }
 
 .audit-topbar-actions,
@@ -10682,7 +10682,7 @@ tbody tr:hover {
 .audit-answer-toggle-row {
   display: flex;
   align-items: center;
-  gap: 0.68rem;
+  gap: 0.42rem;
   flex-wrap: wrap;
 }
 
@@ -10705,17 +10705,17 @@ tbody tr:hover {
 
 .audit-form-grid-capture {
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.78rem;
+  gap: 0.45rem;
 }
 
 .audit-active-meta-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.55rem;
 }
 
 .audit-response-grid {
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 0.9rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
 }
 
 .audit-template-modal-grid {
@@ -10780,7 +10780,7 @@ tbody tr:hover {
 .audit-mini-stat {
   display: grid;
   gap: 0.18rem;
-  padding: 0.85rem 1rem;
+  padding: 0.65rem 0.75rem;
   border-radius: 1.1rem;
 }
 
@@ -10848,19 +10848,57 @@ tbody tr:hover {
 .audit-area-stat-card,
 .audit-template-library-item,
 .audit-question-editor-card {
-  padding: 1.05rem;
+  padding: 0.52rem;
 }
 
 .audit-response-card {
   min-width: 0;
+  display: grid;
+  gap: 0.38rem;
+  align-content: start;
+}
+
+.audit-capture-card .app-modal-field {
+  gap: 0.2rem;
+  min-height: 2.25rem;
+  padding: 0.34rem 0.42rem;
+  border-radius: 0.72rem;
+}
+
+.audit-capture-card .app-modal-field > span {
+  font-size: 0.64rem;
+  line-height: 1.1;
+}
+
+.audit-capture-card .app-modal-field input,
+.audit-capture-card .app-modal-field select,
+.audit-capture-card .app-modal-field textarea {
+  min-height: 1.45rem;
+  font-size: 0.8rem;
+  padding: 0.16rem 0;
+}
+
+.audit-capture-card .chip {
+  min-height: 1.32rem;
+  padding: 0.12rem 0.42rem;
+  font-size: 0.66rem;
+}
+
+.audit-active-subline {
+  gap: 0.45rem 0.72rem;
+  margin-top: 0;
+}
+
+.audit-active-subline span {
+  font-size: 0.72rem;
 }
 
 .audit-response-card-yesno {
-  grid-column: span 3;
+  grid-column: auto;
 }
 
 .audit-response-card-text {
-  grid-column: span 4;
+  grid-column: auto;
 }
 
 .audit-response-card strong,
@@ -11289,15 +11327,11 @@ tbody tr:hover {
   }
 
   .audit-active-meta-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .audit-response-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .audit-response-card-yesno {
-    grid-column: span 4;
-  }
-
-  .audit-response-card-text {
-    grid-column: span 6;
   }
 
   .audit-question-editor-grid {
@@ -11318,6 +11352,10 @@ tbody tr:hover {
     grid-column: auto;
   }
 
+  .audit-active-meta-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .audit-field-span-2,
   .audit-field-span-full {
     grid-column: auto;
@@ -11329,6 +11367,10 @@ tbody tr:hover {
 
   .audit-active-subline span {
     white-space: normal;
+  }
+
+  .audit-capture-card {
+    padding: 0.45rem;
   }
 }
 

@@ -1,12 +1,12 @@
 {
-  "revision": 2856,
+  "revision": 2876,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro",
     "operational": {
       "naveWeekSchedules": {},
       "pauseControl": {
-        "globalPauseEnabled": true,
+        "globalPauseEnabled": false,
         "forceGlobalPause": false,
         "reasons": [
           {
@@ -41,7 +41,7 @@
           "endMinute": 0
         },
         "areaPauseControls": {
-          "C1": {
+          "CALIDAD": {
             "enabled": false,
             "workHours": {
               "startHour": 0,
@@ -50,7 +50,7 @@
               "endMinute": 0
             }
           },
-          "C2": {
+          "ESTO": {
             "enabled": false,
             "workHours": {
               "startHour": 0,
@@ -59,7 +59,16 @@
               "endMinute": 0
             }
           },
-          "C3": {
+          "INVENTARIO": {
+            "enabled": true,
+            "workHours": {
+              "startHour": 6,
+              "startMinute": 0,
+              "endHour": 16,
+              "endMinute": 0
+            }
+          },
+          "LIMPIEZA": {
             "enabled": false,
             "workHours": {
               "startHour": 0,
@@ -68,7 +77,34 @@
               "endMinute": 0
             }
           },
-          "P": {
+          "PEDIDOS": {
+            "enabled": false,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          },
+          "REGULATORIO": {
+            "enabled": false,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          },
+          "RETAIL": {
+            "enabled": false,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          },
+          "TRANSPORTE": {
             "enabled": false,
             "workHours": {
               "startHour": 0,
@@ -78,7 +114,7 @@
             }
           }
         },
-        "globalPauseActivatedAt": "2026-04-30T22:00:00.410Z",
+        "globalPauseActivatedAt": null,
         "globalPauseAutoDisabledUntil": null
       }
     }
@@ -10017,7 +10053,7 @@
           "Reacondicionado"
         ],
         "operationalContextValue": "Devolución",
-        "ownerArea": ""
+        "ownerArea": "INVENTARIO"
       },
       "fields": [
         {
@@ -10040,7 +10076,8 @@
           "required": true,
           "groupName": "Control",
           "groupColor": "#ede9fe",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-9bea415de1a5",
@@ -10065,7 +10102,8 @@
           "required": true,
           "groupName": "Control",
           "groupColor": "#ede9fe",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-deed11450949",
@@ -10087,7 +10125,8 @@
           "required": true,
           "groupName": "Producto",
           "groupColor": "#e0f2fe",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-e747f4fdc722",
@@ -10109,7 +10148,8 @@
           "required": true,
           "groupName": "Lote",
           "groupColor": "#dcfce7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-51772c4b11e4",
@@ -10131,7 +10171,8 @@
           "required": true,
           "groupName": "Lote",
           "groupColor": "#dcfce7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-b364ca096dad",
@@ -10153,7 +10194,8 @@
           "required": false,
           "groupName": "Lote",
           "groupColor": "#dcfce7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-99f7f325f67a",
@@ -10175,7 +10217,8 @@
           "required": true,
           "groupName": "Cantidad",
           "groupColor": "#fef3c7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-658916511807",
@@ -10197,7 +10240,8 @@
           "required": false,
           "groupName": "Cantidad",
           "groupColor": "#fef3c7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         }
       ],
       "rows": [
@@ -10213,20 +10257,19 @@
             "fld-99f7f325f67a": 3,
             "fld-658916511807": 3
           },
-          "responsibleId": "",
-          "responsibleIds": [],
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
           "status": "Terminado",
           "startTime": "2026-04-30T19:07:51.456Z",
           "endTime": "2026-04-30T19:08:01.976Z",
           "accumulatedSeconds": 10,
-          "totalElapsedSecondsOverride": null,
+          "totalElapsedSecondsOverride": 0,
           "lastResumedAt": null,
           "pauseUsageByDay": {},
           "pauseLogs": [],
-          "createdAt": "2026-04-30T19:07:50.154Z",
-          "pauseStartedAt": null,
-          "pauseAffectsTimer": false,
-          "pauseAuthorizedSeconds": 0
+          "createdAt": "2026-04-30T19:07:50.154Z"
         },
         {
           "id": "row-ed0cf57ab4ce",
@@ -10240,13 +10283,15 @@
             "fld-99f7f325f67a": 1,
             "fld-658916511807": 50
           },
-          "responsibleId": "",
-          "responsibleIds": [],
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
           "status": "Pendiente",
           "startTime": null,
           "endTime": null,
           "accumulatedSeconds": 0,
-          "totalElapsedSecondsOverride": null,
+          "totalElapsedSecondsOverride": 0,
           "lastResumedAt": null,
           "pauseUsageByDay": {},
           "pauseLogs": [],
@@ -10264,20 +10309,19 @@
             "fld-99f7f325f67a": 4,
             "fld-658916511807": 4
           },
-          "responsibleId": "",
-          "responsibleIds": [],
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
           "status": "Terminado",
           "startTime": "2026-04-30T19:11:12.308Z",
           "endTime": "2026-04-30T19:11:30.218Z",
           "accumulatedSeconds": 17,
-          "totalElapsedSecondsOverride": null,
+          "totalElapsedSecondsOverride": 0,
           "lastResumedAt": null,
           "pauseUsageByDay": {},
           "pauseLogs": [],
-          "createdAt": "2026-04-30T19:11:11.076Z",
-          "pauseStartedAt": null,
-          "pauseAffectsTimer": false,
-          "pauseAuthorizedSeconds": 0
+          "createdAt": "2026-04-30T19:11:11.076Z"
         }
       ],
       "permissions": {
@@ -10926,7 +10970,7 @@
             "fld-qsz13t42": "1",
             "fld-qb54r8d9": "1",
             "fld-tfrpbe0m": "inv-3s48ng1m",
-            "fld-0dkj3b5x": "fgdfgdfgdf",
+            "fld-0dkj3b5x": "fgdfgdfghbnmfghedhgdf",
             "fld-m7ncgvx9": "123456",
             "fld-2poaolyx": "",
             "fld-k2bb0z18": "",
@@ -10948,12 +10992,13 @@
             "usr-lead-nu7wt83h"
           ],
           "status": "Terminado",
-          "startTime": "2026-04-29T21:09:05.987Z",
+          "startTime": "2026-04-29T20:00:00.000Z",
           "endTime": "2026-04-29T21:25:00.000Z",
-          "accumulatedSeconds": 420,
+          "accumulatedSeconds": 5100,
           "lastResumedAt": null,
           "pauseUsageByDay": {},
-          "createdAt": "2026-04-27T15:09:36.477Z"
+          "createdAt": "2026-04-27T15:09:36.477Z",
+          "pauseLogs": []
         },
         {
           "id": "row-785eda9588f7",
@@ -10966,7 +11011,7 @@
             "fld-m7ncgvx9": "",
             "fld-2poaolyx": "",
             "fld-k2bb0z18": "",
-            "fld-sf0ku94c": 0,
+            "fld-sf0ku94c": 40,
             "fld-kxjv1tti": "",
             "fld-w7l359e5": "",
             "fld-t4lc3uib": "12:36",
@@ -10999,14 +11044,14 @@
           "id": "row-fe46b9037de1",
           "values": {
             "fld-0mdfs1q6": "2026-04-30",
-            "fld-qsz13t42": "",
+            "fld-qsz13t42": "1",
             "fld-qb54r8d9": "",
-            "fld-tfrpbe0m": "",
+            "fld-tfrpbe0m": "inv-65laluje",
             "fld-0dkj3b5x": "",
             "fld-m7ncgvx9": "",
             "fld-2poaolyx": "",
             "fld-k2bb0z18": "",
-            "fld-sf0ku94c": 0,
+            "fld-sf0ku94c": 50,
             "fld-kxjv1tti": "",
             "fld-w7l359e5": "",
             "fld-t4lc3uib": "08:27",
@@ -11014,7 +11059,7 @@
             "fld-wfufcb0c": 0,
             "fld-6p7nqzmd": "",
             "fld-3qiexh33": 0,
-            "fld-98i7zceh": "",
+            "fld-98i7zceh": "10:28",
             "fld-dgx50xpd": "",
             "fld-c7zlre4d": "",
             "fld-iz637z6b": ""
@@ -11023,11 +11068,11 @@
           "responsibleIds": [
             "usr-lead-nu7wt83h"
           ],
-          "status": "En curso",
+          "status": "Terminado",
           "startTime": "2026-04-30T14:27:24.778Z",
-          "endTime": null,
-          "accumulatedSeconds": 3660,
-          "lastResumedAt": "2026-04-30T14:28:04.028Z",
+          "endTime": "2026-05-01T16:28:21.360Z",
+          "accumulatedSeconds": 97277,
+          "lastResumedAt": null,
           "pauseUsageByDay": {
             "2026-04-30::material": 1
           },
@@ -11830,7 +11875,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-30T22:00:00.410Z",
+  "updatedAt": "2026-05-01T18:20:59.938Z",
   "permissions": {
     "pages": {
       "index": {
@@ -14328,5 +14373,245 @@
     }
   ],
   "processAuditTemplates": [],
-  "processAudits": []
+  "processAudits": [
+    {
+      "id": "auditp-cbf5656d6735",
+      "area": "INVENTARIO",
+      "subArea": "PRUEBA SWITCH",
+      "process": "Revisión",
+      "templateId": null,
+      "status": "closed",
+      "lifecycleStatus": "pending",
+      "startedAt": "2026-05-01T18:20:44.522Z",
+      "closedAt": "2026-05-01T18:20:59.930Z",
+      "reAuditAt": "",
+      "auditorId": "usr-lead-nu7wt83h",
+      "auditorName": "Alejandro Cruz Martinez",
+      "questions": [
+        {
+          "id": "paq-d56cb7f36227",
+          "type": "yesno",
+          "text": "¿El proceso depende del conocimiento de una sola persona?",
+          "required": true,
+          "placeholder": "",
+          "category": "General",
+          "isActive": true,
+          "conditionalQuestionId": "",
+          "conditionalAnswer": "",
+          "allowNote": false,
+          "options": [],
+          "minValue": 1,
+          "maxValue": 10,
+          "answer": true,
+          "issueDetected": false,
+          "impactLevel": "medium",
+          "observations": "",
+          "evidenceRequired": false,
+          "evidenceIds": []
+        },
+        {
+          "id": "paq-9f8d2bc268b2",
+          "type": "yesno",
+          "text": "¿Se detectan variaciones entre turnos?",
+          "required": true,
+          "placeholder": "",
+          "category": "General",
+          "isActive": true,
+          "conditionalQuestionId": "",
+          "conditionalAnswer": "",
+          "allowNote": false,
+          "options": [],
+          "minValue": 1,
+          "maxValue": 10,
+          "answer": false,
+          "issueDetected": true,
+          "impactLevel": "high",
+          "observations": "Diferencia entre turnos en criterios",
+          "evidenceRequired": false,
+          "evidenceIds": []
+        },
+        {
+          "id": "paq-cefec6c8333a",
+          "type": "text",
+          "text": "¿Qué falla ocurre más y dónde se origina?",
+          "required": false,
+          "placeholder": "Describe patrón y causa",
+          "category": "General",
+          "isActive": true,
+          "conditionalQuestionId": "",
+          "conditionalAnswer": "",
+          "allowNote": false,
+          "options": [],
+          "minValue": 1,
+          "maxValue": 10,
+          "answer": "Falla en validación final por falta de checklist",
+          "issueDetected": true,
+          "impactLevel": "medium",
+          "observations": "",
+          "evidenceRequired": false,
+          "evidenceIds": []
+        }
+      ],
+      "evidences": [],
+      "notes": "Prueba funcional de switches y preguntas mejoradas",
+      "executiveSummary": "",
+      "detectedProblems": [
+        {
+          "id": "paproblem-7ff7b048e03f",
+          "questionId": "paq-9f8d2bc268b2",
+          "category": "General",
+          "impactLevel": "high",
+          "problem": "¿Se detectan variaciones entre turnos?",
+          "observations": "Diferencia entre turnos en criterios",
+          "createdAt": "2026-05-01T18:20:59.930Z",
+          "status": "open"
+        },
+        {
+          "id": "paproblem-82b322628de3",
+          "questionId": "paq-cefec6c8333a",
+          "category": "General",
+          "impactLevel": "medium",
+          "problem": "¿Qué falla ocurre más y dónde se origina?",
+          "observations": "",
+          "createdAt": "2026-05-01T18:20:59.930Z",
+          "status": "open"
+        }
+      ],
+      "proposals": [],
+      "followUp": [],
+      "implementationPlan": {
+        "processDefinition": "",
+        "responsibles": [],
+        "instructions": "",
+        "estimatedTime": ""
+      },
+      "boardLinks": [],
+      "scoring": {
+        "questionScores": [
+          {
+            "questionId": "paq-d56cb7f36227",
+            "category": "General",
+            "impactLevel": "medium",
+            "hasProblem": false,
+            "color": "green"
+          },
+          {
+            "questionId": "paq-9f8d2bc268b2",
+            "category": "General",
+            "impactLevel": "high",
+            "hasProblem": true,
+            "color": "red"
+          },
+          {
+            "questionId": "paq-cefec6c8333a",
+            "category": "General",
+            "impactLevel": "medium",
+            "hasProblem": true,
+            "color": "yellow"
+          }
+        ],
+        "categoryScores": [
+          {
+            "category": "General",
+            "total": 3,
+            "red": 1,
+            "yellow": 1,
+            "green": 1,
+            "color": "red",
+            "scorePercent": 33
+          }
+        ],
+        "global": {
+          "total": 3,
+          "red": 1,
+          "yellow": 1,
+          "green": 1,
+          "color": "red",
+          "scorePercent": 33
+        }
+      },
+      "updatedAt": "2026-05-01T18:20:59.930Z"
+    },
+    {
+      "id": "auditp-9a00ad00ddde",
+      "area": "INVENTARIO",
+      "subArea": "",
+      "process": "ALMACEN",
+      "templateId": null,
+      "status": "open",
+      "lifecycleStatus": "pending",
+      "startedAt": "2026-05-01T18:17:23.319Z",
+      "closedAt": null,
+      "reAuditAt": "",
+      "auditorId": "usr-lead-nu7wt83h",
+      "auditorName": "Alejandro Cruz Martinez",
+      "questions": [
+        {
+          "id": "paq-a59466dbeee5",
+          "type": "yesno",
+          "text": "¿Cumple con el estándar definido?",
+          "required": true,
+          "placeholder": "",
+          "category": "General",
+          "isActive": true,
+          "conditionalQuestionId": "",
+          "conditionalAnswer": "",
+          "allowNote": false,
+          "options": [],
+          "minValue": 1,
+          "maxValue": 10,
+          "answer": null,
+          "issueDetected": null,
+          "impactLevel": "medium",
+          "observations": "",
+          "evidenceRequired": false,
+          "evidenceIds": []
+        }
+      ],
+      "evidences": [],
+      "notes": "",
+      "executiveSummary": "",
+      "detectedProblems": [],
+      "proposals": [],
+      "followUp": [],
+      "implementationPlan": {
+        "processDefinition": "",
+        "responsibles": [],
+        "instructions": "",
+        "estimatedTime": ""
+      },
+      "boardLinks": [],
+      "scoring": {
+        "questionScores": [
+          {
+            "questionId": "paq-a59466dbeee5",
+            "category": "General",
+            "impactLevel": "medium",
+            "hasProblem": false,
+            "color": "green"
+          }
+        ],
+        "categoryScores": [
+          {
+            "category": "General",
+            "total": 1,
+            "red": 0,
+            "yellow": 0,
+            "green": 1,
+            "color": "green",
+            "scorePercent": 100
+          }
+        ],
+        "global": {
+          "total": 1,
+          "red": 0,
+          "yellow": 0,
+          "green": 1,
+          "color": "green",
+          "scorePercent": 100
+        }
+      },
+      "updatedAt": "2026-05-01T18:17:23.319Z"
+    }
+  ]
 }
