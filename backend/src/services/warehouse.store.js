@@ -33,6 +33,19 @@ const ROLE_LEAD = "Lead";
 const ROLE_SR = "Senior (Sr)";
 const ROLE_SSR = "Semi-Senior (Ssr)";
 const ROLE_JR = "Junior (Jr)";
+const PROCESS_AUDIT_QUESTION_TYPES = Object.freeze(["yesno", "text", "scale", "number", "date", "select", "multi"]);
+const PROCESS_AUDIT_IMPACT_LEVELS = Object.freeze(["low", "medium", "high"]);
+const PROCESS_AUDIT_LIFECYCLE_STATUSES = Object.freeze([
+  "pending",
+  "in_review",
+  "proposal_sent",
+  "accepted",
+  "in_implementation",
+  "in_validation",
+  "closed",
+]);
+const PROCESS_AUDIT_PROPOSAL_TYPES = Object.freeze(["improvement", "correction", "redesign"]);
+const PROCESS_AUDIT_EFFORT_LEVELS = Object.freeze(["low", "medium", "high"]);
 
 const PAGE_PERMISSIONS = {
   index: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
@@ -1285,7 +1298,9 @@ function normalizeState(state, previousState = null) {
     processAuditTemplates: Array.isArray(state.processAuditTemplates)
       ? state.processAuditTemplates.map((template) => normalizeProcessAuditTemplate(template, template?.id || null))
       : [],
-    processAudits: Array.isArray(state.processAudits) ? state.processAudits : [],
+    processAudits: Array.isArray(state.processAudits)
+      ? state.processAudits.map((audit) => normalizeProcessAuditRecord(audit, audit?.id || null))
+      : [],
     incidencias: Array.isArray(state.incidencias) ? state.incidencias : [],
     incidenciaNotifications: Array.isArray(state.incidenciaNotifications) ? state.incidenciaNotifications : [],
   };
@@ -3477,13 +3492,251 @@ export function deleteWarehouseInventoryColumn(auth, columnId) {
   return { ok: true, state: replaceWarehouseState(nextState), columnId };
 }
 
+function normalizeProcessAuditQuestionType(typeValue) {
+  const normalized = String(typeValue || "").trim().toLowerCase();
+  return PROCESS_AUDIT_QUESTION_TYPES.includes(normalized) ? normalized : "yesno";
+}
+
+function normalizeProcessAuditImpactLevel(impactValue) {
+  const normalized = String(impactValue || "").trim().toLowerCase();
+  return PROCESS_AUDIT_IMPACT_LEVELS.includes(normalized) ? normalized : "medium";
+}
+
+function normalizeProcessAuditLifecycleStatus(statusValue) {
+  const normalized = String(statusValue || "").trim().toLowerCase();
+  return PROCESS_AUDIT_LIFECYCLE_STATUSES.includes(normalized) ? normalized : "pending";
+}
+
+function normalizeProcessAuditProposalType(typeValue) {
+  const normalized = String(typeValue || "").trim().toLowerCase();
+  return PROCESS_AUDIT_PROPOSAL_TYPES.includes(normalized) ? normalized : "improvement";
+}
+
+function normalizeProcessAuditEffortLevel(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return PROCESS_AUDIT_EFFORT_LEVELS.includes(normalized) ? normalized : "medium";
+}
+
+function normalizeProcessAuditQuestionAnswer(questionType, rawAnswer, question = {}) {
+  if (questionType === "yesno") {
+    return rawAnswer === true ? true : rawAnswer === false ? false : null;
+  }
+  if (questionType === "number" || questionType === "scale") {
+    if (rawAnswer === null || rawAnswer === undefined || rawAnswer === "") return null;
+    const asNumber = Number(rawAnswer);
+    if (!Number.isFinite(asNumber)) return null;
+    if (questionType === "scale") {
+      const minValue = Number.isFinite(Number(question?.minValue)) ? Number(question.minValue) : 1;
+      const maxValue = Number.isFinite(Number(question?.maxValue)) ? Number(question.maxValue) : 5;
+      return Math.min(maxValue, Math.max(minValue, asNumber));
+    }
+    return asNumber;
+  }
+  if (questionType === "multi") {
+    if (!Array.isArray(rawAnswer)) return [];
+    return rawAnswer.map((entry) => String(entry || "").trim()).filter(Boolean);
+  }
+  return String(rawAnswer ?? "");
+}
+
+function resolveProcessAuditQuestionHasProblem(question = {}) {
+  if (question.issueDetected === true) return true;
+  if (question.issueDetected === false) return false;
+  if (question.type === "yesno" && question.answer === false) return true;
+  return false;
+}
+
+function resolveProcessAuditQuestionScoreColor(question = {}) {
+  const hasProblem = resolveProcessAuditQuestionHasProblem(question);
+  if (!hasProblem) return "green";
+  const impact = normalizeProcessAuditImpactLevel(question.impactLevel);
+  return impact === "high" ? "red" : "yellow";
+}
+
+function buildProcessAuditScoring(questions = []) {
+  const source = Array.isArray(questions) ? questions : [];
+  const activeQuestions = source.filter((question) => question?.isActive !== false);
+
+  const questionScores = activeQuestions.map((question) => {
+    const color = resolveProcessAuditQuestionScoreColor(question);
+    const hasProblem = resolveProcessAuditQuestionHasProblem(question);
+    return {
+      questionId: question.id,
+      category: question.category || "General",
+      impactLevel: normalizeProcessAuditImpactLevel(question.impactLevel),
+      hasProblem,
+      color,
+    };
+  });
+
+  const categoryMap = new Map();
+  questionScores.forEach((entry) => {
+    if (!categoryMap.has(entry.category)) {
+      categoryMap.set(entry.category, { total: 0, red: 0, yellow: 0, green: 0 });
+    }
+    const bucket = categoryMap.get(entry.category);
+    bucket.total += 1;
+    if (entry.color === "red") bucket.red += 1;
+    else if (entry.color === "yellow") bucket.yellow += 1;
+    else bucket.green += 1;
+  });
+
+  const categoryScores = Array.from(categoryMap.entries()).map(([category, summary]) => {
+    const color = summary.red > 0 ? "red" : summary.yellow > 0 ? "yellow" : "green";
+    return {
+      category,
+      ...summary,
+      color,
+      scorePercent: summary.total > 0 ? Math.round((summary.green / summary.total) * 100) : 0,
+    };
+  });
+
+  const globalSummary = categoryScores.reduce((acc, entry) => ({
+    total: acc.total + entry.total,
+    red: acc.red + entry.red,
+    yellow: acc.yellow + entry.yellow,
+    green: acc.green + entry.green,
+  }), { total: 0, red: 0, yellow: 0, green: 0 });
+
+  const globalColor = globalSummary.red > 0 ? "red" : globalSummary.yellow > 0 ? "yellow" : "green";
+
+  return {
+    questionScores,
+    categoryScores,
+    global: {
+      ...globalSummary,
+      color: globalColor,
+      scorePercent: globalSummary.total > 0 ? Math.round((globalSummary.green / globalSummary.total) * 100) : 0,
+    },
+  };
+}
+
+function buildProcessAuditDetectedProblems(questions = []) {
+  return (Array.isArray(questions) ? questions : [])
+    .filter((question) => question?.isActive !== false)
+    .filter((question) => resolveProcessAuditQuestionHasProblem(question))
+    .map((question) => ({
+      id: question.problemId || makeId("paproblem"),
+      questionId: question.id,
+      category: question.category || "General",
+      impactLevel: normalizeProcessAuditImpactLevel(question.impactLevel),
+      problem: String(question.text || "Problema detectado").trim(),
+      observations: String(question.observations || "").trim(),
+      createdAt: new Date().toISOString(),
+      status: "open",
+    }));
+}
+
+function normalizeProcessAuditProposal(proposal = {}, fallbackId = null) {
+  return {
+    id: fallbackId || String(proposal?.id || makeId("papr")).trim(),
+    problemId: String(proposal?.problemId || "").trim(),
+    problem: String(proposal?.problem || "").trim(),
+    rootCause: String(proposal?.rootCause || "").trim(),
+    proposal: String(proposal?.proposal || "").trim(),
+    type: normalizeProcessAuditProposalType(proposal?.type),
+    expectedImpact: String(proposal?.expectedImpact || "").trim(),
+    effort: normalizeProcessAuditEffortLevel(proposal?.effort),
+    status: normalizeProcessAuditLifecycleStatus(proposal?.status),
+    ownerId: String(proposal?.ownerId || "").trim(),
+    ownerName: String(proposal?.ownerName || "").trim(),
+    evidences: Array.isArray(proposal?.evidences) ? proposal.evidences : [],
+    createdAt: proposal?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function normalizeProcessAuditFollowUpRecord(entry = {}, fallbackId = null) {
+  return {
+    id: fallbackId || String(entry?.id || makeId("pafu")).trim(),
+    status: normalizeProcessAuditLifecycleStatus(entry?.status),
+    note: String(entry?.note || "").trim(),
+    evidences: Array.isArray(entry?.evidences) ? entry.evidences : [],
+    dueDate: entry?.dueDate ? String(entry.dueDate) : "",
+    createdAt: entry?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function normalizeProcessAuditImplementationPlan(plan = {}) {
+  return {
+    processDefinition: String(plan?.processDefinition || "").trim(),
+    responsibles: Array.isArray(plan?.responsibles) ? plan.responsibles.map((entry) => String(entry || "").trim()).filter(Boolean) : [],
+    instructions: String(plan?.instructions || "").trim(),
+    estimatedTime: String(plan?.estimatedTime || "").trim(),
+  };
+}
+
 function normalizeProcessAuditQuestion(question = {}, fallbackId = null) {
+  const questionType = normalizeProcessAuditQuestionType(question?.type);
+  const options = Array.isArray(question?.options)
+    ? question.options.map((entry) => String(entry || "").trim()).filter(Boolean)
+    : [];
+  const minValue = Number.isFinite(Number(question?.minValue)) ? Number(question.minValue) : 1;
+  const maxValue = Number.isFinite(Number(question?.maxValue)) ? Number(question.maxValue) : (questionType === "scale" ? 5 : 10);
+
   return {
     id: fallbackId || String(question?.id || makeId("paqq")).trim(),
-    type: question?.type === "text" ? "text" : "yesno",
+    type: questionType,
     text: String(question?.text || "").trim(),
     required: Boolean(question?.required),
     placeholder: String(question?.placeholder || "").trim(),
+    category: String(question?.category || "General").trim() || "General",
+    isActive: question?.isActive !== false,
+    conditionalQuestionId: String(question?.conditionalQuestionId || "").trim(),
+    conditionalAnswer: question?.conditionalAnswer === true
+      ? true
+      : question?.conditionalAnswer === false
+        ? false
+        : String(question?.conditionalAnswer || "").trim(),
+    allowNote: Boolean(question?.allowNote),
+    options,
+    minValue,
+    maxValue,
+    answer: normalizeProcessAuditQuestionAnswer(questionType, question?.answer, { minValue, maxValue }),
+    issueDetected: question?.issueDetected === true ? true : question?.issueDetected === false ? false : null,
+    impactLevel: normalizeProcessAuditImpactLevel(question?.impactLevel),
+    observations: String(question?.observations || "").trim(),
+    evidenceRequired: Boolean(question?.evidenceRequired),
+    evidenceIds: Array.isArray(question?.evidenceIds) ? question.evidenceIds.map((entry) => String(entry || "").trim()).filter(Boolean) : [],
+  };
+}
+
+function normalizeProcessAuditRecord(audit = {}, fallbackId = null) {
+  const normalizedQuestions = (Array.isArray(audit?.questions) ? audit.questions : [])
+    .map((question) => normalizeProcessAuditQuestion(question, question?.id || null))
+    .filter((question) => question.text);
+  const scoring = buildProcessAuditScoring(normalizedQuestions);
+  const detectedProblems = Array.isArray(audit?.detectedProblems) && audit.detectedProblems.length
+    ? audit.detectedProblems
+    : buildProcessAuditDetectedProblems(normalizedQuestions);
+
+  return {
+    id: fallbackId || String(audit?.id || makeId("auditp")).trim(),
+    area: normalizeAreaOption(audit?.area || ""),
+    subArea: normalizeAreaOption(audit?.subArea || ""),
+    process: String(audit?.process || "").trim(),
+    templateId: String(audit?.templateId || "").trim() || null,
+    status: String(audit?.status || "").trim().toLowerCase() === "closed" ? "closed" : "open",
+    lifecycleStatus: normalizeProcessAuditLifecycleStatus(audit?.lifecycleStatus || (audit?.status === "closed" ? "closed" : "pending")),
+    startedAt: audit?.startedAt || new Date().toISOString(),
+    closedAt: audit?.closedAt || null,
+    reAuditAt: audit?.reAuditAt ? String(audit.reAuditAt) : "",
+    auditorId: String(audit?.auditorId || "").trim(),
+    auditorName: String(audit?.auditorName || "").trim(),
+    questions: normalizedQuestions,
+    evidences: Array.isArray(audit?.evidences) ? audit.evidences : [],
+    notes: String(audit?.notes || "").trim(),
+    executiveSummary: String(audit?.executiveSummary || "").trim(),
+    detectedProblems,
+    proposals: (Array.isArray(audit?.proposals) ? audit.proposals : [])
+      .map((proposal) => normalizeProcessAuditProposal(proposal, proposal?.id || null)),
+    followUp: (Array.isArray(audit?.followUp) ? audit.followUp : [])
+      .map((entry) => normalizeProcessAuditFollowUpRecord(entry, entry?.id || null)),
+    implementationPlan: normalizeProcessAuditImplementationPlan(audit?.implementationPlan || EMPTY_OBJECT),
+    boardLinks: Array.isArray(audit?.boardLinks) ? audit.boardLinks.map((entry) => String(entry || "").trim()).filter(Boolean) : [],
+    scoring,
+    updatedAt: audit?.updatedAt || new Date().toISOString(),
   };
 }
 
@@ -3580,12 +3833,16 @@ export function createProcessAudit(auth, payload = {}) {
     .filter((question) => question.text)
     .map((question) => ({
       ...question,
-      answer: question.type === "yesno" ? null : "",
+      answer: question.type === "yesno" ? null : question.type === "multi" ? [] : "",
+      issueDetected: null,
+      impactLevel: "medium",
+      observations: "",
     }));
 
   if (!questions.length) return { ok: false, reason: "invalid_payload" };
 
   const startedAt = new Date().toISOString();
+  const initialScoring = buildProcessAuditScoring(questions);
   const audit = {
     id: makeId("auditp"),
     area,
@@ -3593,13 +3850,22 @@ export function createProcessAudit(auth, payload = {}) {
     process,
     templateId: template?.id || null,
     status: "open",
+    lifecycleStatus: normalizeProcessAuditLifecycleStatus(payload?.lifecycleStatus),
     startedAt,
     closedAt: null,
+    reAuditAt: payload?.reAuditAt ? String(payload.reAuditAt) : "",
     auditorId: currentUser.id,
     auditorName: currentUser.name,
     questions,
     evidences: [],
     notes: String(payload?.notes || "").trim(),
+    executiveSummary: String(payload?.executiveSummary || "").trim(),
+    detectedProblems: buildProcessAuditDetectedProblems(questions),
+    proposals: (Array.isArray(payload?.proposals) ? payload.proposals : []).map((proposal) => normalizeProcessAuditProposal(proposal, proposal?.id || null)),
+    followUp: (Array.isArray(payload?.followUp) ? payload.followUp : []).map((entry) => normalizeProcessAuditFollowUpRecord(entry, entry?.id || null)),
+    implementationPlan: normalizeProcessAuditImplementationPlan(payload?.implementationPlan || EMPTY_OBJECT),
+    boardLinks: Array.isArray(payload?.boardLinks) ? payload.boardLinks.map((entry) => String(entry || "").trim()).filter(Boolean) : [],
+    scoring: initialScoring,
     updatedAt: startedAt,
   };
 
@@ -3626,25 +3892,47 @@ export function updateProcessAudit(auth, auditId, payload = {}) {
     ? payload.questions.map((question) => {
       const previousQuestion = (existingAudit.questions || []).find((entry) => entry.id === question.id) || {};
       const normalizedQuestion = normalizeProcessAuditQuestion({ ...previousQuestion, ...question }, question.id || previousQuestion.id || null);
-      return {
-        ...normalizedQuestion,
-        answer: normalizedQuestion.type === "yesno"
-          ? (question?.answer === true ? true : question?.answer === false ? false : null)
-          : String(question?.answer ?? "").trim(),
-      };
+      return normalizedQuestion;
     })
     : existingAudit.questions;
 
-  const shouldClose = payload?.status === "closed";
+  const resolvedStatus = payload?.status === undefined
+    ? (existingAudit.status === "closed" ? "closed" : "open")
+    : (payload.status === "closed" ? "closed" : "open");
+  const shouldClose = resolvedStatus === "closed";
+  const lifecycleStatus = payload?.lifecycleStatus !== undefined
+    ? normalizeProcessAuditLifecycleStatus(payload.lifecycleStatus)
+    : normalizeProcessAuditLifecycleStatus(existingAudit.lifecycleStatus || (shouldClose ? "closed" : "pending"));
+  const scoring = buildProcessAuditScoring(nextQuestions);
+  const detectedProblems = Array.isArray(payload?.detectedProblems)
+    ? payload.detectedProblems
+    : buildProcessAuditDetectedProblems(nextQuestions);
   const nextAudit = {
     ...existingAudit,
     area: payload?.area !== undefined ? normalizeAreaOption(payload.area || "") : existingAudit.area,
     subArea: payload?.subArea !== undefined ? normalizeAreaOption(payload.subArea || "") : (existingAudit.subArea || ""),
     process: payload?.process !== undefined ? String(payload.process || "").trim() : existingAudit.process,
     notes: payload?.notes !== undefined ? String(payload.notes || "").trim() : existingAudit.notes,
-    status: shouldClose ? "closed" : "open",
+    executiveSummary: payload?.executiveSummary !== undefined ? String(payload.executiveSummary || "").trim() : String(existingAudit.executiveSummary || ""),
+    status: resolvedStatus,
+    lifecycleStatus,
     closedAt: shouldClose ? (existingAudit.closedAt || new Date().toISOString()) : null,
+    reAuditAt: payload?.reAuditAt !== undefined ? String(payload.reAuditAt || "") : String(existingAudit.reAuditAt || ""),
     questions: nextQuestions,
+    detectedProblems,
+    proposals: payload?.proposals !== undefined
+      ? (Array.isArray(payload.proposals) ? payload.proposals : []).map((proposal) => normalizeProcessAuditProposal(proposal, proposal?.id || null))
+      : (Array.isArray(existingAudit.proposals) ? existingAudit.proposals : []),
+    followUp: payload?.followUp !== undefined
+      ? (Array.isArray(payload.followUp) ? payload.followUp : []).map((entry) => normalizeProcessAuditFollowUpRecord(entry, entry?.id || null))
+      : (Array.isArray(existingAudit.followUp) ? existingAudit.followUp : []),
+    implementationPlan: payload?.implementationPlan !== undefined
+      ? normalizeProcessAuditImplementationPlan(payload.implementationPlan || EMPTY_OBJECT)
+      : normalizeProcessAuditImplementationPlan(existingAudit.implementationPlan || EMPTY_OBJECT),
+    boardLinks: payload?.boardLinks !== undefined
+      ? (Array.isArray(payload.boardLinks) ? payload.boardLinks.map((entry) => String(entry || "").trim()).filter(Boolean) : [])
+      : (Array.isArray(existingAudit.boardLinks) ? existingAudit.boardLinks : []),
+    scoring,
     updatedAt: new Date().toISOString(),
   };
 

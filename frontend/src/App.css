@@ -1516,6 +1516,58 @@ html {
   color: #1f5b4d;
 }
 
+.audit-tag-problem {
+  color: #991b1b;
+  background: #fee2e2;
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+  font-weight: 700;
+}
+
+.audit-tag-risk {
+  color: #92400e;
+  background: #fef3c7;
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+  font-weight: 700;
+}
+
+.audit-tag-improvement {
+  color: #065f46;
+  background: #d1fae5;
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+  font-weight: 700;
+}
+
+.audit-analysis-card {
+  margin-top: 0.85rem;
+  padding: 0.85rem;
+}
+
+.audit-multi-options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.45rem;
+}
+
+.audit-multi-option-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid #dbe3df;
+  border-radius: 0.8rem;
+  padding: 0.45rem 0.55rem;
+  background: #fff;
+}
+
+.audit-question-evaluation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.55rem;
+  margin-top: 0.45rem;
+}
+
 .login-field input:focus {
   border-color: #1c7c64;
   box-shadow: 0 0 0 4px rgba(42, 143, 113, 0.12);

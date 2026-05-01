@@ -116,6 +116,150 @@ const FALLBACK_PROCESS_TEMPLATES = [
 ];
 
 const QUESTION_VALID_TYPES = ["yesno", "text", "scale", "number", "date", "select", "multi"];
+const IMPACT_OPTIONS = ["low", "medium", "high"];
+const PROCESS_AUDIT_STATUS_OPTIONS = [
+  { value: "pending", label: "Pendiente" },
+  { value: "in_review", label: "En revisión" },
+  { value: "proposal_sent", label: "Propuesta enviada" },
+  { value: "accepted", label: "Aceptada" },
+  { value: "in_implementation", label: "En implementación" },
+  { value: "in_validation", label: "En validación" },
+  { value: "closed", label: "Cerrada" },
+];
+const PROPOSAL_TYPE_OPTIONS = [
+  { value: "improvement", label: "Mejora" },
+  { value: "correction", label: "Corrección" },
+  { value: "redesign", label: "Rediseño total" },
+];
+const EFFORT_OPTIONS = [
+  { value: "low", label: "Bajo" },
+  { value: "medium", label: "Medio" },
+  { value: "high", label: "Alto" },
+];
+
+function normalizeImpactLevel(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return IMPACT_OPTIONS.includes(normalized) ? normalized : "medium";
+}
+
+function normalizeLifecycleStatus(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return PROCESS_AUDIT_STATUS_OPTIONS.some((entry) => entry.value === normalized) ? normalized : "pending";
+}
+
+function resolveQuestionHasProblem(question = {}) {
+  if (question.issueDetected === true) return true;
+  if (question.issueDetected === false) return false;
+  if (question.type === "yesno" && question.answer === false) return true;
+  return false;
+}
+
+function resolveQuestionScoreColor(question = {}) {
+  const hasProblem = resolveQuestionHasProblem(question);
+  if (!hasProblem) return "green";
+  return normalizeImpactLevel(question.impactLevel) === "high" ? "red" : "yellow";
+}
+
+function buildAuditScoring(questions = []) {
+  const activeQuestions = (Array.isArray(questions) ? questions : []).filter((question) => question?.isActive !== false);
+  const questionScores = activeQuestions.map((question) => ({
+    questionId: question.id,
+    category: question.category || "General",
+    color: resolveQuestionScoreColor(question),
+    impactLevel: normalizeImpactLevel(question.impactLevel),
+    hasProblem: resolveQuestionHasProblem(question),
+  }));
+
+  const categoryMap = new Map();
+  questionScores.forEach((entry) => {
+    if (!categoryMap.has(entry.category)) {
+      categoryMap.set(entry.category, { total: 0, red: 0, yellow: 0, green: 0 });
+    }
+    const bucket = categoryMap.get(entry.category);
+    bucket.total += 1;
+    if (entry.color === "red") bucket.red += 1;
+    else if (entry.color === "yellow") bucket.yellow += 1;
+    else bucket.green += 1;
+  });
+
+  const categoryScores = Array.from(categoryMap.entries()).map(([category, summary]) => ({
+    category,
+    ...summary,
+    color: summary.red > 0 ? "red" : summary.yellow > 0 ? "yellow" : "green",
+    scorePercent: summary.total > 0 ? Math.round((summary.green / summary.total) * 100) : 0,
+  }));
+
+  const global = categoryScores.reduce((acc, item) => ({
+    total: acc.total + item.total,
+    red: acc.red + item.red,
+    yellow: acc.yellow + item.yellow,
+    green: acc.green + item.green,
+  }), { total: 0, red: 0, yellow: 0, green: 0 });
+
+  return {
+    questionScores,
+    categoryScores,
+    global: {
+      ...global,
+      color: global.red > 0 ? "red" : global.yellow > 0 ? "yellow" : "green",
+      scorePercent: global.total > 0 ? Math.round((global.green / global.total) * 100) : 0,
+    },
+  };
+}
+
+function buildDetectedProblems(questions = []) {
+  return (Array.isArray(questions) ? questions : [])
+    .filter((question) => question?.isActive !== false)
+    .filter((question) => resolveQuestionHasProblem(question))
+    .map((question) => ({
+      id: question.problemId || `problem-${question.id}`,
+      questionId: question.id,
+      category: question.category || "General",
+      impactLevel: normalizeImpactLevel(question.impactLevel),
+      problem: question.text || "Problema detectado",
+      observations: String(question.observations || "").trim(),
+    }));
+}
+
+function buildDefaultProposal(problem = {}) {
+  return {
+    id: crypto.randomUUID(),
+    problemId: String(problem.id || "").trim(),
+    problem: String(problem.problem || "").trim(),
+    rootCause: "",
+    proposal: "",
+    type: "improvement",
+    expectedImpact: "",
+    effort: "medium",
+    status: "pending",
+  };
+}
+
+function getScoreChipLabel(color) {
+  if (color === "red") return "🔴 Crítico";
+  if (color === "yellow") return "🟡 Riesgo";
+  return "🟢 Controlado";
+}
+
+function isQuestionVisible(question = {}, allQuestions = []) {
+  if (question?.isActive === false) return false;
+  const dependencyId = String(question?.conditionalQuestionId || "").trim();
+  if (!dependencyId) return true;
+  const dependency = (Array.isArray(allQuestions) ? allQuestions : []).find((entry) => entry.id === dependencyId);
+  if (!dependency) return true;
+
+  const expected = question?.conditionalAnswer;
+  if (expected === true || expected === false) return dependency.answer === expected;
+  const expectedText = String(expected || "").trim().toLowerCase();
+  if (!expectedText) return true;
+  if (expectedText === "true" || expectedText === "false") {
+    return dependency.answer === (expectedText === "true");
+  }
+  if (Array.isArray(dependency.answer)) {
+    return dependency.answer.some((entry) => String(entry || "").trim().toLowerCase() === expectedText);
+  }
+  return String(dependency.answer ?? "").trim().toLowerCase() === expectedText;
+}
 
 function buildQuestionDraft(question = {}) {
   const type = QUESTION_VALID_TYPES.includes(question.type) ? question.type : "yesno";
@@ -125,11 +269,19 @@ function buildQuestionDraft(question = {}) {
     text: String(question.text || "").trim(),
     required: question.required !== false,
     placeholder: String(question.placeholder || "").trim(),
-    answer: type === "text" ? String(question.answer || "") : question.answer ?? null,
+    answer: type === "text" ? String(question.answer || "") : type === "multi" ? (Array.isArray(question.answer) ? question.answer : []) : question.answer ?? null,
+    category: String(question.category || "General").trim() || "General",
+    isActive: question.isActive !== false,
+    conditionalQuestionId: String(question.conditionalQuestionId || "").trim(),
+    conditionalAnswer: question.conditionalAnswer ?? "",
     allowNote: Boolean(question.allowNote),
     options: Array.isArray(question.options) ? [...question.options] : [],
     minValue: typeof question.minValue === "number" ? question.minValue : 1,
     maxValue: typeof question.maxValue === "number" ? question.maxValue : (type === "scale" ? 5 : 10),
+    issueDetected: question.issueDetected === true ? true : question.issueDetected === false ? false : null,
+    impactLevel: normalizeImpactLevel(question.impactLevel),
+    observations: String(question.observations || ""),
+    evidenceRequired: Boolean(question.evidenceRequired),
   };
 }
 
@@ -198,11 +350,19 @@ function normalizeQuestionsForSave(questions = []) {
         text: String(question.text || "").trim(),
         required: question.required !== false,
         placeholder: String(question.placeholder || "").trim(),
-        answer: type === "text" ? String(question.answer || "") : question.answer ?? null,
+        answer: type === "text" ? String(question.answer || "") : type === "multi" ? (Array.isArray(question.answer) ? question.answer : []) : question.answer ?? null,
+        category: String(question.category || "General").trim() || "General",
+        isActive: question.isActive !== false,
+        conditionalQuestionId: String(question.conditionalQuestionId || "").trim(),
+        conditionalAnswer: question.conditionalAnswer ?? "",
         allowNote: Boolean(question.allowNote),
         options: Array.isArray(question.options) ? [...question.options] : [],
         minValue: typeof question.minValue === "number" ? question.minValue : 1,
         maxValue: typeof question.maxValue === "number" ? question.maxValue : (type === "scale" ? 5 : 10),
+        issueDetected: question.issueDetected === true ? true : question.issueDetected === false ? false : null,
+        impactLevel: normalizeImpactLevel(question.impactLevel),
+        observations: String(question.observations || ""),
+        evidenceRequired: Boolean(question.evidenceRequired),
       };
     })
     .filter((question) => question.text);
@@ -218,6 +378,9 @@ function cloneAuditRecord(audit = null) {
     ...audit,
     questions: (audit.questions || []).map((question) => ({ ...question })),
     evidences: [...(audit.evidences || [])],
+    proposals: (audit.proposals || []).map((proposal) => ({ ...proposal })),
+    followUp: (audit.followUp || []).map((entry) => ({ ...entry })),
+    implementationPlan: { ...(audit.implementationPlan || {}) },
   };
 }
 
@@ -383,6 +546,9 @@ function escapeRichTextHtml(text = "") {
 
 function applyInlineRichFormats(text = "") {
   let html = escapeRichTextHtml(text);
+  html = html.replace(/(🔴\s*Problema)/gi, '<span class="audit-tag-problem">$1</span>');
+  html = html.replace(/(⚠️\s*Riesgo)/gi, '<span class="audit-tag-risk">$1</span>');
+  html = html.replace(/(🟢\s*Mejora)/gi, '<span class="audit-tag-improvement">$1</span>');
   html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
   html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
   html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
@@ -808,6 +974,15 @@ function RichTextResponseField({
               <button type="button" className="chat-btn-tool" title="Cita" onClick={() => applySelectionTransform((current, start, end) => prefixAnswerLines(current, start, end, "> "))}>
                 ""
               </button>
+              <button type="button" className="chat-btn-tool" title="Etiqueta problema" onClick={() => applySelectionTransform((current, start, end) => insertAnswerText(current, start, end, "🔴 Problema: "))}>
+                🔴
+              </button>
+              <button type="button" className="chat-btn-tool" title="Etiqueta riesgo" onClick={() => applySelectionTransform((current, start, end) => insertAnswerText(current, start, end, "⚠️ Riesgo: "))}>
+                ⚠️
+              </button>
+              <button type="button" className="chat-btn-tool" title="Etiqueta mejora" onClick={() => applySelectionTransform((current, start, end) => insertAnswerText(current, start, end, "🟢 Mejora: "))}>
+                🟢
+              </button>
             </div>
           </div>
 
@@ -918,6 +1093,62 @@ function TemplateQuestionEditor({
                   disabled={disabled}
                 />
               </label>
+              <label className="app-modal-field">
+                <span>Categoría</span>
+                <input
+                  value={question.category || "General"}
+                  onChange={(event) => setDraft((current) => ({
+                    ...current,
+                    questions: current.questions.map((item) => (item.id === question.id ? { ...item, category: event.target.value } : item)),
+                  }))}
+                  placeholder="Ej. Estándar / Riesgos / Variabilidad"
+                  disabled={disabled}
+                />
+              </label>
+              <label className="app-modal-field" style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
+                <input
+                  type="checkbox"
+                  checked={question.isActive !== false}
+                  onChange={(event) => setDraft((current) => ({
+                    ...current,
+                    questions: current.questions.map((item) => (item.id === question.id ? { ...item, isActive: event.target.checked } : item)),
+                  }))}
+                  disabled={disabled}
+                  style={{ width: "auto" }}
+                />
+                <span>Pregunta activa</span>
+              </label>
+              <label className="app-modal-field">
+                <span>Mostrar si</span>
+                <select
+                  value={question.conditionalQuestionId || ""}
+                  onChange={(event) => setDraft((current) => ({
+                    ...current,
+                    questions: current.questions.map((item) => {
+                      if (item.id !== question.id) return item;
+                      return { ...item, conditionalQuestionId: event.target.value, conditionalAnswer: "" };
+                    }),
+                  }))}
+                  disabled={disabled}
+                >
+                  <option value="">Siempre visible</option>
+                  {(draft.questions || []).filter((entry) => entry.id !== question.id).map((entry) => (
+                    <option key={entry.id} value={entry.id}>{entry.text || `Pregunta ${entry.id.slice(0, 4)}`}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="app-modal-field">
+                <span>Valor esperado</span>
+                <input
+                  value={question.conditionalAnswer ?? ""}
+                  onChange={(event) => setDraft((current) => ({
+                    ...current,
+                    questions: current.questions.map((item) => (item.id === question.id ? { ...item, conditionalAnswer: event.target.value } : item)),
+                  }))}
+                  placeholder="true / false / texto"
+                  disabled={disabled || !question.conditionalQuestionId}
+                />
+              </label>
               {(question.type === "text" || question.type === "number" || question.type === "date") ? (
                 <label className="app-modal-field audit-field-span-2">
                   <span>Placeholder</span>
@@ -947,6 +1178,19 @@ function TemplateQuestionEditor({
                   <span>Permitir nota opcional</span>
                 </label>
               ) : null}
+              <label className="app-modal-field audit-field-span-2" style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
+                <input
+                  type="checkbox"
+                  checked={Boolean(question.evidenceRequired)}
+                  onChange={(event) => setDraft((current) => ({
+                    ...current,
+                    questions: current.questions.map((item) => (item.id === question.id ? { ...item, evidenceRequired: event.target.checked } : item)),
+                  }))}
+                  disabled={disabled}
+                  style={{ width: "auto" }}
+                />
+                <span>Requiere evidencia</span>
+              </label>
               {question.type === "scale" ? (
                 <>
                   <label className="app-modal-field">
@@ -1189,11 +1433,30 @@ export default function AuditoriasProcesosCompact({ contexto }) {
       byAreaMap.set(area, (byAreaMap.get(area) || 0) + 1);
     });
 
+    const severity = { red: 0, yellow: 0, green: 0 };
+    const criticalAreaMap = new Map();
+    sortedAudits.forEach((entry) => {
+      const color = entry?.scoring?.global?.color || buildAuditScoring(entry?.questions || []).global.color;
+      if (color === "red") {
+        severity.red += 1;
+      } else if (color === "yellow") {
+        severity.yellow += 1;
+      } else {
+        severity.green += 1;
+      }
+      const area = entry.area || "Sin área";
+      if (color === "red" || color === "yellow") {
+        criticalAreaMap.set(area, (criticalAreaMap.get(area) || 0) + 1);
+      }
+    });
+
     return {
       total,
       closed,
       open,
       avgDuration,
+      severity,
+      criticalAreas: Array.from(criticalAreaMap.entries()).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value),
       byArea: Array.from(byAreaMap.entries())
         .map(([label, value]) => ({ label, value }))
         .sort((left, right) => right.value - left.value),
@@ -1208,6 +1471,46 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     ];
   }, [newAuditArea, openAudits.length, processOptionsForArea, resolvedTemplates.length]);
 
+  const subAreaOptionsForSelectedArea = useMemo(() => {
+    if (!newAuditArea) return [];
+    const values = new Set();
+    sortedAudits.forEach((audit) => {
+      if (String(audit?.area || "").trim() !== String(newAuditArea || "").trim()) return;
+      const subArea = String(audit?.subArea || "").trim();
+      if (subArea) values.add(subArea);
+    });
+    resolvedTemplates.forEach((template) => {
+      if (String(template?.area || "").trim() !== String(newAuditArea || "").trim()) return;
+      const subArea = String(template?.subArea || "").trim();
+      if (subArea) values.add(subArea);
+    });
+    return Array.from(values).sort((a, b) => a.localeCompare(b, "es-MX"));
+  }, [newAuditArea, resolvedTemplates, sortedAudits]);
+
+  const activeAuditQuestions = useMemo(() => {
+    if (!auditDraft) return [];
+    const allQuestions = Array.isArray(auditDraft.questions) ? auditDraft.questions : [];
+    return allQuestions.filter((question) => isQuestionVisible(question, allQuestions));
+  }, [auditDraft]);
+
+  const auditScoring = useMemo(() => buildAuditScoring(activeAuditQuestions), [activeAuditQuestions]);
+
+  const detectedProblems = useMemo(() => buildDetectedProblems(activeAuditQuestions), [activeAuditQuestions]);
+
+  const detectedProblemsById = useMemo(() => {
+    return new Set(detectedProblems.map((problem) => String(problem.id || "").trim()).filter(Boolean));
+  }, [detectedProblems]);
+
+  const proposalCoverage = useMemo(() => {
+    const proposals = Array.isArray(auditDraft?.proposals) ? auditDraft.proposals : [];
+    const linked = proposals.filter((proposal) => detectedProblemsById.has(String(proposal.problemId || "").trim()));
+    return {
+      totalProblems: detectedProblems.length,
+      linkedProposals: linked.length,
+      withoutProposal: Math.max(0, detectedProblems.length - linked.length),
+    };
+  }, [auditDraft?.proposals, detectedProblems.length, detectedProblemsById]);
+
   useEffect(() => {
     if (!selectedAudit) {
       setAuditDraft(null);
@@ -1221,8 +1524,15 @@ export default function AuditoriasProcesosCompact({ contexto }) {
         return {
           ...current,
           status: selectedAudit.status,
+          lifecycleStatus: selectedAudit.lifecycleStatus || current.lifecycleStatus || "pending",
           closedAt: selectedAudit.closedAt,
           updatedAt: selectedAudit.updatedAt,
+          reAuditAt: selectedAudit.reAuditAt || current.reAuditAt || "",
+          executiveSummary: selectedAudit.executiveSummary || current.executiveSummary || "",
+          proposals: Array.isArray(selectedAudit.proposals) ? selectedAudit.proposals : (current.proposals || []),
+          followUp: Array.isArray(selectedAudit.followUp) ? selectedAudit.followUp : (current.followUp || []),
+          implementationPlan: selectedAudit.implementationPlan || current.implementationPlan || {},
+          boardLinks: Array.isArray(selectedAudit.boardLinks) ? selectedAudit.boardLinks : (current.boardLinks || []),
           evidences: [...(selectedAudit.evidences || [])],
           notes: current.notes,
           questions: current.questions,
@@ -1325,6 +1635,13 @@ export default function AuditoriasProcesosCompact({ contexto }) {
           process: auditDraft.process,
           notes: auditDraft.notes || "",
           status: auditDraft.status,
+          lifecycleStatus: auditDraft.lifecycleStatus || "pending",
+          reAuditAt: auditDraft.reAuditAt || "",
+          executiveSummary: auditDraft.executiveSummary || "",
+          proposals: auditDraft.proposals || [],
+          followUp: auditDraft.followUp || [],
+          implementationPlan: auditDraft.implementationPlan || {},
+          boardLinks: auditDraft.boardLinks || [],
           questions: normalizeQuestionsForSave(auditDraft.questions || []),
         });
         setIsAuditDirty(false);
@@ -1373,6 +1690,13 @@ export default function AuditoriasProcesosCompact({ contexto }) {
       process: targetAudit.process,
       notes: targetAudit.notes || "",
       status: targetAudit.status,
+      lifecycleStatus: targetAudit.lifecycleStatus || "pending",
+      reAuditAt: targetAudit.reAuditAt || "",
+      executiveSummary: targetAudit.executiveSummary || "",
+      proposals: targetAudit.proposals || [],
+      followUp: targetAudit.followUp || [],
+      implementationPlan: targetAudit.implementationPlan || {},
+      boardLinks: targetAudit.boardLinks || [],
       questions: normalizeQuestionsForSave(targetAudit.questions || []),
     });
     if (successMessage) pushAppToast(successMessage, "success");
@@ -1548,6 +1872,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     try {
       await updateProcessAudit(auditDraft.id, {
         status: "closed",
+        lifecycleStatus: "closed",
         notes: auditDraft.notes || "",
         questions: normalizeQuestionsForSave(auditDraft.questions || []),
       });
@@ -1726,10 +2051,14 @@ export default function AuditoriasProcesosCompact({ contexto }) {
               <label className="app-modal-field">
                 <span>Subárea (opcional)</span>
                 <input
+                  list="audit-subarea-options"
                   value={newAuditSubArea}
                   onChange={(event) => setNewAuditSubArea(event.target.value)}
                   placeholder="Ej. TURNO MAÑANA"
                 />
+                <datalist id="audit-subarea-options">
+                  {subAreaOptionsForSelectedArea.map((subArea) => <option key={subArea} value={subArea} />)}
+                </datalist>
               </label>
               <label className="app-modal-field">
                 <span>Proceso</span>
@@ -1834,6 +2163,34 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                 </div>
 
                 <div className="audit-active-subline subtle-line">
+                  <label className="app-modal-field" style={{ maxWidth: "260px" }}>
+                    <span>Estatus de seguimiento</span>
+                    <select
+                      value={auditDraft.lifecycleStatus || "pending"}
+                      onChange={(event) => {
+                        setAuditDraft((current) => ({ ...current, lifecycleStatus: normalizeLifecycleStatus(event.target.value) }));
+                        setIsAuditDirty(true);
+                      }}
+                      disabled={!canManageAudits}
+                    >
+                      {PROCESS_AUDIT_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </select>
+                  </label>
+                  <label className="app-modal-field" style={{ maxWidth: "220px" }}>
+                    <span>Fecha re-auditar</span>
+                    <input
+                      type="date"
+                      value={auditDraft.reAuditAt || ""}
+                      onChange={(event) => {
+                        setAuditDraft((current) => ({ ...current, reAuditAt: event.target.value }));
+                        setIsAuditDirty(true);
+                      }}
+                      disabled={!canManageAudits}
+                    />
+                  </label>
+                </div>
+
+                <div className="audit-active-subline subtle-line">
                   <span>Inicio: {formatDateTime(auditDraft.startedAt)}</span>
                   <span>Auditor: {auditDraft.auditorName || currentUser?.name || "Sin auditor"}</span>
                   <span>Duración: {formatDuration(getAuditDurationSeconds(auditDraft))}</span>
@@ -1853,7 +2210,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                 />
 
                 <div className="audit-response-grid">
-                  {(auditDraft.questions || []).map((question, index) => (
+                  {activeAuditQuestions.map((question, index) => (
                     <article
                       key={question.id}
                       className={question.type === "text" ? "surface-card audit-response-card audit-response-card-text" : "surface-card audit-response-card audit-response-card-yesno"}
@@ -1861,6 +2218,8 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                       <div className="audit-response-head">
                         <span className="chip">{index + 1}</span>
                         <strong>{question.text}</strong>
+                        <span className="chip">{question.category || "General"}</span>
+                        <span className={`chip ${resolveQuestionScoreColor(question) === "red" ? "danger" : resolveQuestionScoreColor(question) === "yellow" ? "warning" : "success"}`}>{getScoreChipLabel(resolveQuestionScoreColor(question))}</span>
                       </div>
                       {question.type === "yesno" ? (
                         <div className="audit-answer-toggle-row">
@@ -1881,7 +2240,9 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                             <X size={15} /> No
                           </button>
                         </div>
-                      ) : (
+                      ) : null}
+
+                      {question.type === "text" ? (
                         <RichTextResponseField
                           label="Respuesta"
                           value={String(question.answer || "")}
@@ -1892,10 +2253,406 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                           onEdit={() => setAuditRichEditorState((current) => ({ ...current, [question.id]: true }))}
                           onSave={() => handleSaveActiveTextField(question.id, "Respuesta guardada.")}
                         />
-                      )}
+                      ) : null}
+
+                      {question.type === "number" ? (
+                        <label className="app-modal-field">
+                          <span>Respuesta numérica</span>
+                          <input
+                            type="number"
+                            value={question.answer ?? ""}
+                            onChange={(event) => updateAuditAnswer(question.id, event.target.value === "" ? null : Number(event.target.value))}
+                            placeholder={question.placeholder || "Escribe un número"}
+                            disabled={!canManageAudits}
+                          />
+                        </label>
+                      ) : null}
+
+                      {question.type === "scale" ? (
+                        <label className="app-modal-field">
+                          <span>Escala ({question.minValue ?? 1} - {question.maxValue ?? 5})</span>
+                          <input
+                            type="range"
+                            min={question.minValue ?? 1}
+                            max={question.maxValue ?? 5}
+                            step={1}
+                            value={question.answer ?? question.minValue ?? 1}
+                            onChange={(event) => updateAuditAnswer(question.id, Number(event.target.value))}
+                            disabled={!canManageAudits}
+                          />
+                          <strong>{question.answer ?? "Sin valor"}</strong>
+                        </label>
+                      ) : null}
+
+                      {question.type === "date" ? (
+                        <label className="app-modal-field">
+                          <span>Fecha</span>
+                          <input
+                            type="date"
+                            value={String(question.answer || "")}
+                            onChange={(event) => updateAuditAnswer(question.id, event.target.value)}
+                            disabled={!canManageAudits}
+                          />
+                        </label>
+                      ) : null}
+
+                      {question.type === "select" ? (
+                        <label className="app-modal-field">
+                          <span>Selección</span>
+                          <select
+                            value={String(question.answer || "")}
+                            onChange={(event) => updateAuditAnswer(question.id, event.target.value)}
+                            disabled={!canManageAudits}
+                          >
+                            <option value="">Selecciona</option>
+                            {(question.options || []).map((option) => <option key={option} value={option}>{option}</option>)}
+                          </select>
+                        </label>
+                      ) : null}
+
+                      {question.type === "multi" ? (
+                        <div className="app-modal-field">
+                          <span>Opciones múltiples</span>
+                          <div className="audit-multi-options-grid">
+                            {(question.options || []).map((option) => {
+                              const currentAnswer = Array.isArray(question.answer) ? question.answer : [];
+                              const checked = currentAnswer.includes(option);
+                              return (
+                                <label key={option} className="audit-multi-option-item">
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={(event) => {
+                                      const next = event.target.checked
+                                        ? [...currentAnswer, option]
+                                        : currentAnswer.filter((entry) => entry !== option);
+                                      updateAuditAnswer(question.id, next);
+                                    }}
+                                    disabled={!canManageAudits}
+                                  />
+                                  <span>{option}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      <div className="audit-question-evaluation-grid">
+                        <label className="app-modal-field">
+                          <span>¿Se detecta problema?</span>
+                          <select
+                            value={question.issueDetected === true ? "yes" : question.issueDetected === false ? "no" : ""}
+                            onChange={(event) => {
+                              const value = event.target.value;
+                              const issueDetected = value === "yes" ? true : value === "no" ? false : null;
+                              setAuditDraft((current) => ({
+                                ...current,
+                                questions: current.questions.map((item) => (item.id === question.id ? { ...item, issueDetected } : item)),
+                              }));
+                              setIsAuditDirty(true);
+                            }}
+                            disabled={!canManageAudits}
+                          >
+                            <option value="">Auto</option>
+                            <option value="yes">Sí</option>
+                            <option value="no">No</option>
+                          </select>
+                        </label>
+
+                        <label className="app-modal-field">
+                          <span>Impacto</span>
+                          <select
+                            value={question.impactLevel || "medium"}
+                            onChange={(event) => {
+                              setAuditDraft((current) => ({
+                                ...current,
+                                questions: current.questions.map((item) => (item.id === question.id ? { ...item, impactLevel: normalizeImpactLevel(event.target.value) } : item)),
+                              }));
+                              setIsAuditDirty(true);
+                            }}
+                            disabled={!canManageAudits}
+                          >
+                            <option value="high">Alto</option>
+                            <option value="medium">Medio</option>
+                            <option value="low">Bajo</option>
+                          </select>
+                        </label>
+                      </div>
+
+                      <RichTextResponseField
+                        label="Observaciones"
+                        value={String(question.observations || "")}
+                        placeholder="Describe riesgo, causa o mejora observada"
+                        canEdit={canManageAudits}
+                        isEditing={Boolean(auditRichEditorState[`obs-${question.id}`])}
+                        onChange={(nextValue) => {
+                          setAuditDraft((current) => ({
+                            ...current,
+                            questions: current.questions.map((item) => (item.id === question.id ? { ...item, observations: nextValue } : item)),
+                          }));
+                          setIsAuditDirty(true);
+                        }}
+                        onEdit={() => setAuditRichEditorState((current) => ({ ...current, [`obs-${question.id}`]: true }))}
+                        onSave={() => handleSaveActiveTextField(`obs-${question.id}`, "Observaciones guardadas.")}
+                        saveLabel="Guardar observaciones"
+                        editLabel="Editar observaciones"
+                      />
                     </article>
                   ))}
                 </div>
+
+                <section className="surface-card audit-analysis-card">
+                  <div className="card-header-row">
+                    <div>
+                      <h3>Semáforo automático</h3>
+                      <p>Score por pregunta, categoría y global.</p>
+                    </div>
+                    <span className={`chip ${auditScoring.global.color === "red" ? "danger" : auditScoring.global.color === "yellow" ? "warning" : "success"}`}>
+                      {getScoreChipLabel(auditScoring.global.color)} · {auditScoring.global.scorePercent}%
+                    </span>
+                  </div>
+                  <div className="audit-active-meta-grid">
+                    {auditScoring.categoryScores.map((item) => (
+                      <article key={item.category} className="surface-card audit-mini-stat">
+                        <p>{item.category}</p>
+                        <strong>{item.scorePercent}%</strong>
+                        <small>{item.red}R · {item.yellow}A · {item.green}V</small>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="surface-card audit-analysis-card">
+                  <div className="card-header-row">
+                    <div>
+                      <h3>Problemas detectados</h3>
+                      <p>Generado automáticamente desde respuestas e impacto.</p>
+                    </div>
+                    <span className="chip primary">{detectedProblems.length}</span>
+                  </div>
+                  {!detectedProblems.length ? <p className="subtle-line">Sin problemas críticos por ahora.</p> : null}
+                  <div className="saved-board-list permissions-preset-list">
+                    {detectedProblems.map((problem) => (
+                      <article key={problem.id} className="surface-card audit-history-card">
+                        <div className="card-header-row">
+                          <strong>{problem.problem}</strong>
+                          <span className={`chip ${problem.impactLevel === "high" ? "danger" : problem.impactLevel === "medium" ? "warning" : "success"}`}>
+                            {problem.impactLevel === "high" ? "Alto" : problem.impactLevel === "medium" ? "Medio" : "Bajo"}
+                          </span>
+                        </div>
+                        <p className="subtle-line">Categoría: {problem.category}</p>
+                        {problem.observations ? <div className="audit-rich-response-display" dangerouslySetInnerHTML={{ __html: formatRichTextToHtml(problem.observations) }} /> : null}
+                      </article>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="surface-card audit-analysis-card">
+                  <div className="card-header-row">
+                    <div>
+                      <h3>Propuestas de mejora</h3>
+                      <p>Causa raíz, solución y esfuerzo por problema.</p>
+                    </div>
+                    <div className="audit-inline-actions">
+                      <span className="chip">Sin propuesta: {proposalCoverage.withoutProposal}</span>
+                      <button
+                        type="button"
+                        className="icon-button"
+                        onClick={() => {
+                          const firstUnlinked = detectedProblems.find((problem) => !(auditDraft.proposals || []).some((proposal) => proposal.problemId === problem.id));
+                          const nextProposal = buildDefaultProposal(firstUnlinked || {});
+                          setAuditDraft((current) => ({ ...current, proposals: [...(current.proposals || []), nextProposal] }));
+                          setIsAuditDirty(true);
+                        }}
+                        disabled={!canManageAudits}
+                      >
+                        <Plus size={14} /> Agregar propuesta
+                      </button>
+                    </div>
+                  </div>
+                  <div className="saved-board-list permissions-preset-list">
+                    {(auditDraft.proposals || []).map((proposal) => (
+                      <article key={proposal.id} className="surface-card audit-history-card">
+                        <div className="audit-form-grid">
+                          <label className="app-modal-field audit-field-span-2">
+                            <span>Problema asociado</span>
+                            <select
+                              value={proposal.problemId || ""}
+                              onChange={(event) => {
+                                const selected = detectedProblems.find((item) => item.id === event.target.value);
+                                setAuditDraft((current) => ({
+                                  ...current,
+                                  proposals: (current.proposals || []).map((item) => (item.id === proposal.id ? {
+                                    ...item,
+                                    problemId: event.target.value,
+                                    problem: selected?.problem || item.problem || "",
+                                  } : item)),
+                                }));
+                                setIsAuditDirty(true);
+                              }}
+                              disabled={!canManageAudits}
+                            >
+                              <option value="">Sin vínculo</option>
+                              {detectedProblems.map((item) => <option key={item.id} value={item.id}>{item.problem}</option>)}
+                            </select>
+                          </label>
+                          <label className="app-modal-field">
+                            <span>Tipo</span>
+                            <select
+                              value={proposal.type || "improvement"}
+                              onChange={(event) => {
+                                setAuditDraft((current) => ({
+                                  ...current,
+                                  proposals: (current.proposals || []).map((item) => (item.id === proposal.id ? { ...item, type: event.target.value } : item)),
+                                }));
+                                setIsAuditDirty(true);
+                              }}
+                              disabled={!canManageAudits}
+                            >
+                              {PROPOSAL_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                            </select>
+                          </label>
+                          <label className="app-modal-field">
+                            <span>Esfuerzo</span>
+                            <select
+                              value={proposal.effort || "medium"}
+                              onChange={(event) => {
+                                setAuditDraft((current) => ({
+                                  ...current,
+                                  proposals: (current.proposals || []).map((item) => (item.id === proposal.id ? { ...item, effort: event.target.value } : item)),
+                                }));
+                                setIsAuditDirty(true);
+                              }}
+                              disabled={!canManageAudits}
+                            >
+                              {EFFORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                            </select>
+                          </label>
+                          <RichTextResponseField
+                            label="Causa raíz"
+                            value={proposal.rootCause || ""}
+                            placeholder="Describe la causa raíz"
+                            canEdit={canManageAudits}
+                            isEditing={Boolean(auditRichEditorState[`proposal-root-${proposal.id}`])}
+                            onChange={(nextValue) => {
+                              setAuditDraft((current) => ({
+                                ...current,
+                                proposals: (current.proposals || []).map((item) => (item.id === proposal.id ? { ...item, rootCause: nextValue } : item)),
+                              }));
+                              setIsAuditDirty(true);
+                            }}
+                            onEdit={() => setAuditRichEditorState((current) => ({ ...current, [`proposal-root-${proposal.id}`]: true }))}
+                            onSave={() => handleSaveActiveTextField(`proposal-root-${proposal.id}`, "Causa raíz guardada.")}
+                          />
+                          <RichTextResponseField
+                            label="Propuesta"
+                            value={proposal.proposal || ""}
+                            placeholder="Describe la mejora/corrección/rediseño"
+                            canEdit={canManageAudits}
+                            isEditing={Boolean(auditRichEditorState[`proposal-body-${proposal.id}`])}
+                            onChange={(nextValue) => {
+                              setAuditDraft((current) => ({
+                                ...current,
+                                proposals: (current.proposals || []).map((item) => (item.id === proposal.id ? { ...item, proposal: nextValue } : item)),
+                              }));
+                              setIsAuditDirty(true);
+                            }}
+                            onEdit={() => setAuditRichEditorState((current) => ({ ...current, [`proposal-body-${proposal.id}`]: true }))}
+                            onSave={() => handleSaveActiveTextField(`proposal-body-${proposal.id}`, "Propuesta guardada.")}
+                          />
+                          <RichTextResponseField
+                            label="Impacto esperado"
+                            value={proposal.expectedImpact || ""}
+                            placeholder="Qué mejora se espera y cómo se medirá"
+                            canEdit={canManageAudits}
+                            isEditing={Boolean(auditRichEditorState[`proposal-impact-${proposal.id}`])}
+                            onChange={(nextValue) => {
+                              setAuditDraft((current) => ({
+                                ...current,
+                                proposals: (current.proposals || []).map((item) => (item.id === proposal.id ? { ...item, expectedImpact: nextValue } : item)),
+                              }));
+                              setIsAuditDirty(true);
+                            }}
+                            onEdit={() => setAuditRichEditorState((current) => ({ ...current, [`proposal-impact-${proposal.id}`]: true }))}
+                            onSave={() => handleSaveActiveTextField(`proposal-impact-${proposal.id}`, "Impacto esperado guardado.")}
+                          />
+                          <button
+                            type="button"
+                            className="icon-button danger"
+                            onClick={() => {
+                              setAuditDraft((current) => ({
+                                ...current,
+                                proposals: (current.proposals || []).filter((item) => item.id !== proposal.id),
+                              }));
+                              setIsAuditDirty(true);
+                            }}
+                            disabled={!canManageAudits}
+                          >
+                            <Trash2 size={14} /> Eliminar propuesta
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                    {!auditDraft.proposals?.length ? <p className="subtle-line">Aún no hay propuestas registradas.</p> : null}
+                  </div>
+                </section>
+
+                <section className="surface-card audit-analysis-card">
+                  <div className="card-header-row">
+                    <div>
+                      <h3>Seguimiento e implementación</h3>
+                      <p>Define el nuevo proceso, responsables e instrucciones.</p>
+                    </div>
+                  </div>
+                  <div className="audit-form-grid">
+                    <RichTextResponseField
+                      label="Resumen ejecutivo"
+                      value={auditDraft.executiveSummary || ""}
+                      placeholder="Resumen ejecutivo automático/curado"
+                      canEdit={canManageAudits}
+                      isEditing={Boolean(auditRichEditorState.executiveSummary)}
+                      onChange={(nextValue) => {
+                        setAuditDraft((current) => ({ ...current, executiveSummary: nextValue }));
+                        setIsAuditDirty(true);
+                      }}
+                      onEdit={() => setAuditRichEditorState((current) => ({ ...current, executiveSummary: true }))}
+                      onSave={() => handleSaveActiveTextField("executiveSummary", "Resumen guardado.")}
+                    />
+                    <RichTextResponseField
+                      label="Nuevo proceso definido"
+                      value={auditDraft.implementationPlan?.processDefinition || ""}
+                      placeholder="Describe el proceso objetivo"
+                      canEdit={canManageAudits}
+                      isEditing={Boolean(auditRichEditorState.processDefinition)}
+                      onChange={(nextValue) => {
+                        setAuditDraft((current) => ({
+                          ...current,
+                          implementationPlan: { ...(current.implementationPlan || {}), processDefinition: nextValue },
+                        }));
+                        setIsAuditDirty(true);
+                      }}
+                      onEdit={() => setAuditRichEditorState((current) => ({ ...current, processDefinition: true }))}
+                      onSave={() => handleSaveActiveTextField("processDefinition", "Proceso objetivo guardado.")}
+                    />
+                    <RichTextResponseField
+                      label="Instrucciones de implementación"
+                      value={auditDraft.implementationPlan?.instructions || ""}
+                      placeholder="Pasos claros de ejecución"
+                      canEdit={canManageAudits}
+                      isEditing={Boolean(auditRichEditorState.implementationInstructions)}
+                      onChange={(nextValue) => {
+                        setAuditDraft((current) => ({
+                          ...current,
+                          implementationPlan: { ...(current.implementationPlan || {}), instructions: nextValue },
+                        }));
+                        setIsAuditDirty(true);
+                      }}
+                      onEdit={() => setAuditRichEditorState((current) => ({ ...current, implementationInstructions: true }))}
+                      onSave={() => handleSaveActiveTextField("implementationInstructions", "Instrucciones guardadas.")}
+                    />
+                  </div>
+                </section>
 
                 <div className="audit-inline-actions">
                   <button type="button" className="icon-button danger" onClick={() => openDeleteAuditModal(auditDraft)} disabled={!canManageAudits}>Eliminar</button>
@@ -1979,6 +2736,21 @@ export default function AuditoriasProcesosCompact({ contexto }) {
             <article className="surface-card audit-mini-stat"><strong>{dashboardStats.closed}</strong><p>Cerradas</p></article>
             <article className="surface-card audit-mini-stat"><strong>{dashboardStats.open}</strong><p>Abiertas</p></article>
             <article className="surface-card audit-mini-stat"><strong>{formatDuration(dashboardStats.avgDuration)}</strong><p>Promedio</p></article>
+            <article className="surface-card audit-mini-stat"><strong>{dashboardStats.severity.red}</strong><p>🔴 Críticas</p></article>
+            <article className="surface-card audit-mini-stat"><strong>{dashboardStats.severity.yellow}</strong><p>🟡 Riesgo</p></article>
+            <article className="surface-card audit-mini-stat"><strong>{dashboardStats.severity.green}</strong><p>🟢 Controladas</p></article>
+          </div>
+          <div className="saved-board-list permissions-preset-list">
+            <article className="surface-card audit-area-stat-card">
+              <div className="card-header-row">
+                <strong>Áreas críticas</strong>
+                <span className="chip warning">{dashboardStats.criticalAreas.length}</span>
+              </div>
+              {!dashboardStats.criticalAreas.length ? <p className="subtle-line">Sin áreas críticas activas.</p> : null}
+              {dashboardStats.criticalAreas.map((row) => (
+                <p key={row.label} className="subtle-line" style={{ margin: 0 }}>{row.label}: {row.value}</p>
+              ))}
+            </article>
           </div>
           <div className="saved-board-list permissions-preset-list">
             {dashboardStats.byArea.map((row) => {
