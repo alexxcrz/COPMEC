@@ -1,14 +1,12 @@
 // ── Perfil de Empleado ───────────────────────────────────────────────────────
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Modal } from "./Modal";
-import { parseEncryptedCopmecHistoryPackage, parseEncryptedCopmecPackage, triggerCopmecDownload } from "../utils/copmecFiles.js";
 
 // ── Constantes y utilidades ───────────────────────────────────────────────────
 
 const PROFILE_SELF_EDIT_LIMIT = 1;
-const MAX_PROFILE_COPMEC_FILES = 20;
 
 const ROLE_LEAD = "Lead";
 const ROLE_SR   = "Senior (Sr)";
@@ -70,50 +68,6 @@ function getInitialsAvatar(name) {
   return initials;
 }
 
-function normalizeCopmecHistoryFiles(entries) {
-  if (!Array.isArray(entries)) return [];
-  return entries
-    .map((entry, index) => ({
-      id: String(entry?.id || `copmec-${index + 1}`).trim(),
-      fileName: String(entry?.fileName || "archivo.cop").trim() || "archivo.cop",
-      importedAt: String(entry?.importedAt || new Date().toISOString()).trim() || new Date().toISOString(),
-      periodLabel: String(entry?.periodLabel || "Archivo .cop").trim() || "Archivo .cop",
-      records: Math.max(0, Number(entry?.records || 0)),
-      fileType: String(entry?.fileType || "unknown").trim(),
-      packageText: String(entry?.packageText || "").trim(),
-    }))
-    .filter((entry) => entry.packageText)
-    .slice(0, MAX_PROFILE_COPMEC_FILES);
-}
-
-function buildProfileCopmecHistoryEntry({ packageText, payload, fileName, fileType }) {
-  const safeFileName = String(fileName || "historial.cop").trim() || "historial.cop";
-  let periodLabel = "Archivo .cop";
-  let records = 0;
-  const ft = String(fileType || "unknown");
-  if (ft === "history") {
-    periodLabel = String(payload?.period?.label || "Historial").trim() || "Historial";
-    records = Math.max(0, Number(payload?.summary?.records || (Array.isArray(payload?.rows) ? payload.rows.length : 0)));
-  } else if (ft === "board") {
-    periodLabel = `Tablero · ${String(payload?.name || payload?.format || "").trim()}`.replace(/ · $/, "") || "Tablero Operativo";
-  } else if (ft === "process-audit") {
-    const a = payload?.audit;
-    periodLabel = `Auditoría · ${String(a?.area || a?.process || "").trim()}`.replace(/ · $/, "") || "Auditoría de Proceso";
-    records = (a?.questions || []).length;
-  } else {
-    periodLabel = String(payload?.type || payload?.format || "Archivo .cop").trim() || "Archivo .cop";
-  }
-  return {
-    id: `copmec-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-    fileName: safeFileName,
-    importedAt: new Date().toISOString(),
-    periodLabel,
-    records,
-    fileType: ft,
-    packageText: String(packageText || "").trim(),
-  };
-}
-
 // ── Exports mantenidos por compatibilidad con App.jsx ─────────────────────────
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -150,34 +104,23 @@ function InfoField({ label, value, placeholder = "No definido", wide, children }
 
 export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChange, onSubmit, onClose, onLogout, onUpdateIdentity }) {
   const [isEditMode, setIsEditMode]   = useState(false);
-  const [activeTab, setActiveTab]     = useState("perfil");
   const [form, setForm]               = useState(() => createIdentityFormFromUser(currentUser));
   const [message, setMessage]         = useState("");
   const [pwOpen, setPwOpen]           = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [saving, setSaving]           = useState(false);
-  const [copmecPreview, setCopmecPreview] = useState(null);
-  const [copmecDecisionOpen, setCopmecDecisionOpen] = useState(false);
-  const [copmecDeleteTarget, setCopmecDeleteTarget] = useState(null);
-  const [copmecSaving, setCopmecSaving] = useState(false);
-  const copmecFileInputRef = useRef(null);
 
   const canBypass      = canBypassSelfProfileEditLimit(currentUser);
   const selfEditCount  = Number(currentUser?.selfIdentityEditCount ?? 0);
   const canEdit        = canBypass || selfEditCount < PROFILE_SELF_EDIT_LIMIT;
   const roleStyle      = ROLE_COLORS[normalizeRole(currentUser?.role)] || ROLE_COLORS[ROLE_JR];
   const initials       = getInitialsAvatar(currentUser?.name);
-  const savedCopmecFiles = useMemo(
-    () => normalizeCopmecHistoryFiles(currentUser?.copmecHistoryFiles),
-    [currentUser?.copmecHistoryFiles],
-  );
 
   useEffect(() => {
     setForm(createIdentityFormFromUser(currentUser));
     setMessage("");
     setIsEditMode(false);
-    setActiveTab("perfil");
   }, [currentUser]);
 
   function field(key, value) {
@@ -213,171 +156,6 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
     setSaving(false);
     setMessage(result?.message || "");
     if (result?.ok) setIsEditMode(false);
-  }
-
-  async function persistCopmecFiles(nextFiles, successMessage) {
-    setCopmecSaving(true);
-    const identityBase = createIdentityFormFromUser(currentUser);
-    const result = await onUpdateIdentity({
-      name: identityBase.name,
-      username: identityBase.email,
-      area: identityBase.area,
-      jobTitle: identityBase.jobTitle,
-      telefono: identityBase.telefono,
-      telefono_visible: identityBase.telefono_visible,
-      birthday: identityBase.birthday,
-      copmecHistoryFiles: normalizeCopmecHistoryFiles(nextFiles),
-    });
-    setCopmecSaving(false);
-    setMessage(result?.message || "");
-    if (result?.ok && successMessage) {
-      setMessage(successMessage);
-    }
-    return Boolean(result?.ok);
-  }
-
-  async function exportCopmecPayloadToPdf(payload, fileBaseName = "historial_copmec") {
-    const rows = Array.isArray(payload?.rows) ? payload.rows : [];
-    if (!rows.length) {
-      setMessage("El archivo .cop no contiene filas para exportar.");
-      return;
-    }
-    try {
-      const [{ jsPDF }, autoTableModule] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
-      const autoTable = autoTableModule.default || autoTableModule.autoTable;
-      const pdf = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
-      pdf.setFontSize(14);
-      pdf.text("Historial operativo COPMEC (importado)", 36, 40);
-      pdf.setFontSize(10);
-      pdf.text(`Periodo: ${String(payload?.period?.label || "Periodo")}`, 36, 58);
-      pdf.text(`Generado originalmente: ${String(payload?.generatedAt || "-")}`, 36, 74);
-      pdf.text(`Registros: ${rows.length}`, 36, 90);
-
-      autoTable(pdf, {
-        startY: 104,
-        head: [["Area", "Tablero", "Actividad", "Player", "Estado", "Fecha", "Inicio", "Fin", "Tiempo"]],
-        body: rows.map((row) => [
-          row.area || "-",
-          row.tablero || "-",
-          row.actividad || "-",
-          row.player || "-",
-          row.estado || "-",
-          row.fecha || "-",
-          row.inicio || "-",
-          row.fin || "-",
-          row.tiempo || "-",
-        ]),
-        styles: { fontSize: 8, cellPadding: 4 },
-        headStyles: { fillColor: [3, 33, 33], textColor: [255, 255, 255] },
-        theme: "grid",
-      });
-
-      const safeName = String(fileBaseName || "historial_copmec")
-        .toLowerCase()
-        .replace(/[^a-z0-9_-]+/g, "_")
-        .replace(/^_+|_+$/g, "")
-        .slice(0, 80) || "historial_copmec";
-      pdf.save(`${safeName}.pdf`);
-    } catch (error) {
-      setMessage(error?.message || "No se pudo exportar el archivo importado a PDF.");
-    }
-  }
-
-  async function handleCopmecImportChange(event) {
-    const file = event.target?.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    try {
-      const packageText = await file.text();
-      let payload = null;
-      let fileType = "unknown";
-      // Try history encrypted
-      try { payload = await parseEncryptedCopmecHistoryPackage(packageText); fileType = "history"; } catch {}
-      // Try generic encrypted (boards)
-      if (!payload) { try { payload = await parseEncryptedCopmecPackage(packageText); fileType = "board"; } catch {} }
-      // Try plain JSON (auditorías u otros)
-      if (!payload) {
-        try {
-          const parsed = JSON.parse(packageText);
-          if (parsed && typeof parsed === "object") { payload = parsed; fileType = parsed.type || "json"; }
-        } catch {}
-      }
-      if (!payload) throw new Error("El archivo no es un .cop válido de COPMEC.");
-      setCopmecPreview({ payload, packageText, fileName: String(file.name || "archivo.cop"), fileType, source: "upload" });
-      setCopmecDecisionOpen(false);
-      setMessage("Archivo .cop cargado. Revisa el contenido antes de guardarlo.");
-    } catch (error) {
-      setMessage(error?.message || "No se pudo abrir el archivo .cop.");
-    }
-  }
-
-  async function openSavedCopmecFile(entry) {
-    try {
-      let payload = null;
-      let fileType = entry.fileType || "unknown";
-      try { payload = await parseEncryptedCopmecHistoryPackage(entry.packageText); fileType = "history"; } catch {}
-      if (!payload) { try { payload = await parseEncryptedCopmecPackage(entry.packageText); fileType = "board"; } catch {} }
-      if (!payload) { try { const p = JSON.parse(entry.packageText); if (p && typeof p === "object") { payload = p; fileType = p.type || "json"; } } catch {} }
-      if (!payload) throw new Error("No se pudo leer el archivo guardado.");
-      setCopmecPreview({ payload, packageText: entry.packageText, fileName: entry.fileName, fileType, source: "saved" });
-      setCopmecDecisionOpen(false);
-    } catch (error) {
-      setMessage(error?.message || "No se pudo abrir este archivo guardado.");
-    }
-  }
-
-  function requestCloseCopmecPreview() {
-    if (!copmecPreview) return;
-    if (copmecPreview.source === "upload") {
-      setCopmecDecisionOpen(true);
-      return;
-    }
-    setCopmecPreview(null);
-  }
-
-  async function confirmSaveImportedCopmec() {
-    if (!copmecPreview?.packageText || !copmecPreview?.payload) {
-      setCopmecDecisionOpen(false);
-      setCopmecPreview(null);
-      return;
-    }
-    const newEntry = buildProfileCopmecHistoryEntry({
-      packageText: copmecPreview.packageText,
-      payload: copmecPreview.payload,
-      fileName: copmecPreview.fileName,
-      fileType: copmecPreview.fileType,
-    });
-    const nextFiles = [newEntry].concat(savedCopmecFiles).slice(0, MAX_PROFILE_COPMEC_FILES);
-    const ok = await persistCopmecFiles(nextFiles, "Archivo .cop guardado en tu perfil.");
-    if (ok) {
-      setCopmecDecisionOpen(false);
-      setCopmecPreview(null);
-    }
-  }
-
-  function discardImportedCopmec() {
-    setCopmecDecisionOpen(false);
-    setCopmecPreview(null);
-    setMessage("El archivo importado fue descartado.");
-  }
-
-  async function removeSavedCopmecFile(fileId) {
-    const nextFiles = savedCopmecFiles.filter((entry) => entry.id !== fileId);
-    await persistCopmecFiles(nextFiles, "Archivo eliminado del historial del perfil.");
-  }
-
-  function requestRemoveSavedCopmecFile(entry) {
-    if (!entry?.id) return;
-    setCopmecDeleteTarget(entry);
-  }
-
-  async function confirmRemoveSavedCopmecFile() {
-    if (!copmecDeleteTarget?.id) {
-      setCopmecDeleteTarget(null);
-      return;
-    }
-    await removeSavedCopmecFile(copmecDeleteTarget.id);
-    setCopmecDeleteTarget(null);
   }
 
   return (
@@ -422,25 +200,6 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: "0.55rem", marginTop: "0.25rem", marginBottom: "0.25rem", flexWrap: "wrap" }}>
-          <button
-            type="button"
-            className={`ep-btn ${activeTab === "perfil" ? "ep-btn--primary" : "ep-btn--ghost"}`}
-            onClick={() => setActiveTab("perfil")}
-          >
-            Perfil
-          </button>
-          <button
-            type="button"
-            className={`ep-btn ${activeTab === "copmec" ? "ep-btn--primary" : "ep-btn--ghost"}`}
-            onClick={() => setActiveTab("copmec")}
-          >
-            Archivos .cop ({savedCopmecFiles.length})
-          </button>
-        </div>
-
-        {activeTab === "perfil" && (
-          <>
         {/* ── IDENTIDAD ────────────────────────────────────────────────────── */}
         <div className="ep-section">
           <div className="ep-section__title">Identidad</div>
@@ -530,74 +289,7 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
             )}
           </div>
         </div>
-          </>
-        )}
 
-        {activeTab === "copmec" && (
-        <div className="ep-section">
-          <div className="ep-section__title">Archivos COPMEC (.cop)</div>
-          <div className="ep-grid ep-grid--1">
-            <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
-              <button type="button" className="ep-btn ep-btn--primary" onClick={() => copmecFileInputRef.current?.click()}>
-                Abrir .cop
-              </button>
-              <input
-                ref={copmecFileInputRef}
-                type="file"
-                accept=".cop,.copmec"
-                style={{ display: "none" }}
-                onChange={(event) => { void handleCopmecImportChange(event); }}
-              />
-            </div>
-
-            {savedCopmecFiles.length ? (
-              <div className="table-wrap compact-table">
-                <table className="history-table-clean">
-                  <thead>
-                    <tr>
-                      <th>Archivo</th>
-                      <th>Periodo</th>
-                      <th>Registros</th>
-                      <th>Guardado</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {savedCopmecFiles.map((entry) => (
-                      <tr key={entry.id}>
-                        <td>{entry.fileName}</td>
-                        <td>{entry.periodLabel}</td>
-                        <td>{entry.records}</td>
-                        <td>{new Date(entry.importedAt).toLocaleString("es-MX")}</td>
-                        <td>
-                          <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
-                            <button type="button" className="ep-btn ep-btn--ghost" onClick={() => { void openSavedCopmecFile(entry); }}>
-                              Ver
-                            </button>
-                            <button type="button" className="ep-btn ep-btn--ghost" onClick={() => triggerCopmecDownload(entry.packageText, entry.fileName)}>
-                              .cop
-                            </button>
-                            <button type="button" className="ep-btn ep-btn--ghost" onClick={() => { void parseEncryptedCopmecHistoryPackage(entry.packageText).then((payload) => exportCopmecPayloadToPdf(payload, entry.fileName.replace(/\.cop$/i, ""))); }}>
-                              PDF
-                            </button>
-                            <button type="button" className="ep-btn ep-btn--danger" onClick={() => requestRemoveSavedCopmecFile(entry)} disabled={copmecSaving}>
-                              Borrar
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="ep-footnote" style={{ margin: 0 }}>Aún no tienes archivos .copmec guardados en tu perfil.</p>
-            )}
-          </div>
-        </div>
-        )}
-
-        {activeTab === "perfil" && (
         <div className="ep-section">
           <button type="button" className="ep-pw-toggle" onClick={() => setPwOpen((v) => !v)}>
             <span>🔒 Contraseña</span>
@@ -640,7 +332,6 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
             </div>
           )}
         </div>
-        )}
 
         {/* ── MENSAJES ─────────────────────────────────────────────────────── */}
         {message && (
@@ -649,106 +340,6 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
           </p>
         )}
 
-      </div>
-      </Modal>
-
-      <Modal
-      open={Boolean(copmecPreview)}
-      title="Vista del archivo .copmec"
-      confirmLabel="Cerrar"
-      hideCancel
-      onClose={requestCloseCopmecPreview}
-      className="ep-modal"
-      footerActions={copmecPreview ? [
-        <button key="copmec" type="button" className="ep-btn ep-btn--ghost" onClick={() => triggerCopmecDownload(copmecPreview.packageText, copmecPreview.fileName)}>
-          Descargar .copmec
-        </button>,
-        <button key="pdf" type="button" className="ep-btn ep-btn--primary" onClick={() => { void exportCopmecPayloadToPdf(copmecPreview.payload, copmecPreview.fileName.replace(/\.copmec$/i, "")); }}>
-          Descargar PDF
-        </button>,
-        <button key="close" type="button" className="ep-btn ep-btn--ghost" onClick={requestCloseCopmecPreview}>
-          Cerrar
-        </button>,
-      ] : undefined}
-    >
-      <div className="ep-body">
-        {copmecPreview?.payload ? (
-          <div style={{ display: "grid", gap: "0.65rem" }}>
-            <p className="ep-footnote" style={{ margin: 0 }}>
-              {String(copmecPreview.payload?.period?.label || "Periodo")} · {Array.isArray(copmecPreview.payload?.rows) ? copmecPreview.payload.rows.length : 0} registros
-            </p>
-            {Array.isArray(copmecPreview.payload?.rows) && copmecPreview.payload.rows.length ? (
-              <div className="table-wrap compact-table">
-                <table className="history-table-clean">
-                  <thead>
-                    <tr>
-                      <th>Area</th>
-                      <th>Tablero</th>
-                      <th>Actividad</th>
-                      <th>Player</th>
-                      <th>Estado</th>
-                      <th>Fecha</th>
-                      <th>Inicio</th>
-                      <th>Fin</th>
-                      <th>Tiempo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {copmecPreview.payload.rows.map((row, index) => (
-                      <tr key={`copmec-preview-${index}`}>
-                        <td>{row.area || "-"}</td>
-                        <td>{row.tablero || "-"}</td>
-                        <td>{row.actividad || "-"}</td>
-                        <td>{row.player || "-"}</td>
-                        <td>{row.estado || "-"}</td>
-                        <td>{row.fecha || "-"}</td>
-                        <td>{row.inicio || "-"}</td>
-                        <td>{row.fin || "-"}</td>
-                        <td>{row.tiempo || "-"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="ep-footnote" style={{ margin: 0 }}>Este archivo no contiene filas.</p>
-            )}
-          </div>
-        ) : null}
-      </div>
-      </Modal>
-
-      <Modal
-      open={copmecDecisionOpen}
-      title="Guardar archivo en tu perfil"
-      onClose={() => setCopmecDecisionOpen(false)}
-      confirmLabel="Guardar en perfil"
-      cancelLabel="No guardar"
-      onConfirm={() => { void confirmSaveImportedCopmec(); }}
-      onCancel={discardImportedCopmec}
-      className="ep-modal"
-    >
-      <div className="ep-body">
-        <p className="ep-footnote" style={{ margin: 0 }}>
-          ¿Deseas guardar este archivo .copmec en el historial de tu perfil para abrirlo después?
-        </p>
-      </div>
-      </Modal>
-
-      <Modal
-      open={Boolean(copmecDeleteTarget)}
-      title="Borrar archivo guardado"
-      onClose={() => setCopmecDeleteTarget(null)}
-      confirmLabel="Borrar"
-      cancelLabel="Cancelar"
-      onConfirm={() => { void confirmRemoveSavedCopmecFile(); }}
-      onCancel={() => setCopmecDeleteTarget(null)}
-      className="ep-modal"
-    >
-      <div className="ep-body">
-        <p className="ep-footnote" style={{ margin: 0 }}>
-          ¿Deseas borrar {copmecDeleteTarget?.fileName ? `"${copmecDeleteTarget.fileName}"` : "este archivo"} de tu historial del perfil?
-        </p>
       </div>
       </Modal>
     </>

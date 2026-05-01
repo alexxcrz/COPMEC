@@ -1,6 +1,6 @@
 import {
   BarChart3, LayoutDashboard, ClipboardList, CalendarDays, Package,
-  Users, PieChart, BookOpen, OctagonAlert, ClipboardCheck,
+  Users, PieChart, BookOpen, OctagonAlert, ClipboardCheck, Archive,
 } from "lucide-react";
 
 export const STORAGE_KEY = "sicfla.almacen.state.v1";
@@ -29,6 +29,7 @@ export const PAGE_USERS = "users";
 export const PAGE_BIBLIOTECA = "biblioteca";
 export const PAGE_INCIDENCIAS = "incidencias";
 export const PAGE_SYSTEM_SETTINGS = "systemSettings";
+export const PAGE_ARCHIVERO = "archivero";
 export const PAGE_NOT_FOUND = "404";
 
 export const PAGE_ROUTE_SLUGS = {
@@ -612,6 +613,7 @@ export const NAV_ITEMS = [
   { id: PAGE_INVENTORY,      label: "Inventario",          icon: Package,         group: "Producción", roles: [ROLE_LEAD, ROLE_SR] },
   { id: PAGE_BIBLIOTECA,     label: "Biblioteca",          icon: BookOpen,        group: "Recursos",   roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
   { id: PAGE_INCIDENCIAS,    label: "Incidencias",         icon: OctagonAlert,    group: "Recursos",   roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
+  { id: PAGE_ARCHIVERO,      label: "Archivero",           icon: Archive,         group: "Recursos",   roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
   { id: PAGE_SYSTEM_SETTINGS,label: "Configuración",       icon: PieChart,        group: "Recursos",   roles: [ROLE_LEAD, ROLE_SR] },
   { id: PAGE_USERS,          label: "Players",             icon: Users,           group: "Equipo",     roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
 ];

@@ -121,3 +121,57 @@ export async function parseEncryptedCopmecHistoryPackage(packageText) {
   }
   return payload;
 }
+
+// ── Auditorías cifradas ───────────────────────────────────────────────────
+export const COPMEC_AUDIT_PACKAGE_HEADER = "COPMEC::AUDIT::V1";
+const COPMEC_AUDIT_PACKAGE_SECRET = "COPMEC_AUDIT_APP_LOCK_V1";
+
+export async function buildEncryptedCopmecAuditPackage(payload) {
+  return buildEncryptedCopmecPackage(payload, {
+    header: COPMEC_AUDIT_PACKAGE_HEADER,
+    secret: COPMEC_AUDIT_PACKAGE_SECRET,
+  });
+}
+
+export async function parseEncryptedCopmecAuditPackage(packageText) {
+  return parseEncryptedCopmecPackage(packageText, {
+    header: COPMEC_AUDIT_PACKAGE_HEADER,
+    secret: COPMEC_AUDIT_PACKAGE_SECRET,
+  });
+}
+
+// ── PDF cifrado ───────────────────────────────────────────────────────────
+export const COPMEC_PDF_PACKAGE_HEADER = "COPMEC::PDF::V1";
+const COPMEC_PDF_PACKAGE_SECRET = "COPMEC_PDF_APP_LOCK_V1";
+
+export async function buildEncryptedCopmecPdfPackage(payload) {
+  return buildEncryptedCopmecPackage(payload, {
+    header: COPMEC_PDF_PACKAGE_HEADER,
+    secret: COPMEC_PDF_PACKAGE_SECRET,
+  });
+}
+
+export async function parseEncryptedCopmecPdfPackage(packageText) {
+  return parseEncryptedCopmecPackage(packageText, {
+    header: COPMEC_PDF_PACKAGE_HEADER,
+    secret: COPMEC_PDF_PACKAGE_SECRET,
+  });
+}
+
+// ── Dashboard cifrado ─────────────────────────────────────────────────────
+export const COPMEC_DASHBOARD_PACKAGE_HEADER = "COPMEC::DASHBOARD::V1";
+const COPMEC_DASHBOARD_PACKAGE_SECRET = "COPMEC_DASHBOARD_APP_LOCK_V1";
+
+export async function buildEncryptedCopmecDashboardPackage(payload) {
+  return buildEncryptedCopmecPackage(payload, {
+    header: COPMEC_DASHBOARD_PACKAGE_HEADER,
+    secret: COPMEC_DASHBOARD_PACKAGE_SECRET,
+  });
+}
+
+export async function parseEncryptedCopmecDashboardPackage(packageText) {
+  return parseEncryptedCopmecPackage(packageText, {
+    header: COPMEC_DASHBOARD_PACKAGE_HEADER,
+    secret: COPMEC_DASHBOARD_PACKAGE_SECRET,
+  });
+}

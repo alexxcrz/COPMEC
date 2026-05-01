@@ -50,6 +50,7 @@ import PaginaNoEncontrada from "./paginas/PaginaNoEncontrada";
 import PanelIndicadores from "./paginas/PanelIndicadores";
 import TablerosCreados from "./paginas/TablerosCreados";
 import BibliotecaPage from "./paginas/BibliotecaPage";
+import Archivero from "./paginas/Archivero";
 import "./App.css";
 
 
@@ -127,7 +128,7 @@ import {
   PAGE_BOARD, PAGE_CUSTOM_BOARDS, PAGE_ADMIN, PAGE_DASHBOARD, PAGE_HISTORY, PAGE_PROCESS_AUDITS,
 
   PAGE_INVENTORY, PAGE_USERS, PAGE_BIBLIOTECA, PAGE_INCIDENCIAS, PAGE_NOT_FOUND,
-  PAGE_SYSTEM_SETTINGS,
+  PAGE_SYSTEM_SETTINGS, PAGE_ARCHIVERO,
 
   PAGE_ROUTE_SLUGS, PAGE_ROUTE_ALIASES, EMPTY_LOGIN_DIRECTORY,
 
@@ -4551,6 +4552,20 @@ function App() { // NOSONAR
     });
   }
 
+  async function updateArchiveroFiles(nextFiles) {
+    if (!currentUser) return { ok: false };
+    return updateCurrentUserIdentity({
+      name: String(currentUser.name || "").trim(),
+      username: String(currentUser.email || "").trim(),
+      area: getUserArea(currentUser),
+      jobTitle: getUserJobTitle(currentUser),
+      telefono: String(currentUser.telefono || "").trim(),
+      telefono_visible: Boolean(currentUser.telefono_visible),
+      birthday: String(currentUser.birthday || "").trim(),
+      copmecHistoryFiles: Array.isArray(nextFiles) ? nextFiles : [],
+    });
+  }
+
   async function deleteUser(userId) {
     if (!userId || userId === currentUser?.id || !actionPermissions.deleteUsers) return;
     try {
@@ -7376,6 +7391,7 @@ function App() { // NOSONAR
         {page === PAGE_BIBLIOTECA ? <BibliotecaPage currentUser={currentUser} canUpload={actionPermissions.uploadBiblioteca} canDelete={actionPermissions.deleteBiblioteca} /> : null}
         {page === PAGE_INCIDENCIAS ? <GestionIncidencias contexto={paginasContexto} /> : null}
         {page === PAGE_SYSTEM_SETTINGS ? <ConfiguracionSistema contexto={paginasContexto} /> : null}
+        {page === PAGE_ARCHIVERO ? <Archivero currentUser={currentUser} onUpdateCopmecFiles={updateArchiveroFiles} /> : null}
         {page === PAGE_NOT_FOUND ? <PaginaNoEncontrada contexto={paginasContexto} /> : null}
       </section>
 
