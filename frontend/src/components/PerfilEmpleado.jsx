@@ -282,7 +282,12 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
       setCopmecDecisionOpen(false);
       setMessage("Archivo .cop cargado. Revisa el contenido antes de decidir si guardarlo.");
     } catch (error) {
-      setMessage(error?.message || "No se pudo abrir el archivo .cop.");
+      const rawMsg = error?.message || "";
+      if (rawMsg.includes("no compatible") || rawMsg.includes("incompatible") || rawMsg.includes("no contiene")) {
+        setMessage("Archivo inválido. Solo se pueden abrir archivos .cop exportados desde Tableros Operativos de COPMEC. Los archivos .cop de auditorías no son compatibles con esta sección.");
+      } else {
+        setMessage(rawMsg || "No se pudo abrir el archivo .cop.");
+      }
     }
   }
 
@@ -518,7 +523,7 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
               <input
                 ref={copmecFileInputRef}
                 type="file"
-                accept=".cop"
+                accept=".cop,.copmec"
                 style={{ display: "none" }}
                 onChange={(event) => { void handleCopmecImportChange(event); }}
               />
