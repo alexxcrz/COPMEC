@@ -12320,3 +12320,37 @@ body {
   line-height: 1.5;
 }
 
+/* ── Audit cycle step tabs (historial) ── */
+.audit-cycle-tabs {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin: 0.6rem 0 0.4rem 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  padding-bottom: 0.4rem;
+}
+.audit-cycle-tab-btn {
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: transparent;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: #555;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.audit-cycle-tab-btn:hover {
+  background: rgba(3, 33, 33, 0.06);
+}
+.audit-cycle-tab-btn.active {
+  background: #032121;
+  color: #fff;
+  border-color: #032121;
+}
+.audit-cycle-tab-content {
+  margin-top: 0.6rem;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 0.75rem;
+}
+

@@ -1440,6 +1440,12 @@ export default function AuditoriasProcesosCompact({ contexto }) {
   const [auditShieldActive, setAuditShieldActive] = useState(false);
   const [auditShieldTick, setAuditShieldTick] = useState(() => Date.now());
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [historyExpandedId, setHistoryExpandedId] = useState(null);
+  const [historyActiveTab, setHistoryActiveTab] = useState("problems");
+  const [historyDraft, setHistoryDraft] = useState(null);
+  const [historyDirty, setHistoryDirty] = useState(false);
+  const [historySaving, setHistorySaving] = useState(false);
+  const [historyRichEditorState, setHistoryRichEditorState] = useState({});
   const galleryEvidenceInputRef = useRef(null);
   const mobileCameraInputRef = useRef(null);
   const watermarkTiles = useMemo(() => Array.from({ length: 12 }, (_, index) => index), []);
@@ -1508,19 +1514,17 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     [sortedAudits],
   );
 
-  const actionableAudits = useMemo(
-    () => sortedAudits.filter((entry) => entry.status !== "closed" || normalizeLifecycleStatus(entry.lifecycleStatus) !== "closed"),
-    [sortedAudits],
-  );
+  const LIFECYCLE_PRIORITY = { in_review: 0, proposal_sent: 1, accepted: 2, in_implementation: 3, in_validation: 4, closed: 5 };
 
   const closedAudits = useMemo(
-    () => sortedAudits.filter((entry) => entry.status === "closed" && normalizeLifecycleStatus(entry.lifecycleStatus) === "closed"),
+    () => [...sortedAudits.filter((entry) => entry.status === "closed")]
+      .sort((a, b) => (LIFECYCLE_PRIORITY[normalizeLifecycleStatus(a.lifecycleStatus)] ?? 99) - (LIFECYCLE_PRIORITY[normalizeLifecycleStatus(b.lifecycleStatus)] ?? 99)),
     [sortedAudits],
   );
 
   const selectedAudit = useMemo(
-    () => actionableAudits.find((entry) => entry.id === selectedAuditId) || actionableAudits[0] || null,
-    [actionableAudits, selectedAuditId],
+    () => openAudits.find((entry) => entry.id === selectedAuditId) || openAudits[0] || null,
+    [openAudits, selectedAuditId],
   );
 
   const visibleAuditEvidences = useMemo(() => {
@@ -1647,7 +1651,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     const link = document.createElement("a");
     link.href = url;
     const safeName = String(audit.subArea || audit.area || "auditoria").replace(/[^a-z0-9]/gi, "_").toLowerCase();
-    link.download = `auditoria_${safeName}_${audit.id.slice(-6)}.copmec`;
+    link.download = `auditoria_${safeName}_${audit.id.slice(-6)}.cop`;
     link.click();
     URL.revokeObjectURL(url);
     pushAppToast("Archivo .copmec exportado.", "success");
@@ -1796,6 +1800,66 @@ export default function AuditoriasProcesosCompact({ contexto }) {
       pushAppToast(error?.message || "No se pudo exportar el PDF.", "danger");
     } finally {
       setIsExportingPdf(false);
+    }
+  }
+
+  // History draft: load when expanding a closed audit
+  useEffect(() => {
+    if (!historyExpandedId) { setHistoryDraft(null); setHistoryDirty(false); return; }
+    const audit = closedAudits.find((a) => a.id === historyExpandedId);
+    if (!audit) { setHistoryDraft(null); return; }
+    setHistoryDraft({
+      ...audit,
+      proposals: (audit.proposals || []).map((p) => ({ ...p })),
+      followUp: (audit.followUp || []).map((e) => ({ ...e })),
+      implementationPlan: { ...(audit.implementationPlan || {}) },
+      evidences: [...(audit.evidences || [])],
+    });
+    setHistoryDirty(false);
+    setHistoryRichEditorState({});
+  }, [historyExpandedId, closedAudits]);
+
+  async function handleSaveHistoryAudit() {
+    if (!historyDraft || historySaving || !canManageAudits) return;
+    try {
+      setHistorySaving(true);
+      await updateProcessAudit(historyDraft.id, {
+        proposals: historyDraft.proposals || [],
+        followUp: historyDraft.followUp || [],
+        implementationPlan: historyDraft.implementationPlan || {},
+        executiveSummary: historyDraft.executiveSummary || "",
+      });
+      setHistoryDirty(false);
+      pushAppToast("Guardado.", "success");
+    } catch (err) {
+      pushAppToast(err?.message || "No se pudo guardar.", "danger");
+    } finally {
+      setHistorySaving(false);
+    }
+  }
+
+  async function handleHistoryAdvanceStep(nextLifecycleStatus) {
+    if (!historyDraft || !canManageAudits) return;
+    try {
+      await updateProcessAudit(historyDraft.id, {
+        lifecycleStatus: normalizeLifecycleStatus(nextLifecycleStatus),
+        proposals: historyDraft.proposals || [],
+        followUp: historyDraft.followUp || [],
+        implementationPlan: historyDraft.implementationPlan || {},
+        executiveSummary: historyDraft.executiveSummary || "",
+      });
+      if (nextLifecycleStatus === "closed") {
+        setHistoryExpandedId(null);
+        pushAppToast("Ciclo de auditoría cerrado correctamente.", "success");
+      } else {
+        setHistoryDraft((c) => c ? { ...c, lifecycleStatus: nextLifecycleStatus } : c);
+        if (nextLifecycleStatus === "proposal_sent") setHistoryActiveTab("proposals");
+        else if (nextLifecycleStatus === "in_implementation") setHistoryActiveTab("followup");
+        else if (nextLifecycleStatus === "in_validation") setHistoryActiveTab("followup");
+        pushAppToast("Paso actualizado.", "success");
+      }
+    } catch (err) {
+      pushAppToast(err?.message || "No se pudo avanzar el paso.", "danger");
     }
   }
 
@@ -2158,6 +2222,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
   async function handleCloseAudit() {
     if (!canManageAudits || !auditDraft) return;
     try {
+      const closedId = auditDraft.id;
       await updateProcessAudit(auditDraft.id, {
         status: "closed",
         lifecycleStatus: "in_review",
@@ -2166,9 +2231,11 @@ export default function AuditoriasProcesosCompact({ contexto }) {
       });
       setAuditEditorOpen(false);
       setAuditQuestionsDraft(null);
-      setSelectedAuditId(auditDraft.id);
-      setActiveTab("capture");
-      pushAppToast("Paso 1 completado. Continúa con problemas, propuestas y seguimiento.", "success");
+      setSelectedAuditId("");
+      setActiveTab("history");
+      setHistoryExpandedId(closedId);
+      setHistoryActiveTab("problems");
+      pushAppToast("Auditoría cerrada. Continúa el ciclo desde Historial.", "success");
     } catch (error) {
       pushAppToast(error?.message || "No se pudo cerrar la auditoría.", "danger");
     }
@@ -2704,315 +2771,9 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                   ))}
                 </div>
 
-                {isAuditClosed ? (
-                  <>
-                    <section className="surface-card audit-analysis-card">
-                      <div className="card-header-row">
-                        <div>
-                          <h3>Flujo posterior al cierre</h3>
-                          <p>Paso actual: {PROCESS_AUDIT_STATUS_OPTIONS.find((option) => option.value === lifecycleStatus)?.label || "Pendiente"}</p>
-                        </div>
-                        <div className="audit-inline-actions">
-                          <button type="button" className="icon-button" onClick={() => handleExportAuditPdf(auditDraft)} disabled={isExportingPdf} title="Exportar PDF">
-                            <Upload size={14} /> {isExportingPdf ? "Generando…" : "PDF"}
-                          </button>
-                          <button type="button" className="icon-button" onClick={() => handleExportAuditCopmec(auditDraft)} title="Exportar .copmec">
-                            <ExternalLink size={14} /> .copmec
-                          </button>
-                          {lifecycleStatus === "in_review" ? (
-                            <button type="button" className="primary-button" onClick={() => handleAdvancePostCloseStep("proposal_sent")} disabled={!canManageAudits}>Continuar a Propuestas</button>
-                          ) : null}
-                          {lifecycleStatus === "proposal_sent" || lifecycleStatus === "accepted" ? (
-                            <button type="button" className="primary-button" onClick={() => handleAdvancePostCloseStep("in_implementation")} disabled={!canManageAudits}>Continuar a Seguimiento</button>
-                          ) : null}
-                          {lifecycleStatus === "in_implementation" || lifecycleStatus === "in_validation" ? (
-                            <button type="button" className="primary-button" onClick={() => handleAdvancePostCloseStep("closed")} disabled={!canManageAudits}>Cerrar ciclo completo</button>
-                          ) : null}
-                        </div>
-                      </div>
-                    </section>
-
-                    {canWorkProblemsStep ? (
-                    <section className="surface-card audit-analysis-card">
-                  <div className="card-header-row">
-                    <div>
-                      <h3>Problemas detectados</h3>
-                      <p>Generado automáticamente desde respuestas e impacto.</p>
-                    </div>
-                    <span className="chip primary">{detectedProblems.length}</span>
-                  </div>
-                  {!detectedProblems.length ? <p className="subtle-line">Sin problemas críticos por ahora.</p> : null}
-                  <div className="saved-board-list permissions-preset-list">
-                    {detectedProblems.map((problem) => (
-                      <article key={problem.id} className="surface-card audit-history-card">
-                        <div className="card-header-row">
-                          <strong>{problem.problem}</strong>
-                          <span className={`chip ${problem.impactLevel === "high" ? "danger" : problem.impactLevel === "medium" ? "warning" : "success"}`}>
-                            {problem.impactLevel === "high" ? "Alto" : problem.impactLevel === "medium" ? "Medio" : "Bajo"}
-                          </span>
-                        </div>
-                        <p className="subtle-line">Categoría: {problem.category}</p>
-                        {problem.observations ? <div className="audit-rich-response-display" dangerouslySetInnerHTML={{ __html: formatRichTextToHtml(problem.observations) }} /> : null}
-                      </article>
-                    ))}
-                  </div>
-                </section>
-                    ) : null}
-
-                    {canWorkProposalsStep ? (
-                    <section className="surface-card audit-analysis-card">
-                  <div className="card-header-row">
-                    <div>
-                      <h3>Propuestas de mejora</h3>
-                      <p>Causa raíz, solución y esfuerzo por problema.</p>
-                    </div>
-                    <div className="audit-inline-actions">
-                      <span className="chip">Sin propuesta: {proposalCoverage.withoutProposal}</span>
-                      <button
-                        type="button"
-                        className="icon-button"
-                        onClick={() => {
-                          const firstUnlinked = detectedProblems.find((problem) => !(auditDraft.proposals || []).some((proposal) => proposal.problemId === problem.id));
-                          const nextProposal = buildDefaultProposal(firstUnlinked || {});
-                          setAuditDraft((current) => ({ ...current, proposals: [...(current.proposals || []), nextProposal] }));
-                          setIsAuditDirty(true);
-                        }}
-                        disabled={!canManageAudits}
-                      >
-                        <Plus size={14} /> Agregar propuesta
-                      </button>
-                    </div>
-                  </div>
-                  <div className="saved-board-list permissions-preset-list">
-                    {(auditDraft.proposals || []).map((proposal) => (
-                      <article key={proposal.id} className="surface-card audit-history-card">
-                        <div className="audit-form-grid">
-                          <label className="app-modal-field audit-field-span-2">
-                            <span>Problema asociado</span>
-                            <select
-                              value={proposal.problemId || ""}
-                              onChange={(event) => {
-                                const selected = detectedProblems.find((item) => item.id === event.target.value);
-                                setAuditDraft((current) => ({
-                                  ...current,
-                                  proposals: (current.proposals || []).map((item) => (item.id === proposal.id ? {
-                                    ...item,
-                                    problemId: event.target.value,
-                                    problem: selected?.problem || item.problem || "",
-                                  } : item)),
-                                }));
-                                setIsAuditDirty(true);
-                              }}
-                              disabled={!canManageAudits}
-                            >
-                              <option value="">Sin vínculo</option>
-                              {detectedProblems.map((item) => <option key={item.id} value={item.id}>{item.problem}</option>)}
-                            </select>
-                          </label>
-                          <label className="app-modal-field">
-                            <span>Tipo</span>
-                            <select
-                              value={proposal.type || "improvement"}
-                              onChange={(event) => {
-                                setAuditDraft((current) => ({
-                                  ...current,
-                                  proposals: (current.proposals || []).map((item) => (item.id === proposal.id ? { ...item, type: event.target.value } : item)),
-                                }));
-                                setIsAuditDirty(true);
-                              }}
-                              disabled={!canManageAudits}
-                            >
-                              {PROPOSAL_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                            </select>
-                          </label>
-                          <label className="app-modal-field">
-                            <span>Esfuerzo</span>
-                            <select
-                              value={proposal.effort || "medium"}
-                              onChange={(event) => {
-                                setAuditDraft((current) => ({
-                                  ...current,
-                                  proposals: (current.proposals || []).map((item) => (item.id === proposal.id ? { ...item, effort: event.target.value } : item)),
-                                }));
-                                setIsAuditDirty(true);
-                              }}
-                              disabled={!canManageAudits}
-                            >
-                              {EFFORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                            </select>
-                          </label>
-                          <label className="app-modal-field">
-                            <span>Responsable</span>
-                            <input
-                              type="text"
-                              value={proposal.responsible || ""}
-                              placeholder="Nombre del responsable"
-                              onChange={(event) => {
-                                const nextValue = event.target.value;
-                                setAuditDraft((current) => ({
-                                  ...current,
-                                  proposals: (current.proposals || []).map((item) => (item.id === proposal.id ? { ...item, responsible: nextValue } : item)),
-                                }));
-                                setIsAuditDirty(true);
-                              }}
-                              disabled={!canManageAudits}
-                            />
-                          </label>
-                          <RichTextResponseField
-                            label="Causa raíz"
-                            value={proposal.rootCause || ""}
-                            placeholder="Describe la causa raíz"
-                            canEdit={canManageAudits}
-                            isEditing={Boolean(auditRichEditorState[`proposal-root-${proposal.id}`])}
-                            onChange={(nextValue) => {
-                              setAuditDraft((current) => ({
-                                ...current,
-                                proposals: (current.proposals || []).map((item) => (item.id === proposal.id ? { ...item, rootCause: nextValue } : item)),
-                              }));
-                              setIsAuditDirty(true);
-                            }}
-                            onEdit={() => setAuditRichEditorState((current) => ({ ...current, [`proposal-root-${proposal.id}`]: true }))}
-                            onSave={() => handleSaveActiveTextField(`proposal-root-${proposal.id}`, "Causa raíz guardada.")}
-                          />
-                          <RichTextResponseField
-                            label="Propuesta"
-                            value={proposal.proposal || ""}
-                            placeholder="Describe la mejora/corrección/rediseño"
-                            canEdit={canManageAudits}
-                            isEditing={Boolean(auditRichEditorState[`proposal-body-${proposal.id}`])}
-                            onChange={(nextValue) => {
-                              setAuditDraft((current) => ({
-                                ...current,
-                                proposals: (current.proposals || []).map((item) => (item.id === proposal.id ? { ...item, proposal: nextValue } : item)),
-                              }));
-                              setIsAuditDirty(true);
-                            }}
-                            onEdit={() => setAuditRichEditorState((current) => ({ ...current, [`proposal-body-${proposal.id}`]: true }))}
-                            onSave={() => handleSaveActiveTextField(`proposal-body-${proposal.id}`, "Propuesta guardada.")}
-                          />
-                          <RichTextResponseField
-                            label="Impacto esperado"
-                            value={proposal.expectedImpact || ""}
-                            placeholder="Qué mejora se espera y cómo se medirá"
-                            canEdit={canManageAudits}
-                            isEditing={Boolean(auditRichEditorState[`proposal-impact-${proposal.id}`])}
-                            onChange={(nextValue) => {
-                              setAuditDraft((current) => ({
-                                ...current,
-                                proposals: (current.proposals || []).map((item) => (item.id === proposal.id ? { ...item, expectedImpact: nextValue } : item)),
-                              }));
-                              setIsAuditDirty(true);
-                            }}
-                            onEdit={() => setAuditRichEditorState((current) => ({ ...current, [`proposal-impact-${proposal.id}`]: true }))}
-                            onSave={() => handleSaveActiveTextField(`proposal-impact-${proposal.id}`, "Impacto esperado guardado.")}
-                          />
-                          <button
-                            type="button"
-                            className="icon-button danger"
-                            onClick={() => {
-                              setAuditDraft((current) => ({
-                                ...current,
-                                proposals: (current.proposals || []).filter((item) => item.id !== proposal.id),
-                              }));
-                              setIsAuditDirty(true);
-                            }}
-                            disabled={!canManageAudits}
-                          >
-                            <Trash2 size={14} /> Eliminar propuesta
-                          </button>
-                        </div>
-                      </article>
-                    ))}
-                    {!auditDraft.proposals?.length ? <p className="subtle-line">Aún no hay propuestas registradas.</p> : null}
-                  </div>
-                </section>
-                    ) : null}
-
-                    {canWorkFollowUpStep ? (
-                    <section className="surface-card audit-analysis-card">
-                  <div className="card-header-row">
-                    <div>
-                      <h3>Seguimiento e implementación</h3>
-                      <p>Define el nuevo proceso, responsables e instrucciones.</p>
-                    </div>
-                    {auditDraft.implementationPlan?.deadline ? (
-                      <span className={`chip ${new Date(auditDraft.implementationPlan.deadline) < new Date() && lifecycleStatus !== "closed" ? "danger" : "success"}`}>
-                        Límite: {auditDraft.implementationPlan.deadline}
-                        {new Date(auditDraft.implementationPlan.deadline) < new Date() && lifecycleStatus !== "closed" ? " ⚠ Vencido" : ""}
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="audit-form-grid">
-                    <label className="app-modal-field">
-                      <span>Fecha límite de implementación</span>
-                      <input
-                        type="date"
-                        value={auditDraft.implementationPlan?.deadline || ""}
-                        onChange={(event) => {
-                          const nextValue = event.target.value;
-                          setAuditDraft((current) => ({
-                            ...current,
-                            implementationPlan: { ...(current.implementationPlan || {}), deadline: nextValue },
-                          }));
-                          setIsAuditDirty(true);
-                        }}
-                        disabled={!canManageAudits}
-                      />
-                    </label>
-                    <RichTextResponseField
-                      label="Resumen ejecutivo"
-                      value={auditDraft.executiveSummary || ""}
-                      placeholder="Resumen ejecutivo automático/curado"
-                      canEdit={canManageAudits}
-                      isEditing={Boolean(auditRichEditorState.executiveSummary)}
-                      onChange={(nextValue) => {
-                        setAuditDraft((current) => ({ ...current, executiveSummary: nextValue }));
-                        setIsAuditDirty(true);
-                      }}
-                      onEdit={() => setAuditRichEditorState((current) => ({ ...current, executiveSummary: true }))}
-                      onSave={() => handleSaveActiveTextField("executiveSummary", "Resumen guardado.")}
-                    />
-                    <RichTextResponseField
-                      label="Nuevo proceso definido"
-                      value={auditDraft.implementationPlan?.processDefinition || ""}
-                      placeholder="Describe el proceso objetivo"
-                      canEdit={canManageAudits}
-                      isEditing={Boolean(auditRichEditorState.processDefinition)}
-                      onChange={(nextValue) => {
-                        setAuditDraft((current) => ({
-                          ...current,
-                          implementationPlan: { ...(current.implementationPlan || {}), processDefinition: nextValue },
-                        }));
-                        setIsAuditDirty(true);
-                      }}
-                      onEdit={() => setAuditRichEditorState((current) => ({ ...current, processDefinition: true }))}
-                      onSave={() => handleSaveActiveTextField("processDefinition", "Proceso objetivo guardado.")}
-                    />
-                    <RichTextResponseField
-                      label="Instrucciones de implementación"
-                      value={auditDraft.implementationPlan?.instructions || ""}
-                      placeholder="Pasos claros de ejecución"
-                      canEdit={canManageAudits}
-                      isEditing={Boolean(auditRichEditorState.implementationInstructions)}
-                      onChange={(nextValue) => {
-                        setAuditDraft((current) => ({
-                          ...current,
-                          implementationPlan: { ...(current.implementationPlan || {}), instructions: nextValue },
-                        }));
-                        setIsAuditDirty(true);
-                      }}
-                      onEdit={() => setAuditRichEditorState((current) => ({ ...current, implementationInstructions: true }))}
-                      onSave={() => handleSaveActiveTextField("implementationInstructions", "Instrucciones guardadas.")}
-                    />
-                  </div>
-                </section>
-                    ) : null}
-                  </>
-                ) : null}
-
                 <div className="audit-inline-actions">
                   <button type="button" className="icon-button danger" onClick={() => openDeleteAuditModal(auditDraft)} disabled={!canManageAudits}>Eliminar</button>
-                  <button type="button" className="primary-button" onClick={handleCloseAudit} disabled={!canManageAudits || auditDraft.status === "closed"}>Cerrar</button>
+                  <button type="button" className="primary-button" onClick={handleCloseAudit} disabled={!canManageAudits || auditDraft.status === "closed"}>Cerrar y pasar a Historial</button>
                 </div>
 
                 <input ref={galleryEvidenceInputRef} type="file" accept="image/*,video/*" multiple style={{ display: "none" }} onChange={handleUploadEvidence} disabled={uploadingEvidence || !canManageAudits || auditDraft.status === "closed"} />
@@ -3037,31 +2798,242 @@ export default function AuditoriasProcesosCompact({ contexto }) {
         <article className="surface-card table-card full-width audit-surface-compact">
           <div className="card-header-row">
             <div>
-              <h3>Historial</h3>
-                <p>Solo auditorías cerradas.</p>
+              <h3>Historial de auditorías</h3>
+              <p>Ordenadas por paso pendiente. Expande para continuar el ciclo.</p>
             </div>
           </div>
           <div className="saved-board-list permissions-preset-list">
-              {closedAudits.map((audit) => (
-              <article key={audit.id} className="surface-card audit-history-card">
-                <div className="card-header-row">
-                  <div>
-                    <strong>{audit.area} · {audit.process}</strong>
-                    <p>{audit.auditorName || currentUser?.name || "Sin auditor"}</p>
+            {closedAudits.map((audit) => {
+              const lc = normalizeLifecycleStatus(audit.lifecycleStatus);
+              const isExpanded = historyExpandedId === audit.id;
+              const isCycleDone = lc === "closed";
+              const NEXT_LABELS = { in_review: "Revisar problemas detectados", proposal_sent: "Elaborar propuestas de mejora", accepted: "Planificar implementación", in_implementation: "Seguimiento de implementación", in_validation: "Validar y cerrar ciclo", closed: "Ciclo completo ✓" };
+              const LC_CHIP = { in_review: "danger", proposal_sent: "warning", accepted: "warning", in_implementation: "primary", in_validation: "primary", closed: "success" };
+              const hProblems = isExpanded && historyDraft?.id === audit.id ? buildDetectedProblems(historyDraft.questions || []) : buildDetectedProblems(audit.questions || []);
+              const hLc = isExpanded && historyDraft ? normalizeLifecycleStatus(historyDraft.lifecycleStatus) : lc;
+              const hProposalCoverage = (() => {
+                const src = isExpanded && historyDraft ? historyDraft : audit;
+                const pids = new Set(hProblems.map((p) => p.id));
+                const linked = (src.proposals || []).filter((p) => pids.has(p.problemId));
+                return { withoutProposal: Math.max(0, hProblems.length - linked.length) };
+              })();
+              return (
+                <article key={audit.id} className="surface-card audit-history-card">
+                  <div className="card-header-row">
+                    <div>
+                      <strong>{audit.area} · {audit.process}</strong>
+                      <p className="subtle-line">{audit.subArea || "-"} · {audit.auditorName || currentUser?.name || "Sin auditor"} · {formatDateTime(audit.startedAt)}</p>
+                    </div>
+                    <div className="audit-inline-actions">
+                      <span className={`chip ${LC_CHIP[lc] || "primary"}`}>{PROCESS_AUDIT_STATUS_OPTIONS.find((o) => o.value === lc)?.label || lc}</span>
+                      <button
+                        type="button"
+                        className="icon-button"
+                        onClick={() => {
+                          if (isExpanded) { setHistoryExpandedId(null); }
+                          else {
+                            setHistoryExpandedId(audit.id);
+                            setHistoryActiveTab(isCycleDone ? "problems" : lc === "in_review" ? "problems" : (lc === "proposal_sent" || lc === "accepted") ? "proposals" : "followup");
+                          }
+                        }}
+                      >
+                        {isExpanded ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+                        {isExpanded ? "Contraer" : "Expandir"}
+                      </button>
+                    </div>
                   </div>
-                  <span className={audit.status === "closed" ? "chip success" : "chip warning"}>{audit.status === "closed" ? "Cerrada" : "Abierta"}</span>
-                </div>
-                <p className="subtle-line">Inicio: {formatDateTime(audit.startedAt)}</p>
-                <p className="subtle-line">Subárea: {audit.subArea || "-"}</p>
-                <p className="subtle-line">Duración: {formatDuration(getAuditDurationSeconds(audit))}</p>
-                <p className="subtle-line">Preguntas: {(audit.questions || []).length} · Evidencias: {(audit.evidences || []).length}</p>
-                <div className="audit-inline-actions">
-                  <button type="button" className="icon-button" onClick={() => openAuditViewer(audit)}>Ver</button>
-                  <button type="button" className="icon-button danger" onClick={() => openDeleteAuditModal(audit)} disabled={!canManageAudits}>Eliminar</button>
-                </div>
-              </article>
-            ))}
-            {!closedAudits.length ? <p className="subtle-line">Todavía no hay auditorías cerradas.</p> : null}
+                  {!isExpanded ? (
+                    <p className="subtle-line" style={{ marginTop: "0.2rem", fontStyle: "italic" }}>
+                      {!isCycleDone ? "📌 " : ""}{NEXT_LABELS[lc] || "-"}
+                    </p>
+                  ) : null}
+
+                  {isExpanded && historyDraft?.id === audit.id ? (
+                    <>
+                      <div className="audit-cycle-tabs">
+                        {[
+                          { key: "problems", label: "📋 Problemas", show: true },
+                          { key: "proposals", label: "💡 Propuestas", show: ["proposal_sent","accepted","in_implementation","in_validation","closed"].includes(hLc) },
+                          { key: "followup", label: "🔧 Seguimiento", show: ["in_implementation","in_validation","closed"].includes(hLc) },
+                          { key: "close", label: "✅ Cierre", show: !isCycleDone },
+                        ].filter((t) => t.show).map((t) => (
+                          <button key={t.key} type="button" className={`audit-cycle-tab-btn${historyActiveTab === t.key ? " active" : ""}`} onClick={() => setHistoryActiveTab(t.key)}>
+                            {t.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {historyActiveTab === "problems" ? (
+                        <div className="audit-cycle-tab-content">
+                          <div className="card-header-row" style={{ marginBottom: "0.4rem" }}>
+                            <strong>Problemas detectados</strong>
+                            <span className="chip primary">{hProblems.length}</span>
+                          </div>
+                          {!hProblems.length ? <p className="subtle-line">Sin problemas detectados en esta auditoría.</p> : null}
+                          <div className="saved-board-list permissions-preset-list">
+                            {hProblems.map((problem) => (
+                              <article key={problem.id} className="surface-card audit-history-card">
+                                <div className="card-header-row">
+                                  <strong>{problem.problem}</strong>
+                                  <span className={`chip ${problem.impactLevel === "high" ? "danger" : problem.impactLevel === "medium" ? "warning" : "success"}`}>{problem.impactLevel === "high" ? "Alto" : problem.impactLevel === "medium" ? "Medio" : "Bajo"}</span>
+                                </div>
+                                <p className="subtle-line">Categoría: {problem.category}</p>
+                                {problem.observations ? <p className="subtle-line">{problem.observations}</p> : null}
+                              </article>
+                            ))}
+                          </div>
+                          {!isCycleDone && hLc === "in_review" ? (
+                            <div className="audit-inline-actions" style={{ marginTop: "0.75rem" }}>
+                              <button type="button" className="primary-button" onClick={() => handleHistoryAdvanceStep("proposal_sent")} disabled={!canManageAudits}>Continuar a Propuestas →</button>
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      {historyActiveTab === "proposals" ? (
+                        <div className="audit-cycle-tab-content">
+                          <div className="card-header-row" style={{ marginBottom: "0.4rem" }}>
+                            <strong>Propuestas de mejora</strong>
+                            <div className="audit-inline-actions">
+                              <span className="chip">Sin propuesta: {hProposalCoverage.withoutProposal}</span>
+                              {!isCycleDone ? (
+                                <button type="button" className="icon-button" onClick={() => { const firstUnlinked = hProblems.find((p) => !(historyDraft.proposals || []).some((pr) => pr.problemId === p.id)); setHistoryDraft((c) => ({ ...c, proposals: [...(c.proposals || []), buildDefaultProposal(firstUnlinked || {})] })); setHistoryDirty(true); }} disabled={!canManageAudits}>
+                                  <Plus size={14} /> Agregar
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                          <div className="saved-board-list permissions-preset-list">
+                            {(historyDraft.proposals || []).map((proposal) => (
+                              <article key={proposal.id} className="surface-card audit-history-card">
+                                <div className="audit-form-grid">
+                                  <label className="app-modal-field audit-field-span-2">
+                                    <span>Problema asociado</span>
+                                    <select value={proposal.problemId || ""} onChange={(e) => { setHistoryDraft((c) => ({ ...c, proposals: (c.proposals || []).map((it) => it.id === proposal.id ? { ...it, problemId: e.target.value, problem: hProblems.find((p) => p.id === e.target.value)?.problem || it.problem || "" } : it) })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone}>
+                                      <option value="">Sin vínculo</option>
+                                      {hProblems.map((p) => <option key={p.id} value={p.id}>{p.problem}</option>)}
+                                    </select>
+                                  </label>
+                                  <label className="app-modal-field">
+                                    <span>Tipo</span>
+                                    <select value={proposal.type || "improvement"} onChange={(e) => { setHistoryDraft((c) => ({ ...c, proposals: (c.proposals || []).map((it) => it.id === proposal.id ? { ...it, type: e.target.value } : it) })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone}>
+                                      {PROPOSAL_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                    </select>
+                                  </label>
+                                  <label className="app-modal-field">
+                                    <span>Esfuerzo</span>
+                                    <select value={proposal.effort || "medium"} onChange={(e) => { setHistoryDraft((c) => ({ ...c, proposals: (c.proposals || []).map((it) => it.id === proposal.id ? { ...it, effort: e.target.value } : it) })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone}>
+                                      {EFFORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                    </select>
+                                  </label>
+                                  <label className="app-modal-field">
+                                    <span>Responsable</span>
+                                    <input type="text" value={proposal.responsible || ""} placeholder="Nombre del responsable" onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, proposals: (c.proposals || []).map((it) => it.id === proposal.id ? { ...it, responsible: v } : it) })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone} />
+                                  </label>
+                                  <label className="app-modal-field audit-field-span-2">
+                                    <span>Causa raíz</span>
+                                    <textarea rows={2} value={proposal.rootCause || ""} placeholder="Describe la causa raíz" onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, proposals: (c.proposals || []).map((it) => it.id === proposal.id ? { ...it, rootCause: v } : it) })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone} style={{ resize: "vertical" }} />
+                                  </label>
+                                  <label className="app-modal-field audit-field-span-2">
+                                    <span>Propuesta</span>
+                                    <textarea rows={2} value={proposal.proposal || ""} placeholder="Mejora / corrección / rediseño" onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, proposals: (c.proposals || []).map((it) => it.id === proposal.id ? { ...it, proposal: v } : it) })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone} style={{ resize: "vertical" }} />
+                                  </label>
+                                  <label className="app-modal-field audit-field-span-2">
+                                    <span>Impacto esperado</span>
+                                    <textarea rows={2} value={proposal.expectedImpact || ""} placeholder="Qué mejora se espera y cómo se medirá" onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, proposals: (c.proposals || []).map((it) => it.id === proposal.id ? { ...it, expectedImpact: v } : it) })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone} style={{ resize: "vertical" }} />
+                                  </label>
+                                  {!isCycleDone ? (
+                                    <button type="button" className="icon-button danger" onClick={() => { setHistoryDraft((c) => ({ ...c, proposals: (c.proposals || []).filter((it) => it.id !== proposal.id) })); setHistoryDirty(true); }} disabled={!canManageAudits}>
+                                      <Trash2 size={14} /> Eliminar
+                                    </button>
+                                  ) : null}
+                                </div>
+                              </article>
+                            ))}
+                            {!(historyDraft.proposals || []).length ? <p className="subtle-line">Aún no hay propuestas.</p> : null}
+                          </div>
+                          {!isCycleDone && (hLc === "proposal_sent" || hLc === "accepted") ? (
+                            <div className="audit-inline-actions" style={{ marginTop: "0.75rem" }}>
+                              <button type="button" className="primary-button" onClick={() => handleHistoryAdvanceStep("in_implementation")} disabled={!canManageAudits}>Continuar a Seguimiento →</button>
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      {historyActiveTab === "followup" ? (
+                        <div className="audit-cycle-tab-content">
+                          <div className="card-header-row" style={{ marginBottom: "0.4rem" }}>
+                            <strong>Plan de implementación</strong>
+                            {historyDraft.implementationPlan?.deadline ? (
+                              <span className={`chip ${new Date(historyDraft.implementationPlan.deadline) < new Date() && hLc !== "closed" ? "danger" : "success"}`}>
+                                Límite: {historyDraft.implementationPlan.deadline}{new Date(historyDraft.implementationPlan.deadline) < new Date() && hLc !== "closed" ? " ⚠ Vencido" : ""}
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="audit-form-grid">
+                            <label className="app-modal-field">
+                              <span>Fecha límite</span>
+                              <input type="date" value={historyDraft.implementationPlan?.deadline || ""} onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, implementationPlan: { ...(c.implementationPlan || {}), deadline: v } })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone} />
+                            </label>
+                            <label className="app-modal-field audit-field-span-2">
+                              <span>Resumen ejecutivo</span>
+                              <textarea rows={3} value={historyDraft.executiveSummary || ""} placeholder="Resumen ejecutivo curado" onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, executiveSummary: v })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone} style={{ resize: "vertical" }} />
+                            </label>
+                            <label className="app-modal-field audit-field-span-2">
+                              <span>Nuevo proceso definido</span>
+                              <textarea rows={3} value={historyDraft.implementationPlan?.processDefinition || ""} placeholder="Describe el proceso objetivo" onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, implementationPlan: { ...(c.implementationPlan || {}), processDefinition: v } })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone} style={{ resize: "vertical" }} />
+                            </label>
+                            <label className="app-modal-field audit-field-span-2">
+                              <span>Instrucciones de implementación</span>
+                              <textarea rows={3} value={historyDraft.implementationPlan?.instructions || ""} placeholder="Pasos claros de ejecución" onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, implementationPlan: { ...(c.implementationPlan || {}), instructions: v } })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone} style={{ resize: "vertical" }} />
+                            </label>
+                          </div>
+                          {!isCycleDone && (hLc === "in_implementation" || hLc === "in_validation") ? (
+                            <div className="audit-inline-actions" style={{ marginTop: "0.75rem" }}>
+                              <button type="button" className="primary-button" onClick={() => setHistoryActiveTab("close")} disabled={!canManageAudits}>Ir a Cierre →</button>
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      {historyActiveTab === "close" && !isCycleDone ? (
+                        <div className="audit-cycle-tab-content">
+                          <p className="subtle-line" style={{ marginBottom: "0.75rem" }}>
+                            Confirma que la implementación fue completada y cierra el ciclo de esta auditoría. Esta acción es permanente.
+                          </p>
+                          <div className="audit-inline-actions">
+                            <button type="button" className="primary-button" onClick={() => handleHistoryAdvanceStep("closed")} disabled={!canManageAudits}>
+                              ✅ Cerrar ciclo completo
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      <div className="audit-inline-actions" style={{ marginTop: "0.75rem", borderTop: "1px solid rgba(0,0,0,0.07)", paddingTop: "0.6rem" }}>
+                        {historyDirty && canManageAudits ? (
+                          <button type="button" className="primary-button" onClick={handleSaveHistoryAudit} disabled={historySaving}>
+                            {historySaving ? "Guardando…" : "Guardar cambios"}
+                          </button>
+                        ) : null}
+                        <button type="button" className="icon-button" onClick={() => handleExportAuditPdf(historyDraft)} disabled={isExportingPdf} title="Exportar PDF">
+                          <Upload size={14} /> {isExportingPdf ? "Generando…" : "PDF"}
+                        </button>
+                        <button type="button" className="icon-button" onClick={() => handleExportAuditCopmec(historyDraft)} title="Exportar .cop">
+                          <ExternalLink size={14} /> .cop
+                        </button>
+                        <button type="button" className="icon-button" onClick={() => openAuditViewer(audit)}>
+                          <Eye size={14} /> Detalle
+                        </button>
+                        <button type="button" className="icon-button danger" onClick={() => openDeleteAuditModal(audit)} disabled={!canManageAudits}>
+                          <Trash2 size={14} /> Eliminar
+                        </button>
+                      </div>
+                    </>
+                  ) : null}
+                </article>
+              );
+            })}
+            {!closedAudits.length ? <p className="subtle-line">No hay auditorías cerradas todavía.</p> : null}
           </div>
         </article>
       ) : null}

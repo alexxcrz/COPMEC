@@ -1,5 +1,5 @@
 {
-  "revision": 2880,
+  "revision": 2881,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro",
@@ -11875,7 +11875,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-05-01T19:27:27.251Z",
+  "updatedAt": "2026-05-01T19:35:24.253Z",
   "permissions": {
     "pages": {
       "index": {
@@ -14381,7 +14381,7 @@
       "process": "Almacén",
       "templateId": null,
       "status": "closed",
-      "lifecycleStatus": "closed",
+      "lifecycleStatus": "in_review",
       "startedAt": "2026-05-01T19:27:27.181Z",
       "closedAt": "2026-05-01T19:27:27.242Z",
       "reAuditAt": "",
@@ -14478,33 +14478,33 @@
       "executiveSummary": "Auditoría de ejemplo completa: se identificaron 3 desviaciones, se asignaron propuestas y seguimiento, y se cerró el ciclo.",
       "detectedProblems": [
         {
-          "id": "paproblem-5177e9d6a524",
+          "id": "paproblem-e0501c00ca3e",
           "questionId": "paq-097b66e7594b",
           "category": "Ejecución",
           "impactLevel": "high",
           "problem": "¿Cumple con el estándar definido?",
           "observations": "El operador omitió validación del checklist estándar.",
-          "createdAt": "2026-05-01T19:27:27.241Z",
+          "createdAt": "2026-05-01T19:35:24.242Z",
           "status": "open"
         },
         {
-          "id": "paproblem-b8326b869db3",
+          "id": "paproblem-ca6bef53f300",
           "questionId": "paq-cfbfb2a0507b",
           "category": "Control",
           "impactLevel": "medium",
           "problem": "¿Se valida evidencia antes del cierre del paso?",
           "observations": "Se cerró el paso sin adjuntar evidencia completa.",
-          "createdAt": "2026-05-01T19:27:27.241Z",
+          "createdAt": "2026-05-01T19:35:24.242Z",
           "status": "open"
         },
         {
-          "id": "paproblem-19887b4bf304",
+          "id": "paproblem-fff430506c16",
           "questionId": "paq-9408363efc75",
           "category": "Hallazgo",
           "impactLevel": "medium",
           "problem": "¿Cuál fue la principal desviación detectada?",
           "observations": "Falta compuerta de control en cierre.",
-          "createdAt": "2026-05-01T19:27:27.241Z",
+          "createdAt": "2026-05-01T19:35:24.242Z",
           "status": "open"
         }
       ],
@@ -14523,7 +14523,7 @@
           "ownerName": "Líder de almacén",
           "evidences": [],
           "createdAt": "2026-05-01T19:27:27.242Z",
-          "updatedAt": "2026-05-01T19:27:27.254Z"
+          "updatedAt": "2026-05-01T19:35:24.256Z"
         },
         {
           "id": "papr-3fc781cb7acb",
@@ -14539,7 +14539,7 @@
           "ownerName": "Supervisor de turno",
           "evidences": [],
           "createdAt": "2026-05-01T19:27:27.242Z",
-          "updatedAt": "2026-05-01T19:27:27.254Z"
+          "updatedAt": "2026-05-01T19:35:24.256Z"
         }
       ],
       "followUp": [
@@ -14550,7 +14550,7 @@
           "evidences": [],
           "dueDate": "",
           "createdAt": "2026-05-01T19:27:27.242Z",
-          "updatedAt": "2026-05-01T19:27:27.254Z"
+          "updatedAt": "2026-05-01T19:35:24.256Z"
         },
         {
           "id": "pafu-53fc6ff1a23d",
@@ -14559,7 +14559,7 @@
           "evidences": [],
           "dueDate": "",
           "createdAt": "2026-05-01T19:27:27.242Z",
-          "updatedAt": "2026-05-01T19:27:27.254Z"
+          "updatedAt": "2026-05-01T19:35:24.256Z"
         }
       ],
       "implementationPlan": {
@@ -14647,7 +14647,7 @@
           "scorePercent": 25
         }
       },
-      "updatedAt": "2026-05-01T19:27:27.242Z"
+      "updatedAt": "2026-05-01T19:35:24.242Z"
     },
     {
       "id": "auditp-a3b10e247eca",
@@ -14819,7 +14819,7 @@
           "ownerName": "Lider Operativo",
           "evidences": [],
           "createdAt": "2026-05-01T18:57:19.677Z",
-          "updatedAt": "2026-05-01T19:27:27.255Z"
+          "updatedAt": "2026-05-01T19:35:24.256Z"
         },
         {
           "id": "papr-d91c3ac08470",
@@ -14835,7 +14835,7 @@
           "ownerName": "Supervisor Calidad",
           "evidences": [],
           "createdAt": "2026-05-01T18:57:19.677Z",
-          "updatedAt": "2026-05-01T19:27:27.255Z"
+          "updatedAt": "2026-05-01T19:35:24.256Z"
         }
       ],
       "followUp": [
@@ -14846,7 +14846,7 @@
           "evidences": [],
           "dueDate": "",
           "createdAt": "2026-05-01T18:57:19.677Z",
-          "updatedAt": "2026-05-01T19:27:27.255Z"
+          "updatedAt": "2026-05-01T19:35:24.256Z"
         },
         {
           "id": "pafu-61b398c13c2b",
@@ -14855,7 +14855,7 @@
           "evidences": [],
           "dueDate": "",
           "createdAt": "2026-05-01T18:57:19.677Z",
-          "updatedAt": "2026-05-01T19:27:27.255Z"
+          "updatedAt": "2026-05-01T19:35:24.256Z"
         }
       ],
       "implementationPlan": {

@@ -1,5 +1,5 @@
 {
-  "revision": 2881,
+  "revision": 2882,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro",
@@ -11875,7 +11875,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-05-01T19:35:24.253Z",
+  "updatedAt": "2026-05-01T19:49:36.327Z",
   "permissions": {
     "pages": {
       "index": {
@@ -14523,7 +14523,7 @@
           "ownerName": "Líder de almacén",
           "evidences": [],
           "createdAt": "2026-05-01T19:27:27.242Z",
-          "updatedAt": "2026-05-01T19:35:24.256Z"
+          "updatedAt": "2026-05-01T19:49:36.351Z"
         },
         {
           "id": "papr-3fc781cb7acb",
@@ -14539,7 +14539,7 @@
           "ownerName": "Supervisor de turno",
           "evidences": [],
           "createdAt": "2026-05-01T19:27:27.242Z",
-          "updatedAt": "2026-05-01T19:35:24.256Z"
+          "updatedAt": "2026-05-01T19:49:36.351Z"
         }
       ],
       "followUp": [
@@ -14550,7 +14550,7 @@
           "evidences": [],
           "dueDate": "",
           "createdAt": "2026-05-01T19:27:27.242Z",
-          "updatedAt": "2026-05-01T19:35:24.256Z"
+          "updatedAt": "2026-05-01T19:49:36.351Z"
         },
         {
           "id": "pafu-53fc6ff1a23d",
@@ -14559,7 +14559,7 @@
           "evidences": [],
           "dueDate": "",
           "createdAt": "2026-05-01T19:27:27.242Z",
-          "updatedAt": "2026-05-01T19:35:24.256Z"
+          "updatedAt": "2026-05-01T19:49:36.351Z"
         }
       ],
       "implementationPlan": {
@@ -14655,10 +14655,10 @@
       "subArea": "PRUEBA PRO 2026-05-01",
       "process": "Trazabilidad",
       "templateId": null,
-      "status": "open",
-      "lifecycleStatus": "in_implementation",
+      "status": "closed",
+      "lifecycleStatus": "in_review",
       "startedAt": "2026-05-01T18:57:19.630Z",
-      "closedAt": null,
+      "closedAt": "2026-05-01T19:49:36.312Z",
       "reAuditAt": "",
       "auditorId": "usr-lead-nu7wt83h",
       "auditorName": "Alejandro Cruz Martinez",
@@ -14774,33 +14774,33 @@
       "executiveSummary": "Auditoría pro: 2 hallazgos críticos, 1 riesgo medio. Se aprueba plan correctivo con seguimiento semanal.",
       "detectedProblems": [
         {
-          "id": "paproblem-46858821cc5f",
+          "id": "paproblem-9cd2aec57a44",
           "questionId": "paq-0533ca95131f",
           "category": "Control",
           "impactLevel": "high",
           "problem": "¿Se rastrea lote completo sin huecos?",
           "observations": "No se registró cambio de lote en traspaso nocturno.",
-          "createdAt": "2026-05-01T18:57:19.676Z",
+          "createdAt": "2026-05-01T19:49:36.312Z",
           "status": "open"
         },
         {
-          "id": "paproblem-9f4b8014a931",
+          "id": "paproblem-1434368c58e5",
           "questionId": "paq-b21532345361",
           "category": "Control",
           "impactLevel": "high",
           "problem": "¿Se bloquea liberación cuando falta evidencia?",
           "observations": "Se liberó embarque sin evidencia fotográfica firmada.",
-          "createdAt": "2026-05-01T18:57:19.676Z",
+          "createdAt": "2026-05-01T19:49:36.312Z",
           "status": "open"
         },
         {
-          "id": "paproblem-3d78b790fbf7",
+          "id": "paproblem-131bc45c443e",
           "questionId": "paq-d2f5bd85219b",
           "category": "Mejora",
           "impactLevel": "medium",
           "problem": "¿Qué causa raíz explica la desviación más crítica?",
           "observations": "Definir control de cierre obligatorio.",
-          "createdAt": "2026-05-01T18:57:19.676Z",
+          "createdAt": "2026-05-01T19:49:36.312Z",
           "status": "open"
         }
       ],
@@ -14819,7 +14819,7 @@
           "ownerName": "Lider Operativo",
           "evidences": [],
           "createdAt": "2026-05-01T18:57:19.677Z",
-          "updatedAt": "2026-05-01T19:35:24.256Z"
+          "updatedAt": "2026-05-01T19:49:36.351Z"
         },
         {
           "id": "papr-d91c3ac08470",
@@ -14835,7 +14835,7 @@
           "ownerName": "Supervisor Calidad",
           "evidences": [],
           "createdAt": "2026-05-01T18:57:19.677Z",
-          "updatedAt": "2026-05-01T19:35:24.256Z"
+          "updatedAt": "2026-05-01T19:49:36.351Z"
         }
       ],
       "followUp": [
@@ -14846,7 +14846,7 @@
           "evidences": [],
           "dueDate": "",
           "createdAt": "2026-05-01T18:57:19.677Z",
-          "updatedAt": "2026-05-01T19:35:24.256Z"
+          "updatedAt": "2026-05-01T19:49:36.351Z"
         },
         {
           "id": "pafu-61b398c13c2b",
@@ -14855,7 +14855,7 @@
           "evidences": [],
           "dueDate": "",
           "createdAt": "2026-05-01T18:57:19.677Z",
-          "updatedAt": "2026-05-01T19:35:24.256Z"
+          "updatedAt": "2026-05-01T19:49:36.351Z"
         }
       ],
       "implementationPlan": {
@@ -14952,7 +14952,7 @@
           "scorePercent": 40
         }
       },
-      "updatedAt": "2026-05-01T18:57:19.677Z"
+      "updatedAt": "2026-05-01T19:49:36.312Z"
     },
     {
       "id": "auditp-cbf5656d6735",
