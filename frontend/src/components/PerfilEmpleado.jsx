@@ -75,7 +75,7 @@ function normalizeCopmecHistoryFiles(entries) {
   return entries
     .map((entry, index) => ({
       id: String(entry?.id || `copmec-${index + 1}`).trim(),
-      fileName: String(entry?.fileName || "archivo.copmec").trim() || "archivo.copmec",
+      fileName: String(entry?.fileName || "archivo.cop").trim() || "archivo.cop",
       importedAt: String(entry?.importedAt || new Date().toISOString()).trim() || new Date().toISOString(),
       periodLabel: String(entry?.periodLabel || "Periodo").trim() || "Periodo",
       records: Math.max(0, Number(entry?.records || 0)),
@@ -86,7 +86,7 @@ function normalizeCopmecHistoryFiles(entries) {
 }
 
 function buildProfileCopmecHistoryEntry({ packageText, payload, fileName }) {
-  const safeFileName = String(fileName || "historial.copmec").trim() || "historial.copmec";
+  const safeFileName = String(fileName || "historial.cop").trim() || "historial.cop";
   return {
     id: `copmec-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
     fileName: safeFileName,
@@ -222,7 +222,7 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
   async function exportCopmecPayloadToPdf(payload, fileBaseName = "historial_copmec") {
     const rows = Array.isArray(payload?.rows) ? payload.rows : [];
     if (!rows.length) {
-      setMessage("El archivo .copmec no contiene filas para exportar.");
+      setMessage("El archivo .cop no contiene filas para exportar.");
       return;
     }
     try {
@@ -276,13 +276,13 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
       setCopmecPreview({
         payload,
         packageText,
-        fileName: String(file.name || "historial.copmec"),
+        fileName: String(file.name || "historial.cop"),
         source: "upload",
       });
       setCopmecDecisionOpen(false);
-      setMessage("Archivo .copmec cargado. Revisa el contenido antes de decidir si guardarlo.");
+      setMessage("Archivo .cop cargado. Revisa el contenido antes de decidir si guardarlo.");
     } catch (error) {
-      setMessage(error?.message || "No se pudo abrir el archivo .copmec.");
+      setMessage(error?.message || "No se pudo abrir el archivo .cop.");
     }
   }
 
@@ -322,7 +322,7 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
       fileName: copmecPreview.fileName,
     });
     const nextFiles = [newEntry].concat(savedCopmecFiles).slice(0, MAX_PROFILE_COPMEC_FILES);
-    const ok = await persistCopmecFiles(nextFiles, "Archivo .copmec guardado en tu perfil.");
+    const ok = await persistCopmecFiles(nextFiles, "Archivo .cop guardado en tu perfil.");
     if (ok) {
       setCopmecDecisionOpen(false);
       setCopmecPreview(null);
@@ -409,7 +409,7 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
             className={`ep-btn ${activeTab === "copmec" ? "ep-btn--primary" : "ep-btn--ghost"}`}
             onClick={() => setActiveTab("copmec")}
           >
-            Archivos .copmec ({savedCopmecFiles.length})
+            Archivos .cop ({savedCopmecFiles.length})
           </button>
         </div>
 
@@ -509,16 +509,16 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
 
         {activeTab === "copmec" && (
         <div className="ep-section">
-          <div className="ep-section__title">Archivos COPMEC (.copmec)</div>
+          <div className="ep-section__title">Archivos COPMEC (.cop)</div>
           <div className="ep-grid ep-grid--1">
             <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
               <button type="button" className="ep-btn ep-btn--primary" onClick={() => copmecFileInputRef.current?.click()}>
-                Abrir .copmec
+                Abrir .cop
               </button>
               <input
                 ref={copmecFileInputRef}
                 type="file"
-                accept=".copmec"
+                accept=".cop"
                 style={{ display: "none" }}
                 onChange={(event) => { void handleCopmecImportChange(event); }}
               />
@@ -549,9 +549,9 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
                               Ver
                             </button>
                             <button type="button" className="ep-btn ep-btn--ghost" onClick={() => triggerCopmecDownload(entry.packageText, entry.fileName)}>
-                              .copmec
+                              .cop
                             </button>
-                            <button type="button" className="ep-btn ep-btn--ghost" onClick={() => { void parseEncryptedCopmecHistoryPackage(entry.packageText).then((payload) => exportCopmecPayloadToPdf(payload, entry.fileName.replace(/\.copmec$/i, ""))); }}>
+                            <button type="button" className="ep-btn ep-btn--ghost" onClick={() => { void parseEncryptedCopmecHistoryPackage(entry.packageText).then((payload) => exportCopmecPayloadToPdf(payload, entry.fileName.replace(/\.cop$/i, ""))); }}>
                               PDF
                             </button>
                             <button type="button" className="ep-btn ep-btn--danger" onClick={() => requestRemoveSavedCopmecFile(entry)} disabled={copmecSaving}>
