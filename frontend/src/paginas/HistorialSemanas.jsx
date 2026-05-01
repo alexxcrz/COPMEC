@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { isBoardActivityListField } from "../utils/utilidades.jsx";
+
+const COPMEC_HISTORY_PACKAGE_HEADER = "COPMEC::HISTORY::V1";
+const COPMEC_HISTORY_PACKAGE_SECRET = "COPMEC_HISTORY_PACKAGE_APP_LOCK_V1";
 
 function toDateParts(value) {
   const date = new Date(value || "");
@@ -29,6 +33,157 @@ function getBoardRowHistoryDateValue(snapshot, row) {
     return /^\d{4}-\d{2}-\d{2}$/.test(fieldValue) ? `${fieldValue}T00:00:00` : fieldValue;
   }
   return row?.endTime || row?.startTime || row?.createdAt || snapshot?.endDate || snapshot?.startDate;
+}
+
+function toDayStart(dateValue) {
+  const next = new Date(dateValue || "");
+  if (Number.isNaN(next.getTime())) return null;
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function toDayEnd(dateValue) {
+  const next = new Date(dateValue || "");
+  if (Number.isNaN(next.getTime())) return null;
+  next.setHours(23, 59, 59, 999);
+  return next;
+}
+
+function toIsoDate(value) {
+  const date = new Date(value || "");
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function getHistoryExportWindow(week, activities, periodType) {
+  const fallbackDateValue = activities[0]?.activityDate || new Date().toISOString();
+  const baseDate = new Date(week?.startDate || week?.endDate || fallbackDateValue);
+  if (Number.isNaN(baseDate.getTime())) return null;
+
+  if (periodType === "week") {
+    const start = toDayStart(week?.startDate || baseDate);
+    const end = toDayEnd(week?.endDate || week?.startDate || baseDate);
+    if (!start || !end) return null;
+    return {
+      periodType,
+      label: week?.name || `Semana ${toIsoDate(start)}`,
+      start,
+      end,
+      fileSuffix: `semana_${toIsoDate(start)}`,
+    };
+  }
+
+  if (periodType === "quincena") {
+    const day = baseDate.getDate();
+    const year = baseDate.getFullYear();
+    const month = baseDate.getMonth();
+    const firstHalf = day <= 15;
+    const start = toDayStart(new Date(year, month, firstHalf ? 1 : 16));
+    const end = toDayEnd(new Date(year, month, firstHalf ? 15 : new Date(year, month + 1, 0).getDate()));
+    if (!start || !end) return null;
+    const halfLabel = firstHalf ? "1ra quincena" : "2da quincena";
+    return {
+      periodType,
+      label: `${halfLabel} ${start.toLocaleDateString("es-MX", { month: "long", year: "numeric" })}`,
+      start,
+      end,
+      fileSuffix: `quincena_${firstHalf ? "1" : "2"}_${toIsoDate(start)}`,
+    };
+  }
+
+  const start = toDayStart(new Date(baseDate.getFullYear(), baseDate.getMonth(), 1));
+  const end = toDayEnd(new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0));
+  if (!start || !end) return null;
+  return {
+    periodType: "month",
+    label: start.toLocaleDateString("es-MX", { month: "long", year: "numeric" }),
+    start,
+    end,
+    fileSuffix: `mes_${toIsoDate(start)}`,
+  };
+}
+
+function sanitizeFileNamePart(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80);
+}
+
+function uint8ToBase64(bytes) {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    const chunk = bytes.subarray(index, index + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
+async function deriveCopmecHistoryCryptoKey(saltBytes) {
+  const encoder = new TextEncoder();
+  const secretBytes = encoder.encode(COPMEC_HISTORY_PACKAGE_SECRET);
+  const baseKey = await crypto.subtle.importKey("raw", secretBytes, "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: saltBytes,
+      iterations: 120000,
+      hash: "SHA-256",
+    },
+    baseKey,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"],
+  );
+}
+
+async function buildEncryptedCopmecHistoryPackage(payload) {
+  const encoder = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveCopmecHistoryCryptoKey(salt);
+  const payloadBytes = encoder.encode(JSON.stringify(payload));
+  const encryptedBuffer = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, payloadBytes);
+  const encryptedBytes = new Uint8Array(encryptedBuffer);
+  const envelope = {
+    version: 1,
+    salt: uint8ToBase64(salt),
+    iv: uint8ToBase64(iv),
+    data: uint8ToBase64(encryptedBytes),
+  };
+  return `${COPMEC_HISTORY_PACKAGE_HEADER}\n${JSON.stringify(envelope)}`;
+}
+
+function resolveBoardRowHistoryActivityValue(snapshot, row) {
+  const fields = Array.isArray(snapshot?.fields) ? snapshot.fields : [];
+  const rowValues = row?.values && typeof row.values === "object" ? row.values : {};
+
+  const activityListField = fields.find((field) => isBoardActivityListField(field));
+  if (activityListField?.id) {
+    const rawActivityValue = String(rowValues?.[activityListField.id] || "").trim();
+    if (rawActivityValue) return rawActivityValue;
+  }
+
+  const namedActivityField = fields.find((field) => String(field?.label || "").trim().toLowerCase().includes("actividad"));
+  if (namedActivityField?.id) {
+    const namedActivityValue = String(rowValues?.[namedActivityField.id] || "").trim();
+    if (namedActivityValue) return namedActivityValue;
+  }
+
+  const preferredField = fields.find((field) => {
+    const fieldType = String(field?.type || "").trim().toLowerCase();
+    if (["date", "time", "duration", "status", "formula"].includes(fieldType)) return false;
+    return String(rowValues?.[field?.id] || "").trim();
+  });
+  if (preferredField?.id) {
+    const preferredValue = String(rowValues?.[preferredField.id] || "").trim();
+    if (preferredValue) return preferredValue;
+  }
+
+  return String(Object.values(rowValues).find((value) => String(value || "").trim()) || "").trim();
 }
 
 function buildFallbackWeekReportSections(week) {
@@ -188,12 +343,14 @@ export default function HistorialSemanas({ contexto }) {
   } = contexto;
 
   const [deleteWeekModal, setDeleteWeekModal] = useState({ open: false, weekId: "", weekName: "", isSubmitting: false });
-  const [selectedAreaTab, setSelectedAreaTab] = useState("all");
-  const [selectedBoardTab, setSelectedBoardTab] = useState("all");
+  const [selectedAreaTab, setSelectedAreaTab] = useState("");
+  const [selectedBoardTab, setSelectedBoardTab] = useState("");
   const [selectedPlayerTab, setSelectedPlayerTab] = useState("all");
   const [selectedYearFilter, setSelectedYearFilter] = useState("all");
   const [selectedMonthFilter, setSelectedMonthFilter] = useState("all");
   const [selectedDayFilter, setSelectedDayFilter] = useState("all");
+  const [historyExportPeriod, setHistoryExportPeriod] = useState("week");
+  const [isExportingHistoryPdf, setIsExportingHistoryPdf] = useState(false);
   const [fallbackHistoryWeekId, setFallbackHistoryWeekId] = useState("");
   const [openReportMonth, setOpenReportMonth] = useState("");
   const [openReportYear, setOpenReportYear] = useState("");
@@ -374,7 +531,7 @@ export default function HistorialSemanas({ contexto }) {
             ? activityDate.toLocaleDateString("es-MX", { weekday: "long" })
             : "Sin dia";
           const normalizedDayLabel = dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1);
-          const rowValueText = Object.values(row?.values || {}).find((value) => String(value || "").trim()) || "";
+          const rowValueText = resolveBoardRowHistoryActivityValue(snapshot, row);
 
           return {
             id: `${snapshot.id}-${row.id}`,
@@ -451,7 +608,7 @@ export default function HistorialSemanas({ contexto }) {
   }, [historyActivities, state.areaCatalog]);
 
   const areaScopedActivities = useMemo(() => {
-    if (selectedAreaTab === "all") return historyActivities;
+    if (!selectedAreaTab) return [];
     return historyActivities.filter((activity) => activity.areaRoot === selectedAreaTab);
   }, [historyActivities, selectedAreaTab]);
 
@@ -467,7 +624,7 @@ export default function HistorialSemanas({ contexto }) {
   }, [areaScopedActivities]);
 
   const boardScopedActivities = useMemo(() => {
-    if (selectedBoardTab === "all") return areaScopedActivities;
+    if (!selectedBoardTab) return [];
     return areaScopedActivities.filter((activity) => String(activity.boardName || "") === selectedBoardTab);
   }, [areaScopedActivities, selectedBoardTab]);
 
@@ -541,6 +698,28 @@ export default function HistorialSemanas({ contexto }) {
         return String(left.boardName || "").localeCompare(String(right.boardName || ""), "es-MX");
       });
   }, [playerScopedActivities, selectedDayFilter, selectedMonthFilter, selectedYearFilter]);
+
+  const exportWindow = useMemo(() => {
+    return getHistoryExportWindow(effectiveHistoryWeek, playerScopedActivities, historyExportPeriod);
+  }, [effectiveHistoryWeek, historyExportPeriod, playerScopedActivities]);
+
+  const exportableHistoryActivities = useMemo(() => {
+    if (!exportWindow) return [];
+    const startMs = exportWindow.start.getTime();
+    const endMs = exportWindow.end.getTime();
+    return [...playerScopedActivities]
+      .filter((activity) => {
+        const activityMs = new Date(activity.activityDate || "").getTime();
+        if (!Number.isFinite(activityMs)) return false;
+        return activityMs >= startMs && activityMs <= endMs;
+      })
+      .sort((left, right) => {
+        const leftMs = new Date(left.activityDate || "").getTime();
+        const rightMs = new Date(right.activityDate || "").getTime();
+        if (leftMs !== rightMs) return leftMs - rightMs;
+        return String(left.boardName || "").localeCompare(String(right.boardName || ""), "es-MX");
+      });
+  }, [exportWindow, playerScopedActivities]);
 
   const reportYearSections = useMemo(() => {
     const grouped = new Map();
@@ -685,6 +864,119 @@ export default function HistorialSemanas({ contexto }) {
 
   const canEditHistoricalWeekActivities = !useBoardHistoryFallback && Boolean(actionPermissions.manageWeeks || actionPermissions.deleteWeekActivity);
 
+  function getHistoryExportRows(activities) {
+    return activities.map((activity) => ({
+      area: activity.areaRoot,
+      tablero: activity.boardName || "General",
+      actividad: resolveHistoryActivityLabel(activity),
+      player: resolveHistoryPlayerLabel(activity),
+      estado: String(activity.status || ""),
+      fecha: formatDate(activity.activityDate),
+      inicio: formatTime(activity.startTime),
+      fin: formatTime(activity.endTime),
+      tiempo: formatDurationClock(activity.accumulatedSeconds),
+      segundos: Number(activity.accumulatedSeconds || 0),
+    }));
+  }
+
+  async function downloadHistoryPackageFile() {
+    if (!exportWindow) {
+      pushAppToast("No hay rango de exportación válido.", "danger");
+      return;
+    }
+    const rows = getHistoryExportRows(exportableHistoryActivities);
+    const payload = {
+      format: "COPMEC_HISTORY_V1",
+      generatedAt: new Date().toISOString(),
+      period: {
+        type: exportWindow.periodType,
+        label: exportWindow.label,
+        startDate: exportWindow.start.toISOString(),
+        endDate: exportWindow.end.toISOString(),
+        weekId: effectiveHistoryWeek?.id || "",
+      },
+      filters: {
+        area: selectedAreaTab,
+        board: selectedBoardTab,
+        player: selectedPlayerTab,
+      },
+      summary: {
+        records: rows.length,
+        completed: exportableHistoryActivities.filter((activity) => activity.status === STATUS_FINISHED).length,
+        totalSeconds: exportableHistoryActivities.reduce((sum, activity) => sum + Number(activity.accumulatedSeconds || 0), 0),
+      },
+      rows,
+    };
+
+    try {
+      const encryptedContent = await buildEncryptedCopmecHistoryPackage(payload);
+      const fileSuffix = sanitizeFileNamePart(exportWindow.fileSuffix || "historial");
+      const fileName = `copmec_historial_${fileSuffix || "export"}.copmec`;
+      const blob = new Blob([encryptedContent], { type: "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+      pushAppToast(`Se descargó ${fileName}.`, "success");
+    } catch (error) {
+      pushAppToast(error?.message || "No se pudo generar el archivo .copmec.", "danger");
+    }
+  }
+
+  async function exportHistoryToPdf() {
+    if (isExportingHistoryPdf) return;
+    if (!exportWindow) {
+      pushAppToast("No hay rango de exportación válido.", "danger");
+      return;
+    }
+    try {
+      setIsExportingHistoryPdf(true);
+      const [{ jsPDF }, autoTableModule] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
+      const autoTable = autoTableModule.default || autoTableModule.autoTable;
+      const pdf = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+
+      pdf.setFontSize(14);
+      pdf.text("Historial operativo COPMEC", 36, 40);
+      pdf.setFontSize(10);
+      pdf.text(`Periodo: ${exportWindow.label}`, 36, 58);
+      pdf.text(`Area: ${selectedAreaTab || "-"} | Tablero: ${selectedBoardTab || "-"} | Player: ${selectedPlayerTab === "all" ? "Todos" : (playerTabs.find((tab) => tab.value === selectedPlayerTab)?.label || selectedPlayerTab)}`, 36, 74);
+      pdf.text(`Generado: ${new Date().toLocaleString("es-MX")}`, 36, 90);
+
+      const body = getHistoryExportRows(exportableHistoryActivities).map((row) => [
+        row.area,
+        row.tablero,
+        row.actividad,
+        row.player,
+        row.estado,
+        row.fecha,
+        row.inicio,
+        row.fin,
+        row.tiempo,
+      ]);
+
+      autoTable(pdf, {
+        startY: 104,
+        head: [["Area", "Tablero", "Actividad", "Player", "Estado", "Fecha", "Inicio", "Fin", "Tiempo"]],
+        body,
+        styles: { fontSize: 8, cellPadding: 4 },
+        headStyles: { fillColor: [3, 33, 33], textColor: [255, 255, 255] },
+        theme: "grid",
+      });
+
+      const fileSuffix = sanitizeFileNamePart(exportWindow.fileSuffix || "historial");
+      pdf.save(`copmec_historial_${fileSuffix || "export"}.pdf`);
+      pushAppToast("PDF de historial exportado correctamente.", "success");
+    } catch (error) {
+      pushAppToast(error?.message || "No se pudo exportar el historial a PDF.", "danger");
+    } finally {
+      setIsExportingHistoryPdf(false);
+    }
+  }
+
   const confirmDeleteWeek = useCallback(async () => {
     if (!deleteWeekModal.weekId || deleteWeekModal.isSubmitting) return;
     setDeleteWeekModal((current) => ({ ...current, isSubmitting: true }));
@@ -699,8 +991,8 @@ export default function HistorialSemanas({ contexto }) {
   }, [deleteWeek, deleteWeekModal.isSubmitting, deleteWeekModal.weekId, deleteWeekModal.weekName, pushAppToast]);
 
   useEffect(() => {
-    setSelectedAreaTab("all");
-    setSelectedBoardTab("all");
+    setSelectedAreaTab("");
+    setSelectedBoardTab("");
     setSelectedPlayerTab("all");
     setSelectedYearFilter("all");
     setSelectedMonthFilter("all");
@@ -729,14 +1021,17 @@ export default function HistorialSemanas({ contexto }) {
   }, [activeReportYear, reportYearSections]);
 
   useEffect(() => {
-    if (selectedAreaTab === "all") return;
-    if (!areaTabs.some((tab) => tab.value === selectedAreaTab)) {
-      setSelectedAreaTab("all");
+    if (!areaTabs.length) {
+      if (selectedAreaTab) setSelectedAreaTab("");
+      return;
+    }
+    if (!selectedAreaTab || !areaTabs.some((tab) => tab.value === selectedAreaTab)) {
+      setSelectedAreaTab(areaTabs[0].value);
     }
   }, [areaTabs, selectedAreaTab]);
 
   useEffect(() => {
-    setSelectedBoardTab("all");
+    setSelectedBoardTab("");
     setSelectedPlayerTab("all");
   }, [selectedAreaTab]);
 
@@ -745,9 +1040,12 @@ export default function HistorialSemanas({ contexto }) {
   }, [selectedBoardTab]);
 
   useEffect(() => {
-    if (selectedBoardTab === "all") return;
-    if (!boardTabs.some((tab) => tab.value === selectedBoardTab)) {
-      setSelectedBoardTab("all");
+    if (!boardTabs.length) {
+      if (selectedBoardTab) setSelectedBoardTab("");
+      return;
+    }
+    if (!selectedBoardTab || !boardTabs.some((tab) => tab.value === selectedBoardTab)) {
+      setSelectedBoardTab(boardTabs[0].value);
     }
   }, [boardTabs, selectedBoardTab]);
 
@@ -821,24 +1119,45 @@ export default function HistorialSemanas({ contexto }) {
             <h3>Historial por mes</h3>
             <p>Abre un mes y revisa una sola semana a la vez con flechas para avanzar o retroceder.</p>
           </div>
-          {effectiveHistoryWeek && canEditHistoricalWeekActivities ? (
-            <button type="button" className="icon-button" onClick={() => setEditWeekId(effectiveHistoryWeek.id)}>
-              Editar actividades
+          <div style={{ display: "flex", gap: "0.45rem", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <label className="board-top-select" style={{ minWidth: 180 }}>
+              <span>Descargar</span>
+              <select value={historyExportPeriod} onChange={(event) => setHistoryExportPeriod(event.target.value)}>
+                <option value="week">Semana</option>
+                <option value="quincena">Quincena</option>
+                <option value="month">Mes</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={() => { void exportHistoryToPdf(); }}
+              disabled={!exportableHistoryActivities.length || isExportingHistoryPdf}
+              title={isExportingHistoryPdf ? "Exportando PDF" : "Exportar a PDF"}
+            >
+              {isExportingHistoryPdf ? "Exportando PDF..." : "Exportar PDF"}
             </button>
-          ) : null}
+            <button
+              type="button"
+              className="icon-button"
+              onClick={() => { void downloadHistoryPackageFile(); }}
+              disabled={!exportableHistoryActivities.length}
+              title="Descargar formato unico COPMEC (.copmec)"
+            >
+              Descargar .copmec
+            </button>
+            {effectiveHistoryWeek && canEditHistoricalWeekActivities ? (
+              <button type="button" className="icon-button" onClick={() => setEditWeekId(effectiveHistoryWeek.id)}>
+                Editar actividades
+              </button>
+            ) : null}
+          </div>
         </div>
 
         {effectiveHistoryWeek ? (
           <>
             <div style={{ display: "grid", gap: "0.75rem" }}>
               <div className="history-area-tabs">
-                <button
-                  type="button"
-                  className={`tab ${selectedAreaTab === "all" ? "active" : ""}`}
-                  onClick={() => setSelectedAreaTab("all")}
-                >
-                  Todas las areas ({historyActivities.length})
-                </button>
                 {areaTabs.map((tab) => (
                   <button
                     key={tab.value}
@@ -852,13 +1171,6 @@ export default function HistorialSemanas({ contexto }) {
               </div>
 
               <div className="history-area-tabs" style={{ paddingLeft: "0.35rem" }}>
-                <button
-                  type="button"
-                  className={`tab ${selectedBoardTab === "all" ? "active" : ""}`}
-                  onClick={() => setSelectedBoardTab("all")}
-                >
-                  Todos los tableros ({areaScopedActivities.length})
-                </button>
                 {boardTabs.map((tab) => (
                   <button
                     key={tab.value}
@@ -1047,17 +1359,6 @@ export default function HistorialSemanas({ contexto }) {
               })}
             </div>
 
-            {!useBoardHistoryFallback && actionPermissions.deleteWeek && effectiveHistoryWeek ? (
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <button
-                  type="button"
-                  className="icon-button danger"
-                  onClick={() => setDeleteWeekModal({ open: true, weekId: effectiveHistoryWeek.id, weekName: effectiveHistoryWeek.name, isSubmitting: false })}
-                >
-                  <Trash2 size={15} /> Borrar semana
-                </button>
-              </div>
-            ) : null}
           </>
         ) : (
           <article className="surface-card" style={{ padding: "1rem 1.2rem" }}>

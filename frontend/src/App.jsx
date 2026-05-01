@@ -4481,11 +4481,14 @@ function App() { // NOSONAR
       telefono: String(identityPatch.telefono || "").trim(),
       telefono_visible: Boolean(identityPatch.telefono_visible),
       birthday: String(identityPatch.birthday || "").trim(),
+      copmecHistoryFiles: Array.isArray(identityPatch.copmecHistoryFiles)
+        ? identityPatch.copmecHistoryFiles
+        : (Array.isArray(currentUser?.copmecHistoryFiles) ? currentUser.copmecHistoryFiles : []),
     };
     if (!trimmedPatch.name || !trimmedPatch.area || !trimmedPatch.jobTitle) {
       return { ok: false, message: "Captura nombre, área y cargo para guardar el perfil del player." };
     }
-    const hasChanges = [
+    const profileChanges = [
       trimmedPatch.name !== String(currentUser.name || "").trim(),
       trimmedPatch.email !== String(currentUser.email || "").trim(),
       trimmedPatch.area !== getUserArea(currentUser),
@@ -4494,12 +4497,14 @@ function App() { // NOSONAR
       trimmedPatch.telefono_visible !== Boolean(currentUser.telefono_visible),
       trimmedPatch.birthday !== String(currentUser.birthday || "").trim(),
     ].some(Boolean);
+    const copmecHistoryChanged = JSON.stringify(trimmedPatch.copmecHistoryFiles || []) !== JSON.stringify(currentUser?.copmecHistoryFiles || []);
+    const hasChanges = profileChanges || copmecHistoryChanged;
     if (!hasChanges) {
       return { ok: false, message: "No hay cambios nuevos por guardar." };
     }
     const canBypassEditLimit = canBypassSelfProfileEditLimit(currentUser);
     const selfIdentityEditCount = Number(currentUser.selfIdentityEditCount ?? 0);
-    if (!canBypassEditLimit && selfIdentityEditCount >= PROFILE_SELF_EDIT_LIMIT) {
+    if (profileChanges && !canBypassEditLimit && selfIdentityEditCount >= PROFILE_SELF_EDIT_LIMIT) {
       return { ok: false, message: "La autoedición ya fue utilizada. Pide apoyo a un Senior o Lead para corregir estos datos." };
     }
     try {

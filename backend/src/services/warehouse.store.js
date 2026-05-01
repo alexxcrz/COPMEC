@@ -2295,6 +2295,23 @@ export function updateWarehouseSelfProfile(auth, payload = {}) {
   const currentUser = findWarehouseUserById(auth?.userId);
   if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
 
+  const normalizedCopmecHistoryFiles = Array.isArray(payload.copmecHistoryFiles)
+    ? payload.copmecHistoryFiles
+      .map((entry, index) => {
+        const id = String(entry?.id || `copmec-${index + 1}`).trim();
+        const fileName = String(entry?.fileName || "archivo.copmec").trim();
+        const importedAt = String(entry?.importedAt || new Date().toISOString()).trim();
+        const periodLabel = String(entry?.periodLabel || "Periodo").trim();
+        const records = Math.max(0, Number(entry?.records || 0));
+        const packageText = String(entry?.packageText || "").trim();
+        if (!id || !fileName || !packageText) return null;
+        if (packageText.length > 2_000_000) return null;
+        return { id, fileName, importedAt, periodLabel, records, packageText };
+      })
+      .filter(Boolean)
+      .slice(0, 20)
+    : (Array.isArray(currentUser.copmecHistoryFiles) ? currentUser.copmecHistoryFiles : []);
+
   const trimmedPatch = {
     name: String(payload.name || "").trim(),
     email: String((payload.username ?? payload.email) || "").trim(),
@@ -2304,6 +2321,7 @@ export function updateWarehouseSelfProfile(auth, payload = {}) {
     telefono: String(payload.telefono || "").trim(),
     telefono_visible: Boolean(payload.telefono_visible),
     birthday: String(payload.birthday || "").trim(),
+    copmecHistoryFiles: normalizedCopmecHistoryFiles,
   };
   if (!trimmedPatch.name || !trimmedPatch.email || !trimmedPatch.area || !trimmedPatch.jobTitle) {
     return { ok: false, reason: "invalid_payload" };
@@ -2311,7 +2329,17 @@ export function updateWarehouseSelfProfile(auth, payload = {}) {
   if ((getRawWarehouseState().users || []).some((user) => user.id !== currentUser.id && normalizeKey(user.email) === normalizeKey(trimmedPatch.email))) {
     return { ok: false, reason: "duplicate_email" };
   }
-  if (!canBypassSelfProfileEditLimit(currentUser) && Number(currentUser.selfIdentityEditCount ?? 0) >= 1) {
+  const profileFieldsChanged = [
+    trimmedPatch.name !== String(currentUser.name || "").trim(),
+    trimmedPatch.email !== String(currentUser.email || "").trim(),
+    trimmedPatch.area !== String(currentUser.area || currentUser.department || "").trim(),
+    trimmedPatch.jobTitle !== String(currentUser.jobTitle || "").trim(),
+    trimmedPatch.telefono !== String(currentUser.telefono || "").trim(),
+    trimmedPatch.telefono_visible !== Boolean(currentUser.telefono_visible),
+    trimmedPatch.birthday !== String(currentUser.birthday || "").trim(),
+  ].some(Boolean);
+
+  if (profileFieldsChanged && !canBypassSelfProfileEditLimit(currentUser) && Number(currentUser.selfIdentityEditCount ?? 0) >= 1) {
     return { ok: false, reason: "self_edit_limit_reached" };
   }
 
@@ -2321,7 +2349,9 @@ export function updateWarehouseSelfProfile(auth, payload = {}) {
       ? {
           ...user,
           ...trimmedPatch,
-          selfIdentityEditCount: canBypassSelfProfileEditLimit(currentUser) ? user.selfIdentityEditCount : Number(user.selfIdentityEditCount ?? 0) + 1,
+          selfIdentityEditCount: profileFieldsChanged && !canBypassSelfProfileEditLimit(currentUser)
+            ? Number(user.selfIdentityEditCount ?? 0) + 1
+            : Number(user.selfIdentityEditCount ?? 0),
         }
       : user)),
   };
