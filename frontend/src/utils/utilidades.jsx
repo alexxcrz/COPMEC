@@ -3300,10 +3300,8 @@ export function canEditBoardRowRecord(user, board, row, permissions, actionId = 
   if (!canDoBoardAction(user, board)) return false;
   // Lead always has full row edit access on boards they can manage.
   if (normalizeRole(user.role) === ROLE_LEAD) return true;
+  if (row.status === STATUS_FINISHED) return false;
   if (!canDoAction(user, actionId, permissions)) return false;
-  if (row.status === STATUS_FINISHED) {
-    return canDoAction(user, "editFinishedBoardRow", permissions);
-  }
   return true;
 }
 

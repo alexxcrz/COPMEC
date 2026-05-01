@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import ReturnsReconditionScanner from "../features/boards/ReturnsReconditionScanner.jsx";
 import { BoardEditableInventoryPropertyInput, BoardEvidenceCell, BoardMultiSelectDetailCell } from "../components/BoardRuntimeFieldCells.jsx";
 import {
@@ -287,6 +288,7 @@ export default function MisTableros({ contexto }) {
   const columnWidthsOverrideRef = useRef({});
   const assigneeMenuRef = useRef(null);
   const assigneeTriggerRef = useRef(null);
+  const [assigneeMenuPosition, setAssigneeMenuPosition] = useState({ top: 0, left: 0, width: 0, openUp: false });
   const [pauseDetailsRow, setPauseDetailsRow] = useState(null);
   const [fallbackNowMs] = useState(() => Date.now());
   // Local edit buffer for Lead time overrides: key = "rowId-colId", value = string being typed
@@ -450,6 +452,44 @@ export default function MisTableros({ contexto }) {
 
     window.addEventListener("pointerdown", handlePointerDown);
     return () => window.removeEventListener("pointerdown", handlePointerDown);
+  }, [openAssigneeMenuRowId]);
+
+  useEffect(() => {
+    if (!openAssigneeMenuRowId) return undefined;
+
+    const updateAssigneeMenuPosition = () => {
+      const triggerRect = assigneeTriggerRef.current?.getBoundingClientRect();
+      if (!triggerRect) return;
+      const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+      const horizontalMargin = 8;
+      const verticalMargin = 8;
+      const estimatedMenuHeight = 290;
+      const desiredWidth = Math.min(Math.max(triggerRect.width, 240), 360);
+      const maxLeft = Math.max(horizontalMargin, viewportWidth - desiredWidth - horizontalMargin);
+      const desiredLeft = triggerRect.right - desiredWidth;
+      const left = Math.max(horizontalMargin, Math.min(maxLeft, desiredLeft));
+      const spaceBelow = viewportHeight - triggerRect.bottom;
+      const openUp = spaceBelow < estimatedMenuHeight && triggerRect.top > estimatedMenuHeight;
+      const top = openUp
+        ? Math.max(verticalMargin, triggerRect.top - estimatedMenuHeight - 6)
+        : Math.min(viewportHeight - verticalMargin, triggerRect.bottom + 6);
+
+      setAssigneeMenuPosition({
+        top,
+        left,
+        width: desiredWidth,
+        openUp,
+      });
+    };
+
+    updateAssigneeMenuPosition();
+    window.addEventListener("resize", updateAssigneeMenuPosition);
+    window.addEventListener("scroll", updateAssigneeMenuPosition, true);
+    return () => {
+      window.removeEventListener("resize", updateAssigneeMenuPosition);
+      window.removeEventListener("scroll", updateAssigneeMenuPosition, true);
+    };
   }, [openAssigneeMenuRowId]);
 
   // Handlers para redimensionamiento de columnas
@@ -835,8 +875,8 @@ export default function MisTableros({ contexto }) {
                     const canPauseRow = row.status === STATUS_RUNNING;
                     const canFinishRow = row.status === STATUS_RUNNING;
                     const rowResponsibleIds = getBoardRowResponsibleIds(row);
-                    const assigneeDisplayLabel = formatBoardRowAssigneeLabel(row, userMap, { useInitialsForMultiple: true });
-                    const assigneeFullLabel = formatBoardRowAssigneeLabel(row, userMap);
+                    const assigneeDisplayLabel = formatBoardRowAssigneeLabel(row, userMap, { useInitialsForMultiple: true, emptyLabel: "Asignar player(s)" });
+                    const assigneeFullLabel = formatBoardRowAssigneeLabel(row, userMap, { emptyLabel: "Asignar player(s)" });
                     const assigneeMenuOpen = openAssigneeMenuRowId === row.id;
                     return (
                       <tr key={row.id}>
@@ -845,7 +885,7 @@ export default function MisTableros({ contexto }) {
                             if (column.id === "assignee") {
                               return (
                                 <td key={`${row.id}-${column.token}`} style={getEffectiveColumnWidth(column)}>
-                                  <div ref={assigneeMenuOpen ? assigneeMenuRef : null} className="board-assignee-select">
+                                  <div className="board-assignee-select">
                                     <button
                                       ref={assigneeMenuOpen ? assigneeTriggerRef : null}
                                       type="button"
@@ -859,7 +899,16 @@ export default function MisTableros({ contexto }) {
                                     </button>
                                     {assigneeMenuOpen
                                       ? (
-                                        <div ref={assigneeMenuRef} className="board-assignee-menu">
+                                        createPortal(
+                                          <div
+                                            ref={assigneeMenuRef}
+                                            className={`board-assignee-menu floating${assigneeMenuPosition.openUp ? " open-up" : ""}`}
+                                            style={{
+                                              top: `${assigneeMenuPosition.top}px`,
+                                              left: `${assigneeMenuPosition.left}px`,
+                                              width: `${assigneeMenuPosition.width || 240}px`,
+                                            }}
+                                          >
                                           <div className="board-assignee-menu-head">
                                             <span>Selecciona player(s)</span>
                                             <strong>{rowResponsibleIds.length}</strong>
@@ -889,7 +938,9 @@ export default function MisTableros({ contexto }) {
                                             <button type="button" className="icon-button board-assignee-clear" onClick={() => updateRowResponsibleAssignments(row.id, [])}>Limpiar</button>
                                             <button type="button" className="primary-button board-assignee-close" onClick={() => setOpenAssigneeMenuRowId("")}>Cerrar</button>
                                           </div>
-                                        </div>
+                                          </div>,
+                                          document.body,
+                                        )
                                       )
                                       : null}
                                   </div>

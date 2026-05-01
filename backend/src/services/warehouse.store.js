@@ -2423,7 +2423,7 @@ function getBoardFieldDefaultValue(field, currentUserId) {
   }
 
   if (field?.type === "status") return "Pendiente";
-  if (field?.type === "user") return currentUserId || "";
+  if (field?.type === "user") return "";
   if (field?.type === "boolean") return "No";
   if (field?.type === "date") return new Date().toISOString().slice(0, 10);
   if (field?.type === "rating") return 0;
@@ -2739,9 +2739,9 @@ function buildBoardRowsFromActivityList(fields, catalog, responsibleId, previous
   const activityListField = findBoardActivityListField(nextFields);
 
   if (!activityListField) {
-    return normalizedPreviousRows.map((row) => createBoardRowRecord(nextFields, row?.responsibleId || responsibleId, {
+    return normalizedPreviousRows.map((row) => createBoardRowRecord(nextFields, row?.responsibleId || "", {
       ...row,
-      values: remapBoardRowValues(row, normalizedPreviousFields, nextFields, row?.responsibleId || responsibleId),
+      values: remapBoardRowValues(row, normalizedPreviousFields, nextFields, row?.responsibleId || ""),
     }));
   }
 
@@ -2759,7 +2759,7 @@ function buildBoardRowsFromActivityList(fields, catalog, responsibleId, previous
       return normalizeKey(previousValue) === normalizeKey(activityName);
     });
 
-    const rowResponsibleId = matchingRow?.responsibleId || responsibleId;
+    const rowResponsibleId = matchingRow?.responsibleId || "";
     const nextValues = matchingRow
       ? remapBoardRowValues(matchingRow, normalizedPreviousFields, nextFields, rowResponsibleId)
       : (nextFields || []).reduce((accumulator, field) => {
@@ -2778,9 +2778,9 @@ function buildBoardRowsFromActivityList(fields, catalog, responsibleId, previous
 
   const remainingRows = normalizedPreviousRows
     .filter((row) => row && !usedRowIds.has(row.id))
-    .map((row) => createBoardRowRecord(nextFields, row.responsibleId || responsibleId, {
+    .map((row) => createBoardRowRecord(nextFields, row.responsibleId || "", {
       ...row,
-      values: remapBoardRowValues(row, normalizedPreviousFields, nextFields, row.responsibleId || responsibleId),
+      values: remapBoardRowValues(row, normalizedPreviousFields, nextFields, row.responsibleId || ""),
     }));
 
   return seededRows.concat(remainingRows);
@@ -4172,7 +4172,7 @@ export function createWarehouseBoard(auth, draft) {
     accessUserIds: normalizedDraft.accessUserIds,
     settings: normalizedDraft.settings,
     fields: normalizedDraft.fields,
-    rows: buildBoardRowsFromActivityList(normalizedDraft.fields, currentState.catalog, normalizedDraft.ownerId, [], []),
+    rows: buildBoardRowsFromActivityList(normalizedDraft.fields, currentState.catalog, "", [], []),
   };
 
   // Auto-save as template (no permission check — creation implies permission)
@@ -4237,7 +4237,7 @@ export function updateWarehouseBoard(auth, boardId, draft) {
     rows: buildBoardRowsFromActivityList(
       normalizedDraft.fields,
       currentState.catalog,
-      normalizedDraft.ownerId || currentUser.id,
+      "",
       board.fields || [],
       board.rows || [],
     ),
@@ -4388,10 +4388,8 @@ export function canEditWarehouseBoardRow(user, board, row, permissions, actionId
   if (!canManageWarehouseBoard(user, board)) return false;
   // Lead always has full edit access, including finished rows.
   if (normalizeRole(user.role) === ROLE_LEAD) return true;
+  if (row.status === "Terminado") return false;
   if (!canUserDoWarehouseAction(user, actionId, permissions)) return false;
-  if (row.status === "Terminado") {
-    return canUserDoWarehouseAction(user, "editFinishedBoardRow", permissions);
-  }
   return true;
 }
 
