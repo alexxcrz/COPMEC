@@ -157,7 +157,7 @@ export default function MisTableros({ contexto }) {
       if (amPmMatch[3] === "pm") hour24 = hourValue === 12 ? 12 : hourValue + 12;
       if (amPmMatch[3] === "am") hour24 = hourValue === 12 ? 0 : hourValue;
       if (hour24 < 0 || hour24 > 23 || minuteValue < 0 || minuteValue > 59) return strict ? "" : raw;
-      return `${String(hour24).padStart(2, "0")}:${String(minuteValue).padStart(2, "0")}`;
+      return `${String(hour24).padStart(2, "0")}:${String(minuteValue).padStart(2, "0")}:00`;
     }
 
     const compactDigits = normalized.replace(/[^\d:]/g, "");
@@ -165,8 +165,13 @@ export default function MisTableros({ contexto }) {
 
     if (!strict) {
       if (compactDigits.includes(":")) {
-        const [hoursPart = "", minutesPart = ""] = compactDigits.split(":");
-        return `${hoursPart.slice(0, 2)}${compactDigits.includes(":") ? ":" : ""}${minutesPart.slice(0, 2)}`;
+        const colonParts = compactDigits.split(":");
+        const hPart = (colonParts[0] || "").slice(0, 2);
+        const mPart = (colonParts[1] || "").slice(0, 2);
+        const sPart = (colonParts[2] || "").slice(0, 2);
+        return colonParts.length >= 3
+          ? `${hPart}:${mPart}:${sPart}`
+          : `${hPart}:${mPart}`;
       }
       if (compactDigits.length <= 2) return compactDigits;
       return `${compactDigits.slice(0, 2)}:${compactDigits.slice(2, 4)}`;
@@ -174,10 +179,12 @@ export default function MisTableros({ contexto }) {
 
     let hours = "";
     let minutes = "";
+    let seconds = "00";
     if (compactDigits.includes(":")) {
-      const [hoursPart = "", minutesPart = ""] = compactDigits.split(":");
-      hours = hoursPart.slice(0, 2);
-      minutes = minutesPart.slice(0, 2);
+      const colonParts = compactDigits.split(":");
+      hours = (colonParts[0] || "").slice(0, 2);
+      minutes = (colonParts[1] || "").slice(0, 2);
+      if (colonParts.length >= 3) seconds = (colonParts[2] || "00").slice(0, 2).padStart(2, "0");
     } else {
       const digitsOnly = compactDigits.replace(":", "");
       if (digitsOnly.length < 3) return "";
@@ -188,9 +195,10 @@ export default function MisTableros({ contexto }) {
     if (hours.length !== 2 || minutes.length !== 2) return "";
     const hourValue = Number.parseInt(hours, 10);
     const minuteValue = Number.parseInt(minutes, 10);
-    if (!Number.isFinite(hourValue) || !Number.isFinite(minuteValue)) return "";
-    if (hourValue < 0 || hourValue > 23 || minuteValue < 0 || minuteValue > 59) return "";
-    return `${String(hourValue).padStart(2, "0")}:${String(minuteValue).padStart(2, "0")}`;
+    const secondValue = Number.parseInt(seconds, 10);
+    if (!Number.isFinite(hourValue) || !Number.isFinite(minuteValue) || !Number.isFinite(secondValue)) return "";
+    if (hourValue < 0 || hourValue > 23 || minuteValue < 0 || minuteValue > 59 || secondValue < 0 || secondValue > 59) return "";
+    return `${String(hourValue).padStart(2, "0")}:${String(minuteValue).padStart(2, "0")}:${String(secondValue).padStart(2, "0")}`;
   }
 
   // Helpers for Lead time overrides
@@ -223,10 +231,11 @@ export default function MisTableros({ contexto }) {
     const parts = String(hhmm || "").split(":");
     const h = Number.parseInt(parts[0], 10);
     const m = Number.parseInt(parts[1] || "0", 10);
-    if (!Number.isFinite(h) || !Number.isFinite(m) || h > 23 || m > 59) return null;
+    const s = Number.parseInt(parts[2] || "0", 10);
+    if (!Number.isFinite(h) || !Number.isFinite(m) || h > 23 || m > 59 || s > 59) return null;
     const base = baseIso ? new Date(baseIso) : new Date();
     if (!Number.isFinite(base.getTime())) return null;
-    base.setHours(h, m, 0, 0);
+    base.setHours(h, m, s, 0);
     return base.toISOString();
   }
 
@@ -973,12 +982,12 @@ export default function MisTableros({ contexto }) {
                                       type="text"
                                       inputMode="numeric"
                                       value={displayVal}
-                                      placeholder="HH:mm"
+                                      placeholder="HH:mm:ss"
                                       style={{ width: "100%" }}
                                       onChange={(event) => setLeadTimeEdits((prev) => ({ ...prev, [editKey]: event.target.value }))}
                                       onBlur={(event) => {
                                         setLeadTimeEdits((prev) => { const next = { ...prev }; delete next[editKey]; return next; });
-                                        const secs = parseHhmmToSeconds(event.target.value);
+                                        const secs = parseHhmmssToSeconds(event.target.value);
                                         if (secs !== null) {
                                           const computedPauseSecs = getRowPauseSeconds(row, effectiveNow);
                                           const computedTotalSecs = Math.max(0, computedSecs + computedPauseSecs);
@@ -1022,12 +1031,12 @@ export default function MisTableros({ contexto }) {
                                       type="text"
                                       inputMode="numeric"
                                       value={displayVal}
-                                      placeholder="HH:mm"
+                                      placeholder="HH:mm:ss"
                                       style={{ width: "100%" }}
                                       onChange={(event) => setLeadTimeEdits((prev) => ({ ...prev, [editKey]: event.target.value }))}
                                       onBlur={(event) => {
                                         setLeadTimeEdits((prev) => { const next = { ...prev }; delete next[editKey]; return next; });
-                                        const secs = parseHhmmToSeconds(event.target.value);
+                                        const secs = parseHhmmssToSeconds(event.target.value);
                                         if (secs !== null) updateBoardRowTimeOverride(selectedCustomBoard.id, row.id, { totalElapsedSecondsOverride: secs });
                                       }}
                                     />
@@ -1333,7 +1342,7 @@ export default function MisTableros({ contexto }) {
                                       });
                                     }
                                   }}
-                                  placeholder={field.placeholder || "HH:mm"}
+                                  placeholder={field.placeholder || "HH:mm:ss"}
                                   style={controlStyle}
                                   title={field.helpText || field.label}
                                   disabled={!timeFieldEditable}
