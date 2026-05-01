@@ -6640,6 +6640,12 @@ function App() { // NOSONAR
       return evaluateFormulaFieldValue(field, (fieldId) => {
         const sourceField = boardFields.find((item) => item.id === fieldId);
         if (!sourceField) return 0;
+        // inventoryProperty and formula fields always need to be resolved through
+        // getBoardFieldValue — never use the stale stored value, which may be 0/empty
+        // and would cause incorrect formula results (e.g. 13 × 0 = 0 instead of 13 × 50).
+        if (sourceField.type === "inventoryProperty" || sourceField.type === "formula") {
+          return getBoardFieldValue(board, row, sourceField);
+        }
         const rawFormulaValue = values[fieldId];
         const hasRawFormulaValue = rawFormulaValue !== undefined && rawFormulaValue !== null && String(rawFormulaValue).trim() !== "";
         return hasRawFormulaValue ? rawFormulaValue : getBoardFieldValue(board, row, sourceField);

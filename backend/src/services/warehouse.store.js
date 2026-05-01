@@ -79,7 +79,7 @@ const ACTION_PERMISSIONS = {
   deleteTemplate:          [ROLE_LEAD, ROLE_SR],
   createBoardFromTemplate: [ROLE_LEAD, ROLE_SR],
   createBoardRow:          [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
-  editFinishedBoardRow:    [ROLE_LEAD, ROLE_SR, ROLE_SSR],
+  editFinishedBoardRow:    [ROLE_LEAD],
   boardWorkflow:           [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
   duplicateBoard:          [ROLE_LEAD, ROLE_SR],
   duplicateBoardWithRows:  [ROLE_LEAD, ROLE_SR],

@@ -822,7 +822,8 @@ export default function MisTableros({ contexto }) {
                 <tbody>
                   {visibleRows.map((row) => {
                     const isLeadPrincipal = Boolean(canManageDashboardState);
-                    const rowCaptureEnabled = !isHistoricalCustomBoardView && (isLeadPrincipal || (!globalPauseLocked && canEditBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions)));
+                    // Cell value edits are allowed even during global pause (only workflow is blocked).
+                    const rowCaptureEnabled = !isHistoricalCustomBoardView && (isLeadPrincipal || (canEditBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions) && row.status !== STATUS_FINISHED));
                     const rowWorkflowEnabled = !isHistoricalCustomBoardView && (isLeadPrincipal || (!globalPauseLocked && canOperateBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions)));
                     const canDeleteBoardRows = Boolean(selectedBoardActionPermissions.deleteBoardRow) || isLeadPrincipal;
                     const rowDeleteEnabled = canDeleteBoardRows

@@ -648,7 +648,7 @@ export const ACTION_DEFINITIONS = [
   { id: "deleteTemplate",          label: "Eliminar plantillas",                      category: "Creador de tableros", defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "createBoardRow",          label: "Agregar filas en Mis tableros",            category: "Mis tableros",        defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
   { id: "deleteBoardRow",          label: "Eliminar filas en Mis tableros",           category: "Mis tableros",        defaultRoles: [ROLE_LEAD, ROLE_SR] },
-  { id: "editFinishedBoardRow",    label: "Editar filas terminadas",                  category: "Mis tableros",        defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
+  { id: "editFinishedBoardRow",    label: "Editar filas terminadas",                  category: "Mis tableros",        defaultRoles: [ROLE_LEAD] },
   { id: "boardWorkflow",           label: "Ejecutar flujo del tablero",               category: "Mis tableros",        defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
   { id: "duplicateBoard",          label: "Duplicar tablero vacío",                   category: "Tableros creados",    defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "duplicateBoardWithRows",  label: "Duplicar tablero con filas",               category: "Tableros creados",    defaultRoles: [ROLE_LEAD, ROLE_SR] },
