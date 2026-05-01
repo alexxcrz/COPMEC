@@ -24,6 +24,27 @@ function parseTimeValue(value, fallbackHour = 0, fallbackMinute = 0) {
   };
 }
 
+function getOperationalTimeParts() {
+  try {
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Mexico_City",
+      hourCycle: "h23",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const parts = formatter.formatToParts(new Date());
+    const hour = Number(parts.find((part) => part.type === "hour")?.value || 0);
+    const minute = Number(parts.find((part) => part.type === "minute")?.value || 0);
+    if (Number.isFinite(hour) && Number.isFinite(minute)) {
+      return { hour, minute };
+    }
+  } catch {
+    // Fallback to device time if timezone formatting fails.
+  }
+  const now = new Date();
+  return { hour: now.getHours(), minute: now.getMinutes() };
+}
+
 function isWithinWorkHoursWindow(workHours) {
   const source = workHours && typeof workHours === "object" ? workHours : {};
   const startHour = Math.min(23, Math.max(0, Math.round(Number(source.startHour ?? 0))));
@@ -33,8 +54,8 @@ function isWithinWorkHoursWindow(workHours) {
   const startTotal = (startHour * 60) + startMinute;
   const endTotal = (endHour * 60) + endMinute;
   if (startTotal === endTotal) return false;
-  const now = new Date();
-  const nowTotal = (now.getHours() * 60) + now.getMinutes();
+  const now = getOperationalTimeParts();
+  const nowTotal = (now.hour * 60) + now.minute;
   return nowTotal >= startTotal && nowTotal < endTotal;
 }
 
@@ -138,16 +159,13 @@ export default function ConfiguracionSistema({ contexto }) {
   async function toggleGlobalPause() {
     if (!canManageSystemSettings || isSavingPause) return;
     if (pauseDraft?.globalPauseEnabled) {
-      if (pauseDraft?.forceGlobalPause) {
-        pushAppToast("Desactiva primero la pausa forzada para aplicar una desactivación temporal.", "warning");
-        return;
-      }
       if (isWithinWorkHoursWindow(pauseDraft?.workHours)) {
         setIsSavingPause(true);
         try {
           await updateSystemOperationalSettings({
             pauseControl: {
               ...pauseDraft,
+              forceGlobalPause: false,
               globalPauseEnabled: false,
               globalPauseAutoDisabledUntil: null,
             },
@@ -195,6 +213,7 @@ export default function ConfiguracionSistema({ contexto }) {
       await updateSystemOperationalSettings({
         pauseControl: {
           ...pauseDraft,
+          forceGlobalPause: false,
           globalPauseEnabled: false,
           globalPauseAutoDisabledUntil: untilIso,
         },

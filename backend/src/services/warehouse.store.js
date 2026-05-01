@@ -15,6 +15,7 @@ const dataFilePath = path.join(dataDirectory, "warehouse-state.json");
 const backupDirectory = path.join(dataDirectory, "warehouse-state-backups");
 const latestBackupFilePath = path.join(dataDirectory, "warehouse-state.previous.json");
 const MAX_WAREHOUSE_STATE_BACKUPS = 24;
+const OPERATIONAL_TIMEZONE = String(process.env.WAREHOUSE_OPERATIONAL_TIMEZONE || "America/Mexico_City").trim() || "America/Mexico_City";
 const warehouseEvents = new EventEmitter();
 export const BOOTSTRAP_MASTER_ID = "bootstrap-master";
 const EMPTY_OBJECT = Object.freeze({});
@@ -379,6 +380,30 @@ function normalizeSystemPauseControl(value) {
   };
 }
 
+function getTimePartsInOperationalTimezone(nowMs) {
+  try {
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: OPERATIONAL_TIMEZONE,
+      hourCycle: "h23",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const parts = formatter.formatToParts(new Date(nowMs));
+    const hour = Number(parts.find((part) => part.type === "hour")?.value || 0);
+    const minute = Number(parts.find((part) => part.type === "minute")?.value || 0);
+    if (Number.isFinite(hour) && Number.isFinite(minute)) {
+      return { hour, minute };
+    }
+  } catch {
+    // Fallback to server local time if timezone resolution fails.
+  }
+  const now = new Date(nowMs);
+  return {
+    hour: now.getHours(),
+    minute: now.getMinutes(),
+  };
+}
+
 function isWithinPauseControlWorkHours(nowMs, workHours) {
   const source = workHours && typeof workHours === "object" ? workHours : EMPTY_OBJECT;
   const startHour = Math.min(23, Math.max(0, Math.round(Number(source.startHour ?? 0))));
@@ -389,8 +414,8 @@ function isWithinPauseControlWorkHours(nowMs, workHours) {
   const endTotal = (endHour * 60) + endMinute;
   if (startTotal === endTotal) return false;
 
-  const now = new Date(nowMs);
-  const nowTotal = (now.getHours() * 60) + now.getMinutes();
+  const timeParts = getTimePartsInOperationalTimezone(nowMs);
+  const nowTotal = (timeParts.hour * 60) + timeParts.minute;
   return nowTotal >= startTotal && nowTotal < endTotal;
 }
 
@@ -4408,10 +4433,6 @@ export function createWarehouseBoardRow(auth, boardId) {
   if (!board) {
     return { ok: false, reason: "board_not_found" };
   }
-  const operationalSettings = normalizeSystemOperationalSettings(currentState.system?.operational);
-  if (operationalSettings.pauseControl?.globalPauseEnabled && normalizeRole(currentUser.role) !== ROLE_LEAD) {
-    return { ok: false, reason: "global_pause_active" };
-  }
   if (!canManageWarehouseBoard(currentUser, board) || !canUserDoWarehouseAction(currentUser, "createBoardRow", currentState.permissions)) {
     return { ok: false, reason: "forbidden" };
   }
@@ -4458,9 +4479,6 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
   }
 
   const isWorkflowPatch = hasOwn(patch, "status") || hasOwn(patch, "lastPauseReason");
-  if (pauseControl?.globalPauseEnabled && normalizeRole(currentUser.role) !== ROLE_LEAD && isWorkflowPatch) {
-    return { ok: false, reason: "global_pause_active" };
-  }
   const allowed = isWorkflowPatch
     ? canOperateWarehouseBoardRow(currentUser, board, row, currentState.permissions)
     : canEditWarehouseBoardRow(currentUser, board, row, currentState.permissions);
@@ -4469,7 +4487,7 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
   }
 
   const nowIso = new Date().toISOString();
-  const nowTime = new Date(nowIso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false });
+  const nowTime = new Date(nowIso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
   const resolvePauseRule = (reason) => {
     const normalizedReason = normalizeKey(reason);
     const configuredReasons = Array.isArray(currentState.system?.operational?.pauseControl?.reasons)

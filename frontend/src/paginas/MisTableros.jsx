@@ -290,7 +290,6 @@ export default function MisTableros({ contexto }) {
   const assigneeTriggerRef = useRef(null);
   const [assigneeMenuPosition, setAssigneeMenuPosition] = useState({ top: 0, left: 0, width: 0, openUp: false });
   const [pauseDetailsRow, setPauseDetailsRow] = useState(null);
-  const [fallbackNowMs] = useState(() => Date.now());
   // Local edit buffer for Lead time overrides: key = "rowId-colId", value = string being typed
   const [leadTimeEdits, setLeadTimeEdits] = useState({});
   const [fieldEditDrafts, setFieldEditDrafts] = useState({});
@@ -298,8 +297,6 @@ export default function MisTableros({ contexto }) {
   const boardColumns = boardView ? getOrderedBoardColumns(boardView, isBoardOwner) : [];
   const systemOperationalSettings = normalizeSystemOperationalSettings(state?.system?.operational);
   const systemPauseControl = systemOperationalSettings.pauseControl;
-  const nowMsForPause = Number.isFinite(Number(now)) ? Number(now) : new Date(now).getTime();
-  const effectiveNowMsForPause = Number.isFinite(nowMsForPause) ? nowMsForPause : fallbackNowMs;
   // Resolve area-specific work hours if the board has ownerArea with a configured area pause
   const boardOwnerAreaKey = normalizeAreaOption(boardView?.settings?.ownerArea || "");
   const areaPauseControls = systemPauseControl?.areaPauseControls || {};
@@ -308,31 +305,15 @@ export default function MisTableros({ contexto }) {
   const effectiveWorkHours = areaHasOwnSchedule
     ? areaSpecificConfig.workHours
     : (systemPauseControl?.workHours || { startHour: 0, endHour: 24, startMinute: 0, endMinute: 0 });
-  const pauseWorkHours = effectiveWorkHours;
-  const pauseWindowStartMinutes = ((Number(pauseWorkHours.startHour) || 0) * 60) + (Number(pauseWorkHours.startMinute) || 0);
-  const pauseWindowEndMinutes = ((Number(pauseWorkHours.endHour) || 24) * 60) + (Number(pauseWorkHours.endMinute) || 0);
-  const nowDateForPause = new Date(effectiveNowMsForPause);
-  const nowMinutesForPause = (nowDateForPause.getHours() * 60) + nowDateForPause.getMinutes();
-  const isWithinPauseWindow = nowMinutesForPause >= pauseWindowStartMinutes && nowMinutesForPause < pauseWindowEndMinutes;
-  const autoDisabledUntilMs = systemPauseControl?.globalPauseAutoDisabledUntil
-    ? new Date(systemPauseControl.globalPauseAutoDisabledUntil).getTime()
-    : NaN;
-  const hasActiveTemporaryDisable = Number.isFinite(autoDisabledUntilMs) && autoDisabledUntilMs > effectiveNowMsForPause;
-  const manualGlobalPause = systemPauseControl?.forceGlobalPause
-    ? true
-    : hasActiveTemporaryDisable
-      ? false
-      : !isWithinPauseWindow;
+  const manualGlobalPause = Boolean(systemPauseControl?.globalPauseEnabled);
   const globalForceActive = Boolean(systemPauseControl?.forceGlobalPause);
   const globalPauseLocked = manualGlobalPause;
-    const pauseState = {
-      globalPauseEnabled: manualGlobalPause,
-      globalPauseActivatedAt: manualGlobalPause
-        ? (systemPauseControl?.globalPauseActivatedAt || new Date(effectiveNowMsForPause).toISOString())
-        : null,
-      workHours: effectiveWorkHours,
-      areaPauseControls: areaPauseControls,
-    };
+  const pauseState = {
+    globalPauseEnabled: manualGlobalPause,
+    globalPauseActivatedAt: manualGlobalPause ? (systemPauseControl?.globalPauseActivatedAt || null) : null,
+    workHours: effectiveWorkHours,
+    areaPauseControls: areaPauseControls,
+  };
   const boardOperationalContextType = String(boardView?.settings?.operationalContextType || "none");
   const boardOperationalContextLabel = String(boardView?.settings?.operationalContextLabel || "").trim()
     || (boardOperationalContextType === "cleaningSite" ? "Sede de limpieza" : "Ubicación operativa");
