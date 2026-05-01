@@ -1,5 +1,5 @@
 {
-  "revision": 2856,
+  "revision": 2860,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro",
@@ -41,7 +41,7 @@
           "endMinute": 0
         },
         "areaPauseControls": {
-          "C1": {
+          "CALIDAD": {
             "enabled": false,
             "workHours": {
               "startHour": 0,
@@ -50,7 +50,7 @@
               "endMinute": 0
             }
           },
-          "C2": {
+          "ESTO": {
             "enabled": false,
             "workHours": {
               "startHour": 0,
@@ -59,7 +59,16 @@
               "endMinute": 0
             }
           },
-          "C3": {
+          "INVENTARIO": {
+            "enabled": true,
+            "workHours": {
+              "startHour": 6,
+              "startMinute": 0,
+              "endHour": 16,
+              "endMinute": 0
+            }
+          },
+          "LIMPIEZA": {
             "enabled": false,
             "workHours": {
               "startHour": 0,
@@ -68,7 +77,34 @@
               "endMinute": 0
             }
           },
-          "P": {
+          "PEDIDOS": {
+            "enabled": false,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          },
+          "REGULATORIO": {
+            "enabled": false,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          },
+          "RETAIL": {
+            "enabled": false,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          },
+          "TRANSPORTE": {
             "enabled": false,
             "workHours": {
               "startHour": 0,
@@ -10017,7 +10053,7 @@
           "Reacondicionado"
         ],
         "operationalContextValue": "Devolución",
-        "ownerArea": ""
+        "ownerArea": "INVENTARIO"
       },
       "fields": [
         {
@@ -10040,7 +10076,8 @@
           "required": true,
           "groupName": "Control",
           "groupColor": "#ede9fe",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-9bea415de1a5",
@@ -10065,7 +10102,8 @@
           "required": true,
           "groupName": "Control",
           "groupColor": "#ede9fe",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-deed11450949",
@@ -10087,7 +10125,8 @@
           "required": true,
           "groupName": "Producto",
           "groupColor": "#e0f2fe",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-e747f4fdc722",
@@ -10109,7 +10148,8 @@
           "required": true,
           "groupName": "Lote",
           "groupColor": "#dcfce7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-51772c4b11e4",
@@ -10131,7 +10171,8 @@
           "required": true,
           "groupName": "Lote",
           "groupColor": "#dcfce7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-b364ca096dad",
@@ -10153,7 +10194,8 @@
           "required": false,
           "groupName": "Lote",
           "groupColor": "#dcfce7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-99f7f325f67a",
@@ -10175,7 +10217,8 @@
           "required": true,
           "groupName": "Cantidad",
           "groupColor": "#fef3c7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         },
         {
           "id": "fld-658916511807",
@@ -10197,7 +10240,8 @@
           "required": false,
           "groupName": "Cantidad",
           "groupColor": "#fef3c7",
-          "colorRules": []
+          "colorRules": [],
+          "formulaTerms": []
         }
       ],
       "rows": [
@@ -10213,20 +10257,19 @@
             "fld-99f7f325f67a": 3,
             "fld-658916511807": 3
           },
-          "responsibleId": "",
-          "responsibleIds": [],
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
           "status": "Terminado",
           "startTime": "2026-04-30T19:07:51.456Z",
           "endTime": "2026-04-30T19:08:01.976Z",
           "accumulatedSeconds": 10,
-          "totalElapsedSecondsOverride": null,
+          "totalElapsedSecondsOverride": 0,
           "lastResumedAt": null,
           "pauseUsageByDay": {},
           "pauseLogs": [],
-          "createdAt": "2026-04-30T19:07:50.154Z",
-          "pauseStartedAt": null,
-          "pauseAffectsTimer": false,
-          "pauseAuthorizedSeconds": 0
+          "createdAt": "2026-04-30T19:07:50.154Z"
         },
         {
           "id": "row-ed0cf57ab4ce",
@@ -10240,13 +10283,15 @@
             "fld-99f7f325f67a": 1,
             "fld-658916511807": 50
           },
-          "responsibleId": "",
-          "responsibleIds": [],
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
           "status": "Pendiente",
           "startTime": null,
           "endTime": null,
           "accumulatedSeconds": 0,
-          "totalElapsedSecondsOverride": null,
+          "totalElapsedSecondsOverride": 0,
           "lastResumedAt": null,
           "pauseUsageByDay": {},
           "pauseLogs": [],
@@ -10264,20 +10309,19 @@
             "fld-99f7f325f67a": 4,
             "fld-658916511807": 4
           },
-          "responsibleId": "",
-          "responsibleIds": [],
+          "responsibleId": "usr-lead-nu7wt83h",
+          "responsibleIds": [
+            "usr-lead-nu7wt83h"
+          ],
           "status": "Terminado",
           "startTime": "2026-04-30T19:11:12.308Z",
           "endTime": "2026-04-30T19:11:30.218Z",
           "accumulatedSeconds": 17,
-          "totalElapsedSecondsOverride": null,
+          "totalElapsedSecondsOverride": 0,
           "lastResumedAt": null,
           "pauseUsageByDay": {},
           "pauseLogs": [],
-          "createdAt": "2026-04-30T19:11:11.076Z",
-          "pauseStartedAt": null,
-          "pauseAffectsTimer": false,
-          "pauseAuthorizedSeconds": 0
+          "createdAt": "2026-04-30T19:11:11.076Z"
         }
       ],
       "permissions": {
@@ -11830,7 +11874,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-04-30T22:00:00.410Z",
+  "updatedAt": "2026-05-01T12:20:24.368Z",
   "permissions": {
     "pages": {
       "index": {

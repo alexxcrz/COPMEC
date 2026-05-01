@@ -2919,46 +2919,96 @@ export function formatBoardExportFieldValue(field, value, inventoryItems, userMa
   return value;
 }
 
-export async function downloadInventoryTemplateFile() {
+export async function downloadInventoryTemplateFile(domain = INVENTORY_DOMAIN_BASE) {
   const ExcelJS = await getExcelJsModule();
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Inventario");
 
-  worksheet.columns = [
-    { header: "codigo", key: "codigo", width: 18 },
-    { header: "dominio", key: "dominio", width: 18 },
-    { header: "nombre", key: "nombre", width: 28 },
-    { header: "presentacion", key: "presentacion", width: 20 },
-    { header: "piezas_por_caja", key: "piezas_por_caja", width: 18 },
-    { header: "cajas_por_tarima", key: "cajas_por_tarima", width: 18 },
-    { header: "stock_actual", key: "stock_actual", width: 18 },
-    { header: "stock_minimo", key: "stock_minimo", width: 18 },
-    { header: "sede_limpieza", key: "sede_limpieza", width: 18 },
-    { header: "ubicacion", key: "ubicacion", width: 24 },
-    { header: "unidad", key: "unidad", width: 14 },
-    { header: "actividad_catalogo_ids", key: "actividad_catalogo_ids", width: 28 },
-    { header: "consumo_por_inicio", key: "consumo_por_inicio", width: 20 },
-    { header: "consumos_por_actividad", key: "consumos_por_actividad", width: 32 },
-  ];
-  worksheet.addRow({
-    codigo: "LIMP-001",
-    dominio: "cleaning",
-    nombre: "Detergente industrial",
-    presentacion: "Bidon 20L",
-    piezas_por_caja: 4,
-    cajas_por_tarima: 30,
-    stock_actual: 18,
-    stock_minimo: 8,
-    sede_limpieza: "C3",
-    ubicacion: "Cuarto de limpieza",
-    unidad: "bidones",
-    actividad_catalogo_ids: "cat-piso;cat-oficinas",
-    consumo_por_inicio: 1,
-    consumos_por_actividad: "cat-piso:1;cat-oficinas:2",
-  });
+  const normalizedDomain = normalizeInventoryDomain(domain);
+  const templateConfig = normalizedDomain === INVENTORY_DOMAIN_CLEANING
+    ? {
+        fileName: "plantilla-inventario-limpieza.xlsx",
+        columns: [
+          { header: "codigo", key: "codigo", width: 18 },
+          { header: "dominio", key: "dominio", width: 18 },
+          { header: "nombre", key: "nombre", width: 28 },
+          { header: "presentacion", key: "presentacion", width: 20 },
+          { header: "stock_actual", key: "stock_actual", width: 18 },
+          { header: "stock_minimo", key: "stock_minimo", width: 18 },
+          { header: "sede_limpieza", key: "sede_limpieza", width: 18 },
+          { header: "ubicacion", key: "ubicacion", width: 24 },
+          { header: "unidad", key: "unidad", width: 14 },
+          { header: "actividad_catalogo_ids", key: "actividad_catalogo_ids", width: 28 },
+          { header: "consumo_por_inicio", key: "consumo_por_inicio", width: 20 },
+          { header: "consumos_por_actividad", key: "consumos_por_actividad", width: 32 },
+        ],
+        sampleRow: {
+          codigo: "LIMP-001",
+          dominio: "cleaning",
+          nombre: "Detergente industrial",
+          presentacion: "Bidon 20L",
+          stock_actual: 18,
+          stock_minimo: 8,
+          sede_limpieza: "C3",
+          ubicacion: "Cuarto de limpieza",
+          unidad: "bidones",
+          actividad_catalogo_ids: "cat-piso;cat-oficinas",
+          consumo_por_inicio: 1,
+          consumos_por_actividad: "cat-piso:1;cat-oficinas:2",
+        },
+      }
+    : normalizedDomain === INVENTORY_DOMAIN_ORDERS
+      ? {
+          fileName: "plantilla-inventario-pedidos.xlsx",
+          columns: [
+            { header: "codigo", key: "codigo", width: 18 },
+            { header: "dominio", key: "dominio", width: 18 },
+            { header: "nombre", key: "nombre", width: 28 },
+            { header: "stock_actual", key: "stock_actual", width: 18 },
+            { header: "stock_minimo", key: "stock_minimo", width: 18 },
+            { header: "ubicacion", key: "ubicacion", width: 24 },
+            { header: "unidad", key: "unidad", width: 14 },
+          ],
+          sampleRow: {
+            codigo: "PED-001",
+            dominio: "orders",
+            nombre: "Esquinero de carton 2 x 2 x 48",
+            stock_actual: 150,
+            stock_minimo: 70,
+            ubicacion: "Nave 1 · rack empaque",
+            unidad: "pzas",
+          },
+        }
+      : {
+          fileName: "plantilla-inventario-productos.xlsx",
+          columns: [
+            { header: "codigo", key: "codigo", width: 18 },
+            { header: "dominio", key: "dominio", width: 18 },
+            { header: "nombre", key: "nombre", width: 28 },
+            { header: "presentacion", key: "presentacion", width: 20 },
+            { header: "piezas_por_caja", key: "piezas_por_caja", width: 18 },
+            { header: "cajas_por_tarima", key: "cajas_por_tarima", width: 18 },
+            { header: "ubicacion", key: "ubicacion", width: 24 },
+            { header: "unidad", key: "unidad", width: 14 },
+          ],
+          sampleRow: {
+            codigo: "ALM-001",
+            dominio: "base",
+            nombre: "Tarima estandar",
+            presentacion: "Tarima",
+            piezas_por_caja: 1,
+            cajas_por_tarima: 1,
+            ubicacion: "Almacen central",
+            unidad: "pzas",
+          },
+        };
+
+  worksheet.columns = templateConfig.columns;
+  worksheet.addRow(templateConfig.sampleRow);
+  worksheet.getRow(1).font = { bold: true };
 
   const buffer = await workbook.xlsx.writeBuffer();
-  triggerBrowserDownload(buffer, "plantilla-inventario.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  triggerBrowserDownload(buffer, templateConfig.fileName, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 }
 
 export function getResponsibleVisual(userName) {
@@ -3395,7 +3445,7 @@ export function getOperationalElapsedSeconds(startTime, now, pauseState) {
   return Math.max(0, Math.floor((resolvedNow - startMs) / 1000));
 }
 
-function resolveWorkHoursForArea(pauseState, areaKey) {
+export function resolveWorkHoursForArea(pauseState, areaKey) {
   if (!areaKey) return pauseState?.workHours;
   const areaConfig = pauseState?.areaPauseControls?.[areaKey];
   if (areaConfig?.enabled && areaConfig?.workHours) {

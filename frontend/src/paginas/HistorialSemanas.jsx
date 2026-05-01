@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { isBoardActivityListField } from "../utils/utilidades.jsx";
-
-const COPMEC_HISTORY_PACKAGE_HEADER = "COPMEC::HISTORY::V1";
-const COPMEC_HISTORY_PACKAGE_SECRET = "COPMEC_HISTORY_PACKAGE_APP_LOCK_V1";
+import { buildEncryptedCopmecHistoryPackage, triggerCopmecDownload } from "../utils/copmecFiles.js";
 
 function toDateParts(value) {
   const date = new Date(value || "");
@@ -110,51 +108,6 @@ function sanitizeFileNamePart(value) {
     .replace(/[^a-z0-9_-]+/g, "_")
     .replace(/^_+|_+$/g, "")
     .slice(0, 80);
-}
-
-function uint8ToBase64(bytes) {
-  let binary = "";
-  const chunkSize = 0x8000;
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    const chunk = bytes.subarray(index, index + chunkSize);
-    binary += String.fromCharCode(...chunk);
-  }
-  return btoa(binary);
-}
-
-async function deriveCopmecHistoryCryptoKey(saltBytes) {
-  const encoder = new TextEncoder();
-  const secretBytes = encoder.encode(COPMEC_HISTORY_PACKAGE_SECRET);
-  const baseKey = await crypto.subtle.importKey("raw", secretBytes, "PBKDF2", false, ["deriveKey"]);
-  return crypto.subtle.deriveKey(
-    {
-      name: "PBKDF2",
-      salt: saltBytes,
-      iterations: 120000,
-      hash: "SHA-256",
-    },
-    baseKey,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"],
-  );
-}
-
-async function buildEncryptedCopmecHistoryPackage(payload) {
-  const encoder = new TextEncoder();
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await deriveCopmecHistoryCryptoKey(salt);
-  const payloadBytes = encoder.encode(JSON.stringify(payload));
-  const encryptedBuffer = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, payloadBytes);
-  const encryptedBytes = new Uint8Array(encryptedBuffer);
-  const envelope = {
-    version: 1,
-    salt: uint8ToBase64(salt),
-    iv: uint8ToBase64(iv),
-    data: uint8ToBase64(encryptedBytes),
-  };
-  return `${COPMEC_HISTORY_PACKAGE_HEADER}\n${JSON.stringify(envelope)}`;
 }
 
 function resolveBoardRowHistoryActivityValue(snapshot, row) {
@@ -913,15 +866,7 @@ export default function HistorialSemanas({ contexto }) {
       const encryptedContent = await buildEncryptedCopmecHistoryPackage(payload);
       const fileSuffix = sanitizeFileNamePart(exportWindow.fileSuffix || "historial");
       const fileName = `copmec_historial_${fileSuffix || "export"}.copmec`;
-      const blob = new Blob([encryptedContent], { type: "application/octet-stream" });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = fileName;
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-      URL.revokeObjectURL(url);
+      triggerCopmecDownload(encryptedContent, fileName);
       pushAppToast(`Se descargó ${fileName}.`, "success");
       if (typeof saveCopmecFileToProfile === "function") {
         void saveCopmecFileToProfile({ packageText: encryptedContent, payload, fileName });

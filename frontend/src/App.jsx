@@ -106,6 +106,11 @@ import {
   parseBoardStructureImportFile,
 
 } from "./utils/utilidadesImportExcel.js";
+import {
+  buildEncryptedCopmecPackage,
+  sanitizeCopmecFileBaseName,
+  triggerCopmecDownload,
+} from "./utils/copmecFiles.js";
 
 // â”€â”€ Constantes globales â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -5703,7 +5708,7 @@ function App() { // NOSONAR
   async function downloadInventoryTemplate() {
     if (!currentInventoryImportPermission) return;
     try {
-      await downloadInventoryTemplateFile();
+      await downloadInventoryTemplateFile(inventoryTab);
     } catch {
       setInventoryImportFeedback({ tone: "danger", message: "No se pudo generar la plantilla de inventario." });
     }
@@ -6367,6 +6372,60 @@ function App() { // NOSONAR
     }
   }
 
+  function buildSelectedBoardCopmecPayload() {
+    if (!selectedCustomBoard) return null;
+
+    const boardView = selectedCustomBoardDisplay || selectedCustomBoard;
+    const exportColumns = getSelectedBoardPdfColumns(boardView);
+    const exportRows = getSelectedBoardPdfRows(boardView, exportColumns).map((rowValues) => (
+      Object.fromEntries(exportColumns.map((column, index) => [column.label, rowValues[index] ?? ""]))
+    ));
+
+    return {
+      format: "COPMEC_BOARD_EXPORT_V1",
+      generatedAt: new Date().toISOString(),
+      board: {
+        id: boardView?.id || selectedCustomBoard.id,
+        boardId: boardView?.boardId || selectedCustomBoard.id,
+        name: boardView?.name || selectedCustomBoard.name,
+        description: boardView?.description || "",
+        ownerArea: String(boardView?.settings?.ownerArea || "").trim(),
+        operationalContextLabel: String(boardView?.settings?.operationalContextLabel || "").trim(),
+        operationalContextValue: String(boardView?.settings?.operationalContextValue || "").trim(),
+      },
+      view: {
+        type: isHistoricalCustomBoardView ? "history" : "current",
+        weekName: selectedCustomBoardSnapshot?.weekName || "",
+        startDate: selectedCustomBoardSnapshot?.startDate || "",
+        endDate: selectedCustomBoardSnapshot?.endDate || "",
+      },
+      columns: exportColumns.map((column) => ({
+        key: column.key,
+        label: column.label,
+        sectionName: column.sectionName,
+        sectionColor: column.sectionColor,
+        kind: column.kind,
+        id: column.id,
+      })),
+      rows: exportRows,
+    };
+  }
+
+  async function exportSelectedBoardToCopmec() {
+    if (!selectedCustomBoard || !canDoBoardAction(currentUser, selectedCustomBoard)) return;
+
+    try {
+      const payload = buildSelectedBoardCopmecPayload();
+      if (!payload) throw new Error("copmec_export_unavailable");
+      const packageText = await buildEncryptedCopmecPackage(payload);
+      const fileBaseName = sanitizeCopmecFileBaseName(selectedCustomBoard.name, "tablero-operativo");
+      triggerCopmecDownload(packageText, `${fileBaseName}.copmec`);
+      setBoardRuntimeFeedback({ tone: "success", message: `Se exportó ${selectedCustomBoard.name} en formato .copmec.` });
+    } catch {
+      setBoardRuntimeFeedback({ tone: "danger", message: "No se pudo exportar el tablero en formato .copmec." });
+    }
+  }
+
   function openBoardExcelImportPicker() {
     boardExcelFileInputRef.current?.click();
   }
@@ -6862,6 +6921,7 @@ function App() { // NOSONAR
     exportSelectedBoardToExcel,
     previewSelectedBoardPdf,
     exportSelectedBoardToPdf,
+    exportSelectedBoardToCopmec,
     filteredAuditLog,
     filteredBoardTemplates,
     filteredUsers,

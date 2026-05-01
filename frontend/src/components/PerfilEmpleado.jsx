@@ -2,13 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Modal } from "./Modal";
+import { parseEncryptedCopmecHistoryPackage, triggerCopmecDownload } from "../utils/copmecFiles.js";
 
 // ── Constantes y utilidades ───────────────────────────────────────────────────
 
 const PROFILE_SELF_EDIT_LIMIT = 1;
 const MAX_PROFILE_COPMEC_FILES = 20;
-const COPMEC_HISTORY_PACKAGE_HEADER = "COPMEC::HISTORY::V1";
-const COPMEC_HISTORY_PACKAGE_SECRET = "COPMEC_HISTORY_PACKAGE_APP_LOCK_V1";
 
 const ROLE_LEAD = "Lead";
 const ROLE_SR   = "Senior (Sr)";
@@ -83,53 +82,6 @@ function normalizeCopmecHistoryFiles(entries) {
     }))
     .filter((entry) => entry.packageText)
     .slice(0, MAX_PROFILE_COPMEC_FILES);
-}
-
-function base64ToUint8(base64Value) {
-  const binary = atob(base64Value);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-  return bytes;
-}
-
-async function deriveCopmecHistoryCryptoKey(saltBytes) {
-  const encoder = new TextEncoder();
-  const secretBytes = encoder.encode(COPMEC_HISTORY_PACKAGE_SECRET);
-  const baseKey = await crypto.subtle.importKey("raw", secretBytes, "PBKDF2", false, ["deriveKey"]);
-  return crypto.subtle.deriveKey(
-    {
-      name: "PBKDF2",
-      salt: saltBytes,
-      iterations: 120000,
-      hash: "SHA-256",
-    },
-    baseKey,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"],
-  );
-}
-
-async function parseEncryptedCopmecHistoryPackage(packageText) {
-  const normalizedText = String(packageText || "").trim();
-  const [header, ...restLines] = normalizedText.split(/\r?\n/);
-  if (header !== COPMEC_HISTORY_PACKAGE_HEADER) {
-    throw new Error("Archivo no compatible con COPMEC.");
-  }
-  const envelope = JSON.parse(restLines.join("\n"));
-  const salt = base64ToUint8(String(envelope?.salt || ""));
-  const iv = base64ToUint8(String(envelope?.iv || ""));
-  const encryptedData = base64ToUint8(String(envelope?.data || ""));
-  const key = await deriveCopmecHistoryCryptoKey(salt);
-  const decryptedBuffer = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, encryptedData);
-  const decoder = new TextDecoder();
-  const payload = JSON.parse(decoder.decode(decryptedBuffer));
-  if (String(payload?.format || "") !== "COPMEC_HISTORY_V1") {
-    throw new Error("El archivo .copmec no contiene un historial válido.");
-  }
-  return payload;
 }
 
 function buildProfileCopmecHistoryEntry({ packageText, payload, fileName }) {
@@ -593,6 +545,9 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
                             <button type="button" className="ep-btn ep-btn--ghost" onClick={() => { void openSavedCopmecFile(entry); }}>
                               Ver
                             </button>
+                            <button type="button" className="ep-btn ep-btn--ghost" onClick={() => triggerCopmecDownload(entry.packageText, entry.fileName)}>
+                              .copmec
+                            </button>
                             <button type="button" className="ep-btn ep-btn--ghost" onClick={() => { void parseEncryptedCopmecHistoryPackage(entry.packageText).then((payload) => exportCopmecPayloadToPdf(payload, entry.fileName.replace(/\.copmec$/i, ""))); }}>
                               PDF
                             </button>
@@ -656,6 +611,9 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
       onClose={requestCloseCopmecPreview}
       className="ep-modal"
       footerActions={copmecPreview ? [
+        <button key="copmec" type="button" className="ep-btn ep-btn--ghost" onClick={() => triggerCopmecDownload(copmecPreview.packageText, copmecPreview.fileName)}>
+          Descargar .copmec
+        </button>,
         <button key="pdf" type="button" className="ep-btn ep-btn--primary" onClick={() => { void exportCopmecPayloadToPdf(copmecPreview.payload, copmecPreview.fileName.replace(/\.copmec$/i, "")); }}>
           Descargar PDF
         </button>,

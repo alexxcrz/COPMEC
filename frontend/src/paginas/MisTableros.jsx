@@ -6,6 +6,7 @@ import {
   getLivePauseOverflowSeconds,
   getBoardRowResponsibleIds,
   getOperationalElapsedSeconds,
+  normalizeAreaOption,
   normalizeSystemOperationalSettings,
   parseBoardWeekKey,
   addDays,
@@ -83,6 +84,7 @@ export default function MisTableros({ contexto }) {
     exportSelectedBoardToExcel,
     previewSelectedBoardPdf,
     exportSelectedBoardToPdf,
+    exportSelectedBoardToCopmec,
     userMap,
     boardRuntimeFeedback: _boardRuntimeFeedback,
     selectedCustomBoardSections,
@@ -296,7 +298,15 @@ export default function MisTableros({ contexto }) {
   const systemPauseControl = systemOperationalSettings.pauseControl;
   const nowMsForPause = Number.isFinite(Number(now)) ? Number(now) : new Date(now).getTime();
   const effectiveNowMsForPause = Number.isFinite(nowMsForPause) ? nowMsForPause : fallbackNowMs;
-  const pauseWorkHours = systemPauseControl?.workHours || { startHour: 0, endHour: 24, startMinute: 0, endMinute: 0 };
+  // Resolve area-specific work hours if the board has ownerArea with a configured area pause
+  const boardOwnerAreaKey = normalizeAreaOption(boardView?.settings?.ownerArea || "");
+  const areaPauseControls = systemPauseControl?.areaPauseControls || {};
+  const areaSpecificConfig = boardOwnerAreaKey ? areaPauseControls[boardOwnerAreaKey] : null;
+  const areaHasOwnSchedule = Boolean(areaSpecificConfig?.enabled && areaSpecificConfig?.workHours);
+  const effectiveWorkHours = areaHasOwnSchedule
+    ? areaSpecificConfig.workHours
+    : (systemPauseControl?.workHours || { startHour: 0, endHour: 24, startMinute: 0, endMinute: 0 });
+  const pauseWorkHours = effectiveWorkHours;
   const pauseWindowStartMinutes = ((Number(pauseWorkHours.startHour) || 0) * 60) + (Number(pauseWorkHours.startMinute) || 0);
   const pauseWindowEndMinutes = ((Number(pauseWorkHours.endHour) || 24) * 60) + (Number(pauseWorkHours.endMinute) || 0);
   const nowDateForPause = new Date(effectiveNowMsForPause);
@@ -318,8 +328,8 @@ export default function MisTableros({ contexto }) {
       globalPauseActivatedAt: manualGlobalPause
         ? (systemPauseControl?.globalPauseActivatedAt || new Date(effectiveNowMsForPause).toISOString())
         : null,
-      workHours: systemPauseControl?.workHours || { startHour: 0, endHour: 24 },
-      areaPauseControls: systemPauseControl?.areaPauseControls || {},
+      workHours: effectiveWorkHours,
+      areaPauseControls: areaPauseControls,
     };
   const boardOperationalContextType = String(boardView?.settings?.operationalContextType || "none");
   const boardOperationalContextLabel = String(boardView?.settings?.operationalContextLabel || "").trim()
@@ -728,6 +738,9 @@ export default function MisTableros({ contexto }) {
                       </button>
                       <button type="button" className="custom-board-menu-item" onClick={() => { setCustomBoardActionsMenuOpen(false); exportSelectedBoardToPdf(); }} disabled={!selectedBoardActionPermissions.exportBoardPdf}>
                         Exportar PDF
+                      </button>
+                      <button type="button" className="custom-board-menu-item" onClick={() => { setCustomBoardActionsMenuOpen(false); exportSelectedBoardToCopmec(); }} disabled={!selectedBoardActionPermissions.exportBoardPdf}>
+                        Descargar .copmec
                       </button>
                     </div>
                   ) : null}

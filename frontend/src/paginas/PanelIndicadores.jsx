@@ -1,6 +1,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { buildEncryptedCopmecPackage, sanitizeCopmecFileBaseName, triggerCopmecDownload } from "../utils/copmecFiles.js";
 
 const DASHBOARD_WEEKDAY_LABELS = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sa", "Do"];
 const DASHBOARD_DETAIL_VIEW_PREFS_KEY = "copmec-dashboard-detail-view-prefs";
@@ -265,6 +266,7 @@ export default function PanelIndicadores({ contexto }) {
   const dashboardExportRef = useRef(null);
   const detailPrefsRef = useRef(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [isExportingCopmec, setIsExportingCopmec] = useState(false);
   const [trendChartType, setTrendChartType] = useState("bar");
   const [peopleChartType, setPeopleChartType] = useState("bar");
   const [areaChartType, setAreaChartType] = useState("bar");
@@ -957,6 +959,50 @@ export default function PanelIndicadores({ contexto }) {
     }
   }
 
+  async function exportDashboardToCopmec() {
+    if (isExportingCopmec) return;
+
+    try {
+      setIsExportingCopmec(true);
+      const hasDateRange = dashboardFilters.startDate || dashboardFilters.endDate;
+      const fileSuffix = hasDateRange
+        ? `${dashboardFilters.startDate || "inicio"}-${dashboardFilters.endDate || "fin"}`
+        : activeAreaLabel.toLowerCase().replaceAll(/\s+/g, "-");
+      const payload = {
+        format: "COPMEC_DASHBOARD_V1",
+        generatedAt: new Date().toISOString(),
+        areaLabel: activeAreaLabel,
+        filters: {
+          ...dashboardFilters,
+          responsibleName: dashboardFilters.responsibleId === "all"
+            ? "Todos los players"
+            : visibleUsers.find((user) => user.id === dashboardFilters.responsibleId)?.name || dashboardFilters.responsibleId,
+        },
+        metrics: dashboardMetrics,
+        sections: {
+          players: dashboardResponsibleRows,
+          activities: dashboardActivityRows,
+          distribution: dashboardDistributionRows,
+          trends: dashboardTrendRows,
+          areas: dashboardAreaRows,
+          pauses: pauseAnalysis,
+          pareto: dashboardParetoRows,
+          ishikawa: dashboardIshikawaRows,
+          areaBoardDetail: filteredAreaBoardDetailedRows,
+        },
+      };
+      const packageText = await buildEncryptedCopmecPackage(payload);
+      const safeSuffix = sanitizeCopmecFileBaseName(fileSuffix, "dashboard");
+      const fileName = `dashboard-copmec-${safeSuffix}.copmec`;
+      triggerCopmecDownload(packageText, fileName);
+      pushAppToast(`Se descargó ${fileName}.`, "success");
+    } catch (error) {
+      pushAppToast(error?.message || "No se pudo exportar el dashboard en formato .copmec.", "danger");
+    } finally {
+      setIsExportingCopmec(false);
+    }
+  }
+
   const hasActivityUsage = Number(dashboardMetrics.activityRecords || 0) > 0;
   const hasAnyUsage = Number(dashboardMetrics.total || 0) > 0;
   const hasCatalogUsage = Number(dashboardMetrics.catalogActiveCount || 0) > 0;
@@ -1071,6 +1117,16 @@ export default function PanelIndicadores({ contexto }) {
                 aria-label={isExportingPdf ? "Exportando PDF de datos" : "Exportar PDF"}
               >
                 <Download size={16} />
+              </button>
+              <button
+                type="button"
+                className="icon-button dashboard-filter-icon-button"
+                onClick={exportDashboardToCopmec}
+                disabled={isExportingCopmec}
+                title={isExportingCopmec ? "Exportando .copmec" : "Descargar .copmec"}
+                aria-label={isExportingCopmec ? "Exportando .copmec" : "Descargar .copmec"}
+              >
+                <span style={{ fontSize: 11, fontWeight: 700 }}>.C</span>
               </button>
               <button
                 type="button"

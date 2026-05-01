@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PauseCircle, Play, Square } from "lucide-react";
+import { buildEncryptedCopmecPackage, sanitizeCopmecFileBaseName, triggerCopmecDownload } from "../../utils/copmecFiles.js";
 const ACTIVE_BOX_STORAGE_PREFIX = "copmec_returns_recondition_active_box";
 // --- Tarima/caja state helpers ---
 // const ACTIVE_TARIMA_STORAGE_PREFIX = "copmec_returns_recondition_active_tarima"; // Eliminada duplicada
@@ -349,7 +350,7 @@ function ReturnsReconditionScannerInner({
   const [recentlyClosedBoxKeys, setRecentlyClosedBoxKeys] = useState(new Set());
   const [collapsedProducts, setCollapsedProducts] = useState(new Set());
   const [expandedClosedBoxes, setExpandedClosedBoxes] = useState(new Set());
-  const [pdfContextMenu, setPdfContextMenu] = useState(null); // { x, y, onDownload }
+  const [pdfContextMenu, setPdfContextMenu] = useState(null); // { x, y, onDownloadPdf, onDownloadCopmec }
   const [pendingItem, setPendingItem] = useState(null);
   const [systemPaused, setSystemPaused] = useState(false);
   
@@ -1497,9 +1498,27 @@ function ReturnsReconditionScannerInner({
     }
   }
 
-  function openPdfContextMenu(event, onDownload) {
+  function openPdfContextMenu(event, onDownloadPdf, onDownloadCopmec) {
     event.preventDefault();
-    setPdfContextMenu({ x: event.clientX, y: event.clientY, onDownload });
+    setPdfContextMenu({ x: event.clientX, y: event.clientY, onDownloadPdf, onDownloadCopmec });
+  }
+
+  function buildClosedBoxCopmecPayload(box) {
+    return {
+      format: "COPMEC_RETURNS_BOX_V1",
+      generatedAt: new Date().toISOString(),
+      boardLabel,
+      box,
+    };
+  }
+
+  function buildClosedTarimaCopmecPayload(tarima, boxes) {
+    return {
+      format: "COPMEC_RETURNS_TARIMA_V1",
+      generatedAt: new Date().toISOString(),
+      boardLabel,
+      tarima: buildClosedTarimaSnapshot(tarima, boxes),
+    };
   }
 
   async function generateSingleBoxPDF(box) {
@@ -1526,8 +1545,35 @@ function ReturnsReconditionScannerInner({
     });
   }
 
+  async function downloadSingleBoxCopmec(box) {
+    try {
+      const payload = {
+        ...box,
+        closedAt: box.closedAt || new Date().toISOString(),
+        stoppedAt: box.stoppedAt || new Date().toISOString(),
+      };
+      const packageText = await buildEncryptedCopmecPackage(buildClosedBoxCopmecPayload(payload));
+      const fileBaseName = sanitizeCopmecFileBaseName(`tarima-${payload?.tarimaNumber || payload?.tarimaId || "-"}-caja-${payload?.palletNumber || payload?.id || "-"}`, "caja");
+      triggerCopmecDownload(packageText, `${fileBaseName}.copmec`);
+      setBoardRuntimeFeedback({ tone: "success", message: `Caja ${payload?.palletNumber || ""} exportada en formato .copmec.` });
+    } catch (error) {
+      setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo generar el archivo .copmec de la caja." });
+    }
+  }
+
   async function downloadTarimaPdf(tarima, boxes) {
     await exportTarimaPdf(tarima, boxes, { download: true, print: false });
+  }
+
+  async function downloadTarimaCopmec(tarima, boxes) {
+    try {
+      const packageText = await buildEncryptedCopmecPackage(buildClosedTarimaCopmecPayload(tarima, boxes));
+      const fileBaseName = sanitizeCopmecFileBaseName(`tarima-${tarima?.tarimaNumber || tarima?.id || "-"}`, "tarima");
+      triggerCopmecDownload(packageText, `${fileBaseName}.copmec`);
+      setBoardRuntimeFeedback({ tone: "success", message: `Tarima ${tarima?.tarimaNumber || ""} exportada en formato .copmec.` });
+    } catch (error) {
+      setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo generar el archivo .copmec de la tarima." });
+    }
   }
 
   async function exportClosedBoxPdf(box, options = {}) {
@@ -2283,9 +2329,17 @@ function ReturnsReconditionScannerInner({
             type="button"
             role="menuitem"
             className="returns-scan-context-menu-item"
-            onClick={() => { void pdfContextMenu.onDownload(); setPdfContextMenu(null); }}
+            onClick={() => { void pdfContextMenu.onDownloadPdf?.(); setPdfContextMenu(null); }}
           >
             ⬇ Descargar PDF
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="returns-scan-context-menu-item"
+            onClick={() => { void pdfContextMenu.onDownloadCopmec?.(); setPdfContextMenu(null); }}
+          >
+            Descargar .copmec
           </button>
         </div>
       )}
@@ -2420,7 +2474,7 @@ function ReturnsReconditionScannerInner({
                 title="Reimprimir PDF de tarima (clic derecho: descargar)"
                 aria-label="Reimprimir PDF de tarima"
                 onClick={() => { void exportTarimaPdf(ct, ct.boxes || []); }}
-                onContextMenu={(e) => openPdfContextMenu(e, () => downloadTarimaPdf(ct, ct.boxes || []))}
+                onContextMenu={(e) => openPdfContextMenu(e, () => downloadTarimaPdf(ct, ct.boxes || []), () => downloadTarimaCopmec(ct, ct.boxes || []))}
                 style={{ marginLeft: "0.35rem", background: "#032121", color: "#fff", border: "none", borderRadius: "999px", padding: "0.18rem 0.55rem", cursor: "pointer", fontSize: "0.78rem", fontWeight: 600 }}
               >
                 🖨 Reimprimir
@@ -2458,7 +2512,7 @@ function ReturnsReconditionScannerInner({
                   title="Reimprimir tarima (clic derecho: descargar)"
                   aria-label="Reimprimir tarima"
                   onClick={() => { void exportTarimaPdf(displayedTarima, displayedTarima.boxes || []); }}
-                  onContextMenu={(e) => openPdfContextMenu(e, () => downloadTarimaPdf(displayedTarima, displayedTarima.boxes || []))}
+                  onContextMenu={(e) => openPdfContextMenu(e, () => downloadTarimaPdf(displayedTarima, displayedTarima.boxes || []), () => downloadTarimaCopmec(displayedTarima, displayedTarima.boxes || []))}
                 >
                   Reimprimir tarima
                 </button>
@@ -2493,7 +2547,7 @@ function ReturnsReconditionScannerInner({
                       type="button"
                       className="icon-button returns-scan-icon-only"
                       onClick={() => { void generateSingleBoxPDF(box); }}
-                      onContextMenu={(e) => openPdfContextMenu(e, () => downloadSingleBoxPDF(box))}
+                      onContextMenu={(e) => openPdfContextMenu(e, () => downloadSingleBoxPDF(box), () => downloadSingleBoxCopmec(box))}
                       title="Reimprimir PDF de caja (clic derecho: descargar)"
                       aria-label="Reimprimir PDF de caja"
                     >
@@ -2523,7 +2577,7 @@ function ReturnsReconditionScannerInner({
                           type="button"
                           className="icon-button returns-scan-icon-only"
                           onClick={() => { void generateSingleBoxPDF(box); }}
-                          onContextMenu={(e) => openPdfContextMenu(e, () => downloadSingleBoxPDF(box))}
+                          onContextMenu={(e) => openPdfContextMenu(e, () => downloadSingleBoxPDF(box), () => downloadSingleBoxCopmec(box))}
                           title={`Reimprimir PDF de caja ${box.palletNumber} (clic derecho: descargar)`}
                           aria-label={`Reimprimir PDF de caja ${box.palletNumber}`}
                         >
@@ -2658,7 +2712,7 @@ function ReturnsReconditionScannerInner({
                               if (box) void generateSingleBoxPDF(box);
                             }} onContextMenu={(e) => {
                               const box = activeTarima.boxes.find((b) => b.id === product.boxId);
-                              if (box) openPdfContextMenu(e, () => downloadSingleBoxPDF(box));
+                              if (box) openPdfContextMenu(e, () => downloadSingleBoxPDF(box), () => downloadSingleBoxCopmec(box));
                             }} title="Reimprimir PDF (clic derecho: descargar)" aria-label="Reimprimir PDF">
                               P
                             </button>
