@@ -84,6 +84,16 @@
   margin-top: 0.8rem;
 }
 
+.sicfla-modal.archivero-preview-modal {
+  width: min(100%, 1400px);
+  max-height: 96vh;
+  height: 96vh;
+}
+
+.sicfla-modal.archivero-preview-modal .sicfla-modal-body {
+  overflow: auto;
+}
+
 .sicfla-modal.modal-wide {
   width: min(100%, 860px);
 }

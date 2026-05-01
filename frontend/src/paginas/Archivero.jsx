@@ -257,6 +257,59 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
     }
   }
 
+  async function exportPreviewAsPdf() {
+    if (!preview) return;
+    try {
+      const { default: jsPDF } = await import("jspdf");
+      const { default: autoTable } = await import("jspdf-autotable");
+      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      const { payload, fileType, fileName } = preview;
+      const title = fileName.replace(/\.cop$/i, "");
+
+      doc.setFontSize(14);
+      doc.setTextColor(3, 33, 33);
+      doc.text(title, 14, 15);
+      doc.setFontSize(9);
+      doc.setTextColor(100);
+      doc.text(`Exportado: ${new Date().toLocaleString("es-PE")}`, 14, 21);
+
+      if (fileType === "history" && Array.isArray(payload?.rows) && payload.rows.length) {
+        autoTable(doc, {
+          startY: 26,
+          head: [["Área", "Tablero", "Actividad", "Player", "Estado", "Fecha", "Inicio", "Fin", "Tiempo"]],
+          body: payload.rows.map((r) => [r.area||"", r.tablero||"", r.actividad||"", r.player||"", r.estado||"", r.fecha||"", r.inicio||"", r.fin||"", r.tiempo||""]),
+          styles: { fontSize: 7, cellPadding: 1.5 },
+          headStyles: { fillColor: [3, 33, 33], textColor: 255 },
+          alternateRowStyles: { fillColor: [245, 250, 249] },
+        });
+      } else if (fileType === "process-audit" && payload?.audit) {
+        const a = payload.audit;
+        doc.setFontSize(10);
+        doc.setTextColor(0);
+        doc.text(`Área: ${a.area || ""} · Proceso: ${a.process || ""}`, 14, 28);
+        const qs = Array.isArray(a.questions) ? a.questions : [];
+        autoTable(doc, {
+          startY: 34,
+          head: [["#", "Pregunta", "Respuesta", "Observaciones"]],
+          body: qs.map((q, i) => [i + 1, q.text || "", q.answer || "", q.observations || ""]),
+          styles: { fontSize: 8, cellPadding: 2 },
+          headStyles: { fillColor: [3, 33, 33], textColor: 255 },
+          columnStyles: { 1: { cellWidth: 80 } },
+        });
+      } else {
+        doc.setFontSize(10);
+        doc.setTextColor(0);
+        doc.text(`Tipo: ${fileType}`, 14, 30);
+        doc.text(JSON.stringify(payload, null, 2).slice(0, 500), 14, 38, { maxWidth: 260 });
+      }
+
+      doc.save(`${title}.pdf`);
+    } catch (err) {
+      console.error(err);
+      setMessage("No se pudo generar el PDF.");
+    }
+  }
+
   // ── Render preview ────────────────────────────────────────────────────
 
   function renderPreviewContent() {
@@ -357,18 +410,17 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
   }
 
   const previewFooterActions = preview ? [
+    <button key="pdf" type="button" className="ep-btn ep-btn--primary"
+      onClick={preview.fileType === "pdf-document" ? downloadOriginalPdf : () => exportPreviewAsPdf()}>
+      <Download size={14} style={{ marginRight: "0.3rem" }} />
+      Descargar PDF
+    </button>,
     <button key="cop" type="button" className="ep-btn ep-btn--ghost"
       onClick={() => triggerCopmecDownload(preview.packageText, preview.fileName)}>
-      <Download size={14} style={{ marginRight: "0.3rem" }} />
       Descargar .cop
     </button>,
-    preview.fileType === "pdf-document" ? (
-      <button key="pdf" type="button" className="ep-btn ep-btn--primary" onClick={downloadOriginalPdf}>
-        Descargar PDF
-      </button>
-    ) : null,
     <button key="close" type="button" className="ep-btn ep-btn--ghost" onClick={() => setPreview(null)}>Cerrar</button>,
-  ].filter(Boolean) : [];
+  ] : [];
 
   // ── JSX ───────────────────────────────────────────────────────────────
 
@@ -585,7 +637,7 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
         confirmLabel="Cerrar"
         hideCancel
         onClose={() => setPreview(null)}
-        className="ep-modal"
+        className="archivero-preview-modal"
         footerActions={previewFooterActions}
       >
         <div className="ep-body">{renderPreviewContent()}</div>
