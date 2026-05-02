@@ -4,8 +4,8 @@
 
 const VIBRATE_MSG  = [200, 100, 200, 100, 200];
 const VIBRATE_CALL = [500, 200, 500, 200, 500, 200, 500, 200, 500];
-const ICON  = '/copmec-favicon.svg';
-const BADGE = '/copmec-favicon.svg';
+const ICON  = '/logocopmec.png';
+const BADGE = '/logocopmec.png';
 
 // ── Incoming push ─────────────────────────────────────────────────────────────
 self.addEventListener('push', (event) => {
@@ -102,16 +102,7 @@ self.addEventListener('notificationclick', (event) => {
   notification.close();
 
   if (action === 'reject') {
-    if (data.room) {
-      event.waitUntil(
-        fetch('/api/chat/calls/reject-push', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ room: data.room, caller: data.caller }),
-        }).catch(() => {})
-      );
-    }
+    // User explicitly rejected from notification UI
     return;
   }
 
@@ -133,17 +124,7 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 // ── Notification dismissed ─────────────────────────────────────────────────────
-self.addEventListener('notificationclose', (event) => {
-  const data = event.notification.data || {};
-  if (data.type === 'call_invite' && data.room) {
-    fetch('/api/chat/calls/missed-push', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ room: data.room }),
-    }).catch(() => {});
-  }
-});
+self.addEventListener('notificationclose', () => {});
 
 // ── Messages from app ──────────────────────────────────────────────────────────
 self.addEventListener('message', (event) => {

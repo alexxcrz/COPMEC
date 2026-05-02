@@ -11,9 +11,9 @@
   "lang": "es",
   "icons": [
     {
-      "src": "/copmec-favicon.svg",
-      "type": "image/svg+xml",
-      "sizes": "any",
+      "src": "/logocopmec.png",
+      "type": "image/png",
+      "sizes": "512x512",
       "purpose": "any"
     }
   ],

@@ -963,13 +963,6 @@ function App() { // NOSONAR
     return cleanup;
   }, []);
 
-  // Hide splash screen once App has mounted
-  useEffect(() => {
-    if (typeof window.__copmecHideSplash === 'function') {
-      window.__copmecHideSplash();
-    }
-  }, []);
-
   useEffect(() => () => {
     boardCellSaveTimersRef.current.forEach((timerId) => {
       globalThis.clearTimeout(timerId);

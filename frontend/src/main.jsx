@@ -1,12 +1,46 @@
-import { StrictMode } from 'react'
+import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import './components/modals.css'
 import App from './App.jsx'
+import copmecLogo from './assets/copmec-logo.jpeg'
+
+function isStandaloneApp() {
+  return globalThis.matchMedia?.('(display-mode: standalone)').matches || globalThis.navigator?.standalone === true;
+}
+
+function RootWithSplash() {
+  const [showStandaloneSplash, setShowStandaloneSplash] = useState(() => isStandaloneApp());
+
+  useEffect(() => {
+    const lowEnd = (Number(globalThis.navigator?.hardwareConcurrency || 0) > 0 && Number(globalThis.navigator.hardwareConcurrency) <= 4)
+      || (Number(globalThis.navigator?.deviceMemory || 0) > 0 && Number(globalThis.navigator.deviceMemory) <= 4);
+    if (!lowEnd) return;
+    document.documentElement.classList.add('low-end-device');
+    return () => document.documentElement.classList.remove('low-end-device');
+  }, []);
+
+  useEffect(() => {
+    if (!showStandaloneSplash) return;
+    const timer = globalThis.setTimeout(() => setShowStandaloneSplash(false), 1400);
+    return () => globalThis.clearTimeout(timer);
+  }, [showStandaloneSplash]);
+
+  return (
+    <>
+      {showStandaloneSplash ? (
+        <div className="copmec-standalone-splash" aria-hidden="true">
+          <img src={copmecLogo} alt="" className="copmec-standalone-splash-logo" />
+        </div>
+      ) : null}
+      <App />
+    </>
+  );
+}
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <RootWithSplash />
   </StrictMode>,
 )
 

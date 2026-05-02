@@ -697,7 +697,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
             if (!registration?.showNotification) {
               new Notification(title, {
                 body,
-                icon: "/copmec-favicon.svg",
+                icon: "/logocopmec.png",
                 tag,
                 requireInteraction: true,
               });
@@ -706,8 +706,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
             return registration.showNotification(title, {
               body,
-              icon: "/copmec-favicon.svg",
-              badge: "/copmec-favicon.svg",
+              icon: "/logocopmec.png",
+              badge: "/logocopmec.png",
               tag,
               requireInteraction: true,
               actions: [
@@ -725,7 +725,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
           .catch(() => {
             new Notification(title, {
               body,
-              icon: "/copmec-favicon.svg",
+              icon: "/logocopmec.png",
               tag,
               requireInteraction: true,
             });
@@ -735,7 +735,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
       new Notification(title, {
         body,
-        icon: "/copmec-favicon.svg",
+        icon: "/logocopmec.png",
         tag,
         requireInteraction: true,
       });
@@ -1076,7 +1076,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                 if ("Notification" in window && Notification.permission === "granted") {
                   new Notification("📱 Mensaje de COPMEC", {
                     body: ultimoMensaje.mensaje || "Tienes un nuevo mensaje de COPMEC",
-                    icon: "/copmec-favicon.svg",
+                    icon: "/logocopmec.png",
                     tag: "COPMEC-otp",
                     requireInteraction: false
                   });
@@ -1085,7 +1085,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                     if (permission === "granted") {
                       new Notification("📱 Mensaje de COPMEC", {
                         body: ultimoMensaje.mensaje || "Tienes un nuevo mensaje de COPMEC",
-                        icon: "/copmec-favicon.svg",
+                        icon: "/logocopmec.png",
                         tag: "COPMEC-otp"
                       });
                     }
@@ -1640,7 +1640,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         if ("Notification" in window && Notification.permission === "granted") {
           new Notification("📱 Mensaje de COPMEC", {
             body: mensaje.mensaje || "Tienes un nuevo mensaje de COPMEC",
-            icon: "/copmec-favicon.svg",
+            icon: "/logocopmec.png",
             tag: "COPMEC-otp",
             requireInteraction: false
           });
@@ -1650,7 +1650,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
             if (permission === "granted") {
               new Notification("📱 Mensaje de COPMEC", {
                 body: mensaje.mensaje || "Tienes un nuevo mensaje de COPMEC",
-                icon: "/copmec-favicon.svg",
+                icon: "/logocopmec.png",
                 tag: "COPMEC-otp"
               });
             }
@@ -4535,7 +4535,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     const subtitulo = pathYQuery || link;
     
     // Intentar obtener favicon del sitio
-    const faviconUrl = `${url.origin}/copmec-favicon.svg`;
+    const faviconUrl = `${url.origin}/logocopmec.png`;
     
     return {
       titulo,
@@ -9145,7 +9145,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                     onClick={() => setEmojiCategoriaActiva(key)}
                                   >
                                     {key === "personalizados" ? (
-                                      <img src="/copmec-favicon.svg" alt="Custom" style={{width:14,height:14,borderRadius:3}} />
+                                      <img src="/logocopmec.png" alt="Custom" style={{width:14,height:14,borderRadius:3}} />
                                     ) : (
                                       (() => {
                                         const u = getTwemojiUrl(cat.icono);
@@ -10092,7 +10092,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                         onClick={() => setEmojiCategoriaActivaMenu(key)}
                       >
                         {key === "personalizados"
-                          ? <img src="/copmec-favicon.svg" alt="Custom" style={{width:14,height:14,borderRadius:3}} />
+                          ? <img src="/logocopmec.png" alt="Custom" style={{width:14,height:14,borderRadius:3}} />
                           : (() => { const u = getTwemojiUrl(cat.icono); return u ? <img src={u} alt={cat.icono} style={{width:14,height:14}} /> : <span>{cat.icono}</span>; })()
                         }
                       </button>
@@ -10677,3 +10677,4 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     </>
   );
 }
+

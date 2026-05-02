@@ -188,6 +188,14 @@ export function initSocket(httpServer) {
           });
         });
 
+        // Web Push for call target (works when app is backgrounded or phone is locked)
+        sendPushToNick(nick, {
+          type: 'call_invite',
+          room,
+          caller: fromNickname || socket.data.nickname || 'Usuario',
+          callerName: fromNickname || socket.data.nickname || 'Usuario',
+        }).catch(() => {});
+
         // REST fallback: if this target had no active sockets, enqueue for HTTP polling
         if (targets.length === 0) {
           const signal = {
@@ -202,14 +210,6 @@ export function initSocket(httpServer) {
           const aliases = resolveTargetAliases(nick);
           aliases.forEach((alias) => enqueueCallSignal(alias, signal));
           console.log(`   ↪ enqueued REST fallback invite for "${nick}"`);
-
-          // Web Push: notify user even if phone is locked
-          sendPushToNick(nick, {
-            type: 'call_invite',
-            room,
-            caller: fromNickname || socket.data.nickname || 'Usuario',
-            callerName: fromNickname || socket.data.nickname || 'Usuario',
-          }).catch(() => {});
         }
       });
 

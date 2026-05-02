@@ -610,9 +610,12 @@ export default function MisTableros({ contexto }) {
   const visibleRows = (boardView?.rows || []).filter((row) => {
     // Tableros de devoluciones/reacondicionado: ocultar filas ya cerradas (pertenecen a tarimas anteriores)
     if (boardLooksReturnsRecondition && row.status === STATUS_FINISHED) return false;
-    if (showCleaningNaveSelector && boardDateField && targetOperationalDateKey) {
+    // Tableros de limpieza: mostrar solo actividades accionables (no terminadas)
+    if (!isHistoricalCustomBoardView && showCleaningNaveSelector && row.status === STATUS_FINISHED) return false;
+    if (!isHistoricalCustomBoardView && showCleaningNaveSelector && boardDateField && targetOperationalDateKey) {
       const rowDate = String(row?.values?.[boardDateField.id] || "").trim();
-      if (rowDate && rowDate !== targetOperationalDateKey) return false;
+      // En limpieza, la lista operativa se limita estrictamente al dia seleccionado.
+      if (!rowDate || rowDate !== targetOperationalDateKey) return false;
     }
     if (!activityListField || !activityOptionNames) return true;
     const activityValue = String(row?.values?.[activityListField.id] || "").trim().toLowerCase();

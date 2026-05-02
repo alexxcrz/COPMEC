@@ -253,7 +253,7 @@ export function normalizeCleaningSite(value, fallback = DEFAULT_CLEANING_SITE) {
   if (key === "c1") return "C1";
   if (key === "c2") return "C2";
   if (["c3", "principal", "main", "default"].includes(key)) return "C3";
-  if (["p", "patio"].includes(key)) return "P";
+  if (["p", "patio", "ppatio", "p/patio", "patio/p"].includes(key)) return "P";
   return fallback;
 }
 
@@ -1049,7 +1049,9 @@ export function normalizeCatalogScheduledDays(value, fallbackFrequency = "weekly
 export function normalizeCatalogCleaningSites(value) {
   const validSites = new Set((CLEANING_SITE_OPTIONS || []).map((entry) => String(entry.value || "").trim()).filter(Boolean));
   const fromArray = Array.isArray(value)
-    ? value.map((entry) => String(entry || "").trim().toUpperCase()).filter((entry) => validSites.has(entry))
+    ? value
+      .map((entry) => normalizeCleaningSite(entry, ""))
+      .filter((entry) => validSites.has(entry))
     : [];
   return [...new Set(fromArray)];
 }
@@ -1065,7 +1067,7 @@ export function normalizeCatalogScheduledDaysBySite(value, fallbackDays = []) {
   const normalizedFallbackDays = normalizeCatalogScheduledDays(fallbackDays, "weekly");
   const entries = Object.entries(value)
     .map(([rawSite, rawDays]) => {
-      const site = String(rawSite || "").trim().toUpperCase();
+      const site = normalizeCleaningSite(rawSite, "");
       if (!validSites.has(site)) return null;
       const directDays = Array.isArray(rawDays)
         ? rawDays.map((entry) => normalizeWeekdayOffset(entry)).filter((entry) => entry !== null)
@@ -1079,7 +1081,7 @@ export function normalizeCatalogScheduledDaysBySite(value, fallbackDays = []) {
 
 export function getCatalogScheduledDaysForSite(item, cleaningSite = "") {
   const baseDays = normalizeCatalogScheduledDays(item?.scheduledDays, item?.frequency);
-  const normalizedSite = String(cleaningSite || "").trim().toUpperCase();
+  const normalizedSite = normalizeCleaningSite(cleaningSite, "");
   if (!normalizedSite) return baseDays;
   const bySite = normalizeCatalogScheduledDaysBySite(item?.scheduledDaysBySite, baseDays);
   return bySite[normalizedSite] || baseDays;
@@ -1098,7 +1100,7 @@ export function isCatalogItemScheduledForDay(item, dayOffset, cleaningSite = "")
 }
 
 export function isCatalogItemAvailableForCleaningSite(item, cleaningSite) {
-  const normalizedSite = String(cleaningSite || "").trim().toUpperCase();
+  const normalizedSite = normalizeCleaningSite(cleaningSite, "");
   if (!normalizedSite) return true;
   const allowedSites = normalizeCatalogCleaningSites(item?.cleaningSites);
   if (!allowedSites.length) return true;

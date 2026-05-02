@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { requireAuth } from "../middleware/auth.middleware.js";
-import { getIO, getUsuariosActivos, getSocketsByNickname } from "../config/socket.js";
+import { getIO, getUsuariosActivos } from "../config/socket.js";
 import { storeSubscription, getVapidPublicKey, sendPushToNick } from "../services/push.service.js";
 import { prismaChat as prisma } from "../config/prisma-chat.js";
 import { getWarehouseState } from "../services/warehouse.store.js";
@@ -82,25 +82,23 @@ function emitChatsActivosActualizados() {
   try {
     getIO().emit("chats_activos_actualizados", { ts: Date.now() });
   } catch (_) {}
+}
 
 // ── Push notification endpoints ────────────────────────────────────────────────
-// Public: return VAPID public key for frontend subscription
 chatRouter.get("/push-key", (_req, res) => {
   const key = getVapidPublicKey();
   if (!key) return res.status(503).json({ error: "Push not configured" });
   res.json({ publicKey: key });
 });
 
-// Auth-required: store push subscription for current user
-chatRouter.post("/push-subscribe", requireAuth, (req, res) => {
+chatRouter.post("/push-subscribe", (req, res) => {
   const nombre = getNombre(req);
   if (!nombre) return res.status(400).json({ error: "Usuario sin nombre" });
   const { subscription } = req.body;
-  if (!subscription?.endpoint) return res.status(400).json({ error: "Subscription inválida" });
+  if (!subscription?.endpoint) return res.status(400).json({ error: "Subscription invalida" });
   storeSubscription(nombre, subscription);
   res.json({ ok: true });
 });
-}
 
 async function esAdminDeGrupo(grupoId, nombre) {
   const grupo = await prisma.chatGrupo.findUnique({ where: { id: grupoId } });
@@ -660,8 +658,8 @@ chatRouter.post("/privado", requireAuth, async (req, res) => {
     getIO().emit("chat_privado_nuevo", out);
     emitChatsActivosActualizados();
 
-    // Push notification if recipient has no active sockets (offline)
-    if (para_nickname !== nombre && getSocketsByNickname(para_nickname).length === 0) {
+    // Push notification for recipient only (never sender)
+    if (para_nickname !== nombre) {
       sendPushToNick(para_nickname, {
         type: 'message',
         fromNickname: nombre,
@@ -989,7 +987,7 @@ chatRouter.post("/grupos/:id/mensajes", requireAuth, async (req, res) => {
       });
       const grupoNombre = (await prisma.chatGrupo.findUnique({ where: { id: Number(id) }, select: { nombre: true } }))?.nombre || 'Grupo';
       miembros.forEach(({ usuarioNickname }) => {
-        if (usuarioNickname !== nombre && getSocketsByNickname(usuarioNickname).length === 0) {
+        if (usuarioNickname !== nombre) {
           sendPushToNick(usuarioNickname, {
             type: 'group_message',
             groupId: Number(id),
