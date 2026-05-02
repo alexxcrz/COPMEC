@@ -1,0 +1,22 @@
+{
+  "name": "COPMEC",
+  "short_name": "COPMEC",
+  "description": "Sistema de gestión operativa COPMEC",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#032121",
+  "theme_color": "#12352d",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "/copmec-favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["productivity", "business"],
+  "prefer_related_applications": false
+}

@@ -757,6 +757,12 @@ function setupGlobalHorizontalScrollEnhancements() {
   };
 }
 
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = globalThis.atob(base64);
+  return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
+}
 
 function App() { // NOSONAR
   const socketRef = useRef(null);
@@ -955,6 +961,13 @@ function App() { // NOSONAR
   useEffect(() => {
     const cleanup = setupGlobalHorizontalScrollEnhancements();
     return cleanup;
+  }, []);
+
+  // Hide splash screen once App has mounted
+  useEffect(() => {
+    if (typeof window.__copmecHideSplash === 'function') {
+      window.__copmecHideSplash();
+    }
   }, []);
 
   useEffect(() => () => {
@@ -1569,6 +1582,51 @@ function App() { // NOSONAR
     () => state.users.find((user) => user.id === sessionUserId) || null,
     [sessionUserId, state.users],
   );
+
+  // Subscribe to push notifications once the user is logged in
+  useEffect(() => {
+    const nick = currentUser?.name;
+    if (!nick) return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (Notification.permission !== 'granted') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const keyRes = await fetch('/api/chat/push-key');
+        if (!keyRes.ok || cancelled) return;
+        const { publicKey } = await keyRes.json();
+        if (!publicKey || cancelled) return;
+        const existing = await reg.pushManager.getSubscription();
+        const sub = existing || await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        });
+        if (cancelled) return;
+        await fetch('/api/chat/push-subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ subscription: sub.toJSON() }),
+        });
+      } catch (_) {
+        // Push subscription is optional; fail silently
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [currentUser?.name]);
+
+  // Dismiss message notifications when the app becomes visible (user is using the app)
+  useEffect(() => {
+    if (!currentUser?.name) return;
+    function onVisibilityChange() {
+      if (!document.hidden && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'DISMISS_MESSAGE_NOTIFICATIONS' });
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [currentUser?.name]);
   const rootLeadId = useMemo(() => {
     const leads = state.users
       .filter((u) => u.role === ROLE_LEAD && u.createdById === BOOTSTRAP_MASTER_ID)

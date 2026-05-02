@@ -3,6 +3,7 @@ import { corsOriginValidator } from "./env.js";
 import { normalizeNick, enqueueCallSignal, nextSignalId } from "../utils/callSignalQueue.js";
 import { getWarehouseState } from "../services/warehouse.store.js";
 import { prismaChat as prisma } from "./prisma-chat.js";
+import { sendPushToNick } from "../services/push.service.js";
 
 let io;
 
@@ -201,6 +202,14 @@ export function initSocket(httpServer) {
           const aliases = resolveTargetAliases(nick);
           aliases.forEach((alias) => enqueueCallSignal(alias, signal));
           console.log(`   ↪ enqueued REST fallback invite for "${nick}"`);
+
+          // Web Push: notify user even if phone is locked
+          sendPushToNick(nick, {
+            type: 'call_invite',
+            room,
+            caller: fromNickname || socket.data.nickname || 'Usuario',
+            callerName: fromNickname || socket.data.nickname || 'Usuario',
+          }).catch(() => {});
         }
       });
 

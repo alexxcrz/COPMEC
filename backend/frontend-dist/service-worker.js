@@ -1,107 +1,175 @@
 // Service Worker para manejar notificaciones de videollamada incluso cuando el celular está bloqueado
 
-const NOTIFICATION_ICON = '/copmec-favicon.svg';
-const VIBRATION_PATTERN = [200, 100, 200, 100, 200]; // Patrón de vibración de llamada
+// Service Worker COPMEC v2 — Push notifications (mensajes, grupos, videollamadas)
 
+const VIBRATE_MSG  = [200, 100, 200, 100, 200];
+const VIBRATE_CALL = [500, 200, 500, 200, 500, 200, 500, 200, 500];
+const ICON  = '/copmec-favicon.svg';
+const BADGE = '/copmec-favicon.svg';
+
+// ── Incoming push ─────────────────────────────────────────────────────────────
 self.addEventListener('push', (event) => {
-  console.log('[SW] Push event received:', event);
-  
-  if (event.data) {
-    try {
-      const data = event.data.json();
-      
-      if (data.type === 'call_invite') {
-        // Vibración intensa para llamada entrante
-        if (navigator.vibrate) {
-          navigator.vibrate(VIBRATION_PATTERN);
-        }
-        
-        const options = {
-          body: `${data.callerName || 'Usuario'} te está llamando`,
-          icon: NOTIFICATION_ICON,
-          badge: NOTIFICATION_ICON,
-          tag: `call-${data.room}`,
-          requireInteraction: true, // No se cierra automáticamente
-          actions: [
-            {
-              action: 'accept',
-              title: 'Aceptar',
-              icon: NOTIFICATION_ICON
-            },
-            {
-              action: 'reject',
-              title: 'Rechazar',
-              icon: NOTIFICATION_ICON
-            }
-          ],
-          data: {
-            type: 'call_invite',
-            room: data.room,
-            caller: data.caller,
-            callerName: data.callerName,
-            url: '/'
-          }
-        };
-        
-        event.waitUntil(
-          self.registration.showNotification('Videollamada entrante', options)
-        );
-      }
-    } catch (err) {
-      console.error('[SW] Error procesando push:', err);
+  if (!event.data) return;
+  let data;
+  try { data = event.data.json(); } catch { return; }
+
+  event.waitUntil((async () => {
+    switch (data.type) {
+      case 'call_invite':   await showCallNotification(data); break;
+      case 'message':       await showMessageNotification(data); break;
+      case 'group_message': await showGroupMessageNotification(data); break;
+      default: break;
     }
-  }
+  })());
 });
 
-// Manejar clic en notificación
+async function showCallNotification(data) {
+  const prev = await self.registration.getNotifications({ tag: `call-${data.room}` });
+  prev.forEach((n) => n.close());
+
+  await self.registration.showNotification('Videollamada entrante', {
+    body: `${data.callerName || data.caller || 'Alguien'} te esta llamando`,
+    icon: ICON, badge: BADGE,
+    tag: `call-${data.room}`,
+    renotify: true, requireInteraction: true,
+    vibrate: VIBRATE_CALL, silent: false,
+    actions: [
+      { action: 'accept', title: 'Aceptar' },
+      { action: 'reject', title: 'Rechazar' },
+    ],
+    data: {
+      type: 'call_invite',
+      room: data.room,
+      caller: data.caller || data.callerName,
+      callerName: data.callerName || data.caller,
+      url: '/',
+    },
+  });
+}
+
+async function showMessageNotification(data) {
+  const prev = await self.registration.getNotifications({ tag: `msg-${data.fromNickname}` });
+  prev.forEach((n) => n.close());
+
+  const body = data.text
+    ? (data.text.length > 120 ? data.text.slice(0, 117) + '...' : data.text)
+    : 'Nuevo mensaje';
+
+  await self.registration.showNotification(`${data.fromNickname || 'Mensaje nuevo'}`, {
+    body,
+    icon: data.senderPhoto || ICON, badge: BADGE,
+    tag: `msg-${data.fromNickname}`,
+    renotify: true, requireInteraction: false,
+    vibrate: VIBRATE_MSG, silent: false,
+    actions: [{ action: 'open', title: 'Abrir chat' }],
+    data: {
+      type: 'message',
+      fromNickname: data.fromNickname,
+      url: '/',
+    },
+  });
+}
+
+async function showGroupMessageNotification(data) {
+  const prev = await self.registration.getNotifications({ tag: `group-${data.groupId}` });
+  prev.forEach((n) => n.close());
+
+  const body = data.text
+    ? (data.text.length > 120 ? data.text.slice(0, 117) + '...' : data.text)
+    : 'Nuevo mensaje en el grupo';
+
+  await self.registration.showNotification(`${data.groupName || 'Grupo'}`, {
+    body: `${data.fromNickname ? data.fromNickname + ': ' : ''}${body}`,
+    icon: ICON, badge: BADGE,
+    tag: `group-${data.groupId}`,
+    renotify: true, requireInteraction: false,
+    vibrate: VIBRATE_MSG, silent: false,
+    actions: [{ action: 'open', title: 'Ver grupo' }],
+    data: {
+      type: 'group_message',
+      groupId: data.groupId,
+      groupName: data.groupName,
+      url: '/',
+    },
+  });
+}
+
+// ── Notification click ─────────────────────────────────────────────────────────
 self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notification clicked:', event.notification.tag);
-  
-  event.notification.close();
-  
-  if (event.action === 'reject') {
-    // Enviar señal de rechazo al servidor
-    if (event.notification.data) {
-      fetch('/api/chat/calls/signal', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'reject',
-          room: event.notification.data.room,
-          toNicknames: [event.notification.data.caller],
-          nickname: 'Usuario'
-        })
-      }).catch(() => {});
+  const { notification, action } = event;
+  const data = notification.data || {};
+
+  notification.close();
+
+  if (action === 'reject') {
+    if (data.room) {
+      event.waitUntil(
+        fetch('/api/chat/calls/reject-push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ room: data.room, caller: data.caller }),
+        }).catch(() => {})
+      );
     }
     return;
   }
-  
-  // Abrir app en ventana existente o crear una nueva
+
+  // 'accept', 'open', or direct tap — focus existing window or open new one
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Buscar ventana abierta
-      for (let i = 0; i < clientList.length; i++) {
-        const client = clientList[i];
-        if (client.url === '/' && 'focus' in client) {
-          return client.focus();
+      for (const client of clientList) {
+        if ('focus' in client) {
+          client.focus();
+          client.postMessage({ type: 'NOTIFICATION_CLICK', data });
+          return;
         }
       }
-      // Si no hay ventana abierta, crear una nueva
       if (clients.openWindow) {
-        return clients.openWindow('/');
+        return clients.openWindow(data.url || '/');
       }
     })
   );
 });
 
-// Manejar cierre de notificación (swipe away en Android)
+// ── Notification dismissed ─────────────────────────────────────────────────────
 self.addEventListener('notificationclose', (event) => {
-  console.log('[SW] Notification dismissed:', event.notification.tag);
+  const data = event.notification.data || {};
+  if (data.type === 'call_invite' && data.room) {
+    fetch('/api/chat/calls/missed-push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ room: data.room }),
+    }).catch(() => {});
+  }
 });
 
-// Mantener el Service Worker activo
+// ── Messages from app ──────────────────────────────────────────────────────────
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
+  const msg = event.data || {};
+
+  if (msg.type === 'DISMISS_MESSAGE_NOTIFICATIONS') {
+    event.waitUntil(
+      self.registration.getNotifications().then((notifs) => {
+        notifs.forEach((n) => {
+          if (n.tag && (n.tag.startsWith('msg-') || n.tag.startsWith('group-'))) n.close();
+        });
+      })
+    );
+    return;
+  }
+
+  if (msg.type === 'DISMISS_TAG' && msg.tag) {
+    event.waitUntil(
+      self.registration.getNotifications({ tag: msg.tag }).then((notifs) => {
+        notifs.forEach((n) => n.close());
+      })
+    );
+    return;
+  }
+
+  if (msg.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
 });

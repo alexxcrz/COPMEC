@@ -1,12 +1,12 @@
 {
-  "revision": 2892,
+  "revision": 2893,
   "system": {
     "masterBootstrapEnabled": false,
     "masterUsername": "Maestro",
     "operational": {
       "naveWeekSchedules": {},
       "pauseControl": {
-        "globalPauseEnabled": true,
+        "globalPauseEnabled": false,
         "forceGlobalPause": false,
         "reasons": [
           {
@@ -179,7 +179,7 @@
             }
           }
         },
-        "globalPauseActivatedAt": "2026-05-02T12:45:11.216Z",
+        "globalPauseActivatedAt": null,
         "globalPauseAutoDisabledUntil": null
       }
     }
@@ -11958,7 +11958,7 @@
       "sharedDepartments": []
     }
   ],
-  "updatedAt": "2026-05-02T12:45:11.217Z",
+  "updatedAt": "2026-05-02T14:18:43.106Z",
   "permissions": {
     "pages": {
       "index": {
@@ -14606,7 +14606,7 @@
           "ownerName": "Líder de almacén",
           "evidences": [],
           "createdAt": "2026-05-01T19:27:27.242Z",
-          "updatedAt": "2026-05-02T12:45:11.224Z"
+          "updatedAt": "2026-05-02T14:18:43.120Z"
         },
         {
           "id": "papr-3fc781cb7acb",
@@ -14622,7 +14622,7 @@
           "ownerName": "Supervisor de turno",
           "evidences": [],
           "createdAt": "2026-05-01T19:27:27.242Z",
-          "updatedAt": "2026-05-02T12:45:11.224Z"
+          "updatedAt": "2026-05-02T14:18:43.120Z"
         }
       ],
       "followUp": [
@@ -14633,7 +14633,7 @@
           "evidences": [],
           "dueDate": "",
           "createdAt": "2026-05-01T19:27:27.242Z",
-          "updatedAt": "2026-05-02T12:45:11.224Z"
+          "updatedAt": "2026-05-02T14:18:43.120Z"
         },
         {
           "id": "pafu-53fc6ff1a23d",
@@ -14642,7 +14642,7 @@
           "evidences": [],
           "dueDate": "",
           "createdAt": "2026-05-01T19:27:27.242Z",
-          "updatedAt": "2026-05-02T12:45:11.224Z"
+          "updatedAt": "2026-05-02T14:18:43.120Z"
         }
       ],
       "implementationPlan": {
@@ -14902,7 +14902,7 @@
           "ownerName": "Lider Operativo",
           "evidences": [],
           "createdAt": "2026-05-01T18:57:19.677Z",
-          "updatedAt": "2026-05-02T12:45:11.224Z"
+          "updatedAt": "2026-05-02T14:18:43.120Z"
         },
         {
           "id": "papr-d91c3ac08470",
@@ -14918,7 +14918,7 @@
           "ownerName": "Supervisor Calidad",
           "evidences": [],
           "createdAt": "2026-05-01T18:57:19.677Z",
-          "updatedAt": "2026-05-02T12:45:11.225Z"
+          "updatedAt": "2026-05-02T14:18:43.120Z"
         }
       ],
       "followUp": [
@@ -14929,7 +14929,7 @@
           "evidences": [],
           "dueDate": "",
           "createdAt": "2026-05-01T18:57:19.677Z",
-          "updatedAt": "2026-05-02T12:45:11.225Z"
+          "updatedAt": "2026-05-02T14:18:43.120Z"
         },
         {
           "id": "pafu-61b398c13c2b",
@@ -14938,7 +14938,7 @@
           "evidences": [],
           "dueDate": "",
           "createdAt": "2026-05-01T18:57:19.677Z",
-          "updatedAt": "2026-05-02T12:45:11.225Z"
+          "updatedAt": "2026-05-02T14:18:43.120Z"
         }
       ],
       "implementationPlan": {
