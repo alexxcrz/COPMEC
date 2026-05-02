@@ -8,6 +8,17 @@ backend/generated/
 !**/.env.sample
 *.log
 backend/data/security-events.log
+# Datos runtime (no versionar)
+backend/data/warehouse-state.json
+backend/data/warehouse-state.previous.json
+backend/data/warehouse-state-backups/
+backend/data/uploads/
+backend/data/biblioteca/
+!backend/data/warehouse-state-backups/.gitkeep
+!backend/data/uploads/.gitkeep
+!backend/data/uploads/chat/.gitkeep
+!backend/data/uploads/grupos/.gitkeep
+!backend/data/biblioteca/.gitkeep
 .DS_Store
 .vscode/
 dist/
