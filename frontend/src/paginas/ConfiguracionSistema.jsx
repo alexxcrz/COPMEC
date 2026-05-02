@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { buildAreaCatalog, getAreaRoot, normalizeAreaOption, normalizeSystemOperationalSettings } from "../utils/utilidades.jsx";
-import { Modal } from "../components/Modal";
 import { DEFAULT_AREA_OPTIONS } from "../utils/constantes.js";
 
 const LEGACY_AREA_KEYS = new Set(["C1", "C2", "C3", "P"]);
@@ -8,6 +7,24 @@ const REQUIRED_OPERATIONAL_AREAS = ["LIMPIEZA"];
 const HOURS_24 = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, "0"));
 const HOURS_24_WITH_24 = HOURS_24.concat(["24"]);
 const MINUTES_60 = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, "0"));
+const WEEKDAY_META = [
+  { key: "mon", label: "Lunes" },
+  { key: "tue", label: "Martes" },
+  { key: "wed", label: "Miercoles" },
+  { key: "thu", label: "Jueves" },
+  { key: "fri", label: "Viernes" },
+  { key: "sat", label: "Sabado" },
+  { key: "sun", label: "Domingo" },
+];
+const DEFAULT_GLOBAL_WORK_WEEK = {
+  mon: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
+  tue: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
+  wed: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
+  thu: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
+  fri: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
+  sat: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 12, endMinute: 0 } },
+  sun: { enabled: false, workHours: { startHour: 0, startMinute: 0, endHour: 24, endMinute: 0 } },
+};
 
 function toTimeValue(hour, minute) { // eslint-disable-line no-unused-vars
   const hh = String(Math.min(24, Math.max(0, Number(hour) || 0))).padStart(2, "0");
@@ -24,39 +41,24 @@ function parseTimeValue(value, fallbackHour = 0, fallbackMinute = 0) {
   };
 }
 
-function getOperationalTimeParts() {
-  try {
-    const formatter = new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/Mexico_City",
-      hourCycle: "h23",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    const parts = formatter.formatToParts(new Date());
-    const hour = Number(parts.find((part) => part.type === "hour")?.value || 0);
-    const minute = Number(parts.find((part) => part.type === "minute")?.value || 0);
-    if (Number.isFinite(hour) && Number.isFinite(minute)) {
-      return { hour, minute };
-    }
-  } catch {
-    // Fallback to device time if timezone formatting fails.
-  }
-  const now = new Date();
-  return { hour: now.getHours(), minute: now.getMinutes() };
-}
-
-function isWithinWorkHoursWindow(workHours) {
-  const source = workHours && typeof workHours === "object" ? workHours : {};
-  const startHour = Math.min(23, Math.max(0, Math.round(Number(source.startHour ?? 0))));
-  const startMinute = Math.min(59, Math.max(0, Math.round(Number(source.startMinute ?? 0))));
-  const endHour = Math.min(24, Math.max(0, Math.round(Number(source.endHour ?? 24))));
-  const endMinute = Math.min(59, Math.max(0, Math.round(Number(source.endMinute ?? 0))));
-  const startTotal = (startHour * 60) + startMinute;
-  const endTotal = (endHour * 60) + endMinute;
-  if (startTotal === endTotal) return false;
-  const now = getOperationalTimeParts();
-  const nowTotal = (now.hour * 60) + now.minute;
-  return nowTotal >= startTotal && nowTotal < endTotal;
+function normalizeWorkWeekSchedule(source, fallbackWorkHours) {
+  const weekSource = source && typeof source === "object" ? source : {};
+  return WEEKDAY_META.reduce((accumulator, day) => {
+    const daySource = weekSource[day.key] && typeof weekSource[day.key] === "object" ? weekSource[day.key] : {};
+    const defaultEntry = DEFAULT_GLOBAL_WORK_WEEK[day.key] || { enabled: true, workHours: fallbackWorkHours || { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } };
+    const hasOwnEnabled = Object.prototype.hasOwnProperty.call(daySource, "enabled");
+    const mergedWorkHoursSource = daySource.workHours && typeof daySource.workHours === "object" ? daySource.workHours : daySource;
+    accumulator[day.key] = {
+      enabled: hasOwnEnabled ? Boolean(daySource.enabled) : Boolean(defaultEntry.enabled),
+      workHours: {
+        startHour: Math.min(23, Math.max(0, Math.round(Number(mergedWorkHoursSource.startHour ?? defaultEntry.workHours.startHour ?? 8)))),
+        startMinute: Math.min(59, Math.max(0, Math.round(Number(mergedWorkHoursSource.startMinute ?? defaultEntry.workHours.startMinute ?? 0)))),
+        endHour: Math.min(24, Math.max(0, Math.round(Number(mergedWorkHoursSource.endHour ?? defaultEntry.workHours.endHour ?? 16)))),
+        endMinute: Math.min(59, Math.max(0, Math.round(Number(mergedWorkHoursSource.endMinute ?? defaultEntry.workHours.endMinute ?? 0)))),
+      },
+    };
+    return accumulator;
+  }, {});
 }
 
 export default function ConfiguracionSistema({ contexto }) {
@@ -89,29 +91,23 @@ export default function ConfiguracionSistema({ contexto }) {
     return Array.from(new Set([...(realAreaOptions || []), ...fromPause, ...fromDefaults])).sort((a, b) => a.localeCompare(b, "es-MX"));
   }, [operationalSettings.pauseControl?.areaPauseControls, realAreaOptions]);
   const [pauseDraft, setPauseDraft] = useState(() => operationalSettings.pauseControl);
-  const [workHoursDraft, setWorkHoursDraft] = useState(() => operationalSettings.pauseControl.workHours || { startHour: 0, endHour: 24, startMinute: 0, endMinute: 0 });
+  const [workWeekDraft, setWorkWeekDraft] = useState(() => normalizeWorkWeekSchedule(
+    operationalSettings.pauseControl.workWeek,
+    operationalSettings.pauseControl.workHours || { startHour: 8, endHour: 16, startMinute: 0, endMinute: 0 },
+  ));
   const [areaPauseControlsDraft, setAreaPauseControlsDraft] = useState(() => operationalSettings.pauseControl.areaPauseControls || {});
   const [isSavingPause, setIsSavingPause] = useState(false);
   const [isSavingAreaPauseControls, setIsSavingAreaPauseControls] = useState(false);
-  const [globalPauseDisableModal, setGlobalPauseDisableModal] = useState({ open: false, minutes: "60", error: "" });
-  const [overrideNowMs, setOverrideNowMs] = useState(Date.now());
 
   useEffect(() => {
     setPauseDraft(operationalSettings.pauseControl);
   }, [operationalSettings.pauseControl]);
   useEffect(() => {
-    const overrideIso = String(operationalSettings.pauseControl?.globalPauseAutoDisabledUntil || "").trim();
-    if (!overrideIso) return undefined;
-    const endMs = new Date(overrideIso).getTime();
-    if (!Number.isFinite(endMs) || endMs <= Date.now()) return undefined;
-    const timerId = globalThis.setInterval(() => {
-      setOverrideNowMs(Date.now());
-    }, 1000);
-    return () => globalThis.clearInterval(timerId);
-  }, [operationalSettings.pauseControl?.globalPauseAutoDisabledUntil]);
-  useEffect(() => {
-    setWorkHoursDraft(operationalSettings.pauseControl.workHours || { startHour: 0, endHour: 24, startMinute: 0, endMinute: 0 });
-  }, [operationalSettings.pauseControl.workHours]);
+    setWorkWeekDraft(normalizeWorkWeekSchedule(
+      operationalSettings.pauseControl.workWeek,
+      operationalSettings.pauseControl.workHours || { startHour: 8, endHour: 16, startMinute: 0, endMinute: 0 },
+    ));
+  }, [operationalSettings.pauseControl.workWeek, operationalSettings.pauseControl.workHours]);
   useEffect(() => {
     const source = operationalSettings.pauseControl.areaPauseControls || {};
     const normalized = {};
@@ -140,94 +136,47 @@ export default function ConfiguracionSistema({ contexto }) {
     }
   }
 
-  function getOverrideRemainingSeconds() {
-    const overrideIso = String(operationalSettings.pauseControl?.globalPauseAutoDisabledUntil || "").trim();
-    if (!overrideIso) return 0;
-    const endMs = new Date(overrideIso).getTime();
-    if (!Number.isFinite(endMs)) return 0;
-    return Math.max(0, Math.floor((endMs - overrideNowMs) / 1000));
-  }
-
-  function formatRemainingClock(seconds) {
-    const safeSeconds = Math.max(0, Number(seconds || 0));
-    const hh = String(Math.floor(safeSeconds / 3600)).padStart(2, "0");
-    const mm = String(Math.floor((safeSeconds % 3600) / 60)).padStart(2, "0");
-    const ss = String(safeSeconds % 60).padStart(2, "0");
-    return `${hh}:${mm}:${ss}`;
-  }
-
   async function toggleGlobalPause() {
     if (!canManageSystemSettings || isSavingPause) return;
-    if (pauseDraft?.globalPauseEnabled) {
-      if (isWithinWorkHoursWindow(pauseDraft?.workHours)) {
-        setIsSavingPause(true);
-        try {
-          await updateSystemOperationalSettings({
-            pauseControl: {
-              ...pauseDraft,
-              forceGlobalPause: false,
-              globalPauseEnabled: false,
-              globalPauseAutoDisabledUntil: null,
-            },
-          });
-          pushAppToast("Pausa global desactivada.", "success");
-        } catch (error) {
-          pushAppToast(error?.message || "No se pudo desactivar la pausa global.", "danger");
-        } finally {
-          setIsSavingPause(false);
-        }
-        return;
-      }
-      setGlobalPauseDisableModal({ open: true, minutes: "60", error: "" });
-      return;
-    }
-
+    const nextEnabled = !Boolean(pauseDraft?.globalPauseEnabled);
     setIsSavingPause(true);
     try {
       await updateSystemOperationalSettings({
         pauseControl: {
           ...pauseDraft,
-          globalPauseEnabled: true,
+          forceGlobalPause: nextEnabled,
+          globalPauseEnabled: nextEnabled,
           globalPauseAutoDisabledUntil: null,
         },
       });
-      pushAppToast("Pausa global activada.", "success");
+      pushAppToast(nextEnabled ? "Pausa global activada." : "Pausa global desactivada.", "success");
     } catch (error) {
-      pushAppToast(error?.message || "No se pudo activar la pausa global.", "danger");
+      pushAppToast(error?.message || "No se pudo actualizar la pausa global.", "danger");
     } finally {
       setIsSavingPause(false);
     }
   }
 
-  async function confirmTemporaryGlobalPauseDisable() {
-    if (isSavingPause) return;
-    const minutes = Math.max(0, Math.round(Number(globalPauseDisableModal.minutes || 0)));
-    if (!minutes) {
-      setGlobalPauseDisableModal((current) => ({ ...current, error: "Indica cuántos minutos estará desactivada la pausa global." }));
-      return;
-    }
-
-    const untilIso = new Date(Date.now() + (minutes * 60 * 1000)).toISOString();
+  async function toggleExtraTime() {
+    if (!canManageSystemSettings || isSavingPause) return;
+    const nextForceGlobalPause = !Boolean(pauseDraft?.forceGlobalPause);
     setIsSavingPause(true);
     try {
       await updateSystemOperationalSettings({
         pauseControl: {
           ...pauseDraft,
-          forceGlobalPause: false,
-          globalPauseEnabled: false,
-          globalPauseAutoDisabledUntil: untilIso,
+          forceGlobalPause: nextForceGlobalPause,
+          globalPauseEnabled: nextForceGlobalPause ? true : Boolean(pauseDraft?.globalPauseEnabled),
+          globalPauseAutoDisabledUntil: null,
         },
       });
-      setGlobalPauseDisableModal({ open: false, minutes: "60", error: "" });
-      pushAppToast(`Pausa global desactivada temporalmente por ${minutes} min.`, "success");
+      pushAppToast(nextForceGlobalPause ? "Tiempo extra activado." : "Tiempo extra desactivado.", "success");
     } catch (error) {
-      setGlobalPauseDisableModal((current) => ({ ...current, error: error?.message || "No se pudo desactivar temporalmente." }));
+      pushAppToast(error?.message || "No se pudo actualizar el tiempo extra.", "danger");
     } finally {
       setIsSavingPause(false);
     }
   }
-
-  const overrideRemainingSeconds = getOverrideRemainingSeconds();
 
   function addPauseReason() {
     setPauseDraft((current) => ({
@@ -249,16 +198,28 @@ export default function ConfiguracionSistema({ contexto }) {
 
   async function handleSaveWorkHours() {
     if (!canManageSystemSettings || isSavingWorkHours) return;
-    const startHour = Math.min(23, Math.max(0, Math.round(Number(workHoursDraft.startHour) || 0)));
-    const startMinute = Math.min(59, Math.max(0, Math.round(Number(workHoursDraft.startMinute) || 0)));
-    const endHour = Math.min(24, Math.max(0, Math.round(Number(workHoursDraft.endHour) || 24)));
-    const endMinute = Math.min(59, Math.max(0, Math.round(Number(workHoursDraft.endMinute) || 0)));
+    const normalizedWorkWeek = normalizeWorkWeekSchedule(workWeekDraft, pauseDraft?.workHours || { startHour: 8, endHour: 16, startMinute: 0, endMinute: 0 });
+    const fallbackLegacyEntry = normalizedWorkWeek.mon || DEFAULT_GLOBAL_WORK_WEEK.mon;
+    const firstEnabledEntry = WEEKDAY_META
+      .map((day) => normalizedWorkWeek[day.key])
+      .find((entry) => entry?.enabled && entry?.workHours)
+      || fallbackLegacyEntry;
+    const nextLegacyWorkHours = {
+      startHour: Number(firstEnabledEntry?.workHours?.startHour ?? 8),
+      startMinute: Number(firstEnabledEntry?.workHours?.startMinute ?? 0),
+      endHour: Number(firstEnabledEntry?.workHours?.endHour ?? 16),
+      endMinute: Number(firstEnabledEntry?.workHours?.endMinute ?? 0),
+    };
     setIsSavingWorkHours(true);
     try {
       await updateSystemOperationalSettings({
-        pauseControl: { ...pauseDraft, workHours: { startHour, startMinute, endHour, endMinute } },
+        pauseControl: {
+          ...pauseDraft,
+          workHours: nextLegacyWorkHours,
+          workWeek: normalizedWorkWeek,
+        },
       });
-      pushAppToast(`Horario laboral guardado: ${String(startHour).padStart(2, "0")}:${String(startMinute).padStart(2, "0")} – ${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}`, "success");
+      pushAppToast("Horario laboral semanal guardado correctamente.", "success");
     } catch (error) {
       pushAppToast(error?.message || "No se pudo guardar el horario laboral.", "danger");
     } finally {
@@ -266,15 +227,25 @@ export default function ConfiguracionSistema({ contexto }) {
     }
   }
 
-  function handleGlobalTimeChange(kind, value) {
-    const fallbackHour = kind === "start" ? Number(workHoursDraft.startHour) || 0 : Number(workHoursDraft.endHour) || 24;
-    const fallbackMinute = kind === "start" ? Number(workHoursDraft.startMinute) || 0 : Number(workHoursDraft.endMinute) || 0;
+  function handleGlobalTimeChange(dayKey, kind, value) {
+    const daySource = workWeekDraft[dayKey]?.workHours || {};
+    const fallbackHour = kind === "start" ? Number(daySource.startHour) || 0 : Number(daySource.endHour) || 24;
+    const fallbackMinute = kind === "start" ? Number(daySource.startMinute) || 0 : Number(daySource.endMinute) || 0;
     const { hour, minute } = parseTimeValue(value, fallbackHour, fallbackMinute);
-    if (kind === "start") {
-      setWorkHoursDraft((current) => ({ ...current, startHour: hour, startMinute: minute }));
-      return;
-    }
-    setWorkHoursDraft((current) => ({ ...current, endHour: hour, endMinute: minute }));
+    setWorkWeekDraft((current) => {
+      const dayCurrent = current[dayKey] || DEFAULT_GLOBAL_WORK_WEEK[dayKey] || DEFAULT_GLOBAL_WORK_WEEK.mon;
+      const nextWorkHours = {
+        ...dayCurrent.workHours,
+        ...(kind === "start" ? { startHour: hour, startMinute: minute } : { endHour: hour, endMinute: minute }),
+      };
+      return {
+        ...current,
+        [dayKey]: {
+          ...dayCurrent,
+          workHours: nextWorkHours,
+        },
+      };
+    });
   }
 
   function handleAreaTimeChange(area, kind, value) {
@@ -330,68 +301,112 @@ export default function ConfiguracionSistema({ contexto }) {
         <div className="card-header-row">
           <div>
             <h3>Horario laboral global</h3>
-            <p className="subtle-line">Selecciona horario con reloj. Solo dos campos: inicio y fin.</p>
+            <p className="subtle-line">Define dias laborables y su horario (L-V 08:00-16:00, Sabado 08:00-12:00, Domingo no laborable). Usa tiempo extra para forzar operacion especial.</p>
           </div>
-        </div>
-        <div className="system-config-clock-grid system-config-clock-grid-two">
-          <div className="app-modal-field system-time-field">
-            <span>Reloj inicio</span>
-            <div className="system-time-input-wrap">
-              <div className="system-time-select-row">
-                <select
-                  className="system-time-select"
-                  value={String(Math.min(23, Math.max(0, Number(workHoursDraft.startHour) || 0))).padStart(2, "0")}
-                  onChange={(event) => handleGlobalTimeChange("start", `${event.target.value}:${String(Math.min(59, Math.max(0, Number(workHoursDraft.startMinute) || 0))).padStart(2, "0")}`)}
-                  disabled={!canManageSystemSettings}
-                >
-                  {HOURS_24.map((hour) => <option key={`start-hour-${hour}`} value={hour}>{hour}</option>)}
-                </select>
-                <span>:</span>
-                <select
-                  className="system-time-select"
-                  value={String(Math.min(59, Math.max(0, Number(workHoursDraft.startMinute) || 0))).padStart(2, "0")}
-                  onChange={(event) => handleGlobalTimeChange("start", `${String(Math.min(23, Math.max(0, Number(workHoursDraft.startHour) || 0))).padStart(2, "0")}:${event.target.value}`)}
-                  disabled={!canManageSystemSettings}
-                >
-                  {MINUTES_60.map((minute) => <option key={`start-minute-${minute}`} value={minute}>{minute}</option>)}
-                </select>
-              </div>
-              <span className="system-time-icon" aria-hidden="true">🕒</span>
+          <div style={{ display: "flex", flexDirection: "row", gap: 20, alignItems: "center", flexShrink: 0 }}>
+            <div className="app-modal-field">
+              <span>Pausa global</span>
+              <button type="button" className={`switch-button system-config-switch ${pauseDraft?.globalPauseEnabled ? "on" : ""}`} onClick={toggleGlobalPause} disabled={!canManageSystemSettings || isSavingPause} aria-label="Alternar pausa global activa">
+                <span className="switch-thumb" />
+              </button>
             </div>
-          </div>
-          <div className="app-modal-field system-time-field">
-            <span>Reloj fin</span>
-            <div className="system-time-input-wrap">
-              <div className="system-time-select-row">
-                <select
-                  className="system-time-select"
-                  value={String(Math.min(24, Math.max(0, Number(workHoursDraft.endHour) || 24))).padStart(2, "0")}
-                  onChange={(event) => {
-                    const nextHour = event.target.value;
-                    const nextMinute = nextHour === "24" ? "00" : String(Math.min(59, Math.max(0, Number(workHoursDraft.endMinute) || 0))).padStart(2, "0");
-                    handleGlobalTimeChange("end", `${nextHour}:${nextMinute}`);
-                  }}
-                  disabled={!canManageSystemSettings}
-                >
-                  {HOURS_24_WITH_24.map((hour) => <option key={`end-hour-${hour}`} value={hour}>{hour}</option>)}
-                </select>
-                <span>:</span>
-                <select
-                  className="system-time-select"
-                  value={String(Math.min(59, Math.max(0, Number(workHoursDraft.endMinute) || 0))).padStart(2, "0")}
-                  onChange={(event) => handleGlobalTimeChange("end", `${String(Math.min(24, Math.max(0, Number(workHoursDraft.endHour) || 24))).padStart(2, "0")}:${event.target.value}`)}
-                  disabled={!canManageSystemSettings || Number(workHoursDraft.endHour) === 24}
-                >
-                  {MINUTES_60.map((minute) => <option key={`end-minute-${minute}`} value={minute}>{minute}</option>)}
-                </select>
-              </div>
-              <span className="system-time-icon" aria-hidden="true">🕒</span>
+            <div className="app-modal-field">
+              <span>Tiempo extra</span>
+              <button type="button" className={`switch-button system-config-switch ${pauseDraft?.forceGlobalPause ? "on" : ""}`} onClick={toggleExtraTime} disabled={!canManageSystemSettings || isSavingPause} aria-label="Alternar tiempo extra">
+                <span className="switch-thumb" />
+              </button>
             </div>
           </div>
         </div>
-        <p className="subtle-line" style={{ marginTop: 4 }}>
-          Ventana activa: <strong>{String(Math.min(23, Math.max(0, Math.round(Number(workHoursDraft.startHour) || 0)))).padStart(2, "0")}:{String(Math.min(59, Math.max(0, Math.round(Number(workHoursDraft.startMinute) || 0)))).padStart(2, "0")}</strong> – <strong>{String(Math.min(24, Math.max(0, Math.round(Number(workHoursDraft.endHour) || 24)))).padStart(2, "0")}:{String(Math.min(59, Math.max(0, Math.round(Number(workHoursDraft.endMinute) || 0)))).padStart(2, "0")}</strong>
-        </p>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+          {WEEKDAY_META.map((day) => {
+            const dayEntry = workWeekDraft[day.key] || DEFAULT_GLOBAL_WORK_WEEK[day.key];
+            const dayHours = dayEntry?.workHours || DEFAULT_GLOBAL_WORK_WEEK[day.key].workHours;
+            const endHourValue = String(Math.min(24, Math.max(0, Number(dayHours.endHour) || 24))).padStart(2, "0");
+            return (
+              <div key={day.key} className="system-config-card" style={{ display: "grid", gap: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <strong>{day.label}</strong>
+                  <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(dayEntry?.enabled)}
+                      disabled={!canManageSystemSettings}
+                      onChange={(event) => setWorkWeekDraft((current) => ({
+                        ...current,
+                        [day.key]: {
+                          ...(current[day.key] || DEFAULT_GLOBAL_WORK_WEEK[day.key]),
+                          enabled: event.target.checked,
+                        },
+                      }))}
+                    />
+                    <span style={{ fontSize: "0.9rem" }}>Laborable</span>
+                  </label>
+                </div>
+                {dayEntry?.enabled ? (
+                  <div className="system-config-clock-grid system-config-clock-grid-two">
+                    <div className="app-modal-field system-time-field">
+                      <span>Inicio</span>
+                      <div className="system-time-input-wrap">
+                        <div className="system-time-select-row">
+                          <select
+                            className="system-time-select"
+                            value={String(Math.min(23, Math.max(0, Number(dayHours.startHour) || 0))).padStart(2, "0")}
+                            onChange={(event) => handleGlobalTimeChange(day.key, "start", `${event.target.value}:${String(Math.min(59, Math.max(0, Number(dayHours.startMinute) || 0))).padStart(2, "0")}`)}
+                            disabled={!canManageSystemSettings}
+                          >
+                            {HOURS_24.map((hour) => <option key={`${day.key}-start-hour-${hour}`} value={hour}>{hour}</option>)}
+                          </select>
+                          <span>:</span>
+                          <select
+                            className="system-time-select"
+                            value={String(Math.min(59, Math.max(0, Number(dayHours.startMinute) || 0))).padStart(2, "0")}
+                            onChange={(event) => handleGlobalTimeChange(day.key, "start", `${String(Math.min(23, Math.max(0, Number(dayHours.startHour) || 0))).padStart(2, "0")}:${event.target.value}`)}
+                            disabled={!canManageSystemSettings}
+                          >
+                            {MINUTES_60.map((minute) => <option key={`${day.key}-start-minute-${minute}`} value={minute}>{minute}</option>)}
+                          </select>
+                        </div>
+                        <span className="system-time-icon" aria-hidden="true">🕒</span>
+                      </div>
+                    </div>
+                    <div className="app-modal-field system-time-field">
+                      <span>Fin</span>
+                      <div className="system-time-input-wrap">
+                        <div className="system-time-select-row">
+                          <select
+                            className="system-time-select"
+                            value={endHourValue}
+                            onChange={(event) => {
+                              const nextHour = event.target.value;
+                              const nextMinute = nextHour === "24" ? "00" : String(Math.min(59, Math.max(0, Number(dayHours.endMinute) || 0))).padStart(2, "0");
+                              handleGlobalTimeChange(day.key, "end", `${nextHour}:${nextMinute}`);
+                            }}
+                            disabled={!canManageSystemSettings}
+                          >
+                            {HOURS_24_WITH_24.map((hour) => <option key={`${day.key}-end-hour-${hour}`} value={hour}>{hour}</option>)}
+                          </select>
+                          <span>:</span>
+                          <select
+                            className="system-time-select"
+                            value={String(Math.min(59, Math.max(0, Number(dayHours.endMinute) || 0))).padStart(2, "0")}
+                            onChange={(event) => handleGlobalTimeChange(day.key, "end", `${endHourValue}:${event.target.value}`)}
+                            disabled={!canManageSystemSettings || Number(dayHours.endHour) === 24}
+                          >
+                            {MINUTES_60.map((minute) => <option key={`${day.key}-end-minute-${minute}`} value={minute}>{minute}</option>)}
+                          </select>
+                        </div>
+                        <span className="system-time-icon" aria-hidden="true">🕒</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="subtle-line" style={{ margin: 0 }}>No laborable: la pausa global automatica permanecera activa todo el dia.</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
         <div className="row-actions compact system-config-actions">
           <button type="button" className="primary-button" onClick={handleSaveWorkHours} disabled={!canManageSystemSettings || isSavingWorkHours}>
             {isSavingWorkHours ? "Guardando..." : "Guardar horario laboral"}
@@ -402,85 +417,26 @@ export default function ConfiguracionSistema({ contexto }) {
       <article className="surface-card admin-surface-card system-config-compact-surface">
         <div className="card-header-row">
           <div>
-            <h3>Pausa global</h3>
-            <p className="subtle-line">Controla solo la pausa global del sistema.</p>
-          </div>
-        </div>
-        <div className="modal-form-grid system-config-pause-grid system-config-pause-grid-compact">
-          <div className="app-modal-field">
-            <span>Pausa global activa</span>
-            <button type="button" className={`switch-button system-config-switch ${pauseDraft?.globalPauseEnabled ? "on" : ""}`} onClick={toggleGlobalPause} disabled={!canManageSystemSettings || isSavingPause} aria-label="Alternar pausa global activa">
-              <span className="switch-thumb" />
-            </button>
-            {overrideRemainingSeconds > 0 ? (
-              <p className="subtle-line" style={{ marginTop: 8 }}>
-                Reanudación automática en <strong>{formatRemainingClock(overrideRemainingSeconds)}</strong>
-              </p>
-            ) : null}
-          </div>
-          <div className="app-modal-field">
-            <span>Pausa forzada de operación</span>
-            <button type="button" className={`switch-button system-config-switch ${pauseDraft?.forceGlobalPause ? "on" : ""}`} onClick={() => setPauseDraft((current) => ({ ...current, forceGlobalPause: !current.forceGlobalPause }))} disabled={!canManageSystemSettings} aria-label="Alternar pausa forzada">
-              <span className="switch-thumb" />
-            </button>
-          </div>
-        </div>
-
-        <div className="row-actions compact system-config-actions">
-          <button type="button" className="primary-button" onClick={handleSavePauseRules} disabled={!canManageSystemSettings || isSavingPause}>
-            {isSavingPause ? "Guardando..." : "Guardar pausa global"}
-          </button>
-        </div>
-      </article>
-      </div>
-
-      <Modal
-        open={globalPauseDisableModal.open}
-        title="Desactivar pausa global temporalmente"
-        confirmLabel={isSavingPause ? "Guardando..." : "Confirmar"}
-        cancelLabel="Cancelar"
-        onClose={() => setGlobalPauseDisableModal({ open: false, minutes: "60", error: "" })}
-        onConfirm={confirmTemporaryGlobalPauseDisable}
-        confirmDisabled={isSavingPause}
-      >
-        <div className="modal-form-grid">
-          <label className="app-modal-field">
-            <span>¿Cuántos minutos se desactivará?</span>
-            <input
-              type="number"
-              min="1"
-              value={globalPauseDisableModal.minutes}
-              onChange={(event) => setGlobalPauseDisableModal((current) => ({ ...current, minutes: event.target.value, error: "" }))}
-            />
-          </label>
-          <p className="modal-footnote">Al terminar el tiempo, la pausa global se reactivará automáticamente.</p>
-          {globalPauseDisableModal.error ? <p className="validation-text">{globalPauseDisableModal.error}</p> : null}
-        </div>
-      </Modal>
-
-      <article className="surface-card full-width admin-surface-card">
-        <div className="card-header-row">
-          <div>
             <h3>Horario laboral por área</h3>
             <p className="subtle-line">Activa un área real para que use horario propio y quede fuera del global.</p>
           </div>
         </div>
 
-        <div className="system-config-grid system-config-grid-three">
+        <div className="system-config-grid">
           {areaKeys.map((area) => {
             const areaControl = areaPauseControlsDraft[area] || { enabled: false, workHours: {} };
             return (
               <div key={area} className="system-config-card">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", alignItems: "center", gap: 10, marginBottom: 8 }}>
                   <strong>{area}</strong>
-                  <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <label style={{ display: "inline-flex", gap: 8, alignItems: "center", whiteSpace: "nowrap", fontSize: "0.88rem" }}>
                     <input
                       type="checkbox"
                       checked={areaControl.enabled || false}
                       onChange={(e) => setAreaPauseControlsDraft((current) => ({ ...current, [area]: { ...areaControl, enabled: e.target.checked } }))}
                       disabled={!canManageSystemSettings}
                     />
-                    <span style={{ fontSize: "0.9rem" }}>Usar horario propio</span>
+                    <span>Horario propio</span>
                   </label>
                 </div>
                 {areaControl.enabled && (
@@ -552,6 +508,7 @@ export default function ConfiguracionSistema({ contexto }) {
           </button>
         </div>
       </article>
+      </div>
 
       <article className="surface-card full-width admin-surface-card">
         <div className="card-header-row">

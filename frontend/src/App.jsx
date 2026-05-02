@@ -892,6 +892,7 @@ function App() { // NOSONAR
     globalPauseEnabled: Boolean(state?.system?.operational?.pauseControl?.globalPauseEnabled),
     globalPauseActivatedAt: state?.system?.operational?.pauseControl?.globalPauseActivatedAt || null,
     workHours: state?.system?.operational?.pauseControl?.workHours || { startHour: 0, endHour: 24 },
+    workWeek: state?.system?.operational?.pauseControl?.workWeek || EMPTY_OBJECT,
     areaPauseControls: state?.system?.operational?.pauseControl?.areaPauseControls || EMPTY_OBJECT,
   }), [state?.system?.operational]);
   const enabledPauseReasons = useMemo(() => {
@@ -1451,6 +1452,75 @@ function App() { // NOSONAR
       events.close();
     };
   }, [sessionUserId]);
+
+  // ── Sincronización en tiempo real: Socket.IO "warehouse_updated" ──────────────
+  // Cuando el backend emite "warehouse_updated" (tras cualquier cambio de estado),
+  // el cliente re-carga el estado completo como respaldo del SSE.
+  useEffect(() => {
+    if (!sessionUserId || sessionUserId === BOOTSTRAP_MASTER_ID) return;
+    const socket = socketRef.current;
+    if (!socket) return;
+
+    let ignoreResponse = false;
+    const handleWarehouseUpdate = async () => {
+      if (ignoreResponse) return;
+      try {
+        const remoteState = await requestJson("/warehouse/state");
+        if (ignoreResponse) return;
+        applyRemoteStatePreservingBoardDrafts(remoteState);
+      } catch (_) { /* SSE ya cubre este caso; ignorar silenciosamente */ }
+    };
+
+    socket.on("warehouse_updated", handleWarehouseUpdate);
+    return () => {
+      ignoreResponse = true;
+      socket.off("warehouse_updated", handleWarehouseUpdate);
+    };
+  // socketConnectCount cambia cada vez que el socket se reconecta, lo que
+  // obliga a re-registrar el listener en la nueva instancia del socket.
+  }, [sessionUserId, socketConnectCount]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Sincronización al volver a la pestaña (visibilitychange) ─────────────────
+  useEffect(() => {
+    if (!sessionUserId || sessionUserId === BOOTSTRAP_MASTER_ID) return;
+
+    let ignoreResponse = false;
+    const handleVisibilityChange = async () => {
+      if (document.hidden || ignoreResponse) return;
+      try {
+        const remoteState = await requestJson("/warehouse/state");
+        if (ignoreResponse) return;
+        applyRemoteStatePreservingBoardDrafts(remoteState);
+      } catch (_) { /* Ignorar; el SSE se encargará */ }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      ignoreResponse = true;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [sessionUserId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Polling de respaldo (cada 20 s) cuando el SSE está caído ─────────────────
+  useEffect(() => {
+    if (!sessionUserId || sessionUserId === BOOTSTRAP_MASTER_ID) return;
+
+    let ignoreResponse = false;
+    const poll = async () => {
+      if (ignoreResponse) return;
+      try {
+        const remoteState = await requestJson("/warehouse/state");
+        if (ignoreResponse) return;
+        applyRemoteStatePreservingBoardDrafts(remoteState);
+      } catch (_) { /* Ignorar */ }
+    };
+
+    const intervalId = globalThis.setInterval(poll, 20_000);
+    return () => {
+      ignoreResponse = true;
+      globalThis.clearInterval(intervalId);
+    };
+  }, [sessionUserId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!ENABLE_LEGACY_WHOLE_STATE_SYNC) return;

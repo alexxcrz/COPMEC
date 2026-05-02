@@ -106,13 +106,20 @@ function fileTypeChip(ft) {
   return map[ft] || { label: "Archivo", bg: "#f3f4f6", color: "#374151" };
 }
 
-function sanitizePdfBaseName(name) {
-  const raw = String(name || "documento").replace(/\.pdf$/i, "").trim();
-  return raw
-    .replace(/\s*-\s*Documentos\s+de\s+Google$/i, "")
-    .replace(/\s*-\s*Google\s+Docs$/i, "")
-    .replace(/\s+/g, " ")
-    .trim() || "documento";
+function createGeneratedPdfNames() {
+  const now = new Date();
+  const yyyy = String(now.getFullYear());
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mi = String(now.getMinutes()).padStart(2, "0");
+  const ss = String(now.getSeconds()).padStart(2, "0");
+  const random = Math.random().toString(36).slice(2, 6);
+  const base = `documento_${yyyy}${mm}${dd}_${hh}${mi}${ss}_${random}`;
+  return {
+    pdfName: `${base}.pdf`,
+    copName: `${base}.cop`,
+  };
 }
 
 const MAX_FILES = 50;
@@ -247,16 +254,16 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
       let binary = "";
       bytes.forEach((b) => { binary += String.fromCharCode(b); });
       const base64Data = btoa(binary);
+      const generatedNames = createGeneratedPdfNames();
       const payload = {
         type: "pdf-document",
-        originalName: `${sanitizePdfBaseName(pdfFile.name)}.pdf`,
+        originalName: generatedNames.pdfName,
         size: pdfFile.size,
         importedAt: new Date().toISOString(),
         data: base64Data,
       };
       const packageText = await buildEncryptedCopmecPdfPackage(payload);
-      const copName = `${sanitizePdfBaseName(pdfFile.name)}.cop`;
-      const entry = buildArchiveroEntry({ packageText, payload, fileName: copName, fileType: "pdf-document" });
+      const entry = buildArchiveroEntry({ packageText, payload, fileName: generatedNames.copName, fileType: "pdf-document" });
       const nextFiles = [entry, ...files].slice(0, MAX_FILES);
       await persistFiles(nextFiles);
       setPdfMsg("PDF convertido y guardado en el archivero.");
@@ -412,7 +419,7 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
     }
 
     if (fileType === "pdf-document") {
-      const displayName = `${sanitizePdfBaseName(payload?.originalName || preview.fileName)}.pdf`;
+      const displayName = String(payload?.originalName || preview.fileName.replace(/\.cop$/i, ".pdf"));
       return (
         <div style={{ display: "grid", gap: "0.5rem" }}>
           <p style={{ margin: 0, color: "#666", fontSize: "0.85rem" }}>PDF: {displayName}</p>
@@ -633,7 +640,7 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
               <input ref={pdfRef} type="file" accept=".pdf" style={{ display: "none" }} onChange={handlePdfFileChange} />
               {pdfFile && (
                 <span style={{ fontSize: "0.83rem", color: "#032121", fontWeight: 600 }}>
-                  📄 {pdfFile.name}
+                  📄 PDF seleccionado
                 </span>
               )}
             </div>
@@ -678,7 +685,7 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
 
       <Modal
         open={Boolean(preview)}
-        title={`Vista — ${preview?.fileType === "pdf-document" ? `${sanitizePdfBaseName(preview?.payload?.originalName || preview?.fileName)}.cop` : (preview?.fileName || "archivo.cop")}`}
+        title={`Vista — ${preview?.fileName || "archivo.cop"}`}
         confirmLabel="Cerrar"
         hideCancel
         onClose={() => setPreview(null)}

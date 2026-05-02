@@ -3566,6 +3566,34 @@ function normalizeWorkHoursWithMinutes(source, fallbackStartHour = 0, fallbackEn
   };
 }
 
+const PAUSE_WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+const DEFAULT_GLOBAL_WORK_WEEK = {
+  mon: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
+  tue: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
+  wed: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
+  thu: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
+  fri: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
+  sat: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 12, endMinute: 0 } },
+  sun: { enabled: false, workHours: { startHour: 0, startMinute: 0, endHour: 24, endMinute: 0 } },
+};
+
+function normalizeWorkWeekSchedule(source, fallbackWorkHours) {
+  const weekSource = source && typeof source === "object" ? source : EMPTY_OBJECT;
+  return PAUSE_WEEKDAY_KEYS.reduce((accumulator, dayKey) => {
+    const dayDefault = DEFAULT_GLOBAL_WORK_WEEK[dayKey] || { enabled: true, workHours: normalizeWorkHoursWithMinutes(fallbackWorkHours, 0, 24) };
+    const daySource = weekSource[dayKey] && typeof weekSource[dayKey] === "object" ? weekSource[dayKey] : EMPTY_OBJECT;
+    const hasOwnEnabled = Object.prototype.hasOwnProperty.call(daySource, "enabled");
+    const mergedWorkHoursSource = daySource.workHours && typeof daySource.workHours === "object"
+      ? daySource.workHours
+      : daySource;
+    accumulator[dayKey] = {
+      enabled: hasOwnEnabled ? Boolean(daySource.enabled) : Boolean(dayDefault.enabled),
+      workHours: normalizeWorkHoursWithMinutes(mergedWorkHoursSource || dayDefault.workHours || fallbackWorkHours, 0, 24),
+    };
+    return accumulator;
+  }, {});
+}
+
 export function normalizeSystemOperationalSettings(value) {
   const source = value && typeof value === "object" ? value : EMPTY_OBJECT;
   const defaultReasons = [
@@ -3595,6 +3623,10 @@ export function normalizeSystemOperationalSettings(value) {
       })(),
       reasons: normalizedReasons.length ? normalizedReasons : defaultReasons.map((entry) => normalizeSystemPauseReason(entry, entry)),
       workHours: normalizeWorkHoursWithMinutes(source.pauseControl?.workHours, 0, 24),
+      workWeek: normalizeWorkWeekSchedule(
+        source.pauseControl?.workWeek,
+        normalizeWorkHoursWithMinutes(source.pauseControl?.workHours, 0, 24),
+      ),
       areaPauseControls: (() => {
         const areaSource = source.pauseControl?.areaPauseControls && typeof source.pauseControl.areaPauseControls === "object"
           ? source.pauseControl.areaPauseControls

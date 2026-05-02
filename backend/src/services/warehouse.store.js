@@ -337,6 +337,34 @@ function normalizeWorkHoursWithMinutes(source = {}) {
   return { startHour, startMinute, endHour, endMinute };
 }
 
+const PAUSE_WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+const DEFAULT_GLOBAL_WORK_WEEK = {
+  mon: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
+  tue: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
+  wed: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
+  thu: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
+  fri: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
+  sat: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 12, endMinute: 0 } },
+  sun: { enabled: false, workHours: { startHour: 0, startMinute: 0, endHour: 24, endMinute: 0 } },
+};
+
+function normalizeWorkWeekSchedule(source, fallbackWorkHours = EMPTY_OBJECT) {
+  const weekSource = source && typeof source === "object" ? source : EMPTY_OBJECT;
+  return PAUSE_WEEKDAY_KEYS.reduce((accumulator, dayKey) => {
+    const dayDefault = DEFAULT_GLOBAL_WORK_WEEK[dayKey] || { enabled: true, workHours: normalizeWorkHoursWithMinutes(fallbackWorkHours) };
+    const daySource = weekSource[dayKey] && typeof weekSource[dayKey] === "object" ? weekSource[dayKey] : EMPTY_OBJECT;
+    const hasOwnEnabled = Object.prototype.hasOwnProperty.call(daySource, "enabled");
+    const mergedWorkHoursSource = daySource.workHours && typeof daySource.workHours === "object"
+      ? daySource.workHours
+      : daySource;
+    accumulator[dayKey] = {
+      enabled: hasOwnEnabled ? Boolean(daySource.enabled) : Boolean(dayDefault.enabled),
+      workHours: normalizeWorkHoursWithMinutes(mergedWorkHoursSource || dayDefault.workHours || fallbackWorkHours),
+    };
+    return accumulator;
+  }, {});
+}
+
 function normalizeAreaPauseControl(value) {
   const source = value && typeof value === "object" ? value : EMPTY_OBJECT;
   return {
@@ -361,6 +389,7 @@ function normalizeSystemPauseControl(value) {
   
   // Global work hours (with minute support)
   const globalWorkHours = normalizeWorkHoursWithMinutes(source.workHours);
+  const globalWorkWeek = normalizeWorkWeekSchedule(source.workWeek, globalWorkHours);
   
   const areaSource = source.areaPauseControls && typeof source.areaPauseControls === "object" ? source.areaPauseControls : {};
   const areaKeys = Object.keys(areaSource);
@@ -387,6 +416,7 @@ function normalizeSystemPauseControl(value) {
     forceGlobalPause: Boolean(source.forceGlobalPause),
     reasons: reasons.length ? reasons : fallbackReasons,
     workHours: globalWorkHours,
+    workWeek: globalWorkWeek,
     areaPauseControls,
     globalPauseActivatedAt,
     globalPauseAutoDisabledUntil,
@@ -398,27 +428,53 @@ function getTimePartsInOperationalTimezone(nowMs) {
     const formatter = new Intl.DateTimeFormat("en-US", {
       timeZone: OPERATIONAL_TIMEZONE,
       hourCycle: "h23",
+      weekday: "short",
       hour: "2-digit",
       minute: "2-digit",
     });
     const parts = formatter.formatToParts(new Date(nowMs));
     const hour = Number(parts.find((part) => part.type === "hour")?.value || 0);
     const minute = Number(parts.find((part) => part.type === "minute")?.value || 0);
+    const weekdayRaw = String(parts.find((part) => part.type === "weekday")?.value || "").trim().toLowerCase();
+    const weekdayMap = {
+      mon: "mon",
+      tue: "tue",
+      wed: "wed",
+      thu: "thu",
+      fri: "fri",
+      sat: "sat",
+      sun: "sun",
+    };
+    const weekdayKey = weekdayMap[weekdayRaw.slice(0, 3)] || "mon";
     if (Number.isFinite(hour) && Number.isFinite(minute)) {
-      return { hour, minute };
+      return { hour, minute, weekdayKey };
     }
   } catch {
     // Fallback to server local time if timezone resolution fails.
   }
   const now = new Date(nowMs);
+  const jsDay = now.getDay();
+  const weekdayByIndex = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
   return {
     hour: now.getHours(),
     minute: now.getMinutes(),
+    weekdayKey: weekdayByIndex[jsDay] || "mon",
   };
 }
 
-function isWithinPauseControlWorkHours(nowMs, workHours) {
-  const source = workHours && typeof workHours === "object" ? workHours : EMPTY_OBJECT;
+function isWithinPauseControlWorkHours(nowMs, workHours, workWeek = EMPTY_OBJECT) {
+  const normalizedWeek = normalizeWorkWeekSchedule(workWeek, workHours);
+  const timeParts = getTimePartsInOperationalTimezone(nowMs);
+  const dayConfig = normalizedWeek[timeParts.weekdayKey] && typeof normalizedWeek[timeParts.weekdayKey] === "object"
+    ? normalizedWeek[timeParts.weekdayKey]
+    : null;
+  if (dayConfig && dayConfig.enabled === false) {
+    return false;
+  }
+
+  const source = dayConfig?.workHours && typeof dayConfig.workHours === "object"
+    ? dayConfig.workHours
+    : (workHours && typeof workHours === "object" ? workHours : EMPTY_OBJECT);
   const startHour = Math.min(23, Math.max(0, Math.round(Number(source.startHour ?? 0))));
   const startMinute = Math.min(59, Math.max(0, Math.round(Number(source.startMinute ?? 0))));
   const endHour = Math.min(24, Math.max(0, Math.round(Number(source.endHour ?? 24))));
@@ -427,7 +483,6 @@ function isWithinPauseControlWorkHours(nowMs, workHours) {
   const endTotal = (endHour * 60) + endMinute;
   if (startTotal === endTotal) return false;
 
-  const timeParts = getTimePartsInOperationalTimezone(nowMs);
   const nowTotal = (timeParts.hour * 60) + timeParts.minute;
   return nowTotal >= startTotal && nowTotal < endTotal;
 }
@@ -439,7 +494,7 @@ function resolveAutomatedGlobalPauseControl(pauseControl) {
     ? new Date(normalizedPauseControl.globalPauseAutoDisabledUntil).getTime()
     : NaN;
   const hasActiveTemporaryDisable = Number.isFinite(autoDisabledUntilMs) && autoDisabledUntilMs > nowMs;
-  const isWithinGlobalWindow = isWithinPauseControlWorkHours(nowMs, normalizedPauseControl.workHours);
+  const isWithinGlobalWindow = isWithinPauseControlWorkHours(nowMs, normalizedPauseControl.workHours, normalizedPauseControl.workWeek);
   const desiredGlobalPauseEnabled = normalizedPauseControl.forceGlobalPause
     ? true
     : hasActiveTemporaryDisable

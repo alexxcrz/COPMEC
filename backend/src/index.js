@@ -26,6 +26,29 @@ const PORT = Number(process.env.PORT || 4000);
 const server = http.createServer(app);
 initSocket(server);
 
+// Bridge warehouse state changes → Socket.IO "warehouse_updated" signal
+// This lets clients know they should refresh their state, used as fallback when SSE drops.
+const { subscribeWarehouseState, getRawWarehouseState } = await import("./services/warehouse.store.js");
+const { getIO } = await import("./config/socket.js");
+subscribeWarehouseState(() => {
+  try {
+    getIO().volatile.emit("warehouse_updated", { ts: Date.now() });
+  } catch (emitErr) {
+    // Socket.IO might not be fully ready (e.g. in tests); skip silently.
+    console.debug("[warehouse_bridge] socket not ready:", emitErr?.message);
+  }
+});
+
+// Periodic tick to evaluate automated global pause and other timed automations.
+// Without this, automations only fire when a request arrives (e.g. if no clients are connected).
+setInterval(() => {
+  try {
+    getRawWarehouseState();
+  } catch (tickErr) {
+    console.debug("[auto_tick] state tick error:", tickErr?.message);
+  }
+}, 60_000);
+
 server.listen(PORT, () => {
   console.log(`COPMEC API listening on port ${PORT}`);
 });

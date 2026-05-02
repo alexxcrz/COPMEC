@@ -316,11 +316,27 @@ export default function MisTableros({ contexto }) {
     : (systemPauseControl?.workHours || { startHour: 0, endHour: 24, startMinute: 0, endMinute: 0 });
   const manualGlobalPause = Boolean(systemPauseControl?.globalPauseEnabled);
   const globalForceActive = Boolean(systemPauseControl?.forceGlobalPause);
-  const globalPauseLocked = manualGlobalPause;
+  // Area-aware pause: if the board's area has its own schedule, compute pause from that schedule.
+  // forceGlobalPause (tiempo extra / manual lead override) always takes precedence.
+  const areaEffectivePauseEnabled = globalForceActive
+    ? true
+    : areaHasOwnSchedule
+      ? (() => {
+          const now = new Date();
+          const wh = areaSpecificConfig.workHours;
+          const startTotal = Number(wh?.startHour ?? 0) * 60 + Number(wh?.startMinute ?? 0);
+          const endTotal = Number(wh?.endHour ?? 24) * 60 + Number(wh?.endMinute ?? 0);
+          if (startTotal === endTotal) return true;
+          const nowTotal = now.getHours() * 60 + now.getMinutes();
+          return !(nowTotal >= startTotal && nowTotal < endTotal);
+        })()
+      : manualGlobalPause;
+  const globalPauseLocked = areaEffectivePauseEnabled;
   const pauseState = {
-    globalPauseEnabled: manualGlobalPause,
-    globalPauseActivatedAt: manualGlobalPause ? (systemPauseControl?.globalPauseActivatedAt || null) : null,
+    globalPauseEnabled: areaEffectivePauseEnabled,
+    globalPauseActivatedAt: areaEffectivePauseEnabled ? (systemPauseControl?.globalPauseActivatedAt || null) : null,
     workHours: effectiveWorkHours,
+    workWeek: systemPauseControl?.workWeek || {},
     areaPauseControls: areaPauseControls,
   };
   const boardOperationalContextType = String(boardView?.settings?.operationalContextType || "none");
