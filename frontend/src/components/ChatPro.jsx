@@ -133,7 +133,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         return; // Salir completamente sin resetear nada
       }
       
-      setTabPrincipal("usuarios");
+      setTabPrincipal("chats");
       setTipoChat(null);
       setChatActual(null);
       setMensajeInput("");
@@ -149,7 +149,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       mensajePrioritarioProcessedRef.current = null;
     }
   }, [open]);
-  const [tabPrincipal, setTabPrincipal] = useState("usuarios");
+  const [tabPrincipal, setTabPrincipal] = useState("chats");
   const [tipoChat, setTipoChat] = useState(null);
   const [chatActual, setChatActual] = useState(null);
   const [mensajeResaltadoId, setMensajeResaltadoId] = useState(null);
@@ -1727,7 +1727,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         });
       }
       
-      if (!esSelfMessageOuter && (!viendoEste || esMensajeCOPMECAdmin)) {
+      if (!esSelfMessageOuter && !esMioPorNickname && (!viendoEste || esMensajeCOPMECAdmin)) {
         if (esMensajeCOPMECAdmin || !viendoEste) {
           setNoLeidos((n) => n + 1);
           playIncomingMessageSound();
@@ -2442,12 +2442,20 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   // ============================
   useEffect(() => {
     if (chatBodyRef.current && open) {
-      // Usar setTimeout para asegurar que el DOM se haya actualizado
+      // Double-rAF: esperar a que el navegador pinte el DOM completo antes de hacer scroll
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (chatBodyRef.current) {
+            chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
+          }
+        });
+      });
+      // Backup: también hacer scroll después de 300ms por si el contenido carga lento
       setTimeout(() => {
         if (chatBodyRef.current) {
           chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
         }
-      }, 100);
+      }, 300);
     }
   }, [tipoChat, chatActual, mensajesGeneral, mensajesPrivado, mensajesGrupal, open]);
 
@@ -2480,7 +2488,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       setNoLeidos(0);
     } else {
       // Al cerrar, resetear todo el estado del chat para que se abra como nuevo la próxima vez
-      setTabPrincipal("usuarios");
+      setTabPrincipal("chats");
       setTipoChat(null);
       setChatActual(null);
       setMensajeInput("");
@@ -5854,7 +5862,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
               onClick={() => {
                 setTipoChat(null);
                 setChatActual(null);
-                setTabPrincipal("usuarios");
+                setTabPrincipal("chats");
               }}
             >
               ←

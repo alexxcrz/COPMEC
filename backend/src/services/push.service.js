@@ -6,10 +6,32 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dataDirectory = process.env.RENDER ? '/var/data' : path.resolve(__dirname, '../../data');
 const subsFile = path.join(dataDirectory, 'push-subscriptions.json');
+const vapidKeysFile = path.join(dataDirectory, 'vapid-keys.json');
 
 let webpush = null;
 let vapidPublicKey = null;
 let pushReady = false;
+let vapidSource = 'none';
+
+function loadPersistedVapidKeys() {
+  try {
+    if (!fs.existsSync(vapidKeysFile)) return null;
+    const parsed = JSON.parse(fs.readFileSync(vapidKeysFile, 'utf8'));
+    if (!parsed?.publicKey || !parsed?.privateKey) return null;
+    return { publicKey: parsed.publicKey, privateKey: parsed.privateKey };
+  } catch {
+    return null;
+  }
+}
+
+function savePersistedVapidKeys(keys) {
+  try {
+    if (!fs.existsSync(dataDirectory)) fs.mkdirSync(dataDirectory, { recursive: true });
+    fs.writeFileSync(vapidKeysFile, JSON.stringify(keys, null, 2), 'utf8');
+  } catch (err) {
+    console.warn('[Push] No se pudieron guardar claves VAPID persistentes:', err.message);
+  }
+}
 
 // Lazy-initialize web-push so the server starts even if web-push is not yet installed
 async function initWebPush() {
@@ -17,25 +39,35 @@ async function initWebPush() {
     const mod = await import('web-push');
     webpush = mod.default ?? mod;
 
-    const publicKey  = process.env.VAPID_PUBLIC_KEY;
-    const privateKey = process.env.VAPID_PRIVATE_KEY;
-    const subject    = process.env.VAPID_EMAIL || 'mailto:admin@copmec.local';
+    const envPublicKey  = process.env.VAPID_PUBLIC_KEY;
+    const envPrivateKey = process.env.VAPID_PRIVATE_KEY;
+    const subject       = process.env.VAPID_EMAIL || 'mailto:admin@copmec.local';
 
-    if (!publicKey || !privateKey) {
-      const keys = webpush.generateVAPIDKeys();
-      console.log('[Push] ⚠️  VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY no configuradas.');
-      console.log('[Push]    Agrega estas líneas a tu .env y a Render:');
-      console.log(`           VAPID_PUBLIC_KEY=${keys.publicKey}`);
-      console.log(`           VAPID_PRIVATE_KEY=${keys.privateKey}`);
-      webpush.setVapidDetails(subject, keys.publicKey, keys.privateKey);
-      vapidPublicKey = keys.publicKey;
+    let keys = null;
+    if (envPublicKey && envPrivateKey) {
+      keys = { publicKey: envPublicKey, privateKey: envPrivateKey };
+      vapidSource = 'env';
     } else {
-      webpush.setVapidDetails(subject, publicKey, privateKey);
-      vapidPublicKey = publicKey;
+      const persisted = loadPersistedVapidKeys();
+      if (persisted) {
+        keys = persisted;
+        vapidSource = 'file';
+      } else {
+        keys = webpush.generateVAPIDKeys();
+        savePersistedVapidKeys(keys);
+        vapidSource = 'generated';
+        console.log('[Push] ⚠️  VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY no configuradas.');
+        console.log('[Push]    Se generaron y guardaron claves persistentes locales.');
+        console.log('[Push]    Recomendado: configurar estas líneas en .env y Render:');
+        console.log(`           VAPID_PUBLIC_KEY=${keys.publicKey}`);
+        console.log(`           VAPID_PRIVATE_KEY=${keys.privateKey}`);
+      }
     }
 
+    webpush.setVapidDetails(subject, keys.publicKey, keys.privateKey);
+    vapidPublicKey = keys.publicKey;
     pushReady = true;
-    console.log('[Push] ✓ Web Push listo');
+    console.log(`[Push] ✓ Web Push listo (source=${vapidSource})`);
   } catch (err) {
     console.warn('[Push] web-push no disponible — notificaciones push desactivadas:', err.message);
   }
@@ -105,7 +137,9 @@ export async function sendPushToNick(nickname, payload) {
         // Remove stale subscriptions
         if (err.statusCode === 410 || err.statusCode === 404) {
           removeSubscriptionByEndpoint(sub.endpoint);
+          return;
         }
+        console.warn(`[Push] Error enviando push a ${normNick(nickname)}:`, err?.statusCode || err?.message || err);
       }
     })
   );
@@ -113,3 +147,10 @@ export async function sendPushToNick(nickname, payload) {
 
 export function getVapidPublicKey() { return vapidPublicKey; }
 export function isPushReady()       { return pushReady; }
+export function getPushStatusSnapshot() {
+  return {
+    ready: pushReady,
+    hasPublicKey: Boolean(vapidPublicKey),
+    vapidSource,
+  };
+}

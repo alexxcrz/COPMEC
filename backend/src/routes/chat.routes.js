@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { getIO, getUsuariosActivos } from "../config/socket.js";
-import { storeSubscription, getVapidPublicKey, sendPushToNick } from "../services/push.service.js";
+import { storeSubscription, getVapidPublicKey, sendPushToNick, getPushStatusSnapshot } from "../services/push.service.js";
 import { prismaChat as prisma } from "../config/prisma-chat.js";
 import { getWarehouseState } from "../services/warehouse.store.js";
 import { normalizeNick, enqueueCallSignal, drainCallSignals, nextSignalId } from "../utils/callSignalQueue.js";
@@ -85,6 +85,10 @@ function emitChatsActivosActualizados() {
 }
 
 // ── Push notification endpoints ────────────────────────────────────────────────
+chatRouter.get("/push-status", (_req, res) => {
+  res.json(getPushStatusSnapshot());
+});
+
 chatRouter.get("/push-key", (_req, res) => {
   const key = getVapidPublicKey();
   if (!key) return res.status(503).json({ error: "Push not configured" });

@@ -48,12 +48,6 @@ createRoot(document.getElementById('root')).render(
 if ('serviceWorker' in navigator) {
   (async () => {
     try {
-      if (import.meta.env.DEV) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(registrations.map((registration) => registration.unregister()));
-        return;
-      }
-
       const registration = await navigator.serviceWorker.register('/service-worker.js');
       console.log('✓ Service Worker registrado:', registration);
       // Solicitar permisos de notificación

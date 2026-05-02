@@ -764,6 +764,15 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
 }
 
+function uint8ArrayEquals(a, b) {
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
 function App() { // NOSONAR
   const socketRef = useRef(null);
   const [socketConnectCount, setSocketConnectCount] = useState(0);
@@ -1580,21 +1589,41 @@ function App() { // NOSONAR
   useEffect(() => {
     const nick = currentUser?.name;
     if (!nick) return;
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-    if (Notification.permission !== 'granted') return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in globalThis)) return;
     let cancelled = false;
     (async () => {
       try {
+        let permission = Notification.permission;
+        if (permission === 'default') {
+          permission = await Notification.requestPermission();
+        }
+        if (permission !== 'granted' || cancelled) return;
+
         const reg = await navigator.serviceWorker.ready;
-        const keyRes = await fetch('/api/chat/push-key');
+        const keyRes = await fetch('/api/chat/push-key', { credentials: 'include' });
         if (!keyRes.ok || cancelled) return;
         const { publicKey } = await keyRes.json();
         if (!publicKey || cancelled) return;
-        const existing = await reg.pushManager.getSubscription();
-        const sub = existing || await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(publicKey),
-        });
+
+        const appServerKey = urlBase64ToUint8Array(publicKey);
+        let sub = await reg.pushManager.getSubscription();
+
+        if (sub) {
+          const existingKeyBuffer = sub.options?.applicationServerKey;
+          const existingKey = existingKeyBuffer ? new Uint8Array(existingKeyBuffer) : null;
+          if (!existingKey || !uint8ArrayEquals(existingKey, appServerKey)) {
+            await sub.unsubscribe().catch(() => {});
+            sub = null;
+          }
+        }
+
+        if (!sub) {
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: appServerKey,
+          });
+        }
+
         if (cancelled) return;
         await fetch('/api/chat/push-subscribe', {
           method: 'POST',
