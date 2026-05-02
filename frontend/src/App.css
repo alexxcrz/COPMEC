@@ -10842,6 +10842,56 @@ tbody tr:hover {
   text-overflow: ellipsis;
 }
 
+/* Personas auditadas - sub-response tabs */
+.audit-persons-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 0 0.25rem;
+  border-top: 1px solid rgba(3, 33, 33, 0.1);
+}
+
+.audit-person-tab {
+  border: 1px solid rgba(3, 33, 33, 0.2);
+  background: #f5f7f7;
+  border-radius: 2rem;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #164138;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.audit-person-tab:hover {
+  background: rgba(3, 33, 33, 0.08);
+}
+
+.audit-person-tab.active {
+  background: #032121;
+  color: #fff;
+  border-color: #032121;
+}
+
+.audit-person-tab-add {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-style: dashed;
+  color: #032121;
+  background: transparent;
+}
+
+.audit-person-tab-add:hover {
+  background: rgba(3, 33, 33, 0.06);
+}
+
+.sub-response-section {
+  margin-bottom: 0.5rem;
+}
+
 .audit-response-card,
 .audit-history-card,
 .audit-evidence-card,

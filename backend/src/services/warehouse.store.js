@@ -3783,8 +3783,9 @@ function normalizeProcessAuditProposal(proposal = {}, fallbackId = null) {
     expectedImpact: String(proposal?.expectedImpact || "").trim(),
     effort: normalizeProcessAuditEffortLevel(proposal?.effort),
     status: normalizeProcessAuditLifecycleStatus(proposal?.status),
+    responsible: String(proposal?.responsible || proposal?.ownerName || "").trim(),
     ownerId: String(proposal?.ownerId || "").trim(),
-    ownerName: String(proposal?.ownerName || "").trim(),
+    ownerName: String(proposal?.ownerName || proposal?.responsible || "").trim(),
     evidences: Array.isArray(proposal?.evidences) ? proposal.evidences : [],
     createdAt: proposal?.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -3809,6 +3810,7 @@ function normalizeProcessAuditImplementationPlan(plan = {}) {
     responsibles: Array.isArray(plan?.responsibles) ? plan.responsibles.map((entry) => String(entry || "").trim()).filter(Boolean) : [],
     instructions: String(plan?.instructions || "").trim(),
     estimatedTime: String(plan?.estimatedTime || "").trim(),
+    deadline: plan?.deadline ? String(plan.deadline) : "",
   };
 }
 
@@ -3880,6 +3882,14 @@ function normalizeProcessAuditRecord(audit = {}, fallbackId = null) {
       .map((entry) => normalizeProcessAuditFollowUpRecord(entry, entry?.id || null)),
     implementationPlan: normalizeProcessAuditImplementationPlan(audit?.implementationPlan || EMPTY_OBJECT),
     boardLinks: Array.isArray(audit?.boardLinks) ? audit.boardLinks.map((entry) => String(entry || "").trim()).filter(Boolean) : [],
+    subResponses: Array.isArray(audit?.subResponses) ? audit.subResponses.map((sr) => ({
+      id: String(sr?.id || "").trim(),
+      personName: String(sr?.personName || "").trim(),
+      personRole: String(sr?.personRole || "").trim(),
+      notes: String(sr?.notes || "").trim(),
+      answers: (sr?.answers && typeof sr.answers === "object" && !Array.isArray(sr.answers)) ? sr.answers : {},
+      createdAt: sr?.createdAt || new Date().toISOString(),
+    })) : [],
     scoring,
     updatedAt: audit?.updatedAt || new Date().toISOString(),
   };
@@ -4010,6 +4020,7 @@ export function createProcessAudit(auth, payload = {}) {
     followUp: (Array.isArray(payload?.followUp) ? payload.followUp : []).map((entry) => normalizeProcessAuditFollowUpRecord(entry, entry?.id || null)),
     implementationPlan: normalizeProcessAuditImplementationPlan(payload?.implementationPlan || EMPTY_OBJECT),
     boardLinks: Array.isArray(payload?.boardLinks) ? payload.boardLinks.map((entry) => String(entry || "").trim()).filter(Boolean) : [],
+    subResponses: [],
     scoring: initialScoring,
     updatedAt: startedAt,
   };
@@ -4077,6 +4088,16 @@ export function updateProcessAudit(auth, auditId, payload = {}) {
     boardLinks: payload?.boardLinks !== undefined
       ? (Array.isArray(payload.boardLinks) ? payload.boardLinks.map((entry) => String(entry || "").trim()).filter(Boolean) : [])
       : (Array.isArray(existingAudit.boardLinks) ? existingAudit.boardLinks : []),
+    subResponses: payload?.subResponses !== undefined
+      ? (Array.isArray(payload.subResponses) ? payload.subResponses.map((sr) => ({
+          id: String(sr?.id || "").trim(),
+          personName: String(sr?.personName || "").trim(),
+          personRole: String(sr?.personRole || "").trim(),
+          notes: String(sr?.notes || "").trim(),
+          answers: (sr?.answers && typeof sr.answers === "object" && !Array.isArray(sr.answers)) ? sr.answers : {},
+          createdAt: sr?.createdAt || new Date().toISOString(),
+        })) : [])
+      : (Array.isArray(existingAudit.subResponses) ? existingAudit.subResponses : []),
     scoring,
     updatedAt: new Date().toISOString(),
   };

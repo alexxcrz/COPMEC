@@ -1447,6 +1447,8 @@ export default function AuditoriasProcesosCompact({ contexto }) {
   const [historyDirty, setHistoryDirty] = useState(false);
   const [historySaving, setHistorySaving] = useState(false);
   const [historyRichEditorState, setHistoryRichEditorState] = useState({});
+  const [activeSubResponseId, setActiveSubResponseId] = useState(null); // null = respuesta principal
+  const [subResponseRichState, setSubResponseRichState] = useState({});
   const galleryEvidenceInputRef = useRef(null);
   const mobileCameraInputRef = useRef(null);
   function openAuditViewer(audit) {
@@ -1734,6 +1736,41 @@ export default function AuditoriasProcesosCompact({ contexto }) {
         yPos = pdf.lastAutoTable.finalY + 14;
       }
 
+      // Respuestas por persona (sub-respuestas)
+      const subResponses = Array.isArray(audit.subResponses) ? audit.subResponses : [];
+      if (subResponses.length) {
+        pdf.setFontSize(10);
+        pdf.setFont(undefined, "bold");
+        pdf.text(`Respuestas por persona (${subResponses.length})`, 36, yPos);
+        yPos += 8;
+        for (const sr of subResponses) {
+          pdf.setFontSize(9);
+          pdf.setFont(undefined, "bold");
+          const personLabel = `${sr.personName || "Persona"}${sr.personRole ? ` — ${sr.personRole}` : ""}`;
+          pdf.text(personLabel, 36, yPos);
+          yPos += 5;
+          pdf.setFont(undefined, "normal");
+          const srBody = (audit.questions || []).map((q, idx) => {
+            const ans = sr.answers?.[q.id] || {};
+            const answerStr = ans.answer === true ? "Sí" : ans.answer === false ? "No" : ans.answer === null || ans.answer === undefined ? "—" : String(ans.answer);
+            const issue = ans.issueDetected === true ? "Sí" : "No";
+            const impact = ans.impactLevel === "high" ? "Alto" : ans.impactLevel === "medium" ? "Medio" : "Bajo";
+            return [String(idx + 1), q.text, answerStr, issue, impact, ans.observations || ""];
+          });
+          autoTable(pdf, {
+            startY: yPos,
+            head: [["#", "Pregunta", "Respuesta", "Problema", "Impacto", "Observaciones"]],
+            body: srBody,
+            styles: { fontSize: 7, cellPadding: 3 },
+            headStyles: { fillColor: [3, 33, 33], textColor: [255, 255, 255] },
+            theme: "grid",
+            margin: { left: 36, right: 36 },
+          });
+          yPos = pdf.lastAutoTable.finalY + 10;
+        }
+        yPos += 4;
+      }
+
       // Propuestas
       const proposals = Array.isArray(audit.proposals) ? audit.proposals : [];
       if (proposals.length) {
@@ -1878,6 +1915,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
           followUp: Array.isArray(selectedAudit.followUp) ? selectedAudit.followUp : (current.followUp || []),
           implementationPlan: selectedAudit.implementationPlan || current.implementationPlan || {},
           boardLinks: Array.isArray(selectedAudit.boardLinks) ? selectedAudit.boardLinks : (current.boardLinks || []),
+          subResponses: Array.isArray(current.subResponses) ? current.subResponses : (selectedAudit.subResponses || []),
           evidences: [...(selectedAudit.evidences || [])],
           notes: current.notes,
           questions: current.questions,
@@ -1898,6 +1936,8 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     if (auditDraft?.id !== selectedAudit.id) {
       setIsAuditDirty(false);
       setAuditRichEditorState(buildRichEditorState(selectedAudit));
+      setActiveSubResponseId(null);
+      setSubResponseRichState({});
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAudit?.id, selectedAudit?.updatedAt, selectedAudit?.status, selectedAudit?.evidences?.length]);
@@ -1988,6 +2028,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
           implementationPlan: auditDraft.implementationPlan || {},
           boardLinks: auditDraft.boardLinks || [],
           questions: normalizeQuestionsForSave(auditDraft.questions || []),
+          subResponses: auditDraft.subResponses || [],
         });
         setIsAuditDirty(false);
       } catch {
@@ -2008,6 +2049,48 @@ export default function AuditoriasProcesosCompact({ contexto }) {
 
   function updateAuditNotes(nextNotes) {
     setAuditDraft((current) => ({ ...current, notes: nextNotes }));
+    setIsAuditDirty(true);
+  }
+
+  function addSubResponse() {
+    const newId = crypto.randomUUID();
+    const count = (auditDraft?.subResponses || []).length + 1;
+    const newSub = {
+      id: newId,
+      personName: `Persona ${count}`,
+      personRole: "",
+      notes: "",
+      answers: {},
+      createdAt: new Date().toISOString(),
+    };
+    setAuditDraft((c) => ({ ...c, subResponses: [...(c.subResponses || []), newSub] }));
+    setActiveSubResponseId(newId);
+    setIsAuditDirty(true);
+  }
+
+  function removeSubResponse(subId) {
+    setAuditDraft((c) => ({ ...c, subResponses: (c.subResponses || []).filter((sr) => sr.id !== subId) }));
+    if (activeSubResponseId === subId) setActiveSubResponseId(null);
+    setIsAuditDirty(true);
+  }
+
+  function updateSubResponseField(subId, field, value) {
+    setAuditDraft((c) => ({
+      ...c,
+      subResponses: (c.subResponses || []).map((sr) => sr.id === subId ? { ...sr, [field]: value } : sr),
+    }));
+    setIsAuditDirty(true);
+  }
+
+  function updateSubResponseAnswer(subId, questionId, field, value) {
+    setAuditDraft((c) => ({
+      ...c,
+      subResponses: (c.subResponses || []).map((sr) => {
+        if (sr.id !== subId) return sr;
+        const existing = sr.answers?.[questionId] || { answer: null, observations: "", issueDetected: null, impactLevel: "medium" };
+        return { ...sr, answers: { ...sr.answers, [questionId]: { ...existing, [field]: value } } };
+      }),
+    }));
     setIsAuditDirty(true);
   }
 
@@ -2043,6 +2126,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
       implementationPlan: targetAudit.implementationPlan || {},
       boardLinks: targetAudit.boardLinks || [],
       questions: normalizeQuestionsForSave(targetAudit.questions || []),
+      subResponses: targetAudit.subResponses || [],
     });
     if (successMessage) pushAppToast(successMessage, "success");
     return true;
@@ -2571,7 +2655,116 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                   editLabel="Editar notas"
                 />
 
-                <div className="audit-response-grid">
+                {/* Personas auditadas - tabs */}
+                <div className="audit-persons-strip" role="tablist" aria-label="Personas auditadas">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeSubResponseId === null}
+                    className={`audit-person-tab${activeSubResponseId === null ? " active" : ""}`}
+                    onClick={() => setActiveSubResponseId(null)}
+                  >
+                    Principal
+                  </button>
+                  {(auditDraft.subResponses || []).map((sr) => (
+                    <button
+                      key={sr.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={activeSubResponseId === sr.id}
+                      className={`audit-person-tab${activeSubResponseId === sr.id ? " active" : ""}`}
+                      onClick={() => setActiveSubResponseId(sr.id)}
+                    >
+                      {sr.personName || "Persona"}
+                    </button>
+                  ))}
+                  {canManageAudits ? (
+                    <button
+                      type="button"
+                      className="audit-person-tab audit-person-tab-add"
+                      onClick={addSubResponse}
+                      title="Agregar otra persona auditada"
+                    >
+                      <Plus size={14} /> Persona
+                    </button>
+                  ) : null}
+                </div>
+
+                {/* Sub-respuesta activa */}
+                {activeSubResponseId !== null ? (() => {
+                  const activeSub = (auditDraft.subResponses || []).find((sr) => sr.id === activeSubResponseId);
+                  if (!activeSub) return null;
+                  return (
+                    <div className="sub-response-section">
+                      <div className="audit-active-subline subtle-line" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
+                        <label className="app-modal-field" style={{ maxWidth: "260px" }}>
+                          <span>Nombre de la persona auditada</span>
+                          <input type="text" value={activeSub.personName} onChange={(e) => updateSubResponseField(activeSubResponseId, "personName", e.target.value)} placeholder="Nombre" disabled={!canManageAudits} />
+                        </label>
+                        <label className="app-modal-field" style={{ maxWidth: "220px" }}>
+                          <span>Rol / Puesto</span>
+                          <input type="text" value={activeSub.personRole || ""} onChange={(e) => updateSubResponseField(activeSubResponseId, "personRole", e.target.value)} placeholder="Opcional" disabled={!canManageAudits} />
+                        </label>
+                        {canManageAudits ? (
+                          <button type="button" className="btn btn-ghost btn-sm" style={{ color: "var(--color-danger)" }} onClick={() => removeSubResponse(activeSubResponseId)}>
+                            <Trash2 size={14} /> Eliminar persona
+                          </button>
+                        ) : null}
+                      </div>
+                      <div className="audit-response-grid">
+                        {activeAuditQuestions.map((question, index) => {
+                          const subAns = activeSub.answers?.[question.id] || { answer: null, observations: "", issueDetected: null, impactLevel: "medium" };
+                          const richKey = `sr-${activeSubResponseId}-${question.id}`;
+                          return (
+                            <article key={question.id} className={question.type === "text" ? "surface-card audit-response-card audit-response-card-text" : "surface-card audit-response-card audit-response-card-yesno"}>
+                              <div className="audit-response-head">
+                                <span className="chip">{index + 1}</span>
+                                <strong>{question.text}</strong>
+                                <span className="chip">{question.category || "General"}</span>
+                              </div>
+                              {question.type === "yesno" ? (
+                                <div className="audit-answer-toggle-row">
+                                  <button type="button" className={`switch-button ${subAns.answer === true ? "on" : ""}`} onClick={() => updateSubResponseAnswer(activeSubResponseId, question.id, "answer", subAns.answer === true ? false : true)} disabled={!canManageAudits} aria-pressed={subAns.answer === true} aria-label="Alternar Sí/No"><span className="switch-thumb" /></button>
+                                  <strong>{subAns.answer === true ? "Sí" : "No"}</strong>
+                                </div>
+                              ) : null}
+                              {question.type === "text" ? (
+                                <RichTextResponseField label="Respuesta" value={String(subAns.answer || "")} placeholder={question.placeholder || "Escribe aquí"} canEdit={canManageAudits} isEditing={Boolean(subResponseRichState[richKey])} onChange={(v) => updateSubResponseAnswer(activeSubResponseId, question.id, "answer", v)} onEdit={() => setSubResponseRichState((c) => ({ ...c, [richKey]: true }))} onSave={() => setSubResponseRichState((c) => ({ ...c, [richKey]: false }))} />
+                              ) : null}
+                              {question.type === "number" ? (
+                                <label className="app-modal-field"><span>Respuesta numérica</span><input type="number" value={subAns.answer ?? ""} onChange={(e) => updateSubResponseAnswer(activeSubResponseId, question.id, "answer", e.target.value === "" ? null : Number(e.target.value))} placeholder={question.placeholder || "Número"} disabled={!canManageAudits} /></label>
+                              ) : null}
+                              {question.type === "scale" ? (
+                                <label className="app-modal-field"><span>Escala ({question.minValue ?? 1}–{question.maxValue ?? 5})</span><input type="range" min={question.minValue ?? 1} max={question.maxValue ?? 5} step={1} value={subAns.answer ?? question.minValue ?? 1} onChange={(e) => updateSubResponseAnswer(activeSubResponseId, question.id, "answer", Number(e.target.value))} disabled={!canManageAudits} /><strong>{subAns.answer ?? "Sin valor"}</strong></label>
+                              ) : null}
+                              {question.type === "date" ? (
+                                <label className="app-modal-field"><span>Fecha</span><input type="date" value={String(subAns.answer || "")} onChange={(e) => updateSubResponseAnswer(activeSubResponseId, question.id, "answer", e.target.value)} disabled={!canManageAudits} /></label>
+                              ) : null}
+                              {question.type === "select" ? (
+                                <label className="app-modal-field"><span>Selección</span><select value={String(subAns.answer || "")} onChange={(e) => updateSubResponseAnswer(activeSubResponseId, question.id, "answer", e.target.value)} disabled={!canManageAudits}><option value="">Selecciona</option>{(question.options || []).map((opt) => <option key={opt} value={opt}>{opt}</option>)}</select></label>
+                              ) : null}
+                              {question.type === "multi" ? (
+                                <div className="app-modal-field"><span>Opciones múltiples</span><div className="audit-multi-options-grid">{(question.options || []).map((opt) => { const cur = Array.isArray(subAns.answer) ? subAns.answer : []; const checked = cur.includes(opt); return (<label key={opt} className="audit-multi-option-item"><button type="button" className={`switch-button ${checked ? "on" : ""}`} onClick={() => updateSubResponseAnswer(activeSubResponseId, question.id, "answer", checked ? cur.filter((x) => x !== opt) : [...cur, opt])} disabled={!canManageAudits} aria-pressed={checked} aria-label={`Alternar ${opt}`}><span className="switch-thumb" /></button><span>{opt}</span></label>); })}</div></div>
+                              ) : null}
+                              <div className="audit-question-evaluation-grid">
+                                <label className="app-modal-field" style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
+                                  <span>¿Se detecta problema?</span>
+                                  <button type="button" className={`switch-button ${subAns.issueDetected === true ? "on" : ""}`} onClick={() => updateSubResponseAnswer(activeSubResponseId, question.id, "issueDetected", subAns.issueDetected === true ? false : true)} disabled={!canManageAudits} aria-pressed={subAns.issueDetected === true}><span className="switch-thumb" /></button>
+                                  <strong>{subAns.issueDetected === true ? "Sí" : "No"}</strong>
+                                </label>
+                                <label className="app-modal-field"><span>Impacto</span><select value={subAns.impactLevel || "medium"} onChange={(e) => updateSubResponseAnswer(activeSubResponseId, question.id, "impactLevel", e.target.value)} disabled={!canManageAudits}><option value="high">Alto</option><option value="medium">Medio</option><option value="low">Bajo</option></select></label>
+                              </div>
+                              <RichTextResponseField label="Observaciones" value={String(subAns.observations || "")} placeholder="Describe riesgo, causa o mejora" canEdit={canManageAudits} isEditing={Boolean(subResponseRichState[`obs-${richKey}`])} onChange={(v) => updateSubResponseAnswer(activeSubResponseId, question.id, "observations", v)} onEdit={() => setSubResponseRichState((c) => ({ ...c, [`obs-${richKey}`]: true }))} onSave={() => setSubResponseRichState((c) => ({ ...c, [`obs-${richKey}`]: false }))} saveLabel="Guardar observaciones" editLabel="Editar observaciones" />
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })() : null}
+
+                {/* Preguntas principales (tab Principal) */}
+                {activeSubResponseId !== null ? null : <div className="audit-response-grid">
                   {activeAuditQuestions.map((question, index) => (
                     <article
                       key={question.id}
@@ -2762,7 +2955,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                       />
                     </article>
                   ))}
-                </div>
+                </div>}
 
                 <div className="audit-inline-actions">
                   <button type="button" className="icon-button danger" onClick={() => openDeleteAuditModal(auditDraft)} disabled={!canManageAudits}>Eliminar</button>
@@ -2875,6 +3068,34 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                               </article>
                             ))}
                           </div>
+                          {/* Problemas por persona (sub-respuestas) */}
+                          {((isExpanded && historyDraft?.id === audit.id ? historyDraft.subResponses : audit.subResponses) || []).map((sr) => {
+                            const srProblems = (auditDraft?.questions || audit.questions || []).filter((q) => {
+                              const ans = sr.answers?.[q.id];
+                              return ans?.issueDetected === true;
+                            }).map((q) => {
+                              const ans = sr.answers[q.id];
+                              return { id: `${sr.id}-${q.id}`, problem: q.text, category: q.category || "General", impactLevel: ans.impactLevel || "medium", observations: ans.observations || "" };
+                            });
+                            if (!srProblems.length) return null;
+                            return (
+                              <div key={sr.id} style={{ marginTop: "0.75rem" }}>
+                                <p className="subtle-line" style={{ fontWeight: 600 }}>Persona: {sr.personName || "—"}{sr.personRole ? ` (${sr.personRole})` : ""}</p>
+                                <div className="saved-board-list permissions-preset-list">
+                                  {srProblems.map((problem) => (
+                                    <article key={problem.id} className="surface-card audit-history-card">
+                                      <div className="card-header-row">
+                                        <strong>{problem.problem}</strong>
+                                        <span className={`chip ${problem.impactLevel === "high" ? "danger" : problem.impactLevel === "medium" ? "warning" : "success"}`}>{problem.impactLevel === "high" ? "Alto" : problem.impactLevel === "medium" ? "Medio" : "Bajo"}</span>
+                                      </div>
+                                      <p className="subtle-line">Categoría: {problem.category}</p>
+                                      {problem.observations ? <p className="subtle-line">{problem.observations}</p> : null}
+                                    </article>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
                           {!isCycleDone && hLc === "in_review" ? (
                             <div className="audit-inline-actions" style={{ marginTop: "0.75rem" }}>
                               <button type="button" className="primary-button" onClick={() => handleHistoryAdvanceStep("proposal_sent")} disabled={!canManageAudits}>Continuar a Propuestas →</button>
