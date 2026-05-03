@@ -865,8 +865,8 @@ export default function HistorialSemanas({ contexto }) {
   }, [activeMonthWeeks, effectiveHistoryWeek]);
 
   const weeklyDaySections = useMemo(() => {
-    return buildWeekDaySections(effectiveHistoryWeek, historyActivities, STATUS_FINISHED, normalizedOperationalWorkWeek);
-  }, [STATUS_FINISHED, effectiveHistoryWeek, normalizedOperationalWorkWeek, historyActivities]);
+    return buildWeekDaySections(effectiveHistoryWeek, playerScopedActivities, STATUS_FINISHED, normalizedOperationalWorkWeek);
+  }, [STATUS_FINISHED, effectiveHistoryWeek, normalizedOperationalWorkWeek, playerScopedActivities]);
 
   const canEditHistoricalWeekActivities = !useBoardHistoryFallback && Boolean(actionPermissions.editHistoryRecords || actionPermissions.manageWeeks || actionPermissions.deleteWeekActivity);
 
