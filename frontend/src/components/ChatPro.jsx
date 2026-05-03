@@ -124,6 +124,11 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
       setOpen(true);
     }
   }, [onClose]);
+
+  useEffect(() => {
+    if (!open || abriendoPerfilDesdeSidebarRef.current) return;
+    setTabPrincipal("chats");
+  }, [open]);
   
   // Resetear estado del chat cuando se cierra
   useEffect(() => {
@@ -310,6 +315,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   });
 
   const chatBodyRef = useRef(null);
+  const chatScrollTimeoutRef = useRef(null);
+  const chatScrollFrameRef = useRef(null);
   const cargandoChatsActivosRef = useRef(false);
   const mensajeInputRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -360,6 +367,34 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   };
 
   const buildRestPeerId = (nickname) => `rest:${normalizeCallNick(nickname)}`;
+
+  const scrollChatToBottom = () => {
+    if (!chatBodyRef.current) return;
+
+    if (chatScrollFrameRef.current) {
+      cancelAnimationFrame(chatScrollFrameRef.current);
+      chatScrollFrameRef.current = null;
+    }
+    if (chatScrollTimeoutRef.current) {
+      clearTimeout(chatScrollTimeoutRef.current);
+      chatScrollTimeoutRef.current = null;
+    }
+
+    chatScrollFrameRef.current = requestAnimationFrame(() => {
+      chatScrollFrameRef.current = requestAnimationFrame(() => {
+        if (chatBodyRef.current) {
+          chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
+        }
+      });
+    });
+
+    chatScrollTimeoutRef.current = setTimeout(() => {
+      if (chatBodyRef.current) {
+        chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
+      }
+      chatScrollTimeoutRef.current = null;
+    }, 250);
+  };
 
   const isRestPeerId = (peerId) => String(peerId || "").startsWith("rest:");
 
@@ -2397,9 +2432,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   // ⬇ Scroll automático y marcar mensajes como leídos cuando se ven mensajes
   // ============================
   useEffect(() => {
-    if (chatBodyRef.current) {
-      chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
-    }
+    scrollChatToBottom();
     
     // Marcar mensajes como leídos automáticamente cuando se abre/ve el chat
     // Esto asegura que el badge desaparezca inmediatamente cuando se abre el chat
@@ -2441,26 +2474,18 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
   // ⬇ Scroll automático al final cuando se cargan los mensajes
   // ============================
   useEffect(() => {
-    if (chatBodyRef.current && open) {
-      // Double-rAF: esperar a que el navegador pinte el DOM completo antes de hacer scroll
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (chatBodyRef.current) {
-            chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
-          }
-        });
-      });
-      // Backup: también hacer scroll después de 300ms por si el contenido carga lento
-      setTimeout(() => {
-        if (chatBodyRef.current) {
-          chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
-        }
-      }, 300);
-    }
+    if (!open) return;
+    scrollChatToBottom();
   }, [tipoChat, chatActual, mensajesGeneral, mensajesPrivado, mensajesGrupal, open]);
 
   useEffect(() => {
     return () => {
+      if (chatScrollFrameRef.current) {
+        cancelAnimationFrame(chatScrollFrameRef.current);
+      }
+      if (chatScrollTimeoutRef.current) {
+        clearTimeout(chatScrollTimeoutRef.current);
+      }
       limpiarLlamada();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -5587,7 +5612,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     salirSeleccion();
     setTipoChat(tipo);
     setChatActual(destino);
-    setTabPrincipal("chat");
+    setTabPrincipal("chats");
     setNoLeidos(0);
     setMostrarAgregarMiembros(false);
     setGrupoMenuAbierto(null);
