@@ -15,6 +15,18 @@ const HISTORY_WORK_WEEK_DEFAULTS = {
 
 const JS_DAY_TO_WORK_WEEK_KEY = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
+// Parsea solo la parte de fecha (YYYY-MM-DD) de un valor ISO o fecha, ignorando la hora/zona horaria.
+// Usado para los límites de semana para evitar corrimiento por UTC en zona horaria local.
+function parseHistoryDateOnly(value) {
+  const raw = String(value instanceof Date ? value.toISOString() : (value || "")).trim();
+  if (!raw) return null;
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12, 0, 0, 0);
+  }
+  return parseHistoryDate(value);
+}
+
 function parseHistoryDate(value) {
   if (value instanceof Date) {
     if (Number.isNaN(value.getTime())) return null;
@@ -263,8 +275,8 @@ function buildWeekDaySections(week, activities, finishedStatus, workWeek) {
     entry.activities.push(activity);
   });
 
-  let start = parseHistoryDate(week?.startDate);
-  let end = parseHistoryDate(week?.endDate);
+  let start = parseHistoryDateOnly(week?.startDate);
+  let end = parseHistoryDateOnly(week?.endDate);
 
   if (!start && end) {
     start = new Date(end);
