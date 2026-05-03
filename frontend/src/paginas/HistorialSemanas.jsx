@@ -3,9 +3,51 @@ import { createPortal } from "react-dom";
 import { isBoardActivityListField } from "../utils/utilidades.jsx";
 import { buildEncryptedCopmecHistoryPackage, triggerCopmecDownload } from "../utils/copmecFiles.js";
 
+const HISTORY_WORK_WEEK_DEFAULTS = {
+  mon: { enabled: true },
+  tue: { enabled: true },
+  wed: { enabled: true },
+  thu: { enabled: true },
+  fri: { enabled: true },
+  sat: { enabled: true },
+  sun: { enabled: false },
+};
+
+const JS_DAY_TO_WORK_WEEK_KEY = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+
+function parseHistoryDate(value) {
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    return new Date(value.getTime());
+  }
+
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+
+  const dateOnlyMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch;
+    return new Date(Number(year), Number(month) - 1, Number(day), 12, 0, 0, 0);
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
+}
+
+function getHistoryDateKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function isHistoryWorkDay(date, workWeek) {
+  const dayKey = JS_DAY_TO_WORK_WEEK_KEY[date.getDay()] || "sun";
+  const entry = workWeek?.[dayKey];
+  return entry?.enabled !== false;
+}
+
 function toDateParts(value) {
-  const date = new Date(value || "");
-  if (Number.isNaN(date.getTime())) return null;
+  const date = parseHistoryDate(value);
+  if (!date) return null;
   const year = String(date.getFullYear());
   const month = `${year}-${String(date.getMonth() + 1).padStart(2, "0")}`;
   const day = `${month}-${String(date.getDate()).padStart(2, "0")}`;
@@ -14,8 +56,8 @@ function toDateParts(value) {
 
 function monthLabel(monthKey) {
   const [year, month] = String(monthKey || "").split("-");
-  const safeDate = new Date(`${year || "1970"}-${month || "01"}-01T00:00:00`);
-  if (Number.isNaN(safeDate.getTime())) return monthKey;
+  const safeDate = parseHistoryDate(`${year || "1970"}-${month || "01"}-01`);
+  if (!safeDate) return monthKey;
   return safeDate.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
 }
 
@@ -34,29 +76,29 @@ function getBoardRowHistoryDateValue(snapshot, row) {
 }
 
 function toDayStart(dateValue) {
-  const next = new Date(dateValue || "");
-  if (Number.isNaN(next.getTime())) return null;
+  const next = parseHistoryDate(dateValue);
+  if (!next) return null;
   next.setHours(0, 0, 0, 0);
   return next;
 }
 
 function toDayEnd(dateValue) {
-  const next = new Date(dateValue || "");
-  if (Number.isNaN(next.getTime())) return null;
+  const next = parseHistoryDate(dateValue);
+  if (!next) return null;
   next.setHours(23, 59, 59, 999);
   return next;
 }
 
 function toIsoDate(value) {
-  const date = new Date(value || "");
-  if (Number.isNaN(date.getTime())) return "";
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  const date = parseHistoryDate(value);
+  if (!date) return "";
+  return getHistoryDateKey(date);
 }
 
 function getHistoryExportWindow(week, activities, periodType) {
   const fallbackDateValue = activities[0]?.activityDate || new Date().toISOString();
-  const baseDate = new Date(week?.startDate || week?.endDate || fallbackDateValue);
-  if (Number.isNaN(baseDate.getTime())) return null;
+  const baseDate = parseHistoryDate(week?.startDate || week?.endDate || fallbackDateValue);
+  if (!baseDate) return null;
 
   if (periodType === "week") {
     const start = toDayStart(week?.startDate || baseDate);
@@ -140,9 +182,9 @@ function resolveBoardRowHistoryActivityValue(snapshot, row) {
 }
 
 function buildFallbackWeekReportSections(week) {
-  const start = week?.startDate ? new Date(week.startDate) : null;
-  const end = week?.endDate ? new Date(week.endDate) : null;
-  if (!start || !end || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return [];
+  const start = parseHistoryDate(week?.startDate);
+  const end = parseHistoryDate(week?.endDate);
+  if (!start || !end) return [];
 
   const normalizedStart = new Date(start);
   normalizedStart.setHours(0, 0, 0, 0);
@@ -151,7 +193,7 @@ function buildFallbackWeekReportSections(week) {
 
   const yearMap = new Map();
   for (let cursor = new Date(normalizedStart); cursor <= normalizedEnd; cursor.setDate(cursor.getDate() + 1)) {
-    const parts = toDateParts(cursor.toISOString());
+    const parts = toDateParts(cursor);
     if (!parts) continue;
 
     if (!yearMap.has(parts.year)) {
@@ -197,7 +239,7 @@ function buildFallbackWeekReportSections(week) {
     .sort((left, right) => right.yearKey.localeCompare(left.yearKey));
 }
 
-function buildWeekDaySections(week, activities, finishedStatus) {
+function buildWeekDaySections(week, activities, finishedStatus, workWeek) {
   const grouped = new Map();
 
   activities.forEach((activity) => {
@@ -221,11 +263,8 @@ function buildWeekDaySections(week, activities, finishedStatus) {
     entry.activities.push(activity);
   });
 
-  let start = week?.startDate ? new Date(week.startDate) : null;
-  let end = week?.endDate ? new Date(week.endDate) : null;
-
-  if (!start || Number.isNaN(start.getTime())) start = null;
-  if (!end || Number.isNaN(end.getTime())) end = null;
+  let start = parseHistoryDate(week?.startDate);
+  let end = parseHistoryDate(week?.endDate);
 
   if (!start && end) {
     start = new Date(end);
@@ -240,7 +279,7 @@ function buildWeekDaySections(week, activities, finishedStatus) {
     return Array.from(grouped.values())
       .map((entry) => ({
         ...entry,
-        activities: [...entry.activities].sort((left, right) => new Date(left.activityDate).getTime() - new Date(right.activityDate).getTime()),
+        activities: [...entry.activities].sort((left, right) => (parseHistoryDate(left.activityDate)?.getTime() ?? 0) - (parseHistoryDate(right.activityDate)?.getTime() ?? 0)),
       }))
       .sort((left, right) => left.dayKey.localeCompare(right.dayKey));
   }
@@ -252,7 +291,9 @@ function buildWeekDaySections(week, activities, finishedStatus) {
 
   const sections = [];
   for (const cursor = new Date(normalizedStart); cursor <= normalizedEnd; cursor.setDate(cursor.getDate() + 1)) {
-    const parts = toDateParts(cursor.toISOString());
+    if (!isHistoryWorkDay(cursor, workWeek)) continue;
+
+    const parts = toDateParts(cursor);
     if (!parts) continue;
 
     const existing = grouped.get(parts.day);
@@ -262,7 +303,7 @@ function buildWeekDaySections(week, activities, finishedStatus) {
       completed: existing?.completed || 0,
       totalSeconds: existing?.totalSeconds || 0,
       activities: existing
-        ? [...existing.activities].sort((left, right) => new Date(left.activityDate).getTime() - new Date(right.activityDate).getTime())
+        ? [...existing.activities].sort((left, right) => (parseHistoryDate(left.activityDate)?.getTime() ?? 0) - (parseHistoryDate(right.activityDate)?.getTime() ?? 0))
         : [],
     });
   }
@@ -294,7 +335,13 @@ export default function HistorialSemanas({ contexto }) {
     pushAppToast,
     Trash2,
     saveCopmecFileToProfile,
+    operationalWorkWeek,
   } = contexto;
+
+  const normalizedOperationalWorkWeek = useMemo(() => ({
+    ...HISTORY_WORK_WEEK_DEFAULTS,
+    ...(operationalWorkWeek && typeof operationalWorkWeek === "object" ? operationalWorkWeek : {}),
+  }), [operationalWorkWeek]);
 
   const [deleteWeekModal, setDeleteWeekModal] = useState({ open: false, weekId: "", weekName: "", isSubmitting: false });
   const [selectedAreaTab, setSelectedAreaTab] = useState("");
@@ -625,6 +672,13 @@ export default function HistorialSemanas({ contexto }) {
 
   const dayOptions = useMemo(() => {
     const days = new Set();
+    buildWeekDaySections(effectiveHistoryWeek, playerScopedActivities, STATUS_FINISHED, normalizedOperationalWorkWeek).forEach((entry) => {
+      const parts = toDateParts(entry.dayKey);
+      if (!parts) return;
+      if (selectedYearFilter !== "all" && parts.year !== selectedYearFilter) return;
+      if (selectedMonthFilter !== "all" && parts.month !== selectedMonthFilter) return;
+      days.add(parts.day);
+    });
     playerScopedActivities.forEach((activity) => {
       const parts = toDateParts(activity.activityDate);
       if (!parts) return;
@@ -633,7 +687,7 @@ export default function HistorialSemanas({ contexto }) {
       days.add(parts.day);
     });
     return Array.from(days.values()).sort((left, right) => right.localeCompare(left));
-  }, [playerScopedActivities, selectedMonthFilter, selectedYearFilter]);
+  }, [STATUS_FINISHED, effectiveHistoryWeek, normalizedOperationalWorkWeek, playerScopedActivities, selectedMonthFilter, selectedYearFilter]);
 
   const visibleHistoryActivities = useMemo(() => {
     return [...playerScopedActivities]
@@ -646,8 +700,8 @@ export default function HistorialSemanas({ contexto }) {
         return true;
       })
       .sort((left, right) => {
-        const leftTime = new Date(left.activityDate).getTime();
-        const rightTime = new Date(right.activityDate).getTime();
+        const leftTime = parseHistoryDate(left.activityDate)?.getTime() ?? 0;
+        const rightTime = parseHistoryDate(right.activityDate)?.getTime() ?? 0;
         if (leftTime !== rightTime) return leftTime - rightTime;
         return String(left.boardName || "").localeCompare(String(right.boardName || ""), "es-MX");
       });
@@ -663,13 +717,13 @@ export default function HistorialSemanas({ contexto }) {
     const endMs = exportWindow.end.getTime();
     return [...playerScopedActivities]
       .filter((activity) => {
-        const activityMs = new Date(activity.activityDate || "").getTime();
+        const activityMs = parseHistoryDate(activity.activityDate)?.getTime() ?? Number.NaN;
         if (!Number.isFinite(activityMs)) return false;
         return activityMs >= startMs && activityMs <= endMs;
       })
       .sort((left, right) => {
-        const leftMs = new Date(left.activityDate || "").getTime();
-        const rightMs = new Date(right.activityDate || "").getTime();
+        const leftMs = parseHistoryDate(left.activityDate)?.getTime() ?? 0;
+        const rightMs = parseHistoryDate(right.activityDate)?.getTime() ?? 0;
         if (leftMs !== rightMs) return leftMs - rightMs;
         return String(left.boardName || "").localeCompare(String(right.boardName || ""), "es-MX");
       });
@@ -813,10 +867,10 @@ export default function HistorialSemanas({ contexto }) {
   }, [activeMonthWeeks, effectiveHistoryWeek]);
 
   const weeklyDaySections = useMemo(() => {
-    return buildWeekDaySections(effectiveHistoryWeek, playerScopedActivities, STATUS_FINISHED);
-  }, [STATUS_FINISHED, effectiveHistoryWeek, playerScopedActivities]);
+    return buildWeekDaySections(effectiveHistoryWeek, playerScopedActivities, STATUS_FINISHED, normalizedOperationalWorkWeek);
+  }, [STATUS_FINISHED, effectiveHistoryWeek, normalizedOperationalWorkWeek, playerScopedActivities]);
 
-  const canEditHistoricalWeekActivities = !useBoardHistoryFallback && Boolean(actionPermissions.manageWeeks || actionPermissions.deleteWeekActivity);
+  const canEditHistoricalWeekActivities = !useBoardHistoryFallback && Boolean(actionPermissions.editHistoryRecords || actionPermissions.manageWeeks || actionPermissions.deleteWeekActivity);
 
   function getHistoryExportRows(activities) {
     return activities.map((activity) => ({
@@ -1229,7 +1283,8 @@ export default function HistorialSemanas({ contexto }) {
                         <div style={{ display: "grid", gap: "0.9rem" }}>
                           {weeklyDaySections.map((dayEntry) => {
                             const isExpanded = expandedDayKey === dayEntry.dayKey;
-                            const weekday = new Date(`${dayEntry.dayKey}T00:00:00`).toLocaleDateString("es-MX", { weekday: "long" });
+                            const dayDate = parseHistoryDate(dayEntry.dayKey);
+                            const weekday = dayDate ? dayDate.toLocaleDateString("es-MX", { weekday: "long" }) : "";
                             const weekdayLabel = weekday.charAt(0).toUpperCase() + weekday.slice(1);
                             return (
                               <article key={dayEntry.dayKey} className="surface-card" style={{ padding: "1rem 1.1rem", display: "grid", gap: "0.9rem" }}>
@@ -1251,7 +1306,7 @@ export default function HistorialSemanas({ contexto }) {
                                 >
                                   <div>
                                     <h3 style={{ margin: 0, color: "#032121", fontSize: "1rem" }}>{weekdayLabel}</h3>
-                                    <p className="subtle-line" style={{ margin: "0.25rem 0 0" }}>{formatDate(`${dayEntry.dayKey}T00:00:00.000Z`)}</p>
+                                    <p className="subtle-line" style={{ margin: "0.25rem 0 0" }}>{dayDate ? formatDate(dayDate) : dayEntry.dayKey}</p>
                                   </div>
                                   <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
                                     <span className="chip">{dayEntry.total} actividades</span>

@@ -3759,8 +3759,9 @@ function App() { // NOSONAR
 
   const visibleControlBoards = useMemo(() => {
     if (!currentUser) return [];
-    return (state.controlBoards || []).filter((board) => getBoardVisibleToUser(board, currentUser));
-  }, [currentUser, state.controlBoards]);
+    const canViewHistoricalBoardScopes = canDoAction(currentUser, "viewHistoricalBoardScopes", normalizedPermissions);
+    return (state.controlBoards || []).filter((board) => canViewHistoricalBoardScopes || getBoardVisibleToUser(board, currentUser));
+  }, [currentUser, normalizedPermissions, state.controlBoards]);
 
   const filteredVisibleControlBoards = useMemo(() => {
     const term = customBoardSearch.trim().toLowerCase();
@@ -3775,8 +3776,9 @@ function App() { // NOSONAR
 
   const visibleBoardHistorySnapshots = useMemo(() => {
     if (!currentUser) return [];
-    return (state.boardWeekHistory || []).filter((snapshot) => getBoardVisibleToUser(snapshot, currentUser));
-  }, [currentUser, state.boardWeekHistory]);
+    const canViewHistoricalBoardScopes = canDoAction(currentUser, "viewHistoricalBoardScopes", normalizedPermissions);
+    return (state.boardWeekHistory || []).filter((snapshot) => canViewHistoricalBoardScopes || getBoardVisibleToUser(snapshot, currentUser));
+  }, [currentUser, normalizedPermissions, state.boardWeekHistory]);
 
   const selectedCustomBoardHistoryOptions = useMemo(() => {
     if (!selectedCustomBoard) return [];
@@ -7395,6 +7397,7 @@ function App() { // NOSONAR
     submitRoleModal,
     handleDeleteCustomRole,
     updateSystemOperationalSettings,
+    operationalWorkWeek: operationalPauseState.workWeek,
     setRoleModalOpen,
     Users,
     visibleControlBoards,

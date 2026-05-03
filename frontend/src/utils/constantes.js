@@ -651,12 +651,14 @@ export const ACTION_DEFINITIONS = [
   { id: "createBoardRow",          label: "Agregar filas en Mis tableros",            category: "Mis tableros",        defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
   { id: "deleteBoardRow",          label: "Eliminar filas en Mis tableros",           category: "Mis tableros",        defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "editFinishedBoardRow",    label: "Editar filas terminadas",                  category: "Mis tableros",        defaultRoles: [ROLE_LEAD] },
+  { id: "viewHistoricalBoardScopes", label: "Ver histórico ampliado en Mis tableros", category: "Mis tableros",        defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "boardWorkflow",           label: "Ejecutar flujo del tablero",               category: "Mis tableros",        defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
   { id: "duplicateBoard",          label: "Duplicar tablero vacío",                   category: "Tableros creados",    defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "duplicateBoardWithRows",  label: "Duplicar tablero con filas",               category: "Tableros creados",    defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "exportBoardExcel",        label: "Exportar tablero a Excel",                 category: "Mis tableros",        defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
   { id: "previewBoardPdf",         label: "Vista previa PDF",                         category: "Mis tableros",        defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
   { id: "exportBoardPdf",          label: "Exportar tablero a PDF",                   category: "Mis tableros",        defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
+  { id: "editHistoryRecords",      label: "Editar registros desde Historial",         category: "Historial",           defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "uploadBiblioteca",        label: "Subir archivos a Biblioteca",              category: "Biblioteca",          defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "deleteBiblioteca",        label: "Eliminar archivos de Biblioteca",          category: "Biblioteca",          defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "createIncidencia",        label: "Registrar incidencias",                    category: "Incidencias",         defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
@@ -682,11 +684,11 @@ export const BOARD_PERMISSION_ACTION_IDS = new Set([
 export const BOARD_PERMISSION_ACTIONS = ACTION_DEFINITIONS.filter((item) => BOARD_PERMISSION_ACTION_IDS.has(item.id));
 
 export const PAGE_ACTION_GROUPS = {
-  [PAGE_CUSTOM_BOARDS]: ["createBoardRow", "deleteBoardRow", "editFinishedBoardRow", "boardWorkflow", "exportBoardExcel", "previewBoardPdf", "exportBoardPdf"],
+  [PAGE_CUSTOM_BOARDS]: ["createBoardRow", "deleteBoardRow", "editFinishedBoardRow", "viewHistoricalBoardScopes", "boardWorkflow", "exportBoardExcel", "previewBoardPdf", "exportBoardPdf"],
   [PAGE_DASHBOARD]: [],
   [PAGE_BOARD]: ["createCatalog", "editCatalog", "deleteCatalog", "createBoard", "editBoard", "saveTemplate", "editTemplate", "deleteTemplate", "duplicateBoard", "duplicateBoardWithRows", "deleteBoard", "deleteWeekActivity"],
   [PAGE_ADMIN]: [],
-  [PAGE_HISTORY]: [],
+  [PAGE_HISTORY]: ["editHistoryRecords"],
   [PAGE_PROCESS_AUDITS]: ["viewProcessAudits", "manageProcessAudits", "manageProcessAuditTemplates"],
   [PAGE_INVENTORY]: ["viewBaseInventory", "manageInventory", "deleteInventory", "importInventory", "viewCleaningInventory", "manageCleaningInventory", "deleteCleaningInventory", "importCleaningInventory", "viewOrderInventory", "manageOrderInventory", "deleteOrderInventory", "importOrderInventory"],
   [PAGE_USERS]: ["createUsers", "editUsers", "deleteUsers", "resetPasswords", "managePermissions"],
