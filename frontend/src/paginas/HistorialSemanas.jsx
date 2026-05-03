@@ -291,8 +291,6 @@ function buildWeekDaySections(week, activities, finishedStatus, workWeek) {
 
   const sections = [];
   for (const cursor = new Date(normalizedStart); cursor <= normalizedEnd; cursor.setDate(cursor.getDate() + 1)) {
-    if (!isHistoryWorkDay(cursor, workWeek)) continue;
-
     const parts = toDateParts(cursor);
     if (!parts) continue;
 
@@ -867,8 +865,8 @@ export default function HistorialSemanas({ contexto }) {
   }, [activeMonthWeeks, effectiveHistoryWeek]);
 
   const weeklyDaySections = useMemo(() => {
-    return buildWeekDaySections(effectiveHistoryWeek, playerScopedActivities, STATUS_FINISHED, normalizedOperationalWorkWeek);
-  }, [STATUS_FINISHED, effectiveHistoryWeek, normalizedOperationalWorkWeek, playerScopedActivities]);
+    return buildWeekDaySections(effectiveHistoryWeek, historyActivities, STATUS_FINISHED, normalizedOperationalWorkWeek);
+  }, [STATUS_FINISHED, effectiveHistoryWeek, normalizedOperationalWorkWeek, historyActivities]);
 
   const canEditHistoricalWeekActivities = !useBoardHistoryFallback && Boolean(actionPermissions.editHistoryRecords || actionPermissions.manageWeeks || actionPermissions.deleteWeekActivity);
 
