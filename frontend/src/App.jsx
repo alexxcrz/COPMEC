@@ -834,6 +834,7 @@ function App() { // NOSONAR
   const [deleteUserId, setDeleteUserId] = useState(null);
   const [transferLeadTargetId, setTransferLeadTargetId] = useState(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const [resetUserPasswordModal, setResetUserPasswordModal] = useState({ open: false, userId: null, userName: "", password: "", message: "" });
   const [showUserModalPassword, setShowUserModalPassword] = useState(false);
   const [showResetUserPassword, setShowResetUserPassword] = useState(false);
@@ -7589,6 +7590,8 @@ function App() { // NOSONAR
         onOpenProfile={() => setProfileModalOpen(true)}
         onToggleCollapsed={() => setIsSidebarCollapsed((current) => !current)}
         allowedNavItems={allowedNavItems}
+        canUseAI={!!actionPermissions.useCopmecAI}
+        onOpenAI={() => setAiOpen((v) => !v)}
       />
 
       <section ref={contentShellRef} className="content-shell">
@@ -8841,7 +8844,7 @@ function App() { // NOSONAR
           )) : <p>No hay pausas registradas para esta actividad.</p>}
         </div>
       </Modal>
-      <CopmecAIWidget canUseAI={!!actionPermissions.useCopmecAI} />
+      <CopmecAIWidget canUseAI={!!actionPermissions.useCopmecAI} isOpen={aiOpen} onClose={() => setAiOpen(false)} sidebarCollapsed={isSidebarCollapsed} />
     </main>
   );
 }

@@ -139,7 +139,7 @@ html {
   position: sticky;
   top: 0;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
   gap: 0.58rem;
   padding: 0.82rem;
   background:
@@ -544,6 +544,55 @@ html {
 .sidebar-mobile-actions {
   width: 100%;
   justify-content: flex-end;
+}
+
+/* Botón COPMEC AI en el sidebar */
+.sidebar-ai-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.52rem 0.62rem;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: 0.85rem;
+  color: #eff7f3;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.12s;
+  text-align: left;
+  overflow: hidden;
+}
+
+.sidebar-ai-btn:hover {
+  background: rgba(34, 197, 94, 0.22);
+  border-color: rgba(34, 197, 94, 0.45);
+  transform: translateY(-1px);
+}
+
+.sidebar-ai-logo {
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1.5px solid rgba(34, 197, 94, 0.4);
+}
+
+.sidebar-ai-label {
+  font-size: 0.83rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-shell.collapsed .sidebar-ai-btn {
+  justify-content: center;
+  padding: 0.52rem;
+}
+
+.sidebar-shell.collapsed .sidebar-ai-label {
+  display: none;
 }
 
 .sidebar-profile-card {
@@ -12451,82 +12500,33 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   COPMEC AI — Widget flotante (Cerebro Operativo)
+   COPMEC AI — Panel lateral (Cerebro Operativo)
 ═══════════════════════════════════════════════════════════ */
 
-/* Botón flotante (FAB) */
-.copmec-ai-fab {
-  position: fixed;
-  bottom: 1.5rem;
-  left: 1.5rem;
-  z-index: 200;
-  width: 3.6rem;
-  height: 3.6rem;
-  border-radius: 999px;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  background: #032121;
-  box-shadow: 0 4px 20px rgba(3, 33, 33, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-  overflow: visible;
-}
-
-.copmec-ai-fab:hover {
-  transform: scale(1.07);
-  box-shadow: 0 6px 28px rgba(3, 33, 33, 0.45);
-}
-
-.copmec-ai-fab--active {
-  box-shadow: 0 0 0 3px #22c55e44, 0 6px 24px rgba(3, 33, 33, 0.4);
-}
-
-.copmec-ai-fab-logo {
-  width: 100%;
-  height: 100%;
-  border-radius: 999px;
-  object-fit: cover;
-}
-
-.copmec-ai-fab-badge {
-  position: absolute;
-  top: -0.3rem;
-  right: -0.3rem;
-  background: #22c55e;
-  color: #fff;
-  font-size: 0.6rem;
-  font-weight: 700;
-  padding: 0.1rem 0.35rem;
-  border-radius: 999px;
-  line-height: 1.2;
-  letter-spacing: 0.04em;
-  border: 1.5px solid #fff;
-}
-
-/* Panel de chat */
+/* Panel de chat — aparece a la derecha del sidebar */
 .copmec-ai-panel {
   position: fixed;
-  bottom: 6rem;
-  left: 1.5rem;
-  z-index: 199;
-  width: min(92vw, 420px);
-  max-height: 78vh;
+  top: 0;
+  left: 220px; /* sidebar expandido */
+  z-index: 300;
+  width: min(90vw, 420px);
+  height: 100vh;
   background: #fff;
-  border-radius: 1.5rem;
-  border: 1px solid rgba(3, 33, 33, 0.12);
-  box-shadow: 0 16px 48px rgba(3, 33, 33, 0.2);
+  border-right: 1px solid rgba(3, 33, 33, 0.12);
+  box-shadow: 4px 0 32px rgba(3, 33, 33, 0.15);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: copmec-ai-appear 0.22s ease;
+  animation: copmec-ai-appear 0.2s ease;
+}
+
+.copmec-ai-panel--sidebar-collapsed {
+  left: 66px; /* sidebar colapsado */
 }
 
 @keyframes copmec-ai-appear {
-  from { opacity: 0; transform: translateY(16px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
 /* Header */
@@ -12537,7 +12537,6 @@ body {
   padding: 0.85rem 1rem;
   background: #032121;
   color: #fff;
-  border-radius: 1.5rem 1.5rem 0 0;
   flex-shrink: 0;
 }
 
@@ -12844,18 +12843,10 @@ body {
 
 /* Mobile */
 @media (max-width: 480px) {
-  .copmec-ai-fab {
-    bottom: 1rem;
-    left: 1rem;
-    width: 3.1rem;
-    height: 3.1rem;
-  }
-
   .copmec-ai-panel {
-    bottom: 5.2rem;
-    left: 0.75rem;
-    width: calc(100vw - 1.5rem);
-    max-height: 72vh;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
   }
 }
 

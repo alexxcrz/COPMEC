@@ -5,6 +5,7 @@
 
 import { PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import { CopmecBrand } from "./ComponentesDashboard";
+import logoIA from "../assets/logo-ia.jpeg";
 
 const DEFAULT_JOB_TITLE_BY_ROLE = {
   "Lead":              "Líder de Operaciones",
@@ -17,7 +18,7 @@ function getUserJobTitle(user) {
   return String(user?.jobTitle || DEFAULT_JOB_TITLE_BY_ROLE[user?.role] || "").trim();
 }
 
-export function Sidebar({ currentUser, page, onPageChange, isOpen, isCollapsed, onClose, onOpenProfile, onToggleCollapsed, allowedNavItems }) {
+export function Sidebar({ currentUser, page, onPageChange, isOpen, isCollapsed, onClose, onOpenProfile, onToggleCollapsed, allowedNavItems, canUseAI, onOpenAI }) {
   return (
     <aside className={`sidebar-shell ${isOpen ? "open" : ""} ${isCollapsed && !isOpen ? "collapsed" : ""}`}>
       <div className="sidebar-mobile-actions">
@@ -62,6 +63,18 @@ export function Sidebar({ currentUser, page, onPageChange, isOpen, isCollapsed, 
           return elements;
         })()}
       </nav>
+
+      {canUseAI && (
+        <button
+          type="button"
+          className="sidebar-ai-btn"
+          onClick={onOpenAI}
+          title="COPMEC AI — Cerebro Operativo"
+        >
+          <img src={logoIA} alt="AI" className="sidebar-ai-logo" />
+          <span className="sidebar-ai-label">COPMEC AI</span>
+        </button>
+      )}
 
       <button type="button" className="sidebar-profile-card" onClick={onOpenProfile} title={currentUser.name}>
         <span className="avatar-circle sidebar-profile-avatar">{currentUser.name.charAt(0).toUpperCase()}</span>

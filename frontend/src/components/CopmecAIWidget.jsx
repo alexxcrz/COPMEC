@@ -99,8 +99,7 @@ const QUICK_SUGGESTIONS = [
 ];
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-export default function CopmecAIWidget({ canUseAI }) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function CopmecAIWidget({ canUseAI, isOpen, onClose, sidebarCollapsed }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -161,7 +160,7 @@ export default function CopmecAIWidget({ canUseAI }) {
       e.preventDefault();
       sendMessage();
     }
-    if (e.key === "Escape") setIsOpen(false);
+    if (e.key === "Escape") onClose?.();
   }
 
   function clearChat() {
@@ -169,27 +168,10 @@ export default function CopmecAIWidget({ canUseAI }) {
     setHasGreeted(false);
   }
 
-  if (!canUseAI) return null;
+  if (!canUseAI || !isOpen) return null;
 
   return (
-    <>
-      {/* Widget flotante */}
-      <button
-        type="button"
-        className={`copmec-ai-fab ${isOpen ? "copmec-ai-fab--active" : ""}`}
-        onClick={() => setIsOpen((v) => !v)}
-        aria-label="Abrir COPMEC AI"
-        title="COPMEC AI — Cerebro Operativo"
-      >
-        <img src={logoIA} alt="COPMEC AI" className="copmec-ai-fab-logo" />
-        {!isOpen && (
-          <span className="copmec-ai-fab-badge" aria-hidden="true">AI</span>
-        )}
-      </button>
-
-      {/* Panel de chat */}
-      {isOpen && (
-        <div className="copmec-ai-panel" role="dialog" aria-label="COPMEC AI — Cerebro Operativo">
+    <div className={`copmec-ai-panel${sidebarCollapsed ? " copmec-ai-panel--sidebar-collapsed" : ""}`} role="dialog" aria-label="COPMEC AI — Cerebro Operativo">
           {/* Header */}
           <div className="copmec-ai-header">
             <div className="copmec-ai-header-info">
@@ -203,7 +185,7 @@ export default function CopmecAIWidget({ canUseAI }) {
               <button type="button" className="copmec-ai-icon-btn" onClick={clearChat} title="Limpiar conversación">
                 ↺
               </button>
-              <button type="button" className="copmec-ai-icon-btn" onClick={() => setIsOpen(false)} title="Cerrar">
+              <button type="button" className="copmec-ai-icon-btn" onClick={() => onClose?.()} title="Cerrar">
                 ✕
               </button>
             </div>
@@ -280,7 +262,5 @@ export default function CopmecAIWidget({ canUseAI }) {
             </button>
           </div>
         </div>
-      )}
-    </>
   );
 }
