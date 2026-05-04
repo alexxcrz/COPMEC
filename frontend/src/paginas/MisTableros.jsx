@@ -279,6 +279,7 @@ export default function MisTableros({ contexto }) {
     canManageDashboardState,
     formatDate,
     formatTime,
+    pushAppToast,
   } = contexto;
 
   function normalizeTimeInput24h(value, strict = false) {
@@ -829,6 +830,51 @@ export default function MisTableros({ contexto }) {
     return Math.max(0, persistedPauseSeconds + livePauseSeconds);
   };
 
+  async function saveCurrentBoardAsTemplate() {
+    if (!selectedCustomBoard) return;
+    const columns = Array.isArray(selectedCustomBoard.fields) ? selectedCustomBoard.fields : [];
+    if (!columns.length) {
+      setBoardRuntimeFeedback({ tone: "danger", message: "Este tablero no tiene componentes para guardar como plantilla." });
+      return;
+    }
+
+    try {
+      const payload = {
+        name: `${selectedCustomBoard.name || "Tablero"} · Plantilla`,
+        description: selectedCustomBoard.description || `Plantilla generada desde ${selectedCustomBoard.name || "tablero"}.`,
+        category: selectedCustomBoard.category || "Personalizada",
+        visibilityType: selectedCustomBoard.visibilityType || "department",
+        sharedDepartments: Array.isArray(selectedCustomBoard.sharedDepartments) ? selectedCustomBoard.sharedDepartments : [],
+        sharedUserIds: Array.isArray(selectedCustomBoard.accessUserIds) ? selectedCustomBoard.accessUserIds : [],
+        settings: { ...(selectedCustomBoard.settings || {}) },
+        columns,
+      };
+
+      const result = await requestJson("/warehouse/templates", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      applyRemoteWarehouseState(result?.data?.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setBoardRuntimeFeedback({ tone: "success", message: "Tablero guardado como plantilla." });
+      if (typeof pushAppToast === "function") pushAppToast("Tablero guardado como plantilla.", "success");
+    } catch (error) {
+      setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo guardar como plantilla." });
+      if (typeof pushAppToast === "function") pushAppToast(error?.message || "No se pudo guardar como plantilla.", "danger");
+    }
+  }
+
+  async function setAsTarimaReviewBoard() {
+    if (!selectedCustomBoard) return;
+    try {
+      await updateBoardOperationalContext(selectedCustomBoard.id, "Revision de tarimas", "custom");
+      setBoardRuntimeFeedback({ tone: "success", message: "Tablero vinculado como revisión de tarimas." });
+      if (typeof pushAppToast === "function") pushAppToast("Tablero vinculado como revisión de tarimas.", "success");
+    } catch (error) {
+      setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo vincular como revisión de tarimas." });
+      if (typeof pushAppToast === "function") pushAppToast(error?.message || "No se pudo vincular como revisión de tarimas.", "danger");
+    }
+  }
+
   return (
     <section className="admin-page-layout mis-tableros-shell">
       {selectedCustomBoard ? (
@@ -930,6 +976,12 @@ export default function MisTableros({ contexto }) {
                   </button>
                   {customBoardActionsMenuOpen && !isHistoricalCustomBoardView ? (
                     <div className="custom-board-actions-dropdown">
+                      <button type="button" className="custom-board-menu-item" onClick={() => { setCustomBoardActionsMenuOpen(false); void saveCurrentBoardAsTemplate(); }}>
+                        Guardar como plantilla
+                      </button>
+                      <button type="button" className="custom-board-menu-item" onClick={() => { setCustomBoardActionsMenuOpen(false); void setAsTarimaReviewBoard(); }} disabled={!canChangeSelectedBoardOperationalContext}>
+                        Usar para revisión de tarimas
+                      </button>
                       <button type="button" className="custom-board-menu-item" onClick={() => { setCustomBoardActionsMenuOpen(false); exportSelectedBoardToExcel(); }} disabled={!selectedBoardActionPermissions.exportBoardExcel}>
                         Exportar Excel
                       </button>

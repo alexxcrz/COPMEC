@@ -193,6 +193,19 @@ function resolveBoardRowHistoryActivityValue(snapshot, row) {
   return String(Object.values(rowValues).find((value) => String(value || "").trim()) || "").trim();
 }
 
+function collectSnapshotFieldsFromActivities(activities = []) {
+  const fieldMap = new Map();
+  (Array.isArray(activities) ? activities : []).forEach((activity) => {
+    if (!activity?.derivedFromBoardHistory || !Array.isArray(activity.snapshotFields)) return;
+    activity.snapshotFields.forEach((field) => {
+      const fieldId = String(field?.id || "").trim();
+      if (!fieldId || fieldMap.has(fieldId)) return;
+      fieldMap.set(fieldId, field);
+    });
+  });
+  return Array.from(fieldMap.values());
+}
+
 function buildFallbackWeekReportSections(week) {
   const start = parseHistoryDate(week?.startDate);
   const end = parseHistoryDate(week?.endDate);
@@ -885,6 +898,7 @@ export default function HistorialSemanas({ contexto }) {
   const canEditHistoricalWeekActivities = !useBoardHistoryFallback && Boolean(actionPermissions.editHistoryRecords || actionPermissions.manageWeeks || actionPermissions.deleteWeekActivity);
 
   function getHistoryExportRows(activities) {
+    const dynamicSnapshotFields = collectSnapshotFieldsFromActivities(activities);
     return activities.map((activity) => {
       const base = {
         area: activity.areaRoot,
@@ -898,8 +912,8 @@ export default function HistorialSemanas({ contexto }) {
         tiempo: formatDurationClock(activity.accumulatedSeconds),
         segundos: Number(activity.accumulatedSeconds || 0),
       };
-      if (activity.derivedFromBoardHistory && Array.isArray(activity.snapshotFields)) {
-        activity.snapshotFields.forEach((field) => {
+      if (dynamicSnapshotFields.length > 0) {
+        dynamicSnapshotFields.forEach((field) => {
           if (field?.id) base[String(field.label || field.id)] = String(activity.rowValues?.[field.id] ?? "");
         });
       }
@@ -969,8 +983,7 @@ export default function HistorialSemanas({ contexto }) {
       pdf.text(`Area: ${selectedAreaTab || "-"} | Tablero: ${selectedBoardTab || "-"} | Player: ${selectedPlayerTab === "all" ? "Todos" : (playerTabs.find((tab) => tab.value === selectedPlayerTab)?.label || selectedPlayerTab)}`, 36, 74);
       pdf.text(`Generado: ${new Date().toLocaleString("es-MX")}`, 36, 90);
 
-      const samplePdfActivity = exportableHistoryActivities[0];
-      const pdfBoardFields = samplePdfActivity?.derivedFromBoardHistory ? (samplePdfActivity.snapshotFields || []) : [];
+      const pdfBoardFields = collectSnapshotFieldsFromActivities(exportableHistoryActivities);
       const pdfHeaders = pdfBoardFields.length > 0
         ? [...pdfBoardFields.map((f) => String(f.label || f.id || "")), "Player", "Estado", "Fecha", "Inicio", "Fin", "Tiempo"]
         : ["Area", "Tablero", "Actividad", "Player", "Estado", "Fecha", "Inicio", "Fin", "Tiempo"];
@@ -1392,32 +1405,32 @@ export default function HistorialSemanas({ contexto }) {
                                   dayEntry.activities.length ? (
                                     <div className="table-wrap compact-table">
                                       {(() => {
-                                        const sampleAct = dayEntry.activities[0];
-                                        const dynamicFields = sampleAct?.derivedFromBoardHistory && Array.isArray(sampleAct.snapshotFields) && sampleAct.snapshotFields.length > 0 ? sampleAct.snapshotFields : null;
+                                        const dynamicFields = collectSnapshotFieldsFromActivities(dayEntry.activities);
+                                        const hasDynamicFields = dynamicFields.length > 0;
                                         return (
                                           <table className="history-table-clean">
                                             <thead>
                                               <tr>
-                                                {dynamicFields
+                                                {hasDynamicFields
                                                   ? dynamicFields.map((field) => <th key={field.id}>{field.label || field.id}</th>)
                                                   : (<><th>Área</th><th>Tablero</th><th>Actividad</th></>)
                                                 }
                                                 <th>Player</th>
                                                 <th>Estado</th>
-                                                {!dynamicFields && <><th>Inicio</th><th>Fin</th></>}
+                                                {!hasDynamicFields && <><th>Inicio</th><th>Fin</th></>}
                                                 <th>Tiempo</th>
                                               </tr>
                                             </thead>
                                             <tbody>
                                               {dayEntry.activities.map((activity) => (
                                                 <tr key={activity.id}>
-                                                  {dynamicFields
+                                                  {hasDynamicFields
                                                     ? dynamicFields.map((field) => <td key={field.id}>{String(activity.rowValues?.[field.id] ?? "")}</td>)
                                                     : (<><td>{activity.areaRoot}</td><td>{activity.boardName || "General"}</td><td>{resolveHistoryActivityLabel(activity)}</td></>)
                                                   }
                                                   <td title={resolveHistoryPlayerLabel(activity)}>{resolveHistoryPlayerLabel(activity)}</td>
                                                   <td><StatusBadge status={activity.status} /></td>
-                                                  {!dynamicFields && <><td>{formatTime(activity.startTime)}</td><td>{formatTime(activity.endTime)}</td></>}
+                                                  {!hasDynamicFields && <><td>{formatTime(activity.startTime)}</td><td>{formatTime(activity.endTime)}</td></>}
                                                   <td>{formatDurationClock(activity.accumulatedSeconds)}</td>
                                                 </tr>
                                               ))}

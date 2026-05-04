@@ -1919,6 +1919,10 @@ function App() { // NOSONAR
         sourceLabel: "Tablero operativo",
         label: board.name,
         boardName: board.name,
+        sourceFields: Array.isArray(board.fields) ? board.fields : [],
+        rowValues: row.values && typeof row.values === "object" ? row.values : {},
+        operationalContextValue: String(board?.settings?.operationalContextValue || "").trim(),
+        operationalContextLabel: String(board?.settings?.operationalContextLabel || "").trim(),
         responsibleId: row.responsibleId || "",
         responsibleName: responsibleUser?.name || "Sin player",
         area: primaryArea,
@@ -1947,10 +1951,15 @@ function App() { // NOSONAR
       return {
         id: `board-history-${snapshot.id}-${row.id}`,
         rawId: `${snapshot.id}-${row.id}`,
+        boardId: String(snapshot.boardId || "").trim(),
         source: "board",
         sourceLabel: "Histórico de tablero",
         label: snapshot.boardName,
         boardName: snapshot.boardName,
+        sourceFields: Array.isArray(snapshot.fields) ? snapshot.fields : [],
+        rowValues: row.values && typeof row.values === "object" ? row.values : {},
+        operationalContextValue: String(snapshot?.settings?.operationalContextValue || "").trim(),
+        operationalContextLabel: String(snapshot?.settings?.operationalContextLabel || "").trim(),
         responsibleId: row.responsibleId || "",
         responsibleName: responsibleUser?.name || "Sin player",
         area: primaryArea,
@@ -2243,11 +2252,14 @@ function App() { // NOSONAR
 
     boardRecords.forEach((record) => {
       const board = boardMap.get(record.boardId);
-      if (!board) return;
-      const row = (board.rows || []).find((entry) => entry.id === record.rawId);
-      if (!row) return;
+      const recordFields = Array.isArray(record.sourceFields) ? record.sourceFields : [];
+      const fields = recordFields.length > 0 ? recordFields : (Array.isArray(board?.fields) ? board.fields : []);
+      const rowValues = record.rowValues && typeof record.rowValues === "object"
+        ? record.rowValues
+        : ((board?.rows || []).find((entry) => entry.id === record.rawId)?.values || null);
+      if (!fields.length || !rowValues) return;
 
-      (board.fields || []).forEach((field) => {
+      fields.forEach((field) => {
         const fieldType = String(field?.type || "").trim();
         if (!measurableTypes.has(fieldType)) return;
         const normalizedLabel = String(field?.label || "")
@@ -2256,16 +2268,17 @@ function App() { // NOSONAR
           .toLowerCase()
           .trim();
         if (ignoredMetricLabelTokens.some((token) => normalizedLabel.includes(token))) return;
-        const numericValue = parseMetricValue(row.values?.[field.id], fieldType);
+        const numericValue = parseMetricValue(rowValues?.[field.id], fieldType);
         if (!Number.isFinite(numericValue)) return;
 
-        const key = `${record.area}::${board.id}::${field.id}`;
+        const resolvedBoardId = String(record.boardId || board?.id || "sin-tablero").trim() || "sin-tablero";
+        const key = `${record.area}::${resolvedBoardId}::${field.id}`;
         if (!metricMap.has(key)) {
           metricMap.set(key, {
             key,
             area: record.area || "Sin área",
-            boardId: board.id,
-            boardName: board.name || record.boardName || "Tablero",
+            boardId: resolvedBoardId,
+            boardName: record.boardName || board?.name || "Tablero",
             fieldId: field.id,
             fieldLabel: String(field.label || "Métrica"),
             fieldType,
@@ -2476,9 +2489,12 @@ function App() { // NOSONAR
 
     inventoryRecords.forEach((record) => {
       const board = boardMap.get(record.boardId);
-      if (!board) return;
-      const row = (board.rows || []).find((entry) => entry.id === record.rawId);
-      if (!row) return;
+      const recordFields = Array.isArray(record.sourceFields) ? record.sourceFields : [];
+      const fields = recordFields.length > 0 ? recordFields : (Array.isArray(board?.fields) ? board.fields : []);
+      const rowValues = record.rowValues && typeof record.rowValues === "object"
+        ? record.rowValues
+        : ((board?.rows || []).find((entry) => entry.id === record.rawId)?.values || null);
+      if (!fields.length || !rowValues) return;
 
       const fallbackTimeMinutes = Number.isFinite(Number(record.durationSeconds))
         ? Math.max(0, Number(record.durationSeconds) / 60)
@@ -2498,10 +2514,10 @@ function App() { // NOSONAR
       let bestMermaScore = Number.NEGATIVE_INFINITY;
       let bestAptasScore = Number.NEGATIVE_INFINITY;
 
-      (board.fields || board.columns || []).forEach((field) => {
+      fields.forEach((field) => {
         const fieldLabel = String(field?.label || "").trim();
         const normalizedLabel = normalizeToken(fieldLabel);
-        const rawValue = row.values?.[field.id];
+        const rawValue = rowValues?.[field.id];
         const normalizedType = normalizeToken(field?.type || "");
 
         if (!productValue && (
@@ -2565,7 +2581,7 @@ function App() { // NOSONAR
       });
 
       if (!processValue) {
-        processValue = String(board?.settings?.operationalContextValue || board?.settings?.operationalContextLabel || "General").trim() || "General";
+        processValue = String(record.operationalContextValue || record.operationalContextLabel || board?.settings?.operationalContextValue || board?.settings?.operationalContextLabel || "General").trim() || "General";
       }
 
       if (!Number.isFinite(timeMinutes) && Number.isFinite(fallbackTimeMinutes)) {
@@ -2590,13 +2606,14 @@ function App() { // NOSONAR
       const normalizedProduct = normalizeToken(productRawValue || productValue);
       const normalizedTarima = normalizeToken(tarimaValue || "sin-tarima");
       const normalizedProcess = normalizeToken(processValue || "general");
-      const key = `${record.area}::${board.id}::${normalizedProcess}::${normalizedProduct}::${normalizedTarima}`;
+      const resolvedBoardId = String(record.boardId || board?.id || "sin-tablero").trim() || "sin-tablero";
+      const key = `${record.area}::${resolvedBoardId}::${normalizedProcess}::${normalizedProduct}::${normalizedTarima}`;
       if (!aggregated.has(key)) {
         aggregated.set(key, {
           key,
           area: record.area || "Sin área",
-          boardId: board.id,
-          boardName: board.name || record.boardName || "Tablero",
+          boardId: resolvedBoardId,
+          boardName: record.boardName || board?.name || "Tablero",
           process: processValue || "General",
           product: productValue,
           tarima: tarimaValue || "Sin tarima",
