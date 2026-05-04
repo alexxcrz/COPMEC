@@ -1923,7 +1923,7 @@ function App() { // NOSONAR
         responsibleName: responsibleUser?.name || "Sin player",
         area: primaryArea,
         areaScopes,
-        occurredAt: row.endTime || row.createdAt || row.startTime || row.lastResumedAt,
+        occurredAt: row.endTime || row.startTime || row.lastResumedAt || row.createdAt,
         status: row.status || STATUS_PENDING,
         durationSeconds,
         totalElapsedSeconds,
@@ -1955,7 +1955,7 @@ function App() { // NOSONAR
         responsibleName: responsibleUser?.name || "Sin player",
         area: primaryArea,
         areaScopes,
-        occurredAt: row.endTime || row.createdAt || row.startTime || row.lastResumedAt || snapshot.archivedAt,
+        occurredAt: row.endTime || row.startTime || row.lastResumedAt || row.createdAt || snapshot.archivedAt,
         status: row.status || STATUS_PENDING,
         durationSeconds,
         totalElapsedSeconds,
@@ -2302,7 +2302,7 @@ function App() { // NOSONAR
     if (!inventoryRecords.length) return [];
 
     const boardMap = new Map((dashboardVisibleControlBoards || []).map((board) => [board.id, board]));
-    const productKeywords = ["producto", "sku", "articulo", "item", "codigo", "clave", "material", "modelo"];
+    const productKeywords = ["producto", "sku", "articulo", "item", "codigo", "clave", "material", "modelo", "lote", "lot"];
     const timeKeywords = ["tiempo", "duracion", "min", "revision", "ciclo", "proceso"];
     const piecesKeywords = ["pieza", "pzas", "pz", "cantidad", "unidades", "qty", "total pz", "contad", "esperad", "buen estado"];
     const piecesReceivedKeywords = ["recib", "recep", "entrada", "ingreso", "total pz", "esperad", "contad"];
@@ -2395,6 +2395,14 @@ function App() { // NOSONAR
       if (rawObject) {
         const lookupLabel = formatInventoryLookupLabel(rawObject);
         if (lookupLabel) return lookupLabel;
+        const fallbackObjectLabel = String(
+          rawObject.code
+          || rawObject.sku
+          || rawObject.name
+          || rawObject.id
+          || "",
+        ).trim();
+        if (fallbackObjectLabel) return fallbackObjectLabel;
       }
 
       let raw = String(rawValue || "").trim();
@@ -2415,8 +2423,7 @@ function App() { // NOSONAR
 
       const fromInventory = inventoryItemById.get(raw) || inventoryItemByCode.get(normalizeToken(raw));
       if (!fromInventory) {
-        const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(raw);
-        return looksLikeUuid ? "" : raw;
+        return raw;
       }
 
       const code = String(fromInventory.code || "").trim();
