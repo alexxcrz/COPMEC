@@ -12841,6 +12841,69 @@ body {
   cursor: not-allowed;
 }
 
+/* Botones de descarga de reporte */
+.copmec-ai-report-btns {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid rgba(3, 33, 33, 0.1);
+}
+
+.copmec-ai-report-label {
+  font-size: 0.78rem;
+  color: #555;
+  font-weight: 500;
+  flex-basis: 100%;
+}
+
+.copmec-ai-download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.38rem 0.85rem;
+  border-radius: 999px;
+  border: none;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.copmec-ai-download-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+}
+
+.copmec-ai-download-btn--pdf {
+  background: #dc2626;
+  color: #fff;
+}
+
+.copmec-ai-download-btn--cop {
+  background: #032121;
+  color: #22c55e;
+  border: 1px solid #22c55e44;
+}
+
+/* Badge de dashboard fix */
+.copmec-ai-fix-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.65rem;
+  padding: 0.3rem 0.75rem;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 999px;
+  font-size: 0.77rem;
+  font-weight: 600;
+  color: #15803d;
+}
+
 /* Mobile */
 @media (max-width: 480px) {
   .copmec-ai-panel {

@@ -143,7 +143,15 @@ export default function CopmecAIWidget({ canUseAI, isOpen, onClose, sidebarColla
       const data = await res.json();
 
       if (res.ok && data.ok) {
-        setMessages((prev) => [...prev, { role: "ai", content: data.response }]);
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "ai",
+            content: data.response,
+            reportToken: data.reportToken || null,
+            dashboardFixed: data.dashboardFixed || false,
+          },
+        ]);
       } else {
         setMessages((prev) => [...prev, { role: "ai", content: "No pude procesar tu solicitud. Intenta de nuevo." }]);
       }
@@ -154,6 +162,10 @@ export default function CopmecAIWidget({ canUseAI, isOpen, onClose, sidebarColla
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [input, isLoading]);
+
+  function downloadReport(token, format) {
+    window.open(`${API_BASE_URL}/copmec-ai/report/${token}/${format}`, "_blank", "noopener");
+  }
 
   function handleKeyDown(e) {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -208,7 +220,35 @@ export default function CopmecAIWidget({ canUseAI, isOpen, onClose, sidebarColla
                 )}
                 <div className="copmec-ai-bubble">
                   {msg.role === "ai"
-                    ? <div className="copmec-ai-content">{parseMarkdownToJSX(msg.content)}</div>
+                    ? (
+                      <div className="copmec-ai-content">
+                        {parseMarkdownToJSX(msg.content)}
+                        {msg.dashboardFixed && (
+                          <div className="copmec-ai-fix-badge">
+                            🔧 Correcciones aplicadas al sistema
+                          </div>
+                        )}
+                        {msg.reportToken && (
+                          <div className="copmec-ai-report-btns">
+                            <span className="copmec-ai-report-label">📥 Descargar reporte:</span>
+                            <button
+                              type="button"
+                              className="copmec-ai-download-btn copmec-ai-download-btn--pdf"
+                              onClick={() => downloadReport(msg.reportToken, "pdf")}
+                            >
+                              PDF
+                            </button>
+                            <button
+                              type="button"
+                              className="copmec-ai-download-btn copmec-ai-download-btn--cop"
+                              onClick={() => downloadReport(msg.reportToken, "cop")}
+                            >
+                              .COP
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
                     : <span>{msg.content}</span>
                   }
                 </div>

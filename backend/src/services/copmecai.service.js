@@ -3,7 +3,27 @@
  * Motor de inteligencia local: conversacional, contextual y orientado a datos reales.
  */
 
-import { getWarehouseState, findWarehouseUserById } from "./warehouse.store.js";
+import { getWarehouseState, findWarehouseUserById, replaceWarehouseState } from "./warehouse.store.js";
+import { randomUUID } from "crypto";
+import { writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync, statSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+import PDFDocument from "pdfkit";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const REPORTS_DIR = join(__dirname, "../../data/uploads/reports");
+
+// Asegurar que exista el directorio de reportes
+if (!existsSync(REPORTS_DIR)) mkdirSync(REPORTS_DIR, { recursive: true });
+
+// Limpiar reportes de más de 1 hora al iniciar
+try {
+  const now = Date.now();
+  readdirSync(REPORTS_DIR).forEach((f) => {
+    const fp = join(REPORTS_DIR, f);
+    try { if (now - statSync(fp).mtimeMs > 3600000) unlinkSync(fp); } catch {}
+  });
+} catch {}
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 const STATUS_PENDING  = "pending";
@@ -96,6 +116,11 @@ function classifyIntent(msg) {
   if (has(t, ["prediccion", "prevenir", "riesgo", "anticipa", "alerta", "futuro", "que puede pasar"])) return "prediction";
   if (has(t, ["auditoria", "cumplimiento", "normativa", "calidad", "revision"])) return "audit";
   if (has(t, ["catalogo", "frecuencia", "tarea programada", "actividad programada"])) return "catalog";
+
+  if (has(t, ["arregla", "corrige", "corrije", "corregir", "arreglar", "fix", "reparar", "soluciona"]) &&
+      has(t, ["dashboard", "panel", "tablero", "datos", "informacion", "muestra", "display"])) return "dashboard_fix";
+
+  if (has(t, ["descargar", "descargate", "genera reporte", "generar reporte", "exportar", "dame el archivo", "reporte descargable"])) return "download_report";
 
   return "unknown";
 }
@@ -526,9 +551,296 @@ function handleUnknown(snap, msg) {
   return `No entendí bien tu pregunta: *"${msg.slice(0,80)}${msg.length>80?"...":""}"*\n\nPuedes preguntarme:\n- *"cómo están los tableros"*\n- *"informe detallado de tableros"*\n- *"qué tenemos en stock"*\n- *"qué está pausado"*\n- *"dame un resumen"*\n\nEscríbeme **"ayuda"** para ver todo lo que puedo hacer.`;
 }
 
+// ─── Generación de reportes ──────────────────────────────────────────────────
+
+function buildReportData(snap) {
+  const now = new Date();
+  const running  = snap.allRows.filter((r) => r.status === STATUS_RUNNING).length;
+  const paused   = snap.allRows.filter((r) => r.status === STATUS_PAUSED).length;
+  const finished = snap.allRows.filter((r) => r.status === STATUS_FINISHED).length;
+  const pending  = snap.allRows.filter((r) => r.status === STATUS_PENDING).length;
+  const lowStock = snap.inventory.filter((i) => Number(i.stockUnits||0) <= Number(i.minStockUnits||0) && Number(i.minStockUnits||0) > 0);
+  const openInc  = snap.incidencias.filter((i) => i.status !== "cerrada" && i.status !== "resuelta");
+
+  return {
+    meta: {
+      format: "COPMEC-OPS-REPORT",
+      version: "1.0",
+      generatedAt: now.toISOString(),
+      generatedBy: "COPMEC AI — Cerebro Operativo",
+    },
+    resumen: {
+      totalTableros: snap.boards.length,
+      totalFilas: snap.allRows.length,
+      filasEnCurso: running,
+      filasPausadas: paused,
+      filasTerminadas: finished,
+      filasPendientes: pending,
+      tasaCierre: snap.allRows.length > 0 ? ((finished / snap.allRows.length) * 100).toFixed(1) + "%" : "0%",
+      totalInventario: snap.inventory.length,
+      articulosBajoMinimo: lowStock.length,
+      articulosAgotados: lowStock.filter((i) => Number(i.stockUnits||0) === 0).length,
+      incidenciasAbiertas: openInc.length,
+      totalUsuarios: snap.users.length,
+      usuariosActivos: snap.users.filter((u) => u.isActive !== false).length,
+    },
+    tableros: snap.boards.map((board) => {
+      const rows     = Array.isArray(board.rows) ? board.rows : [];
+      const area     = board.settings?.area || board.area || "sin área";
+      const running  = rows.filter((r) => r.status === STATUS_RUNNING).length;
+      const paused   = rows.filter((r) => r.status === STATUS_PAUSED).length;
+      const finished = rows.filter((r) => r.status === STATUS_FINISHED).length;
+      const pending  = rows.filter((r) => r.status === STATUS_PENDING).length;
+      return {
+        id: board.id,
+        nombre: board.name,
+        area,
+        totalFilas: rows.length,
+        enCurso: running,
+        pausadas: paused,
+        terminadas: finished,
+        pendientes: pending,
+        filas: rows.map((row, idx) => ({
+          numero: idx + 1,
+          sku: row.sku || row.product || row.name || row.label || `Fila ${idx + 1}`,
+          estado: row.status || "—",
+          inicio: row.startedAt || null,
+          pausa: row.pausedAt || null,
+          motivo: row.pauseReason || null,
+        })),
+      };
+    }),
+    inventarioCritico: lowStock.map((i) => ({
+      codigo: i.code || i.id,
+      nombre: i.name,
+      stockActual: Number(i.stockUnits || 0),
+      minimo: Number(i.minStockUnits || 0),
+      unidad: i.unitLabel || "uds",
+      categoria: i.domain || "base",
+    })),
+    incidenciasAbiertas: openInc.map((inc) => ({
+      titulo: inc.title || inc.descripcion || "Sin título",
+      estado: inc.status,
+      prioridad: inc.priority || inc.severidad || "—",
+      fecha: inc.createdAt || null,
+    })),
+  };
+}
+
+function generateCopBuffer(snap) {
+  const data = buildReportData(snap);
+  return Buffer.from(JSON.stringify(data, null, 2), "utf-8");
+}
+
+function generatePdfBuffer(snap) {
+  return new Promise((resolve) => {
+    const data   = buildReportData(snap);
+    const doc    = new PDFDocument({ margin: 50, size: "A4" });
+    const chunks = [];
+    doc.on("data", (c) => chunks.push(c));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+
+    const DARK   = "#032121";
+    const GREEN  = "#22c55e";
+    const GRAY   = "#555555";
+    const now    = new Date(data.meta.generatedAt);
+    const fecha  = now.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
+    // Encabezado
+    doc.rect(0, 0, doc.page.width, 80).fill(DARK);
+    doc.fillColor("#ffffff").fontSize(20).font("Helvetica-Bold").text("COPMEC — Reporte Operativo", 50, 25);
+    doc.fillColor(GREEN).fontSize(11).font("Helvetica").text(`Generado: ${fecha}`, 50, 52);
+    doc.moveDown(2);
+
+    // Resumen ejecutivo
+    doc.fillColor(DARK).fontSize(14).font("Helvetica-Bold").text("Resumen Ejecutivo", { underline: true });
+    doc.moveDown(0.4);
+    const R = data.resumen;
+    const summaryLines = [
+      `Tableros: ${R.totalTableros}   |   Filas totales: ${R.totalFilas}   |   Tasa de cierre: ${R.tasaCierre}`,
+      `En curso: ${R.filasEnCurso}   |   Pausadas: ${R.filasPausadas}   |   Terminadas: ${R.filasTerminadas}`,
+      `Inventario: ${R.totalInventario} artículos   |   Bajo mínimo: ${R.articulosBajoMinimo}   |   Agotados: ${R.articulosAgotados}`,
+      `Incidencias abiertas: ${R.incidenciasAbiertas}   |   Usuarios activos: ${R.usuariosActivos}/${R.totalUsuarios}`,
+    ];
+    doc.fillColor(GRAY).fontSize(10).font("Helvetica");
+    summaryLines.forEach((l) => { doc.text(l); doc.moveDown(0.2); });
+    doc.moveDown(0.8);
+
+    // Tableros
+    doc.fillColor(DARK).fontSize(13).font("Helvetica-Bold").text("Tableros de Control", { underline: true });
+    doc.moveDown(0.4);
+    data.tableros.forEach((board) => {
+      doc.fillColor(DARK).fontSize(11).font("Helvetica-Bold").text(`📋 ${board.nombre}  (${board.area})`);
+      doc.fillColor(GRAY).fontSize(9).font("Helvetica")
+        .text(`  ${board.totalFilas} filas: ${board.enCurso} en curso · ${board.pausadas} pausadas · ${board.terminadas} terminadas · ${board.pendientes} pendientes`);
+      if (board.filas.length > 0) {
+        doc.moveDown(0.2);
+        board.filas.slice(0, 20).forEach((row) => {
+          const statusMap = { running: "▶ En curso", paused: "⏸ Pausada", finished: "✔ Terminada", pending: "… Pendiente" };
+          const st = statusMap[row.estado] || row.estado;
+          doc.fillColor("#333").fontSize(8).font("Helvetica")
+            .text(`    ${row.numero}. ${row.sku} — ${st}${row.motivo ? `  (Motivo: ${row.motivo})` : ""}`);
+        });
+        if (board.filas.length > 20) doc.fillColor(GRAY).fontSize(8).text(`    ...y ${board.filas.length - 20} filas más`);
+      }
+      doc.moveDown(0.6);
+    });
+
+    // Inventario crítico
+    if (data.inventarioCritico.length > 0) {
+      doc.addPage();
+      doc.rect(0, 0, doc.page.width, 70).fill(DARK);
+      doc.fillColor("#ffffff").fontSize(16).font("Helvetica-Bold").text("Inventario Crítico", 50, 25);
+      doc.fillColor(GREEN).fontSize(10).font("Helvetica").text(`${data.inventarioCritico.length} artículo(s) bajo o en cero`, 50, 48);
+      doc.moveDown(2.5);
+      data.inventarioCritico.forEach((item) => {
+        const agotado = item.stockActual === 0;
+        doc.fillColor(agotado ? "#dc2626" : "#d97706").fontSize(10).font("Helvetica-Bold")
+          .text(`${agotado ? "🔴" : "🟡"} ${item.nombre}  (${item.codigo})`);
+        doc.fillColor(GRAY).fontSize(9).font("Helvetica")
+          .text(`   Stock: ${item.stockActual} ${item.unidad}  |  Mínimo: ${item.minimo} ${item.unidad}  |  Categoría: ${item.categoria}`);
+        doc.moveDown(0.4);
+      });
+    }
+
+    // Incidencias
+    if (data.incidenciasAbiertas.length > 0) {
+      doc.moveDown(0.5);
+      doc.fillColor(DARK).fontSize(13).font("Helvetica-Bold").text("Incidencias Abiertas", { underline: true });
+      doc.moveDown(0.4);
+      data.incidenciasAbiertas.forEach((inc) => {
+        const fecha = inc.fecha ? new Date(inc.fecha).toLocaleDateString("es-MX") : "—";
+        doc.fillColor("#dc2626").fontSize(10).font("Helvetica-Bold").text(`⚠ ${inc.titulo}`);
+        doc.fillColor(GRAY).fontSize(9).font("Helvetica")
+          .text(`   Estado: ${inc.estado}  |  Prioridad: ${inc.prioridad}  |  Fecha: ${fecha}`);
+        doc.moveDown(0.4);
+      });
+    }
+
+    // Pie
+    const pageCount = doc.bufferedPageRange ? doc.bufferedPageRange().count : 1;
+    doc.fillColor(GRAY).fontSize(8).text(`Generado por COPMEC AI — ${data.meta.generatedAt}  |  Formato: ${data.meta.format} v${data.meta.version}`, 50, doc.page.height - 40, { align: "center" });
+    doc.end();
+  });
+}
+
+async function createReportFiles(snap) {
+  const token = randomUUID();
+  const copBuf = generateCopBuffer(snap);
+  const pdfBuf = await generatePdfBuffer(snap);
+
+  const copPath = join(REPORTS_DIR, `${token}.cop`);
+  const pdfPath = join(REPORTS_DIR, `${token}.pdf`);
+  writeFileSync(copPath, copBuf);
+  writeFileSync(pdfPath, pdfBuf);
+
+  // Auto-limpiar en 30 minutos
+  setTimeout(() => {
+    try { unlinkSync(copPath); } catch {}
+    try { unlinkSync(pdfPath); } catch {}
+  }, 30 * 60 * 1000);
+
+  return token;
+}
+
+// ─── Dashboard Fix ────────────────────────────────────────────────────────────
+
+function handleDashboardFix(snap) {
+  const state = getWarehouseState();
+  const boards = Array.isArray(state.controlBoards) ? state.controlBoards : [];
+  const fixes  = [];
+
+  const fixedBoards = boards.map((board) => {
+    let changed = false;
+    const b = { ...board };
+
+    // Fix 1: Asegurar que boardKey exista
+    if (!b.boardKey) {
+      b.boardKey = `board-${b.id || randomUUID().slice(0, 8)}`;
+      fixes.push(`✅ Tablero **${b.name}**: se asignó \`boardKey\` faltante`);
+      changed = true;
+    }
+
+    // Fix 2: Asegurar que settings exista
+    if (!b.settings || typeof b.settings !== "object") {
+      b.settings = {};
+      fixes.push(`✅ Tablero **${b.name}**: se inicializó objeto \`settings\``);
+      changed = true;
+    }
+
+    // Fix 3: Normalizar filas con status inválido
+    const validStatuses = new Set([STATUS_PENDING, STATUS_RUNNING, STATUS_PAUSED, STATUS_FINISHED]);
+    const rows = Array.isArray(b.rows) ? b.rows : [];
+    let rowFixed = 0;
+    const fixedRows = rows.map((row) => {
+      if (!validStatuses.has(row.status)) {
+        rowFixed++;
+        return { ...row, status: STATUS_PENDING };
+      }
+      return row;
+    });
+    if (rowFixed > 0) {
+      b.rows = fixedRows;
+      fixes.push(`✅ Tablero **${b.name}**: ${rowFixed} fila(s) con estado inválido corregidas → \`pending\``);
+      changed = true;
+    }
+
+    // Fix 4: Asegurar que name no sea undefined/null
+    if (!b.name || typeof b.name !== "string") {
+      b.name = `Tablero sin nombre (${b.id || "?"})`;
+      fixes.push(`✅ Tablero sin nombre: se asignó nombre de respaldo`);
+      changed = true;
+    }
+
+    // Fix 5: Asegurar que displayOrder sea numérico
+    if (typeof b.displayOrder !== "number") {
+      b.displayOrder = 0;
+      changed = true;
+    }
+
+    return changed ? b : board;
+  });
+
+  // Fix 6: Verificar configuración del sistema operativo
+  const sysCfg = state.systemOperationalSettings || {};
+  const sysFixed = {};
+  if (typeof sysCfg.globalPauseActive !== "boolean") {
+    sysFixed.globalPauseActive = false;
+    fixes.push(`✅ \`globalPauseActive\`: valor inválido corregido → \`false\``);
+  }
+  if (typeof sysCfg.pauseRequiresAuth !== "boolean") {
+    sysFixed.pauseRequiresAuth = false;
+    fixes.push(`✅ \`pauseRequiresAuth\`: valor inválido corregido → \`false\``);
+  }
+
+  if (fixes.length === 0) {
+    return {
+      text: `Revisé la estructura del dashboard y todo está bien configurado. No encontré datos corruptos ni campos faltantes en los **${boards.length} tablero(s)**.\n\n¿Hay algún problema específico que ves en la pantalla? Descríbemelo y lo analizo.`,
+      fixed: false,
+    };
+  }
+
+  // Aplicar correcciones
+  const newState = {
+    ...state,
+    controlBoards: fixedBoards,
+    systemOperationalSettings: { ...sysCfg, ...sysFixed },
+  };
+  replaceWarehouseState(newState);
+
+  const lines = [
+    `Listo. Analicé y corregí la estructura del dashboard. Apliqué **${fixes.length} corrección(es)**:\n`,
+    ...fixes,
+    `\nLos cambios ya están guardados. **Recarga el dashboard** para ver la información actualizada.`,
+    `\n💡 Si el problema persiste, dime exactamente qué módulo no muestra bien los datos y lo investigo más profundo.`,
+  ];
+
+  return { text: lines.join("\n"), fixed: true };
+}
+
 // ─── Punto de entrada ─────────────────────────────────────────────────────────
 
-export function processCopmecAIMessage(auth, message) {
+export async function processCopmecAIMessage(auth, message) {
   if (!message || typeof message !== "string" || message.trim().length === 0) {
     return { ok: false, message: "Mensaje vacío." };
   }
@@ -538,27 +850,47 @@ export function processCopmecAIMessage(auth, message) {
   const trimmed = message.trim();
   const intent  = classifyIntent(trimmed);
 
+  // Dashboard fix — sincrónico especial
+  if (intent === "dashboard_fix") {
+    const result = handleDashboardFix(snap);
+    return { ok: true, response: result.text, intent, dashboardFixed: result.fixed };
+  }
+
+  // Intents que generan reporte descargable
+  const reportIntents = new Set(["report", "boards_detail", "download_report"]);
+
   const handlers = {
-    greeting:     () => handleGreeting(snap, user),
-    help:         () => handleHelp(),
-    no_stock:     () => handleInventoryNoStock(snap),
-    low_stock:    () => handleLowStock(snap),
-    inventory:    () => handleInventory(snap),
-    boards_status:() => handleBoardsStatus(snap, trimmed),
-    boards_detail:() => handleBoardsDetail(snap, trimmed),
-    boards_paused:() => handlePausedBoards(snap),
-    users:        () => handleUsers(snap),
-    incidencias:  () => handleIncidencias(snap),
-    report:       () => handleReport(snap),
-    bottleneck:   () => handleBottleneck(snap),
-    prediction:   () => handlePrediction(snap),
-    audit:        () => handleAudit(snap),
-    catalog:      () => handleCatalog(snap),
-    unknown:      () => handleUnknown(snap, trimmed),
+    greeting:       () => handleGreeting(snap, user),
+    help:           () => handleHelp(),
+    no_stock:       () => handleInventoryNoStock(snap),
+    low_stock:      () => handleLowStock(snap),
+    inventory:      () => handleInventory(snap),
+    boards_status:  () => handleBoardsStatus(snap, trimmed),
+    boards_detail:  () => handleBoardsDetail(snap, trimmed),
+    boards_paused:  () => handlePausedBoards(snap),
+    users:          () => handleUsers(snap),
+    incidencias:    () => handleIncidencias(snap),
+    report:         () => handleReport(snap),
+    bottleneck:     () => handleBottleneck(snap),
+    prediction:     () => handlePrediction(snap),
+    audit:          () => handleAudit(snap),
+    catalog:        () => handleCatalog(snap),
+    download_report:() => handleReport(snap),
+    unknown:        () => handleUnknown(snap, trimmed),
   };
 
   const handler  = handlers[intent] || handlers.unknown;
   const response = handler();
 
-  return { ok: true, response, intent };
+  // Generar archivos de reporte si aplica
+  let reportToken = null;
+  if (reportIntents.has(intent)) {
+    try {
+      reportToken = await createReportFiles(snap);
+    } catch (err) {
+      console.error("[COPMEC AI] Error generando reporte:", err);
+    }
+  }
+
+  return { ok: true, response, intent, reportToken };
 }
