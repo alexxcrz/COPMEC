@@ -12450,3 +12450,412 @@ body {
   border-radius: 0.75rem;
 }
 
+/* ═══════════════════════════════════════════════════════════
+   COPMEC AI — Widget flotante (Cerebro Operativo)
+═══════════════════════════════════════════════════════════ */
+
+/* Botón flotante (FAB) */
+.copmec-ai-fab {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 200;
+  width: 3.6rem;
+  height: 3.6rem;
+  border-radius: 999px;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: #032121;
+  box-shadow: 0 4px 20px rgba(3, 33, 33, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  overflow: visible;
+}
+
+.copmec-ai-fab:hover {
+  transform: scale(1.07);
+  box-shadow: 0 6px 28px rgba(3, 33, 33, 0.45);
+}
+
+.copmec-ai-fab--active {
+  box-shadow: 0 0 0 3px #22c55e44, 0 6px 24px rgba(3, 33, 33, 0.4);
+}
+
+.copmec-ai-fab-logo {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.copmec-ai-fab-badge {
+  position: absolute;
+  top: -0.3rem;
+  right: -0.3rem;
+  background: #22c55e;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  border: 1.5px solid #fff;
+}
+
+/* Panel de chat */
+.copmec-ai-panel {
+  position: fixed;
+  bottom: 6rem;
+  right: 1.5rem;
+  z-index: 199;
+  width: min(92vw, 420px);
+  max-height: 78vh;
+  background: #fff;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(3, 33, 33, 0.12);
+  box-shadow: 0 16px 48px rgba(3, 33, 33, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: copmec-ai-appear 0.22s ease;
+}
+
+@keyframes copmec-ai-appear {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Header */
+.copmec-ai-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  background: #032121;
+  color: #fff;
+  border-radius: 1.5rem 1.5rem 0 0;
+  flex-shrink: 0;
+}
+
+.copmec-ai-header-info {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.copmec-ai-header-logo {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 2px solid rgba(255,255,255,0.2);
+}
+
+.copmec-ai-header-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1.15;
+}
+
+.copmec-ai-header-subtitle {
+  font-size: 0.72rem;
+  color: #22c55e;
+  font-weight: 500;
+}
+
+.copmec-ai-header-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.copmec-ai-icon-btn {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: #fff;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.6rem;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.copmec-ai-icon-btn:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+/* Mensajes */
+.copmec-ai-messages {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.85rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  scroll-behavior: smooth;
+}
+
+.copmec-ai-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.5rem 1rem;
+  text-align: center;
+  color: #5a7070;
+  font-size: 0.85rem;
+}
+
+.copmec-ai-empty-logo {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 999px;
+  object-fit: cover;
+  opacity: 0.75;
+  margin-bottom: 0.3rem;
+}
+
+.copmec-ai-empty p {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.copmec-ai-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.copmec-ai-message--user {
+  flex-direction: row-reverse;
+}
+
+.copmec-ai-msg-avatar {
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 999px;
+  object-fit: cover;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  border: 1.5px solid rgba(3,33,33,0.1);
+}
+
+.copmec-ai-bubble {
+  max-width: 82%;
+  padding: 0.55rem 0.8rem;
+  border-radius: 1.1rem;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.copmec-ai-message--ai .copmec-ai-bubble {
+  background: #f4f7f7;
+  border-radius: 0.4rem 1.1rem 1.1rem 1.1rem;
+  color: #032121;
+}
+
+.copmec-ai-message--user .copmec-ai-bubble {
+  background: #032121;
+  color: #fff;
+  border-radius: 1.1rem 0.4rem 1.1rem 1.1rem;
+}
+
+/* Animación carga */
+.copmec-ai-bubble--loading {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  padding: 0.7rem 0.9rem;
+}
+
+.copmec-ai-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: #5a8080;
+  animation: copmec-ai-dot-pulse 1.2s infinite;
+}
+
+.copmec-ai-dot:nth-child(2) { animation-delay: 0.2s; }
+.copmec-ai-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes copmec-ai-dot-pulse {
+  0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+  40% { transform: scale(1.2); opacity: 1; }
+}
+
+/* Espaciador */
+.copmec-ai-spacer { height: 0.3rem; }
+
+/* Estilos de contenido markdown */
+.copmec-ai-content { display: flex; flex-direction: column; gap: 0.15rem; }
+
+.copmec-ai-p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.copmec-ai-li {
+  display: flex;
+  gap: 0.4rem;
+  align-items: flex-start;
+  padding-left: 0.2rem;
+  line-height: 1.45;
+}
+
+.copmec-ai-li-indent {
+  padding-left: 1.2rem;
+}
+
+.copmec-ai-bullet {
+  flex-shrink: 0;
+  color: #22c55e;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-top: 0.05rem;
+}
+
+.copmec-ai-table-wrap {
+  overflow-x: auto;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(3,33,33,0.1);
+}
+
+.copmec-ai-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.copmec-ai-table th {
+  background: rgba(3,33,33,0.07);
+  padding: 0.35rem 0.55rem;
+  text-align: left;
+  font-weight: 600;
+  color: #032121;
+  white-space: nowrap;
+}
+
+.copmec-ai-table td {
+  padding: 0.3rem 0.55rem;
+  border-top: 1px solid rgba(3,33,33,0.06);
+  color: #1a3a3a;
+}
+
+.copmec-ai-table tr:nth-child(even) td {
+  background: rgba(3,33,33,0.025);
+}
+
+/* Sugerencias */
+.copmec-ai-suggestions {
+  padding: 0 0.85rem 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.copmec-ai-suggestion-chip {
+  background: rgba(3,33,33,0.06);
+  border: 1px solid rgba(3,33,33,0.12);
+  color: #032121;
+  font-size: 0.75rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.copmec-ai-suggestion-chip:hover {
+  background: rgba(3,33,33,0.12);
+  border-color: rgba(3,33,33,0.25);
+}
+
+/* Input */
+.copmec-ai-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem 0.85rem;
+  border-top: 1px solid rgba(3,33,33,0.08);
+  flex-shrink: 0;
+}
+
+.copmec-ai-input {
+  flex: 1;
+  border: 1px solid rgba(3,33,33,0.2);
+  border-radius: 1rem;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.84rem;
+  font-family: inherit;
+  resize: none;
+  line-height: 1.45;
+  max-height: 6rem;
+  overflow-y: auto;
+  outline: none;
+  transition: border-color 0.15s;
+  color: #032121;
+}
+
+.copmec-ai-input:focus {
+  border-color: #032121;
+}
+
+.copmec-ai-input:disabled {
+  background: #f4f7f7;
+  cursor: not-allowed;
+}
+
+.copmec-ai-send-btn {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 999px;
+  background: #032121;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.copmec-ai-send-btn:hover:not(:disabled) {
+  background: #054343;
+  transform: scale(1.06);
+}
+
+.copmec-ai-send-btn:disabled {
+  background: #b0bec5;
+  cursor: not-allowed;
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .copmec-ai-fab {
+    bottom: 1rem;
+    right: 1rem;
+    width: 3.1rem;
+    height: 3.1rem;
+  }
+
+  .copmec-ai-panel {
+    bottom: 5.2rem;
+    right: 0.75rem;
+    width: calc(100vw - 1.5rem);
+    max-height: 72vh;
+  }
+}
+

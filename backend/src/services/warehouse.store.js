@@ -109,6 +109,7 @@ const ACTION_PERMISSIONS = {
   manageProcessAudits:     [ROLE_LEAD, ROLE_SR, ROLE_SSR],
   manageProcessAuditTemplates: [ROLE_LEAD, ROLE_SR],
   manageSystemSettings:    [ROLE_LEAD, ROLE_SR],
+  useCopmecAI:             [ROLE_LEAD, ROLE_SR, ROLE_SSR],
 };
 
 function normalizeRole(role) {

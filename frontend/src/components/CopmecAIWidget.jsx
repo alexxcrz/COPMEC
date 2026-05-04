@@ -1,0 +1,286 @@
+import { useEffect, useRef, useState, useCallback } from "react";
+import logoIA from "../assets/logo-ia.jpeg";
+import { API_BASE_URL } from "../utils/constantes.js";
+
+// ─── Renderizador de markdown simple ─────────────────────────────────────────
+function renderMarkdown(text) {
+  if (!text) return "";
+  return text
+    // Negrita
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    // Cursiva
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    // Tablas (detectar líneas con | )
+    .split("\n")
+    .map((line) => {
+      if (line.startsWith("| ") || line.startsWith("|---")) return line; // se procesa abajo
+      return line;
+    })
+    .join("\n");
+}
+
+function parseMarkdownToJSX(text) {
+  if (!text) return null;
+  const lines = text.split("\n");
+  const elements = [];
+  let tableBuffer = [];
+  let key = 0;
+
+  function flushTable() {
+    if (tableBuffer.length < 2) {
+      tableBuffer.forEach((l) => elements.push(<p key={key++} className="copmec-ai-p">{l}</p>));
+      tableBuffer = [];
+      return;
+    }
+    const headers = tableBuffer[0].split("|").filter((c) => c.trim()).map((c) => c.trim());
+    const rows = tableBuffer.slice(2).map((r) => r.split("|").filter((c) => c.trim()).map((c) => c.trim()));
+
+    elements.push(
+      <div key={key++} className="copmec-ai-table-wrap">
+        <table className="copmec-ai-table">
+          <thead>
+            <tr>{headers.map((h, i) => <th key={i} dangerouslySetInnerHTML={{ __html: renderMarkdown(h) }} />)}</tr>
+          </thead>
+          <tbody>
+            {rows.map((row, ri) => (
+              <tr key={ri}>
+                {row.map((cell, ci) => <td key={ci} dangerouslySetInnerHTML={{ __html: renderMarkdown(cell) }} />)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+    tableBuffer = [];
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Tabla
+    if (line.startsWith("|")) {
+      tableBuffer.push(line);
+      continue;
+    } else if (tableBuffer.length > 0) {
+      flushTable();
+    }
+
+    if (!line.trim()) {
+      elements.push(<div key={key++} className="copmec-ai-spacer" />);
+    } else if (line.startsWith("- ") || line.startsWith("  - ")) {
+      const indent = line.startsWith("  - ");
+      const content = line.replace(/^(\s*- )/, "");
+      elements.push(
+        <div key={key++} className={`copmec-ai-li ${indent ? "copmec-ai-li-indent" : ""}`}>
+          <span className="copmec-ai-bullet">•</span>
+          <span dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }} />
+        </div>
+      );
+    } else {
+      elements.push(
+        <p key={key++} className="copmec-ai-p" dangerouslySetInnerHTML={{ __html: renderMarkdown(line) }} />
+      );
+    }
+  }
+
+  if (tableBuffer.length > 0) flushTable();
+
+  return elements;
+}
+
+// ─── Sugerencias rápidas ──────────────────────────────────────────────────────
+const QUICK_SUGGESTIONS = [
+  "Resumen del sistema",
+  "Stock bajo",
+  "Tableros pausados",
+  "Incidencias abiertas",
+  "Predicciones",
+  "Estado del equipo",
+];
+
+// ─── Componente principal ─────────────────────────────────────────────────────
+export default function CopmecAIWidget({ canUseAI }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasGreeted, setHasGreeted] = useState(false);
+  const bottomRef = useRef(null);
+  const inputRef = useRef(null);
+
+  // Scroll automático al fondo
+  useEffect(() => {
+    if (isOpen) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isOpen]);
+
+  // Foco al abrir
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+      if (!hasGreeted) {
+        sendMessage("hola");
+        setHasGreeted(true);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  const sendMessage = useCallback(async (text) => {
+    const msg = String(text || input).trim();
+    if (!msg || isLoading) return;
+
+    setInput("");
+    setMessages((prev) => [...prev, { role: "user", content: msg }]);
+    setIsLoading(true);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/copmec-ai/chat`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: msg }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.ok) {
+        setMessages((prev) => [...prev, { role: "ai", content: data.response }]);
+      } else {
+        setMessages((prev) => [...prev, { role: "ai", content: "No pude procesar tu solicitud. Intenta de nuevo." }]);
+      }
+    } catch {
+      setMessages((prev) => [...prev, { role: "ai", content: "Error de conexión. Verifica que el servidor esté disponible." }]);
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }, [input, isLoading]);
+
+  function handleKeyDown(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+    if (e.key === "Escape") setIsOpen(false);
+  }
+
+  function clearChat() {
+    setMessages([]);
+    setHasGreeted(false);
+  }
+
+  if (!canUseAI) return null;
+
+  return (
+    <>
+      {/* Widget flotante */}
+      <button
+        type="button"
+        className={`copmec-ai-fab ${isOpen ? "copmec-ai-fab--active" : ""}`}
+        onClick={() => setIsOpen((v) => !v)}
+        aria-label="Abrir COPMEC AI"
+        title="COPMEC AI — Cerebro Operativo"
+      >
+        <img src={logoIA} alt="COPMEC AI" className="copmec-ai-fab-logo" />
+        {!isOpen && (
+          <span className="copmec-ai-fab-badge" aria-hidden="true">AI</span>
+        )}
+      </button>
+
+      {/* Panel de chat */}
+      {isOpen && (
+        <div className="copmec-ai-panel" role="dialog" aria-label="COPMEC AI — Cerebro Operativo">
+          {/* Header */}
+          <div className="copmec-ai-header">
+            <div className="copmec-ai-header-info">
+              <img src={logoIA} alt="COPMEC AI" className="copmec-ai-header-logo" />
+              <div>
+                <div className="copmec-ai-header-title">COPMEC AI</div>
+                <div className="copmec-ai-header-subtitle">Cerebro Operativo • En línea</div>
+              </div>
+            </div>
+            <div className="copmec-ai-header-actions">
+              <button type="button" className="copmec-ai-icon-btn" onClick={clearChat} title="Limpiar conversación">
+                ↺
+              </button>
+              <button type="button" className="copmec-ai-icon-btn" onClick={() => setIsOpen(false)} title="Cerrar">
+                ✕
+              </button>
+            </div>
+          </div>
+
+          {/* Mensajes */}
+          <div className="copmec-ai-messages">
+            {messages.length === 0 && (
+              <div className="copmec-ai-empty">
+                <img src={logoIA} alt="COPMEC AI" className="copmec-ai-empty-logo" />
+                <p>Soy el <strong>Cerebro Operativo de COPMEC</strong>.</p>
+                <p>Analizo tu sistema en tiempo real y respondo con datos operativos precisos.</p>
+              </div>
+            )}
+
+            {messages.map((msg, i) => (
+              <div key={i} className={`copmec-ai-message copmec-ai-message--${msg.role}`}>
+                {msg.role === "ai" && (
+                  <img src={logoIA} alt="AI" className="copmec-ai-msg-avatar" />
+                )}
+                <div className="copmec-ai-bubble">
+                  {msg.role === "ai"
+                    ? <div className="copmec-ai-content">{parseMarkdownToJSX(msg.content)}</div>
+                    : <span>{msg.content}</span>
+                  }
+                </div>
+              </div>
+            ))}
+
+            {isLoading && (
+              <div className="copmec-ai-message copmec-ai-message--ai">
+                <img src={logoIA} alt="AI" className="copmec-ai-msg-avatar" />
+                <div className="copmec-ai-bubble copmec-ai-bubble--loading">
+                  <span className="copmec-ai-dot" /><span className="copmec-ai-dot" /><span className="copmec-ai-dot" />
+                </div>
+              </div>
+            )}
+
+            <div ref={bottomRef} />
+          </div>
+
+          {/* Sugerencias rápidas (solo cuando hay pocos mensajes) */}
+          {messages.length <= 2 && !isLoading && (
+            <div className="copmec-ai-suggestions">
+              {QUICK_SUGGESTIONS.map((s) => (
+                <button key={s} type="button" className="copmec-ai-suggestion-chip" onClick={() => sendMessage(s)}>
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Input */}
+          <div className="copmec-ai-input-row">
+            <textarea
+              ref={inputRef}
+              className="copmec-ai-input"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Escribe tu consulta operativa..."
+              rows={1}
+              maxLength={1000}
+              disabled={isLoading}
+            />
+            <button
+              type="button"
+              className="copmec-ai-send-btn"
+              onClick={() => sendMessage()}
+              disabled={!input.trim() || isLoading}
+              aria-label="Enviar"
+            >
+              ↑
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

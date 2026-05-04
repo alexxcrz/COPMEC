@@ -51,6 +51,7 @@ import PanelIndicadores from "./paginas/PanelIndicadores";
 import TablerosCreados from "./paginas/TablerosCreados";
 import BibliotecaPage from "./paginas/BibliotecaPage";
 import Archivero from "./paginas/Archivero";
+import CopmecAIWidget from "./components/CopmecAIWidget";
 import "./App.css";
 
 
@@ -8840,6 +8841,7 @@ function App() { // NOSONAR
           )) : <p>No hay pausas registradas para esta actividad.</p>}
         </div>
       </Modal>
+      <CopmecAIWidget canUseAI={!!actionPermissions.useCopmecAI} />
     </main>
   );
 }

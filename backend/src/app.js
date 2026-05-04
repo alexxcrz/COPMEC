@@ -28,6 +28,7 @@ import { uploadRouter } from "./routes/upload.routes.js";
 import { bibliotecaRouter } from "./routes/biblioteca.routes.js";
 import { warehouseRouter } from "./routes/warehouse.routes.js";
 import { chatRouter } from "./routes/chat.routes.js";
+import { copmecAiRouter } from "./routes/copmecai.routes.js";
 import { auditSecurityEvent } from "./services/security-events.service.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -168,6 +169,7 @@ app.use("/api/uploads", requireAuth, uploadLimiter, uploadRouter);
 app.use("/api/biblioteca", requireAuth, bibliotecaRouter);
 app.use("/api/warehouse", requireAuth, warehouseRouter);
 app.use("/api/chat", requireAuth, chatLimiter, chatRouter);
+app.use("/api/copmec-ai", requireAuth, copmecAiRouter);
 
 if (hasFrontendBuild) {
   app.use(express.static(frontendDistPath));
