@@ -2259,6 +2259,64 @@ export function formatBoardPreviewValue(value, field, userMap, inventoryItems) {
 
 export function normalizeBoardMultiSelectDetailValue(value) {
   let source = value;
+
+  const unwrapNestedSource = (input) => {
+    let current = input;
+    const visited = new Set();
+
+    while (current && typeof current === "object" && !Array.isArray(current)) {
+      if (visited.has(current)) break;
+      visited.add(current);
+
+      const nestedCandidate = [
+        current.items,
+        current.values,
+        current.selectedOptions,
+        current.selectedItems,
+        current.selections,
+        current.entries,
+        current.data,
+        current.value,
+      ].find((entry) => entry !== undefined && entry !== null);
+
+      if (nestedCandidate === undefined || nestedCandidate === current) break;
+      current = nestedCandidate;
+    }
+
+    return current;
+  };
+
+  const buildMultiSelectItem = (item, fallbackOption = "") => {
+    if (item === null || item === undefined) return null;
+
+    if (typeof item === "string" || typeof item === "number") {
+      const option = String(item).trim();
+      return option ? { option, label: option, detail: "" } : null;
+    }
+
+    if (typeof item !== "object") return null;
+
+    const nestedOption = String(
+      item.option
+      || item.label
+      || item.name
+      || item.title
+      || item.text
+      || item.key
+      || item.code
+      || item.id
+      || fallbackOption,
+    ).trim();
+    const label = String(item.label || item.option || item.name || item.title || item.text || nestedOption).trim();
+    const detailSource = item.detail ?? item.quantity ?? item.value ?? item.count ?? item.total ?? item.note ?? item.notes ?? item.observation ?? item.observations ?? "";
+    const detail = detailSource && typeof detailSource === "object"
+      ? String(detailSource.detail ?? detailSource.quantity ?? detailSource.value ?? detailSource.count ?? detailSource.total ?? "").trim()
+      : String(detailSource ?? "").trim();
+
+    if (!nestedOption) return null;
+    return { option: nestedOption, label: label || nestedOption, detail };
+  };
+
   if (typeof source === "string") {
     const rawText = source.trim();
     if (!rawText) return [];
@@ -2273,32 +2331,30 @@ export function normalizeBoardMultiSelectDetailValue(value) {
     }
   }
 
+  source = unwrapNestedSource(source);
+
   if (Array.isArray(source)) {
     return source
-      .filter((item) => item && typeof item === "object")
-      .map((item) => ({
-        option: String(item.option || item.label || "").trim(),
-        label: String(item.label || item.option || "").trim(),
-        detail: String(item.detail ?? item.quantity ?? item.value ?? "").trim(),
-      }))
-      .filter((item) => item.option);
+      .map((item) => buildMultiSelectItem(item))
+      .filter((item) => item?.option);
   }
 
   if (source && typeof source === "object") {
     if (source.option || source.label || source.detail || source.quantity || source.value) {
-      const option = String(source.option || source.label || "").trim();
-      const label = String(source.label || source.option || option).trim();
-      const detail = String(source.detail ?? source.quantity ?? source.value ?? "").trim();
-      return option ? [{ option, label, detail }] : [];
+      const item = buildMultiSelectItem(source);
+      return item?.option ? [item] : [];
     }
 
     return Object.entries(source)
       .map(([key, detailValue]) => {
         const option = String(key || "").trim();
         if (!option) return null;
+        if (typeof detailValue === "boolean") {
+          return detailValue ? { option, label: option, detail: "" } : null;
+        }
         if (detailValue && typeof detailValue === "object") {
-          const detail = String(detailValue.detail ?? detailValue.quantity ?? detailValue.value ?? "").trim();
-          return { option, label: option, detail };
+          const nestedItem = buildMultiSelectItem(detailValue, option);
+          return nestedItem ? { ...nestedItem, option, label: nestedItem.label || option } : { option, label: option, detail: "" };
         }
         return { option, label: option, detail: String(detailValue ?? "").trim() };
       })

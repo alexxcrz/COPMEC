@@ -63,9 +63,10 @@ function formatBoardCellObjectValue(rawValue) {
   if (rawValue === null || rawValue === undefined) return "";
   if (typeof rawValue !== "object") return String(rawValue);
 
+  const multiSelectLabel = formatBoardMultiSelectDetailValue(rawValue);
+  if (multiSelectLabel) return multiSelectLabel;
+
   if (Array.isArray(rawValue)) {
-    const multiSelectLabel = formatBoardMultiSelectDetailValue(rawValue);
-    if (multiSelectLabel) return multiSelectLabel;
     return rawValue
       .map((entry) => formatBoardCellObjectValue(entry))
       .filter(Boolean)
@@ -106,6 +107,88 @@ function formatBoardCellObjectValue(rawValue) {
   } catch {
     return "";
   }
+}
+
+function resolveInventoryItemFromLookupValue(inventoryItems, lookupValue) {
+  const availableItems = Array.isArray(inventoryItems) ? inventoryItems : [];
+  if (!availableItems.length) return null;
+
+  const candidateTokens = [];
+  const appendToken = (token) => {
+    const nextToken = String(token || "").trim();
+    if (nextToken) candidateTokens.push(nextToken);
+  };
+
+  const appendObjectTokens = (source) => {
+    if (!source || typeof source !== "object") return;
+    appendToken(source.id);
+    appendToken(source.code);
+    appendToken(source.sku);
+    appendToken(source.name);
+    appendToken(source.value);
+  };
+
+  if (lookupValue && typeof lookupValue === "object") {
+    appendObjectTokens(lookupValue);
+  } else {
+    const rawText = String(lookupValue || "").trim();
+    if (rawText) {
+      appendToken(rawText);
+
+      if ((rawText.startsWith("{") && rawText.endsWith("}")) || (rawText.startsWith("[") && rawText.endsWith("]"))) {
+        try {
+          const parsed = JSON.parse(rawText);
+          if (Array.isArray(parsed)) {
+            parsed.forEach((entry) => appendObjectTokens(entry));
+          } else {
+            appendObjectTokens(parsed);
+          }
+        } catch {
+          // Ignore malformed JSON payloads and fall back to token matching.
+        }
+      }
+
+      if (rawText.includes("·")) appendToken(rawText.split("·")[0]);
+      if (rawText.includes("-")) appendToken(rawText.split("-")[0]);
+    }
+  }
+
+  const seenTokens = new Set();
+  const normalizedTokens = candidateTokens.filter((token) => {
+    const key = String(token || "").trim().toLowerCase();
+    if (!key || seenTokens.has(key)) return false;
+    seenTokens.add(key);
+    return true;
+  });
+
+  for (const token of normalizedTokens) {
+    const tokenKey = token.toLowerCase();
+    const matchedItem = availableItems.find((item) => {
+      const idValue = String(item?.id || "").trim();
+      const codeValue = String(item?.code || "").trim().toLowerCase();
+      const skuValue = String(item?.sku || "").trim().toLowerCase();
+      const nameValue = String(item?.name || "").trim().toLowerCase();
+      return idValue === token || codeValue === tokenKey || skuValue === tokenKey || nameValue === tokenKey;
+    });
+    if (matchedItem) return matchedItem;
+  }
+
+  return null;
+}
+
+function formatBoardReadOnlyValue(field, rawValue, inventoryItems) {
+  if (!field) return formatBoardCellObjectValue(rawValue);
+
+  if (field.type === "inventoryLookup") {
+    const matchedItem = resolveInventoryItemFromLookupValue(inventoryItems, rawValue);
+    if (matchedItem) return formatInventoryLookupLabel(matchedItem);
+  }
+
+  if (field.type === "multiSelectDetail") {
+    return formatBoardMultiSelectDetailValue(rawValue);
+  }
+
+  return formatBoardCellObjectValue(rawValue);
 }
 
 export default function MisTableros({ contexto }) {
@@ -1206,6 +1289,10 @@ export default function MisTableros({ contexto }) {
                             });
 
                           if (field.type === "inventoryLookup") {
+                            if (!rowFieldEditable) {
+                              const displayValue = formatBoardReadOnlyValue(field, row.values?.[field.id], state.inventoryItems || []);
+                              return <td key={field.id} style={columnStyle}><span style={style}>{displayValue}</span></td>;
+                            }
                             return (
                               <td key={field.id} style={columnStyle}>
                                 <InventoryLookupInput
@@ -1243,6 +1330,10 @@ export default function MisTableros({ contexto }) {
                           }
 
                           if (field.type === "multiSelectDetail") {
+                            if (!rowFieldEditable) {
+                              const displayValue = formatBoardReadOnlyValue(field, value, state.inventoryItems || []);
+                              return <td key={field.id} style={columnStyle}><span style={style}>{displayValue}</span></td>;
+                            }
                             return (
                               <td key={field.id} style={columnStyle}>
                                 <BoardMultiSelectDetailCell
