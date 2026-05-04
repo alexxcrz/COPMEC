@@ -191,6 +191,16 @@ function formatBoardReadOnlyValue(field, rawValue, inventoryItems) {
   return formatBoardCellObjectValue(rawValue);
 }
 
+function getBoardReadOnlyFieldDisplayValue(field, resolvedValue, rowValues, inventoryItems) {
+  if (!field) return formatBoardCellObjectValue(resolvedValue);
+
+  if (field.type === "inventoryLookup" || field.type === "multiSelectDetail") {
+    return formatBoardReadOnlyValue(field, rowValues?.[field.id], inventoryItems);
+  }
+
+  return formatBoardReadOnlyValue(field, resolvedValue, inventoryItems);
+}
+
 export default function MisTableros({ contexto }) {
   const {
     visibleControlBoards: _visibleControlBoards,
@@ -1021,6 +1031,7 @@ export default function MisTableros({ contexto }) {
                       && (isLeadPrincipal || (!globalPauseLocked && row.status !== STATUS_FINISHED && canEditBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions)));
                     const isFinishedRow = row.status === STATUS_FINISHED;
                     const rowFieldEditable = rowCaptureEnabled || (isLeadPrincipal && isFinishedRow);
+                    const rowDisplayReadOnly = isHistoricalCustomBoardView || isFinishedRow;
                     const canStartRow = row.status === STATUS_PENDING || row.status === STATUS_PAUSED;
                     const canPauseRow = row.status === STATUS_RUNNING;
                     const canFinishRow = row.status === STATUS_RUNNING;
@@ -1288,11 +1299,13 @@ export default function MisTableros({ contexto }) {
                               cleaningSite: effectiveCatalogCleaningSite,
                             });
 
+                          if (rowDisplayReadOnly) {
+                            const displayValue = getBoardReadOnlyFieldDisplayValue(field, value, row.values, state.inventoryItems || []);
+                            const fallbackDisplayValue = field.type === "formula" ? (displayValue === "" ? "0" : displayValue) : displayValue;
+                            return <td key={field.id} style={columnStyle}><span style={style}>{fallbackDisplayValue}</span></td>;
+                          }
+
                           if (field.type === "inventoryLookup") {
-                            if (!rowFieldEditable) {
-                              const displayValue = formatBoardReadOnlyValue(field, row.values?.[field.id], state.inventoryItems || []);
-                              return <td key={field.id} style={columnStyle}><span style={style}>{displayValue}</span></td>;
-                            }
                             return (
                               <td key={field.id} style={columnStyle}>
                                 <InventoryLookupInput
@@ -1330,10 +1343,6 @@ export default function MisTableros({ contexto }) {
                           }
 
                           if (field.type === "multiSelectDetail") {
-                            if (!rowFieldEditable) {
-                              const displayValue = formatBoardReadOnlyValue(field, value, state.inventoryItems || []);
-                              return <td key={field.id} style={columnStyle}><span style={style}>{displayValue}</span></td>;
-                            }
                             return (
                               <td key={field.id} style={columnStyle}>
                                 <BoardMultiSelectDetailCell

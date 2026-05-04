@@ -3,6 +3,47 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { normalizeKey, formatInventoryLookupLabel, findInventoryItemByQuery } from "../utils/utilidades.jsx";
 
+function resolveSelectedInventoryItem(items, value) {
+  const availableItems = Array.isArray(items) ? items : [];
+  if (!availableItems.length || value === null || value === undefined) return null;
+
+  if (typeof value === "object") {
+    const objectQuery = value.id || value.code || value.sku || value.name || "";
+    return findInventoryItemByQuery(availableItems, String(objectQuery || "").trim()) || null;
+  }
+
+  const rawValue = String(value || "").trim();
+  if (!rawValue) return null;
+
+  const directMatch = availableItems.find((item) => String(item?.id || "").trim() === rawValue);
+  if (directMatch) return directMatch;
+
+  const parsedCandidates = [rawValue];
+  if ((rawValue.startsWith("{") && rawValue.endsWith("}")) || (rawValue.startsWith("[") && rawValue.endsWith("]"))) {
+    try {
+      const parsed = JSON.parse(rawValue);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((entry) => {
+          if (entry && typeof entry === "object") {
+            parsedCandidates.push(entry.id, entry.code, entry.sku, entry.name);
+          }
+        });
+      } else if (parsed && typeof parsed === "object") {
+        parsedCandidates.push(parsed.id, parsed.code, parsed.sku, parsed.name);
+      }
+    } catch {
+      // Ignore malformed JSON payloads.
+    }
+  }
+
+  for (const candidate of parsedCandidates) {
+    const match = findInventoryItemByQuery(availableItems, String(candidate || "").trim());
+    if (match) return match;
+  }
+
+  return null;
+}
+
 function InventoryLookupInput({ inventoryItems, value, onChange, placeholder, disabled, style, title }) {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -10,7 +51,7 @@ function InventoryLookupInput({ inventoryItems, value, onChange, placeholder, di
   const shellRef = useRef(null);
   const inputRef = useRef(null);
   const selectedItem = useMemo(
-    () => (inventoryItems || []).find((item) => item.id === value) || null,
+    () => resolveSelectedInventoryItem(inventoryItems, value),
     [inventoryItems, value],
   );
 
