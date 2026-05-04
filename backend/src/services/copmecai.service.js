@@ -5,16 +5,19 @@
 
 import { getWarehouseState, findWarehouseUserById, replaceWarehouseState } from "./warehouse.store.js";
 import { randomUUID } from "crypto";
-import { writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync, statSync } from "fs";
+import { writeFileSync, readFileSync, mkdirSync, existsSync, readdirSync, unlinkSync, statSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import PDFDocument from "pdfkit";
+import ExcelJS from "exceljs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPORTS_DIR = join(__dirname, "../../data/uploads/reports");
+const HISTORY_DIR = join(__dirname, "../../data/uploads/chat");
 
 // Asegurar que exista el directorio de reportes
 if (!existsSync(REPORTS_DIR)) mkdirSync(REPORTS_DIR, { recursive: true });
+if (!existsSync(HISTORY_DIR)) mkdirSync(HISTORY_DIR, { recursive: true });
 
 // Limpiar reportes de más de 1 hora al iniciar
 try {
@@ -90,6 +93,94 @@ function buildSnap() {
   );
 
   return { state, boards, users, inventory, incidencias, catalog, weekHistory, allRows };
+}
+
+function getHistoryFilePath(userId) {
+  return join(HISTORY_DIR, `copmec-ai-history-${userId || "anon"}.json`);
+}
+
+function loadUserHistory(userId) {
+  const fp = getHistoryFilePath(userId);
+  if (!existsSync(fp)) return [];
+  try {
+    const raw = readFileSync(fp, "utf-8");
+    const data = JSON.parse(raw);
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveUserHistory(userId, history) {
+  const fp = getHistoryFilePath(userId);
+  writeFileSync(fp, JSON.stringify(history, null, 2), "utf-8");
+}
+
+function detectRequestedFormats(msg) {
+  const t = norm(msg);
+  const formats = [];
+  if (t.includes("pdf")) formats.push("pdf");
+  if (t.includes(".cop") || t.includes(" cop") || t.includes("formato cop")) formats.push("cop");
+  if (t.includes(".doc") || t.includes("word") || t.includes("documento")) formats.push("doc");
+  if (t.includes(".xlsx") || t.includes(".xslxs") || t.includes("excel") || t.includes("hoja de calculo") || t.includes("hoja de cálculo")) formats.push("xlsx");
+  return [...new Set(formats)];
+}
+
+function detectExportScope(msg, intent) {
+  const t = norm(msg);
+  if (intent === "inventory" || has(t, ["inventario", "stock", "insumo", "producto"])) return "inventory";
+  if (intent === "boards_detail" || intent === "boards_status" || intent === "boards_paused" || has(t, ["tablero", "tableros", "proceso", "filas"])) return "boards";
+  if (intent === "incidencias" || has(t, ["incidencia", "falla", "problema", "novedad"])) return "incidencias";
+  if (intent === "users" || has(t, ["usuario", "equipo", "personal", "operador"])) return "users";
+  return "general";
+}
+
+function shouldGenerateFile(msg, intent) {
+  const t = norm(msg);
+  const hasExportWords = has(t, ["descarga", "descargar", "archivo", "exporta", "exportar", "genera", "generar", "formato"]);
+  if (detectRequestedFormats(msg).length > 0) return true;
+  if (intent === "download_report") return true;
+  return hasExportWords && ["report", "boards_detail", "boards_status", "inventory", "incidencias", "users"].includes(intent);
+}
+
+function saveConversationEntry(auth, payload) {
+  const userId = auth?.userId || "anon";
+  const history = loadUserHistory(userId);
+  const next = [
+    ...history,
+    {
+      id: randomUUID(),
+      createdAt: new Date().toISOString(),
+      userId,
+      ...payload,
+    },
+  ].slice(-250);
+  saveUserHistory(userId, next);
+}
+
+export function getCopmecAIHistory(auth, limit = 80) {
+  const userId = auth?.userId || "anon";
+  const history = loadUserHistory(userId);
+  const recent = history.slice(-Math.max(1, Math.min(Number(limit) || 80, 250)));
+  const messages = [];
+  recent.forEach((entry) => {
+    messages.push({ role: "user", content: entry.userMessage, createdAt: entry.createdAt });
+    messages.push({
+      role: "ai",
+      content: entry.aiResponse,
+      createdAt: entry.createdAt,
+      reportToken: entry.reportToken || null,
+      availableFormats: Array.isArray(entry.availableFormats) ? entry.availableFormats : [],
+      dashboardFixed: Boolean(entry.dashboardFixed),
+    });
+  });
+  return messages;
+}
+
+export function clearCopmecAIHistory(auth) {
+  const userId = auth?.userId || "anon";
+  saveUserHistory(userId, []);
+  return { ok: true };
 }
 
 // ─── Clasificador de intención ────────────────────────────────────────────────
@@ -553,7 +644,7 @@ function handleUnknown(snap, msg) {
 
 // ─── Generación de reportes ──────────────────────────────────────────────────
 
-function buildReportData(snap) {
+function buildReportData(snap, scope = "general") {
   const now = new Date();
   const running  = snap.allRows.filter((r) => r.status === STATUS_RUNNING).length;
   const paused   = snap.allRows.filter((r) => r.status === STATUS_PAUSED).length;
@@ -568,6 +659,7 @@ function buildReportData(snap) {
       version: "1.0",
       generatedAt: now.toISOString(),
       generatedBy: "COPMEC AI — Cerebro Operativo",
+      scope,
     },
     resumen: {
       totalTableros: snap.boards.length,
@@ -627,14 +719,14 @@ function buildReportData(snap) {
   };
 }
 
-function generateCopBuffer(snap) {
-  const data = buildReportData(snap);
+function generateCopBuffer(snap, scope = "general") {
+  const data = buildReportData(snap, scope);
   return Buffer.from(JSON.stringify(data, null, 2), "utf-8");
 }
 
-function generatePdfBuffer(snap) {
+function generatePdfBuffer(snap, scope = "general") {
   return new Promise((resolve) => {
-    const data   = buildReportData(snap);
+    const data   = buildReportData(snap, scope);
     const doc    = new PDFDocument({ margin: 50, size: "A4" });
     const chunks = [];
     doc.on("data", (c) => chunks.push(c));
@@ -724,23 +816,154 @@ function generatePdfBuffer(snap) {
   });
 }
 
-async function createReportFiles(snap) {
-  const token = randomUUID();
-  const copBuf = generateCopBuffer(snap);
-  const pdfBuf = await generatePdfBuffer(snap);
+function generateDocBuffer(snap, scope = "general") {
+  const data = buildReportData(snap, scope);
+  const R = data.resumen;
+  const boardRows = data.tableros
+    .map((b) => `<tr><td>${b.nombre}</td><td>${b.area}</td><td>${b.totalFilas}</td><td>${b.enCurso}</td><td>${b.pausadas}</td><td>${b.terminadas}</td></tr>`)
+    .join("");
+  const invRows = data.inventarioCritico
+    .map((i) => `<tr><td>${i.nombre}</td><td>${i.codigo}</td><td>${i.stockActual}</td><td>${i.minimo}</td><td>${i.unidad}</td></tr>`)
+    .join("");
+  const incRows = data.incidenciasAbiertas
+    .map((i) => `<tr><td>${i.titulo}</td><td>${i.estado}</td><td>${i.prioridad}</td><td>${i.fecha || "—"}</td></tr>`)
+    .join("");
 
-  const copPath = join(REPORTS_DIR, `${token}.cop`);
-  const pdfPath = join(REPORTS_DIR, `${token}.pdf`);
-  writeFileSync(copPath, copBuf);
-  writeFileSync(pdfPath, pdfBuf);
+  const html = `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>COPMEC Reporte</title>
+  <style>
+    body { font-family: Calibri, Arial, sans-serif; color: #1f2937; padding: 28px; }
+    h1 { color: #032121; margin-bottom: 4px; }
+    .sub { color: #6b7280; margin-bottom: 18px; }
+    table { border-collapse: collapse; width: 100%; margin: 12px 0 18px; }
+    th, td { border: 1px solid #d1d5db; padding: 8px; font-size: 12px; }
+    th { background: #ecfdf5; color: #032121; text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>COPMEC - Reporte Operativo</h1>
+  <div class="sub">Generado ${new Date(data.meta.generatedAt).toLocaleString("es-MX")} | Alcance: ${data.meta.scope}</div>
+
+  <h2>Resumen</h2>
+  <p>Tableros: <strong>${R.totalTableros}</strong> | Filas: <strong>${R.totalFilas}</strong> | Tasa de cierre: <strong>${R.tasaCierre}</strong></p>
+  <p>Inventario total: <strong>${R.totalInventario}</strong> | Bajo mínimo: <strong>${R.articulosBajoMinimo}</strong> | Agotados: <strong>${R.articulosAgotados}</strong></p>
+  <p>Incidencias abiertas: <strong>${R.incidenciasAbiertas}</strong> | Usuarios activos: <strong>${R.usuariosActivos}/${R.totalUsuarios}</strong></p>
+
+  <h2>Tableros</h2>
+  <table>
+    <thead><tr><th>Tablero</th><th>Área</th><th>Total</th><th>En curso</th><th>Pausadas</th><th>Terminadas</th></tr></thead>
+    <tbody>${boardRows || "<tr><td colspan='6'>Sin datos</td></tr>"}</tbody>
+  </table>
+
+  <h2>Inventario crítico</h2>
+  <table>
+    <thead><tr><th>Nombre</th><th>Código</th><th>Stock</th><th>Mínimo</th><th>Unidad</th></tr></thead>
+    <tbody>${invRows || "<tr><td colspan='5'>Sin alertas</td></tr>"}</tbody>
+  </table>
+
+  <h2>Incidencias abiertas</h2>
+  <table>
+    <thead><tr><th>Título</th><th>Estado</th><th>Prioridad</th><th>Fecha</th></tr></thead>
+    <tbody>${incRows || "<tr><td colspan='4'>Sin incidencias</td></tr>"}</tbody>
+  </table>
+</body>
+</html>`;
+
+  return Buffer.from(html, "utf-8");
+}
+
+async function generateXlsxBuffer(snap, scope = "general") {
+  const data = buildReportData(snap, scope);
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "COPMEC AI";
+  wb.created = new Date();
+
+  const wsResumen = wb.addWorksheet("Resumen");
+  wsResumen.columns = [
+    { header: "Métrica", key: "metric", width: 32 },
+    { header: "Valor", key: "value", width: 24 },
+  ];
+  const R = data.resumen;
+  [
+    ["Alcance", data.meta.scope],
+    ["Tableros", R.totalTableros],
+    ["Filas totales", R.totalFilas],
+    ["En curso", R.filasEnCurso],
+    ["Pausadas", R.filasPausadas],
+    ["Terminadas", R.filasTerminadas],
+    ["Pendientes", R.filasPendientes],
+    ["Tasa de cierre", R.tasaCierre],
+    ["Inventario total", R.totalInventario],
+    ["Artículos bajo mínimo", R.articulosBajoMinimo],
+    ["Artículos agotados", R.articulosAgotados],
+    ["Incidencias abiertas", R.incidenciasAbiertas],
+    ["Usuarios activos", `${R.usuariosActivos}/${R.totalUsuarios}`],
+  ].forEach(([metric, value]) => wsResumen.addRow({ metric, value }));
+
+  const wsTab = wb.addWorksheet("Tableros");
+  wsTab.columns = [
+    { header: "Tablero", key: "nombre", width: 34 },
+    { header: "Área", key: "area", width: 18 },
+    { header: "Total", key: "totalFilas", width: 10 },
+    { header: "En curso", key: "enCurso", width: 10 },
+    { header: "Pausadas", key: "pausadas", width: 10 },
+    { header: "Terminadas", key: "terminadas", width: 11 },
+    { header: "Pendientes", key: "pendientes", width: 11 },
+  ];
+  data.tableros.forEach((b) => wsTab.addRow(b));
+
+  const wsInv = wb.addWorksheet("Inventario crítico");
+  wsInv.columns = [
+    { header: "Código", key: "codigo", width: 20 },
+    { header: "Nombre", key: "nombre", width: 36 },
+    { header: "Stock", key: "stockActual", width: 10 },
+    { header: "Mínimo", key: "minimo", width: 10 },
+    { header: "Unidad", key: "unidad", width: 10 },
+    { header: "Categoría", key: "categoria", width: 16 },
+  ];
+  data.inventarioCritico.forEach((i) => wsInv.addRow(i));
+
+  const wsInc = wb.addWorksheet("Incidencias");
+  wsInc.columns = [
+    { header: "Título", key: "titulo", width: 48 },
+    { header: "Estado", key: "estado", width: 16 },
+    { header: "Prioridad", key: "prioridad", width: 14 },
+    { header: "Fecha", key: "fecha", width: 20 },
+  ];
+  data.incidenciasAbiertas.forEach((i) => wsInc.addRow(i));
+
+  const buff = await wb.xlsx.writeBuffer();
+  return Buffer.from(buff);
+}
+
+async function createReportFiles(snap, formats = ["pdf", "cop"], scope = "general") {
+  const token = randomUUID();
+  const requestedFormats = [...new Set(formats)].filter((f) => ["pdf", "cop", "doc", "xlsx"].includes(f));
+  const writtenPaths = [];
+
+  for (const fmt of requestedFormats) {
+    let buf = null;
+    if (fmt === "cop") buf = generateCopBuffer(snap, scope);
+    if (fmt === "pdf") buf = await generatePdfBuffer(snap, scope);
+    if (fmt === "doc") buf = generateDocBuffer(snap, scope);
+    if (fmt === "xlsx") buf = await generateXlsxBuffer(snap, scope);
+    if (!buf) continue;
+    const p = join(REPORTS_DIR, `${token}.${fmt}`);
+    writeFileSync(p, buf);
+    writtenPaths.push(p);
+  }
 
   // Auto-limpiar en 30 minutos
   setTimeout(() => {
-    try { unlinkSync(copPath); } catch {}
-    try { unlinkSync(pdfPath); } catch {}
+    writtenPaths.forEach((p) => {
+      try { unlinkSync(p); } catch {}
+    });
   }, 30 * 60 * 1000);
 
-  return token;
+  return { token, formats: requestedFormats };
 }
 
 // ─── Dashboard Fix ────────────────────────────────────────────────────────────
@@ -849,15 +1072,25 @@ export async function processCopmecAIMessage(auth, message) {
   const snap    = buildSnap();
   const trimmed = message.trim();
   const intent  = classifyIntent(trimmed);
+  const requestedFormats = detectRequestedFormats(trimmed);
+  const exportScope = detectExportScope(trimmed, intent);
 
   // Dashboard fix — sincrónico especial
   if (intent === "dashboard_fix") {
     const result = handleDashboardFix(snap);
-    return { ok: true, response: result.text, intent, dashboardFixed: result.fixed };
+    saveConversationEntry(auth, {
+      intent,
+      userMessage: trimmed,
+      aiResponse: result.text,
+      dashboardFixed: result.fixed,
+      reportToken: null,
+      availableFormats: [],
+    });
+    return { ok: true, response: result.text, intent, dashboardFixed: result.fixed, reportToken: null, availableFormats: [] };
   }
 
   // Intents que generan reporte descargable
-  const reportIntents = new Set(["report", "boards_detail", "download_report"]);
+  const reportIntents = new Set(["report", "boards_detail", "download_report", "boards_status", "inventory", "incidencias", "users"]);
 
   const handlers = {
     greeting:       () => handleGreeting(snap, user),
@@ -880,17 +1113,34 @@ export async function processCopmecAIMessage(auth, message) {
   };
 
   const handler  = handlers[intent] || handlers.unknown;
-  const response = handler();
+  let response = handler();
 
   // Generar archivos de reporte si aplica
   let reportToken = null;
-  if (reportIntents.has(intent)) {
+  let availableFormats = [];
+  const shouldExport = shouldGenerateFile(trimmed, intent);
+  if ((reportIntents.has(intent) || intent === "unknown") && shouldExport) {
+    const formats = requestedFormats.length > 0 ? requestedFormats : ["pdf", "cop"];
     try {
-      reportToken = await createReportFiles(snap);
+      const generated = await createReportFiles(snap, formats, exportScope);
+      reportToken = generated.token;
+      availableFormats = generated.formats;
+      if (availableFormats.length > 0) {
+        response = `${response}\n\nListo, ya te generé el archivo en formato: **${availableFormats.map((f) => f.toUpperCase()).join(", ")}**.`;
+      }
     } catch (err) {
       console.error("[COPMEC AI] Error generando reporte:", err);
     }
   }
 
-  return { ok: true, response, intent, reportToken };
+  saveConversationEntry(auth, {
+    intent,
+    userMessage: trimmed,
+    aiResponse: response,
+    dashboardFixed: false,
+    reportToken,
+    availableFormats,
+  });
+
+  return { ok: true, response, intent, reportToken, availableFormats };
 }

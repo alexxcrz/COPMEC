@@ -3,7 +3,7 @@ import { existsSync, createReadStream } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { requireAuth, requireWarehouseAction } from "../middleware/auth.middleware.js";
-import { processCopmecAIMessage } from "../services/copmecai.service.js";
+import { processCopmecAIMessage, getCopmecAIHistory, clearCopmecAIHistory } from "../services/copmecai.service.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPORTS_DIR = join(__dirname, "../../data/uploads/reports");
@@ -40,14 +40,34 @@ copmecAiRouter.post("/chat", requireAuth, requireWarehouseAction("useCopmecAI"),
     response: result.response,
     intent: result.intent,
     reportToken: result.reportToken || null,
+    availableFormats: Array.isArray(result.availableFormats) ? result.availableFormats : [],
     dashboardFixed: result.dashboardFixed || false,
   });
 });
 
 /**
+ * GET /api/copmec-ai/history?limit=80
+ * Obtiene historial reciente de conversaciones del usuario autenticado.
+ */
+copmecAiRouter.get("/history", requireAuth, requireWarehouseAction("useCopmecAI"), (req, res) => {
+  const limit = Number(req.query?.limit || 80);
+  const messages = getCopmecAIHistory(req.auth, limit);
+  res.json({ ok: true, messages });
+});
+
+/**
+ * DELETE /api/copmec-ai/history
+ * Borra historial de conversaciones del usuario autenticado.
+ */
+copmecAiRouter.delete("/history", requireAuth, requireWarehouseAction("useCopmecAI"), (req, res) => {
+  const result = clearCopmecAIHistory(req.auth);
+  res.json(result);
+});
+
+/**
  * GET /api/copmec-ai/report/:token/:format
  * Descarga un reporte generado previamente.
- * format: "cop" | "pdf"
+ * format: "cop" | "pdf" | "doc" | "xlsx"
  */
 copmecAiRouter.get("/report/:token/:format", requireAuth, requireWarehouseAction("useCopmecAI"), (req, res) => {
   const { token, format } = req.params;
@@ -58,8 +78,8 @@ copmecAiRouter.get("/report/:token/:format", requireAuth, requireWarehouseAction
     return;
   }
 
-  if (format !== "cop" && format !== "pdf") {
-    res.status(400).json({ ok: false, message: "Formato inválido. Use 'cop' o 'pdf'." });
+  if (!["cop", "pdf", "doc", "xlsx"].includes(format)) {
+    res.status(400).json({ ok: false, message: "Formato inválido. Use 'cop', 'pdf', 'doc' o 'xlsx'." });
     return;
   }
 
@@ -74,7 +94,12 @@ copmecAiRouter.get("/report/:token/:format", requireAuth, requireWarehouseAction
   const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
   const fileName = `COPMEC-Reporte-${dateStr}.${format}`;
 
-  const mimeType = format === "pdf" ? "application/pdf" : "application/octet-stream";
+  const mimeType = {
+    pdf: "application/pdf",
+    cop: "application/octet-stream",
+    doc: "application/msword",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  }[format] || "application/octet-stream";
   res.setHeader("Content-Type", mimeType);
   res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
   createReadStream(filePath).pipe(res);

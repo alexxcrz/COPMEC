@@ -96,6 +96,8 @@ const QUICK_SUGGESTIONS = [
   "Incidencias abiertas",
   "Predicciones",
   "Estado del equipo",
+  "Genera reporte en PDF",
+  "Genera reporte en XLSX",
 ];
 
 // ─── Componente principal ─────────────────────────────────────────────────────
@@ -116,10 +118,28 @@ export default function CopmecAIWidget({ canUseAI, isOpen, onClose, sidebarColla
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
-      if (!hasGreeted) {
-        sendMessage("hola");
-        setHasGreeted(true);
-      }
+      let cancelled = false;
+      (async () => {
+        try {
+          const res = await fetch(`${API_BASE_URL}/copmec-ai/history?limit=80`, {
+            method: "GET",
+            credentials: "include",
+          });
+          const data = await res.json();
+          if (!cancelled && res.ok && data.ok && Array.isArray(data.messages) && data.messages.length > 0) {
+            setMessages(data.messages);
+            setHasGreeted(true);
+            return;
+          }
+        } catch {
+          // Si no hay historial o falla red, continúa con saludo inicial.
+        }
+        if (!cancelled && !hasGreeted) {
+          sendMessage("hola");
+          setHasGreeted(true);
+        }
+      })();
+      return () => { cancelled = true; };
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -149,6 +169,7 @@ export default function CopmecAIWidget({ canUseAI, isOpen, onClose, sidebarColla
             role: "ai",
             content: data.response,
             reportToken: data.reportToken || null,
+            availableFormats: Array.isArray(data.availableFormats) ? data.availableFormats : [],
             dashboardFixed: data.dashboardFixed || false,
           },
         ]);
@@ -175,7 +196,15 @@ export default function CopmecAIWidget({ canUseAI, isOpen, onClose, sidebarColla
     if (e.key === "Escape") onClose?.();
   }
 
-  function clearChat() {
+  async function clearChat() {
+    try {
+      await fetch(`${API_BASE_URL}/copmec-ai/history`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+    } catch {
+      // Ignorar errores para no bloquear UI.
+    }
     setMessages([]);
     setHasGreeted(false);
   }
@@ -231,20 +260,19 @@ export default function CopmecAIWidget({ canUseAI, isOpen, onClose, sidebarColla
                         {msg.reportToken && (
                           <div className="copmec-ai-report-btns">
                             <span className="copmec-ai-report-label">📥 Descargar reporte:</span>
-                            <button
-                              type="button"
-                              className="copmec-ai-download-btn copmec-ai-download-btn--pdf"
-                              onClick={() => downloadReport(msg.reportToken, "pdf")}
-                            >
-                              PDF
-                            </button>
-                            <button
-                              type="button"
-                              className="copmec-ai-download-btn copmec-ai-download-btn--cop"
-                              onClick={() => downloadReport(msg.reportToken, "cop")}
-                            >
-                              .COP
-                            </button>
+                            {(Array.isArray(msg.availableFormats) && msg.availableFormats.length > 0
+                              ? msg.availableFormats
+                              : ["pdf", "cop"]
+                            ).map((fmt) => (
+                              <button
+                                key={`${msg.reportToken}-${fmt}`}
+                                type="button"
+                                className={`copmec-ai-download-btn copmec-ai-download-btn--${fmt}`}
+                                onClick={() => downloadReport(msg.reportToken, fmt)}
+                              >
+                                {fmt.toUpperCase()}
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>

@@ -12889,6 +12889,16 @@ body {
   border: 1px solid #22c55e44;
 }
 
+.copmec-ai-download-btn--doc {
+  background: #2563eb;
+  color: #fff;
+}
+
+.copmec-ai-download-btn--xlsx {
+  background: #15803d;
+  color: #fff;
+}
+
 /* Badge de dashboard fix */
 .copmec-ai-fix-badge {
   display: inline-flex;
