@@ -974,29 +974,71 @@ export default function HistorialSemanas({ contexto }) {
       const pdfHeaders = pdfBoardFields.length > 0
         ? [...pdfBoardFields.map((f) => String(f.label || f.id || "")), "Player", "Estado", "Fecha", "Inicio", "Fin", "Tiempo"]
         : ["Area", "Tablero", "Actividad", "Player", "Estado", "Fecha", "Inicio", "Fin", "Tiempo"];
-      const body = exportableHistoryActivities.map((activity) => {
-        if (pdfBoardFields.length > 0) {
-          return [
-            ...pdfBoardFields.map((field) => String(activity.rowValues?.[field.id] ?? "")),
-            resolveHistoryPlayerLabel(activity),
-            String(activity.status || ""),
-            formatDate(activity.activityDate),
-            formatTime(activity.startTime),
-            formatTime(activity.endTime),
-            formatDurationClock(activity.accumulatedSeconds),
-          ];
+
+      // Group activities by day
+      const dayGroups = new Map();
+      exportableHistoryActivities.forEach((activity) => {
+        const parts = toDateParts(activity.activityDate);
+        const dayKey = parts?.day || "sin-fecha";
+        if (!dayGroups.has(dayKey)) {
+          dayGroups.set(dayKey, []);
         }
-        return [activity.areaRoot, activity.boardName || "General", resolveHistoryActivityLabel(activity), resolveHistoryPlayerLabel(activity), String(activity.status || ""), formatDate(activity.activityDate), formatTime(activity.startTime), formatTime(activity.endTime), formatDurationClock(activity.accumulatedSeconds)];
+        dayGroups.get(dayKey).push(activity);
       });
 
-      autoTable(pdf, {
-        startY: 104,
-        head: [pdfHeaders],
-        body,
-        styles: { fontSize: 8, cellPadding: 4 },
-        headStyles: { fillColor: [3, 33, 33], textColor: [255, 255, 255] },
-        theme: "grid",
-      });
+      // Sort days chronologically
+      const sortedDays = Array.from(dayGroups.keys()).sort();
+
+      // Generate one table per day
+      let yPos = 104;
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      for (const dayKey of sortedDays) {
+        const activities = dayGroups.get(dayKey);
+        // Check if we need a new page (reserve space for header and table)
+        if (yPos > pageHeight - 80) {
+          pdf.addPage();
+          yPos = 20;
+        }
+
+        // Add day header
+        const dayDate = parseHistoryDate(dayKey);
+        const dayLabel = dayDate
+          ? dayDate.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })
+          : dayKey;
+        pdf.setFontSize(11);
+        pdf.setFont(undefined, "bold");
+        pdf.text(`${dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1)}`, 36, yPos);
+        pdf.setFont(undefined, "normal");
+        yPos += 14;
+
+        // Build table body for this day
+        const body = activities.map((activity) => {
+          if (pdfBoardFields.length > 0) {
+            return [
+              ...pdfBoardFields.map((field) => String(activity.rowValues?.[field.id] ?? "")),
+              resolveHistoryPlayerLabel(activity),
+              String(activity.status || ""),
+              formatDate(activity.activityDate),
+              formatTime(activity.startTime),
+              formatTime(activity.endTime),
+              formatDurationClock(activity.accumulatedSeconds),
+            ];
+          }
+          return [activity.areaRoot, activity.boardName || "General", resolveHistoryActivityLabel(activity), resolveHistoryPlayerLabel(activity), String(activity.status || ""), formatDate(activity.activityDate), formatTime(activity.startTime), formatTime(activity.endTime), formatDurationClock(activity.accumulatedSeconds)];
+        });
+
+        // Add table for this day
+        autoTable(pdf, {
+          startY: yPos,
+          head: [pdfHeaders],
+          body,
+          styles: { fontSize: 8, cellPadding: 4 },
+          headStyles: { fillColor: [3, 33, 33], textColor: [255, 255, 255] },
+          theme: "grid",
+        });
+
+        yPos = (pdf.lastAutoTable?.finalY || yPos + 50) + 16;
+      }
 
       const fileSuffix = sanitizeFileNamePart(exportWindow.fileSuffix || "historial");
       pdf.save(`copmec_historial_${fileSuffix || "export"}.pdf`);

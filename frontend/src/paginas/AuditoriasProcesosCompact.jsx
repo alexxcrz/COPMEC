@@ -2143,6 +2143,17 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     }
   }
 
+  async function handleSaveSubResponseRichText(richKey) {
+    if (!auditDraft || !canManageAudits) return;
+    setSubResponseRichState((c) => ({ ...c, [richKey]: false }));
+    try {
+      await persistAuditChanges(auditDraft, null);
+      setIsAuditDirty(false);
+    } catch {
+      // autosave reintentará
+    }
+  }
+
   async function handleSaveViewerTextField(fieldKey, successMessage) {
     if (!auditViewerDraft) return;
     setAuditViewerSaving(true);
@@ -2172,6 +2183,25 @@ export default function AuditoriasProcesosCompact({ contexto }) {
       if (saved) setAuditViewerDirty(false);
     } catch (error) {
       pushAppToast(error?.message || "No se pudo guardar la respuesta.", "danger");
+    } finally {
+      setAuditViewerSaving(false);
+    }
+  }
+
+  async function handleSaveViewerQuestionField(questionId, field, value, message) {
+    if (!auditViewerDraft) return;
+    const nextDraft = {
+      ...auditViewerDraft,
+      questions: auditViewerDraft.questions.map((item) => (item.id === questionId ? { ...item, [field]: value } : item)),
+    };
+    setAuditViewerDraft(nextDraft);
+    setAuditViewerDirty(true);
+    setAuditViewerSaving(true);
+    try {
+      const saved = await persistAuditChanges(nextDraft, message || null);
+      if (saved) setAuditViewerDirty(false);
+    } catch (error) {
+      pushAppToast(error?.message || "No se pudo guardar.", "danger");
     } finally {
       setAuditViewerSaving(false);
     }
@@ -2305,6 +2335,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
         lifecycleStatus: "in_review",
         notes: auditDraft.notes || "",
         questions: normalizeQuestionsForSave(auditDraft.questions || []),
+        subResponses: auditDraft.subResponses || [],
       });
       setAuditEditorOpen(false);
       setAuditQuestionsDraft(null);
@@ -2729,7 +2760,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                                 </div>
                               ) : null}
                               {question.type === "text" ? (
-                                <RichTextResponseField label="Respuesta" value={String(subAns.answer || "")} placeholder={question.placeholder || "Escribe aquí"} canEdit={canManageAudits} isEditing={Boolean(subResponseRichState[richKey])} onChange={(v) => updateSubResponseAnswer(activeSubResponseId, question.id, "answer", v)} onEdit={() => setSubResponseRichState((c) => ({ ...c, [richKey]: true }))} onSave={() => setSubResponseRichState((c) => ({ ...c, [richKey]: false }))} />
+                                <RichTextResponseField label="Respuesta" value={String(subAns.answer || "")} placeholder={question.placeholder || "Escribe aquí"} canEdit={canManageAudits} isEditing={Boolean(subResponseRichState[richKey])} onChange={(v) => updateSubResponseAnswer(activeSubResponseId, question.id, "answer", v)} onEdit={() => setSubResponseRichState((c) => ({ ...c, [richKey]: true }))} onSave={() => handleSaveSubResponseRichText(richKey)} />
                               ) : null}
                               {question.type === "number" ? (
                                 <label className="app-modal-field"><span>Respuesta numérica</span><input type="number" value={subAns.answer ?? ""} onChange={(e) => updateSubResponseAnswer(activeSubResponseId, question.id, "answer", e.target.value === "" ? null : Number(e.target.value))} placeholder={question.placeholder || "Número"} disabled={!canManageAudits} /></label>
@@ -2754,7 +2785,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                                 </label>
                                 <label className="app-modal-field"><span>Impacto</span><select value={subAns.impactLevel || "medium"} onChange={(e) => updateSubResponseAnswer(activeSubResponseId, question.id, "impactLevel", e.target.value)} disabled={!canManageAudits}><option value="high">Alto</option><option value="medium">Medio</option><option value="low">Bajo</option></select></label>
                               </div>
-                              <RichTextResponseField label="Observaciones" value={String(subAns.observations || "")} placeholder="Describe riesgo, causa o mejora" canEdit={canManageAudits} isEditing={Boolean(subResponseRichState[`obs-${richKey}`])} onChange={(v) => updateSubResponseAnswer(activeSubResponseId, question.id, "observations", v)} onEdit={() => setSubResponseRichState((c) => ({ ...c, [`obs-${richKey}`]: true }))} onSave={() => setSubResponseRichState((c) => ({ ...c, [`obs-${richKey}`]: false }))} saveLabel="Guardar observaciones" editLabel="Editar observaciones" />
+                              <RichTextResponseField label="Observaciones" value={String(subAns.observations || "")} placeholder="Describe riesgo, causa o mejora" canEdit={canManageAudits} isEditing={Boolean(subResponseRichState[`obs-${richKey}`])} onChange={(v) => updateSubResponseAnswer(activeSubResponseId, question.id, "observations", v)} onEdit={() => setSubResponseRichState((c) => ({ ...c, [`obs-${richKey}`]: true }))} onSave={() => handleSaveSubResponseRichText(`obs-${richKey}`)} saveLabel="Guardar observaciones" editLabel="Editar observaciones" />
                             </article>
                           );
                         })}
@@ -3389,6 +3420,52 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                       onSave={() => handleSaveViewerTextField(question.id, "Respuesta guardada.")}
                     />
                   )}
+                  <div className="audit-question-evaluation-grid">
+                    <label className="app-modal-field" style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
+                      <span>¿Se detecta problema?</span>
+                      <button
+                        type="button"
+                        className={`switch-button ${question.issueDetected === true ? "on" : ""}`}
+                        onClick={() => handleSaveViewerQuestionField(question.id, "issueDetected", question.issueDetected === true ? false : true, "Guardado.")}
+                        disabled={!canManageAudits || auditViewerSaving}
+                        aria-pressed={question.issueDetected === true}
+                        aria-label="Alternar detección de problema"
+                      >
+                        <span className="switch-thumb" />
+                      </button>
+                      <strong>{question.issueDetected === true ? "Sí" : "No"}</strong>
+                    </label>
+                    <label className="app-modal-field">
+                      <span>Impacto</span>
+                      <select
+                        value={question.impactLevel || "medium"}
+                        onChange={(e) => handleSaveViewerQuestionField(question.id, "impactLevel", e.target.value, "Guardado.")}
+                        disabled={!canManageAudits || auditViewerSaving}
+                      >
+                        <option value="high">Alto</option>
+                        <option value="medium">Medio</option>
+                        <option value="low">Bajo</option>
+                      </select>
+                    </label>
+                  </div>
+                  <RichTextResponseField
+                    label="Observaciones"
+                    value={String(question.observations || "")}
+                    placeholder="Describe riesgo, causa o mejora observada"
+                    canEdit={canManageAudits && !auditViewerSaving}
+                    isEditing={Boolean(auditViewerRichEditorState[`obs-${question.id}`])}
+                    onChange={(nextValue) => {
+                      setAuditViewerDraft((current) => {
+                        if (!current) return current;
+                        return { ...current, questions: current.questions.map((item) => item.id === question.id ? { ...item, observations: nextValue } : item) };
+                      });
+                      setAuditViewerDirty(true);
+                    }}
+                    onEdit={() => setAuditViewerRichEditorState((current) => ({ ...current, [`obs-${question.id}`]: true }))}
+                    onSave={() => handleSaveViewerTextField(`obs-${question.id}`, "Observaciones guardadas.")}
+                    saveLabel="Guardar observaciones"
+                    editLabel="Editar observaciones"
+                  />
                 </article>
               ))}
             </div>
