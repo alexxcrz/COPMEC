@@ -542,6 +542,8 @@ export default function HistorialSemanas({ contexto }) {
       const allSources = snapshots.concat(liveBoardsForWeek);
 
       return allSources.flatMap((snapshot) => {
+        const snapshotBoardKey = String(snapshot?.boardId || snapshot?.sourceBoardId || snapshot?.id || "").trim()
+          || String(snapshot?.id || "").trim();
         const boardContext = String(snapshot?.settings?.operationalContextValue || "").trim();
         const boardName = String(snapshot?.boardName || "Tablero").trim() || "Tablero";
         return (snapshot?.rows || []).map((row) => {
@@ -568,6 +570,7 @@ export default function HistorialSemanas({ contexto }) {
             accumulatedSeconds: Number(row.accumulatedSeconds || 0),
             areaLabel,
             areaRoot,
+            boardKey: snapshotBoardKey || boardName,
             boardName,
             naveLabel: boardContext || boardName,
             dayLabel: normalizedDayLabel,
@@ -607,6 +610,7 @@ export default function HistorialSemanas({ contexto }) {
           ...activity,
           areaLabel,
           areaRoot,
+          boardKey: String(activity.catalogActivityId || boardName).trim() || boardName,
           boardName,
           naveLabel,
           dayLabel: normalizedDayLabel,
@@ -641,17 +645,23 @@ export default function HistorialSemanas({ contexto }) {
   const boardTabs = useMemo(() => {
     const grouped = new Map();
     areaScopedActivities.forEach((activity) => {
+      const boardKey = String(activity.boardKey || activity.boardName || "General").trim() || "General";
       const boardName = String(activity.boardName || "General").trim() || "General";
-      grouped.set(boardName, (grouped.get(boardName) || 0) + 1);
+      if (!grouped.has(boardKey)) {
+        grouped.set(boardKey, { value: boardKey, label: boardName, total: 0 });
+      }
+      grouped.get(boardKey).total += 1;
     });
-    return Array.from(grouped.entries())
-      .map(([boardName, total]) => ({ value: boardName, label: boardName, total }))
+    return Array.from(grouped.values())
       .sort((left, right) => left.label.localeCompare(right.label, "es-MX"));
   }, [areaScopedActivities]);
 
   const boardScopedActivities = useMemo(() => {
     if (!selectedBoardTab) return [];
-    return areaScopedActivities.filter((activity) => String(activity.boardName || "") === selectedBoardTab);
+    return areaScopedActivities.filter((activity) => {
+      const boardKey = String(activity.boardKey || activity.boardName || "").trim();
+      return boardKey === selectedBoardTab;
+    });
   }, [areaScopedActivities, selectedBoardTab]);
 
   const playerTabs = useMemo(() => {

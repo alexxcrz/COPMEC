@@ -1943,6 +1943,7 @@ function App() { // NOSONAR
     const historicalBoardRecords = dashboardVisibleBoardHistorySnapshots.flatMap((snapshot) => (snapshot.rows || []).map((row) => {
       const responsibleUser = userMap.get(row.responsibleId);
       const { primaryArea, areaScopes } = resolveBoardAreaScope(snapshot, responsibleUser);
+      const resolvedSnapshotBoardId = String(snapshot.boardId || snapshot.sourceBoardId || snapshot.id || "").trim();
       const durationSeconds = getElapsedSeconds(row, now, operationalPauseState);
       const totalElapsedSeconds = row.startTime
         ? Math.max(durationSeconds, getOperationalElapsedSeconds(row.startTime, now, operationalPauseState))
@@ -1951,7 +1952,7 @@ function App() { // NOSONAR
       return {
         id: `board-history-${snapshot.id}-${row.id}`,
         rawId: `${snapshot.id}-${row.id}`,
-        boardId: String(snapshot.boardId || "").trim(),
+        boardId: resolvedSnapshotBoardId,
         source: "board",
         sourceLabel: "Histórico de tablero",
         label: snapshot.boardName,
