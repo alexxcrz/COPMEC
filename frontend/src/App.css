@@ -12458,7 +12458,7 @@ body {
 .copmec-ai-fab {
   position: fixed;
   bottom: 1.5rem;
-  right: 1.5rem;
+  left: 1.5rem;
   z-index: 200;
   width: 3.6rem;
   height: 3.6rem;
@@ -12510,7 +12510,7 @@ body {
 .copmec-ai-panel {
   position: fixed;
   bottom: 6rem;
-  right: 1.5rem;
+  left: 1.5rem;
   z-index: 199;
   width: min(92vw, 420px);
   max-height: 78vh;
@@ -12846,14 +12846,14 @@ body {
 @media (max-width: 480px) {
   .copmec-ai-fab {
     bottom: 1rem;
-    right: 1rem;
+    left: 1rem;
     width: 3.1rem;
     height: 3.1rem;
   }
 
   .copmec-ai-panel {
     bottom: 5.2rem;
-    right: 0.75rem;
+    left: 0.75rem;
     width: calc(100vw - 1.5rem);
     max-height: 72vh;
   }
