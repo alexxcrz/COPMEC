@@ -307,6 +307,7 @@ export default function PanelIndicadores({ contexto }) {
   });
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
   const [isResetSubmitting, setIsResetSubmitting] = useState(false);
+  const [leaderboardBoardFilter, setLeaderboardBoardFilter] = useState("all");
 
   useEffect(() => {
     if (!confirmResetOpen) return undefined;
@@ -442,10 +443,31 @@ export default function PanelIndicadores({ contexto }) {
 
   const scopedInventoryProductTimeRows = useMemo(() => {
     const rows = Array.isArray(dashboardInventoryProductTimeRows) ? dashboardInventoryProductTimeRows : [];
-    if (dashboardFilters.area === "all") return rows;
-    return rows.filter((item) => areaMatchesFilter(item.area, dashboardFilters.area));
+    const areaFiltered = dashboardFilters.area === "all" ? rows : rows.filter((item) => areaMatchesFilter(item.area, dashboardFilters.area));
+    if (leaderboardBoardFilter === "all") return areaFiltered;
+    return areaFiltered.filter((item) => String(item.boardId || "") === leaderboardBoardFilter);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dashboardFilters.area, dashboardInventoryProductTimeRows, leaderboardBoardFilter]);
+
+  const leaderboardBoardOptions = useMemo(() => {
+    const base = Array.isArray(dashboardInventoryProductTimeRows) ? dashboardInventoryProductTimeRows : [];
+    const areaFiltered = dashboardFilters.area === "all" ? base : base.filter((item) => areaMatchesFilter(item.area, dashboardFilters.area));
+    const map = new Map();
+    areaFiltered.forEach((item) => {
+      const boardId = String(item.boardId || "");
+      if (boardId && !map.has(boardId)) {
+        map.set(boardId, { value: boardId, label: item.boardName || boardId });
+      }
+    });
+    return [{ value: "all", label: "Todos los tableros" }].concat(
+      Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label, "es-MX")),
+    );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboardFilters.area, dashboardInventoryProductTimeRows]);
+
+  // Si el tablero seleccionado ya no existe en las opciones, resetear
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const leaderboardBoardFilterSafe = leaderboardBoardOptions.some((o) => o.value === leaderboardBoardFilter) ? leaderboardBoardFilter : "all";
 
   const scopedAreaBoardDetailedRows = useMemo(() => {
     const rows = Array.isArray(dashboardAreaBoardDetailedRows) ? dashboardAreaBoardDetailedRows : [];
@@ -1689,6 +1711,30 @@ export default function PanelIndicadores({ contexto }) {
             <p className="dashboard-panel-subtitle">
               Ranking automático para Inventario: agrupa por producto/SKU y tarima, mostrando piezas y tiempo operativo real.
             </p>
+            <div className="dashboard-filter-row" style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap", marginBottom: "0.5rem" }}>
+              <label className="dashboard-filter-field" style={{ display: "flex", flexDirection: "column", gap: "0.25rem", fontSize: "0.82rem" }}>
+                <span style={{ fontWeight: 600, color: "#365151" }}>Tablero</span>
+                <select
+                  value={leaderboardBoardFilterSafe}
+                  onChange={(e) => setLeaderboardBoardFilter(e.target.value)}
+                  style={{ borderRadius: "0.75rem", border: "1px solid var(--sicfla-border)", padding: "0.35rem 0.7rem", fontSize: "0.84rem", background: "#fff", color: "#032121", cursor: "pointer" }}
+                >
+                  {leaderboardBoardOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </label>
+              {leaderboardBoardFilterSafe !== "all" && (
+                <button
+                  type="button"
+                  className="icon-button"
+                  style={{ alignSelf: "flex-end", marginBottom: "0.05rem" }}
+                  onClick={() => setLeaderboardBoardFilter("all")}
+                >
+                  Limpiar
+                </button>
+              )}
+            </div>
             <DashboardColumnChart
               rows={scopedInventoryProductTimeRows.slice(0, 12).map((item) => ({
                 key: item.key,
