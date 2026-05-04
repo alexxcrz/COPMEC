@@ -135,6 +135,21 @@ function detectExportScope(msg, intent) {
   return "general";
 }
 
+function detectInventoryDomain(msg) {
+  const t = norm(msg);
+  if (has(t, ["inventario base", "base", "productos base"])) return "base";
+  if (has(t, ["limpieza", "cleaning", "aseo"])) return "cleaning";
+  if (has(t, ["pedidos", "orders", "empaque", "embalaje"])) return "orders";
+  return null;
+}
+
+function detectExportContext(msg, intent) {
+  return {
+    scope: detectExportScope(msg, intent),
+    inventoryDomain: detectInventoryDomain(msg),
+  };
+}
+
 function shouldGenerateFile(msg, intent) {
   const t = norm(msg);
   const hasExportWords = has(t, ["descarga", "descargar", "archivo", "exporta", "exportar", "genera", "generar", "formato"]);
@@ -644,13 +659,22 @@ function handleUnknown(snap, msg) {
 
 // ─── Generación de reportes ──────────────────────────────────────────────────
 
-function buildReportData(snap, scope = "general") {
+function buildReportData(snap, context = {}) {
+  const scope = context?.scope || "general";
+  const inventoryDomain = context?.inventoryDomain || null;
   const now = new Date();
-  const running  = snap.allRows.filter((r) => r.status === STATUS_RUNNING).length;
-  const paused   = snap.allRows.filter((r) => r.status === STATUS_PAUSED).length;
-  const finished = snap.allRows.filter((r) => r.status === STATUS_FINISHED).length;
-  const pending  = snap.allRows.filter((r) => r.status === STATUS_PENDING).length;
-  const lowStock = snap.inventory.filter((i) => Number(i.stockUnits||0) <= Number(i.minStockUnits||0) && Number(i.minStockUnits||0) > 0);
+  const filteredInventory = inventoryDomain
+    ? snap.inventory.filter((i) => norm(i.domain || "base") === norm(inventoryDomain))
+    : snap.inventory;
+
+  const boardsForReport = scope === "boards" ? snap.boards : snap.boards;
+  const allRowsForReport = boardsForReport.flatMap((b) => Array.isArray(b.rows) ? b.rows : []);
+
+  const running  = allRowsForReport.filter((r) => r.status === STATUS_RUNNING).length;
+  const paused   = allRowsForReport.filter((r) => r.status === STATUS_PAUSED).length;
+  const finished = allRowsForReport.filter((r) => r.status === STATUS_FINISHED).length;
+  const pending  = allRowsForReport.filter((r) => r.status === STATUS_PENDING).length;
+  const lowStock = filteredInventory.filter((i) => Number(i.stockUnits||0) <= Number(i.minStockUnits||0) && Number(i.minStockUnits||0) > 0);
   const openInc  = snap.incidencias.filter((i) => i.status !== "cerrada" && i.status !== "resuelta");
 
   return {
@@ -660,23 +684,24 @@ function buildReportData(snap, scope = "general") {
       generatedAt: now.toISOString(),
       generatedBy: "COPMEC AI — Cerebro Operativo",
       scope,
+      inventoryDomain: inventoryDomain || "all",
     },
     resumen: {
-      totalTableros: snap.boards.length,
-      totalFilas: snap.allRows.length,
+      totalTableros: boardsForReport.length,
+      totalFilas: allRowsForReport.length,
       filasEnCurso: running,
       filasPausadas: paused,
       filasTerminadas: finished,
       filasPendientes: pending,
-      tasaCierre: snap.allRows.length > 0 ? ((finished / snap.allRows.length) * 100).toFixed(1) + "%" : "0%",
-      totalInventario: snap.inventory.length,
+      tasaCierre: allRowsForReport.length > 0 ? ((finished / allRowsForReport.length) * 100).toFixed(1) + "%" : "0%",
+      totalInventario: filteredInventory.length,
       articulosBajoMinimo: lowStock.length,
       articulosAgotados: lowStock.filter((i) => Number(i.stockUnits||0) === 0).length,
       incidenciasAbiertas: openInc.length,
       totalUsuarios: snap.users.length,
       usuariosActivos: snap.users.filter((u) => u.isActive !== false).length,
     },
-    tableros: snap.boards.map((board) => {
+    tableros: boardsForReport.map((board) => {
       const rows     = Array.isArray(board.rows) ? board.rows : [];
       const area     = board.settings?.area || board.area || "sin área";
       const running  = rows.filter((r) => r.status === STATUS_RUNNING).length;
@@ -702,6 +727,15 @@ function buildReportData(snap, scope = "general") {
         })),
       };
     }),
+    inventarioDetalle: filteredInventory.map((i) => ({
+      codigo: i.code || i.id,
+      nombre: i.name,
+      stockActual: Number(i.stockUnits || 0),
+      minimo: Number(i.minStockUnits || 0),
+      unidad: i.unitLabel || "uds",
+      categoria: i.domain || "base",
+      ubicacion: i.location || i.zone || "—",
+    })),
     inventarioCritico: lowStock.map((i) => ({
       codigo: i.code || i.id,
       nombre: i.name,
@@ -719,14 +753,14 @@ function buildReportData(snap, scope = "general") {
   };
 }
 
-function generateCopBuffer(snap, scope = "general") {
-  const data = buildReportData(snap, scope);
+function generateCopBuffer(snap, context = {}) {
+  const data = buildReportData(snap, context);
   return Buffer.from(JSON.stringify(data, null, 2), "utf-8");
 }
 
-function generatePdfBuffer(snap, scope = "general") {
+function generatePdfBuffer(snap, context = {}) {
   return new Promise((resolve) => {
-    const data   = buildReportData(snap, scope);
+    const data   = buildReportData(snap, context);
     const doc    = new PDFDocument({ margin: 50, size: "A4" });
     const chunks = [];
     doc.on("data", (c) => chunks.push(c));
@@ -778,8 +812,22 @@ function generatePdfBuffer(snap, scope = "general") {
       doc.moveDown(0.6);
     });
 
-    // Inventario crítico
-    if (data.inventarioCritico.length > 0) {
+    // Inventario (completo o crítico según alcance)
+    if (data.inventarioDetalle.length > 0 && (data.meta.scope === "inventory" || data.meta.inventoryDomain !== "all")) {
+      doc.addPage();
+      doc.rect(0, 0, doc.page.width, 70).fill(DARK);
+      doc.fillColor("#ffffff").fontSize(16).font("Helvetica-Bold").text("Inventario Solicitado", 50, 25);
+      doc.fillColor(GREEN).fontSize(10).font("Helvetica").text(`${data.inventarioDetalle.length} artículo(s)`, 50, 48);
+      doc.moveDown(2.5);
+      data.inventarioDetalle.forEach((item) => {
+        const agotado = item.stockActual === 0;
+        doc.fillColor(agotado ? "#dc2626" : "#0f172a").fontSize(10).font("Helvetica-Bold")
+          .text(`${agotado ? "🔴" : "•"} ${item.nombre}  (${item.codigo})`);
+        doc.fillColor(GRAY).fontSize(9).font("Helvetica")
+          .text(`   Stock: ${item.stockActual} ${item.unidad}  |  Mínimo: ${item.minimo} ${item.unidad}  |  Categoría: ${item.categoria}  |  Ubicación: ${item.ubicacion}`);
+        doc.moveDown(0.35);
+      });
+    } else if (data.inventarioCritico.length > 0) {
       doc.addPage();
       doc.rect(0, 0, doc.page.width, 70).fill(DARK);
       doc.fillColor("#ffffff").fontSize(16).font("Helvetica-Bold").text("Inventario Crítico", 50, 25);
@@ -816,13 +864,13 @@ function generatePdfBuffer(snap, scope = "general") {
   });
 }
 
-function generateDocBuffer(snap, scope = "general") {
-  const data = buildReportData(snap, scope);
+function generateDocBuffer(snap, context = {}) {
+  const data = buildReportData(snap, context);
   const R = data.resumen;
   const boardRows = data.tableros
     .map((b) => `<tr><td>${b.nombre}</td><td>${b.area}</td><td>${b.totalFilas}</td><td>${b.enCurso}</td><td>${b.pausadas}</td><td>${b.terminadas}</td></tr>`)
     .join("");
-  const invRows = data.inventarioCritico
+  const invRows = (data.meta.scope === "inventory" || data.meta.inventoryDomain !== "all" ? data.inventarioDetalle : data.inventarioCritico)
     .map((i) => `<tr><td>${i.nombre}</td><td>${i.codigo}</td><td>${i.stockActual}</td><td>${i.minimo}</td><td>${i.unidad}</td></tr>`)
     .join("");
   const incRows = data.incidenciasAbiertas
@@ -845,7 +893,7 @@ function generateDocBuffer(snap, scope = "general") {
 </head>
 <body>
   <h1>COPMEC - Reporte Operativo</h1>
-  <div class="sub">Generado ${new Date(data.meta.generatedAt).toLocaleString("es-MX")} | Alcance: ${data.meta.scope}</div>
+  <div class="sub">Generado ${new Date(data.meta.generatedAt).toLocaleString("es-MX")} | Alcance: ${data.meta.scope}${data.meta.inventoryDomain !== "all" ? `/${data.meta.inventoryDomain}` : ""}</div>
 
   <h2>Resumen</h2>
   <p>Tableros: <strong>${R.totalTableros}</strong> | Filas: <strong>${R.totalFilas}</strong> | Tasa de cierre: <strong>${R.tasaCierre}</strong></p>
@@ -858,7 +906,7 @@ function generateDocBuffer(snap, scope = "general") {
     <tbody>${boardRows || "<tr><td colspan='6'>Sin datos</td></tr>"}</tbody>
   </table>
 
-  <h2>Inventario crítico</h2>
+  <h2>${(data.meta.scope === "inventory" || data.meta.inventoryDomain !== "all") ? "Inventario solicitado" : "Inventario crítico"}</h2>
   <table>
     <thead><tr><th>Nombre</th><th>Código</th><th>Stock</th><th>Mínimo</th><th>Unidad</th></tr></thead>
     <tbody>${invRows || "<tr><td colspan='5'>Sin alertas</td></tr>"}</tbody>
@@ -875,8 +923,8 @@ function generateDocBuffer(snap, scope = "general") {
   return Buffer.from(html, "utf-8");
 }
 
-async function generateXlsxBuffer(snap, scope = "general") {
-  const data = buildReportData(snap, scope);
+async function generateXlsxBuffer(snap, context = {}) {
+  const data = buildReportData(snap, context);
   const wb = new ExcelJS.Workbook();
   wb.creator = "COPMEC AI";
   wb.created = new Date();
@@ -915,7 +963,7 @@ async function generateXlsxBuffer(snap, scope = "general") {
   ];
   data.tableros.forEach((b) => wsTab.addRow(b));
 
-  const wsInv = wb.addWorksheet("Inventario crítico");
+  const wsInv = wb.addWorksheet(data.meta.scope === "inventory" || data.meta.inventoryDomain !== "all" ? "Inventario solicitado" : "Inventario crítico");
   wsInv.columns = [
     { header: "Código", key: "codigo", width: 20 },
     { header: "Nombre", key: "nombre", width: 36 },
@@ -924,7 +972,8 @@ async function generateXlsxBuffer(snap, scope = "general") {
     { header: "Unidad", key: "unidad", width: 10 },
     { header: "Categoría", key: "categoria", width: 16 },
   ];
-  data.inventarioCritico.forEach((i) => wsInv.addRow(i));
+  const invRows = data.meta.scope === "inventory" || data.meta.inventoryDomain !== "all" ? data.inventarioDetalle : data.inventarioCritico;
+  invRows.forEach((i) => wsInv.addRow(i));
 
   const wsInc = wb.addWorksheet("Incidencias");
   wsInc.columns = [
@@ -939,17 +988,17 @@ async function generateXlsxBuffer(snap, scope = "general") {
   return Buffer.from(buff);
 }
 
-async function createReportFiles(snap, formats = ["pdf", "cop"], scope = "general") {
+async function createReportFiles(snap, formats = ["pdf", "cop"], context = {}) {
   const token = randomUUID();
   const requestedFormats = [...new Set(formats)].filter((f) => ["pdf", "cop", "doc", "xlsx"].includes(f));
   const writtenPaths = [];
 
   for (const fmt of requestedFormats) {
     let buf = null;
-    if (fmt === "cop") buf = generateCopBuffer(snap, scope);
-    if (fmt === "pdf") buf = await generatePdfBuffer(snap, scope);
-    if (fmt === "doc") buf = generateDocBuffer(snap, scope);
-    if (fmt === "xlsx") buf = await generateXlsxBuffer(snap, scope);
+    if (fmt === "cop") buf = generateCopBuffer(snap, context);
+    if (fmt === "pdf") buf = await generatePdfBuffer(snap, context);
+    if (fmt === "doc") buf = generateDocBuffer(snap, context);
+    if (fmt === "xlsx") buf = await generateXlsxBuffer(snap, context);
     if (!buf) continue;
     const p = join(REPORTS_DIR, `${token}.${fmt}`);
     writeFileSync(p, buf);
@@ -1073,7 +1122,7 @@ export async function processCopmecAIMessage(auth, message) {
   const trimmed = message.trim();
   const intent  = classifyIntent(trimmed);
   const requestedFormats = detectRequestedFormats(trimmed);
-  const exportScope = detectExportScope(trimmed, intent);
+  const exportContext = detectExportContext(trimmed, intent);
 
   // Dashboard fix — sincrónico especial
   if (intent === "dashboard_fix") {
@@ -1122,7 +1171,7 @@ export async function processCopmecAIMessage(auth, message) {
   if ((reportIntents.has(intent) || intent === "unknown") && shouldExport) {
     const formats = requestedFormats.length > 0 ? requestedFormats : ["pdf", "cop"];
     try {
-      const generated = await createReportFiles(snap, formats, exportScope);
+      const generated = await createReportFiles(snap, formats, exportContext);
       reportToken = generated.token;
       availableFormats = generated.formats;
       if (availableFormats.length > 0) {
