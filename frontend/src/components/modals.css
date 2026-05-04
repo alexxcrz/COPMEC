@@ -74,6 +74,8 @@
 .sicfla-modal.board-builder-modal {
   width: min(100%, 1600px);
   padding: 0.92rem;
+  height: 92vh;
+  min-height: 0;
 }
 
 .sicfla-modal.board-builder-modal .sicfla-modal-body {
