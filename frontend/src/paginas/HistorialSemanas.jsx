@@ -560,6 +560,8 @@ export default function HistorialSemanas({ contexto }) {
             dayLabel: normalizedDayLabel,
             activityLabel: String(rowValueText || boardName || "Actividad").trim() || "Actividad",
             lastPauseReason: String(row?.lastPauseReason || "").trim(),
+            snapshotFields: Array.isArray(snapshot.fields) ? snapshot.fields : [],
+            rowValues: row.values && typeof row.values === "object" ? row.values : {},
             derivedFromBoardHistory: true,
           };
         });
@@ -883,18 +885,26 @@ export default function HistorialSemanas({ contexto }) {
   const canEditHistoricalWeekActivities = !useBoardHistoryFallback && Boolean(actionPermissions.editHistoryRecords || actionPermissions.manageWeeks || actionPermissions.deleteWeekActivity);
 
   function getHistoryExportRows(activities) {
-    return activities.map((activity) => ({
-      area: activity.areaRoot,
-      tablero: activity.boardName || "General",
-      actividad: resolveHistoryActivityLabel(activity),
-      player: resolveHistoryPlayerLabel(activity),
-      estado: String(activity.status || ""),
-      fecha: formatDate(activity.activityDate),
-      inicio: formatTime(activity.startTime),
-      fin: formatTime(activity.endTime),
-      tiempo: formatDurationClock(activity.accumulatedSeconds),
-      segundos: Number(activity.accumulatedSeconds || 0),
-    }));
+    return activities.map((activity) => {
+      const base = {
+        area: activity.areaRoot,
+        tablero: activity.boardName || "General",
+        actividad: resolveHistoryActivityLabel(activity),
+        player: resolveHistoryPlayerLabel(activity),
+        estado: String(activity.status || ""),
+        fecha: formatDate(activity.activityDate),
+        inicio: formatTime(activity.startTime),
+        fin: formatTime(activity.endTime),
+        tiempo: formatDurationClock(activity.accumulatedSeconds),
+        segundos: Number(activity.accumulatedSeconds || 0),
+      };
+      if (activity.derivedFromBoardHistory && Array.isArray(activity.snapshotFields)) {
+        activity.snapshotFields.forEach((field) => {
+          if (field?.id) base[String(field.label || field.id)] = String(activity.rowValues?.[field.id] ?? "");
+        });
+      }
+      return base;
+    });
   }
 
   async function downloadHistoryPackageFile() {
@@ -959,21 +969,29 @@ export default function HistorialSemanas({ contexto }) {
       pdf.text(`Area: ${selectedAreaTab || "-"} | Tablero: ${selectedBoardTab || "-"} | Player: ${selectedPlayerTab === "all" ? "Todos" : (playerTabs.find((tab) => tab.value === selectedPlayerTab)?.label || selectedPlayerTab)}`, 36, 74);
       pdf.text(`Generado: ${new Date().toLocaleString("es-MX")}`, 36, 90);
 
-      const body = getHistoryExportRows(exportableHistoryActivities).map((row) => [
-        row.area,
-        row.tablero,
-        row.actividad,
-        row.player,
-        row.estado,
-        row.fecha,
-        row.inicio,
-        row.fin,
-        row.tiempo,
-      ]);
+      const samplePdfActivity = exportableHistoryActivities[0];
+      const pdfBoardFields = samplePdfActivity?.derivedFromBoardHistory ? (samplePdfActivity.snapshotFields || []) : [];
+      const pdfHeaders = pdfBoardFields.length > 0
+        ? [...pdfBoardFields.map((f) => String(f.label || f.id || "")), "Player", "Estado", "Fecha", "Inicio", "Fin", "Tiempo"]
+        : ["Area", "Tablero", "Actividad", "Player", "Estado", "Fecha", "Inicio", "Fin", "Tiempo"];
+      const body = exportableHistoryActivities.map((activity) => {
+        if (pdfBoardFields.length > 0) {
+          return [
+            ...pdfBoardFields.map((field) => String(activity.rowValues?.[field.id] ?? "")),
+            resolveHistoryPlayerLabel(activity),
+            String(activity.status || ""),
+            formatDate(activity.activityDate),
+            formatTime(activity.startTime),
+            formatTime(activity.endTime),
+            formatDurationClock(activity.accumulatedSeconds),
+          ];
+        }
+        return [activity.areaRoot, activity.boardName || "General", resolveHistoryActivityLabel(activity), resolveHistoryPlayerLabel(activity), String(activity.status || ""), formatDate(activity.activityDate), formatTime(activity.startTime), formatTime(activity.endTime), formatDurationClock(activity.accumulatedSeconds)];
+      });
 
       autoTable(pdf, {
         startY: 104,
-        head: [["Area", "Tablero", "Actividad", "Player", "Estado", "Fecha", "Inicio", "Fin", "Tiempo"]],
+        head: [pdfHeaders],
         body,
         styles: { fontSize: 8, cellPadding: 4 },
         headStyles: { fillColor: [3, 33, 33], textColor: [255, 255, 255] },
@@ -1132,39 +1150,7 @@ export default function HistorialSemanas({ contexto }) {
             <h3>Historial por mes</h3>
             <p>Abre un mes y revisa una sola semana a la vez con flechas para avanzar o retroceder.</p>
           </div>
-          <div style={{ display: "flex", gap: "0.45rem", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <label className="board-top-select" style={{ minWidth: 180 }}>
-              <span>Descargar</span>
-              <select value={historyExportPeriod} onChange={(event) => setHistoryExportPeriod(event.target.value)}>
-                <option value="week">Semana</option>
-                <option value="quincena">Quincena</option>
-                <option value="month">Mes</option>
-              </select>
-            </label>
-            <button
-              type="button"
-              className="icon-button"
-              onClick={() => { void exportHistoryToPdf(); }}
-              disabled={!exportableHistoryActivities.length || isExportingHistoryPdf}
-              title={isExportingHistoryPdf ? "Exportando PDF" : "Exportar a PDF"}
-            >
-              {isExportingHistoryPdf ? "Exportando PDF..." : "Exportar PDF"}
-            </button>
-            <button
-              type="button"
-              className="icon-button"
-              onClick={() => { void downloadHistoryPackageFile(); }}
-              disabled={!exportableHistoryActivities.length}
-              title="Descargar formato unico COPMEC (.copmec)"
-            >
-              Descargar .copmec
-            </button>
-            {effectiveHistoryWeek && canEditHistoricalWeekActivities ? (
-              <button type="button" className="icon-button" onClick={() => setEditWeekId(effectiveHistoryWeek.id)}>
-                Editar actividades
-              </button>
-            ) : null}
-          </div>
+
         </div>
 
         {effectiveHistoryWeek ? (
@@ -1290,6 +1276,40 @@ export default function HistorialSemanas({ contexto }) {
                           </button>
                         </div>
 
+                        <div style={{ display: "flex", gap: "0.45rem", alignItems: "center", flexWrap: "wrap" }}>
+                          <label className="board-top-select" style={{ minWidth: 180 }}>
+                            <span>Descargar</span>
+                            <select value={historyExportPeriod} onChange={(event) => setHistoryExportPeriod(event.target.value)}>
+                              <option value="week">Semana</option>
+                              <option value="quincena">Quincena</option>
+                              <option value="month">Mes</option>
+                            </select>
+                          </label>
+                          <button
+                            type="button"
+                            className="icon-button"
+                            onClick={() => { void exportHistoryToPdf(); }}
+                            disabled={!exportableHistoryActivities.length || isExportingHistoryPdf}
+                            title={isExportingHistoryPdf ? "Exportando PDF" : "Exportar a PDF"}
+                          >
+                            {isExportingHistoryPdf ? "Exportando PDF..." : "Exportar PDF"}
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-button"
+                            onClick={() => { void downloadHistoryPackageFile(); }}
+                            disabled={!exportableHistoryActivities.length}
+                            title="Descargar formato único COPMEC (.copmec)"
+                          >
+                            Descargar .copmec
+                          </button>
+                          {effectiveHistoryWeek && canEditHistoricalWeekActivities ? (
+                            <button type="button" className="icon-button" onClick={() => setEditWeekId(effectiveHistoryWeek.id)}>
+                              Editar actividades
+                            </button>
+                          ) : null}
+                        </div>
+
                         <div style={{ display: "grid", gap: "0.9rem" }}>
                           {weeklyDaySections.map((dayEntry) => {
                             const isExpanded = expandedDayKey === dayEntry.dayKey;
@@ -1329,34 +1349,40 @@ export default function HistorialSemanas({ contexto }) {
                                 {isExpanded ? (
                                   dayEntry.activities.length ? (
                                     <div className="table-wrap compact-table">
-                                      <table className="history-table-clean">
-                                        <thead>
-                                          <tr>
-                                            <th>Área</th>
-                                            <th>Tablero</th>
-                                            <th>Actividad</th>
-                                            <th>Player</th>
-                                            <th>Estado</th>
-                                            <th>Inicio</th>
-                                            <th>Fin</th>
-                                            <th>Tiempo</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {dayEntry.activities.map((activity) => (
-                                            <tr key={activity.id}>
-                                              <td>{activity.areaRoot}</td>
-                                              <td>{activity.boardName || "General"}</td>
-                                              <td>{resolveHistoryActivityLabel(activity)}</td>
-                                              <td title={resolveHistoryPlayerLabel(activity)}>{resolveHistoryPlayerLabel(activity)}</td>
-                                              <td><StatusBadge status={activity.status} /></td>
-                                              <td>{formatTime(activity.startTime)}</td>
-                                              <td>{formatTime(activity.endTime)}</td>
-                                              <td>{formatDurationClock(activity.accumulatedSeconds)}</td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
+                                      {(() => {
+                                        const sampleAct = dayEntry.activities[0];
+                                        const dynamicFields = sampleAct?.derivedFromBoardHistory && Array.isArray(sampleAct.snapshotFields) && sampleAct.snapshotFields.length > 0 ? sampleAct.snapshotFields : null;
+                                        return (
+                                          <table className="history-table-clean">
+                                            <thead>
+                                              <tr>
+                                                {dynamicFields
+                                                  ? dynamicFields.map((field) => <th key={field.id}>{field.label || field.id}</th>)
+                                                  : (<><th>Área</th><th>Tablero</th><th>Actividad</th></>)
+                                                }
+                                                <th>Player</th>
+                                                <th>Estado</th>
+                                                {!dynamicFields && <><th>Inicio</th><th>Fin</th></>}
+                                                <th>Tiempo</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {dayEntry.activities.map((activity) => (
+                                                <tr key={activity.id}>
+                                                  {dynamicFields
+                                                    ? dynamicFields.map((field) => <td key={field.id}>{String(activity.rowValues?.[field.id] ?? "")}</td>)
+                                                    : (<><td>{activity.areaRoot}</td><td>{activity.boardName || "General"}</td><td>{resolveHistoryActivityLabel(activity)}</td></>)
+                                                  }
+                                                  <td title={resolveHistoryPlayerLabel(activity)}>{resolveHistoryPlayerLabel(activity)}</td>
+                                                  <td><StatusBadge status={activity.status} /></td>
+                                                  {!dynamicFields && <><td>{formatTime(activity.startTime)}</td><td>{formatTime(activity.endTime)}</td></>}
+                                                  <td>{formatDurationClock(activity.accumulatedSeconds)}</td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        );
+                                      })()}
                                     </div>
                                   ) : (
                                     <span className="subtle-line">No hay actividades registradas para este día.</span>
