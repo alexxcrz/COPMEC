@@ -251,17 +251,34 @@ export function DashboardColumnChart({ rows, color = "linear-gradient(180deg, #0
   );
 }
 
+function shortChartLabel(label) {
+  if (!label) return "";
+  // "Semana · 6 abr 2026 - 12 abr 2026" → "6-12 abr"
+  let s = label.replace(/\bSemana\s*·\s*/i, "").trim();
+  // Strip 4-digit years
+  s = s.replace(/\s*\d{4}/g, "").trim();
+  // "6 abr - 12 abr" → "6-12 abr" (same month)
+  const rangeMatch = s.match(/^(\d+)\s+(\w+)\s*[-–]\s*(\d+)\s+(\w+)$/);
+  if (rangeMatch) {
+    const [, d1, m1, d2, m2] = rangeMatch;
+    return m1 === m2 ? `${d1}-${d2} ${m1}` : `${d1} ${m1}-${d2} ${m2}`;
+  }
+  // "1ra quincena · mayo" or "2da quincena · mayo"
+  s = s.replace(/quincena\s*·\s*/i, "q. ").replace(/([12])[ra|da]+\s+q\./i, "$1ª q.");
+  return s.length > 14 ? s.substring(0, 13) + "…" : s;
+}
+
 export function DashboardLineChart({ series = [], emptyLabel = "No hay datos para la gráfica." }) {
   if (!series.length || series.every((s) => !s.data?.length)) {
     return <p className="dashboard-empty-state">{emptyLabel}</p>;
   }
 
   const width  = 520;
-  const height = 210;
+  const height = 200;
   const padLeft   = 36;
   const padRight  = 12;
   const padTop    = 14;
-  const padBottom = 70;
+  const padBottom = 54;
   const chartW = width  - padLeft - padRight;
   const chartH = height - padTop  - padBottom;
 
@@ -269,12 +286,12 @@ export function DashboardLineChart({ series = [], emptyLabel = "No hay datos par
   const maxVal     = Math.max(...allValues, 1);
   const minVal     = Math.min(...allValues.filter((v) => v > 0), 0);
   const range      = Math.max(maxVal - minVal, 1);
-  const xLabels    = series[0]?.data.map((d) => d.label) ?? [];
+  const xLabels    = series[0]?.data.map((d) => shortChartLabel(d.label)) ?? [];
   const pointCount = xLabels.length;
   const xStep      = pointCount > 1 ? chartW / (pointCount - 1) : 0;
 
-  // Smart interval: skip labels when they would overlap when rotated
-  const avgLabelPx = (xLabels.reduce((s, l) => s + l.length, 0) / (xLabels.length || 1)) * 6.2 * 0.64;
+  // Skip labels if they'd overlap (estimated px per char at 9px)
+  const avgLabelPx = (xLabels.reduce((acc, l) => acc + l.length, 0) / (xLabels.length || 1)) * 5.6 * 0.7;
   const labelInterval = xStep > 0 ? Math.max(1, Math.ceil(avgLabelPx / xStep)) : 1;
 
   function toX(index) { return pointCount === 1 ? padLeft + chartW / 2 : padLeft + index * xStep; }
@@ -285,13 +302,13 @@ export function DashboardLineChart({ series = [], emptyLabel = "No hay datos par
 
   return (
     <div className="dashboard-linechart-shell">
-      <svg viewBox={`0 0 ${width} ${height}`} className="dashboard-line-chart" aria-label="Gráfico de líneas">
+      <svg viewBox={`0 0 ${width} ${height}`} className="dashboard-line-chart" overflow="hidden" aria-label="Gráfico de líneas">
         <defs>
           {series.map((s, idx) => {
             const color = s.color || DASHBOARD_LINE_PALETTE[idx % DASHBOARD_LINE_PALETTE.length];
             return (
               <linearGradient key={`lg-${s.key || idx}`} id={`lineArea-${s.key || idx}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"   stopColor={color} stopOpacity="0.18" />
+                <stop offset="0%"   stopColor={color} stopOpacity="0.15" />
                 <stop offset="100%" stopColor={color} stopOpacity="0.02" />
               </linearGradient>
             );
@@ -315,10 +332,11 @@ export function DashboardLineChart({ series = [], emptyLabel = "No hay datos par
             <text
               key={idx}
               x={x}
-              y={baselineY + 4}
+              y={baselineY + 5}
+              fontSize="9"
               className="dashboard-axis-label"
               textAnchor="end"
-              transform={`rotate(-38, ${x}, ${baselineY + 4})`}
+              transform={`rotate(-40, ${x}, ${baselineY + 5})`}
             >
               {label}
             </text>

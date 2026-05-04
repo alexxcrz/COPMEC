@@ -8514,10 +8514,12 @@ tbody tr:hover {
 .dashboard-line-chart {
   width: 100%;
   max-width: 100%;
+  max-height: 200px;
   height: auto;
   border-radius: 0.9rem;
   background: linear-gradient(180deg, #fbfefd 0%, #f4f8f6 100%);
   border: 1px solid rgba(170, 178, 189, 0.22);
+  overflow: hidden;
 }
 
 .dashboard-linechart-legend {
