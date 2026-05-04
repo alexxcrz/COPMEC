@@ -1146,6 +1146,7 @@ function TemplateQuestionEditor({
               </button>
             </div>
             <div className="audit-question-editor-grid">
+              {/* Fila 1: Tipo | Pregunta | Categoría */}
               <label className="app-modal-field">
                 <span>Tipo</span>
                 <select
@@ -1173,7 +1174,7 @@ function TemplateQuestionEditor({
                   <option value="multi">Opción múltiple</option>
                 </select>
               </label>
-              <label className="app-modal-field audit-field-span-2">
+              <label className="app-modal-field">
                 <span>Pregunta</span>
                 <input
                   value={question.text}
@@ -1197,22 +1198,67 @@ function TemplateQuestionEditor({
                   disabled={disabled}
                 />
               </label>
-              <label className="app-modal-field" style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
-                <button
-                  type="button"
-                  className={`switch-button ${question.isActive !== false ? "on" : ""}`}
-                  onClick={() => setDraft((current) => ({
-                    ...current,
-                    questions: current.questions.map((item) => (item.id === question.id ? { ...item, isActive: !(question.isActive !== false) } : item)),
-                  }))}
-                  disabled={disabled}
-                  aria-pressed={question.isActive !== false}
-                  aria-label="Alternar pregunta activa"
-                >
-                  <span className="switch-thumb" />
-                </button>
-                <span>{question.isActive !== false ? "Activa" : "Inactiva"}</span>
-              </label>
+              {/* Fila 2: 3 switches — label arriba, switch abajo */}
+              <div className="app-modal-field">
+                <span>Activa</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", paddingTop: "0.1rem" }}>
+                  <button
+                    type="button"
+                    className={`switch-button ${question.isActive !== false ? "on" : ""}`}
+                    onClick={() => setDraft((current) => ({
+                      ...current,
+                      questions: current.questions.map((item) => (item.id === question.id ? { ...item, isActive: !(question.isActive !== false) } : item)),
+                    }))}
+                    disabled={disabled}
+                    aria-pressed={question.isActive !== false}
+                    aria-label="Alternar pregunta activa"
+                  >
+                    <span className="switch-thumb" />
+                  </button>
+                  <span style={{ fontSize: "0.72rem" }}>{question.isActive !== false ? "Sí" : "No"}</span>
+                </div>
+              </div>
+              {question.type === "yesno" ? (
+                <div className="app-modal-field">
+                  <span>Nota opcional</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", paddingTop: "0.1rem" }}>
+                    <button
+                      type="button"
+                      className={`switch-button ${Boolean(question.allowNote) ? "on" : ""}`}
+                      onClick={() => setDraft((current) => ({
+                        ...current,
+                        questions: current.questions.map((item) => (item.id === question.id ? { ...item, allowNote: !Boolean(question.allowNote) } : item)),
+                      }))}
+                      disabled={disabled}
+                      aria-pressed={Boolean(question.allowNote)}
+                      aria-label="Permitir nota opcional"
+                    >
+                      <span className="switch-thumb" />
+                    </button>
+                    <span style={{ fontSize: "0.72rem" }}>{Boolean(question.allowNote) ? "Sí" : "No"}</span>
+                  </div>
+                </div>
+              ) : <div />}
+              <div className="app-modal-field">
+                <span>Evidencia</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", paddingTop: "0.1rem" }}>
+                  <button
+                    type="button"
+                    className={`switch-button ${Boolean(question.evidenceRequired) ? "on" : ""}`}
+                    onClick={() => setDraft((current) => ({
+                      ...current,
+                      questions: current.questions.map((item) => (item.id === question.id ? { ...item, evidenceRequired: !Boolean(question.evidenceRequired) } : item)),
+                    }))}
+                    disabled={disabled}
+                    aria-pressed={Boolean(question.evidenceRequired)}
+                    aria-label="Requerir evidencia"
+                  >
+                    <span className="switch-thumb" />
+                  </button>
+                  <span style={{ fontSize: "0.72rem" }}>{Boolean(question.evidenceRequired) ? "Requerida" : "Opcional"}</span>
+                </div>
+              </div>
+              {/* Fila 3: Mostrar si | Valor esperado */}
               <label className="app-modal-field">
                 <span>Mostrar si</span>
                 <select
@@ -1244,8 +1290,10 @@ function TemplateQuestionEditor({
                   disabled={disabled || !question.conditionalQuestionId}
                 />
               </label>
+              <div />
+              {/* Filas condicionales */}
               {(question.type === "text" || question.type === "number" || question.type === "date") ? (
-                <label className="app-modal-field audit-field-span-2">
+                <label className="app-modal-field audit-field-span-full">
                   <span>Placeholder</span>
                   <input
                     value={question.placeholder || ""}
@@ -1258,40 +1306,6 @@ function TemplateQuestionEditor({
                   />
                 </label>
               ) : null}
-              {question.type === "yesno" ? (
-                <label className="app-modal-field audit-field-span-2" style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
-                  <button
-                    type="button"
-                    className={`switch-button ${Boolean(question.allowNote) ? "on" : ""}`}
-                    onClick={() => setDraft((current) => ({
-                      ...current,
-                      questions: current.questions.map((item) => (item.id === question.id ? { ...item, allowNote: !Boolean(question.allowNote) } : item)),
-                    }))}
-                    disabled={disabled}
-                    aria-pressed={Boolean(question.allowNote)}
-                    aria-label="Permitir nota opcional"
-                  >
-                    <span className="switch-thumb" />
-                  </button>
-                  <span>{Boolean(question.allowNote) ? "Nota opcional activada" : "Nota opcional desactivada"}</span>
-                </label>
-              ) : null}
-              <label className="app-modal-field audit-field-span-2" style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
-                <button
-                  type="button"
-                  className={`switch-button ${Boolean(question.evidenceRequired) ? "on" : ""}`}
-                  onClick={() => setDraft((current) => ({
-                    ...current,
-                    questions: current.questions.map((item) => (item.id === question.id ? { ...item, evidenceRequired: !Boolean(question.evidenceRequired) } : item)),
-                  }))}
-                  disabled={disabled}
-                  aria-pressed={Boolean(question.evidenceRequired)}
-                  aria-label="Requerir evidencia"
-                >
-                  <span className="switch-thumb" />
-                </button>
-                <span>{Boolean(question.evidenceRequired) ? "Evidencia requerida" : "Evidencia opcional"}</span>
-              </label>
               {question.type === "scale" ? (
                 <>
                   <label className="app-modal-field">
@@ -1322,10 +1336,11 @@ function TemplateQuestionEditor({
                       disabled={disabled}
                     />
                   </label>
+                  <div />
                 </>
               ) : null}
               {(question.type === "select" || question.type === "multi") ? (
-                <div className="app-modal-field audit-field-span-2">
+                <div className="app-modal-field audit-field-span-full">
                   <span style={{ display: "block", marginBottom: "0.35rem", fontWeight: 600, fontSize: "0.8rem" }}>Opciones</span>
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
                     {(question.options || []).map((opt, optIndex) => (

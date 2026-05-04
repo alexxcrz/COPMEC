@@ -10723,13 +10723,14 @@ tbody tr:hover {
   align-items: start;
 }
 
-/* Inside each question card: single column since cards are now narrow */
+/* Inside each question card: 3 columns — Tipo | Pregunta | Categoría */
 .audit-question-editor-grid {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
 }
 
-.audit-question-editor-grid .audit-field-span-2 {
-  grid-column: 1;
+.audit-question-editor-grid .audit-field-span-full {
+  grid-column: 1 / -1;
 }
 
 .audit-template-library-card,
