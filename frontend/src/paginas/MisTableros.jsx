@@ -3,6 +3,8 @@ import { createPortal } from "react-dom";
 import ReturnsReconditionScanner from "../features/boards/ReturnsReconditionScanner.jsx";
 import { BoardEditableInventoryPropertyInput, BoardEvidenceCell, BoardMultiSelectDetailCell } from "../components/BoardRuntimeFieldCells.jsx";
 import {
+  formatBoardMultiSelectDetailValue,
+  formatInventoryLookupLabel,
   formatBoardRowAssigneeLabel,
   getLivePauseOverflowSeconds,
   getBoardRowResponsibleIds,
@@ -55,6 +57,55 @@ function getInventoryPropertySuggestions(item, property, fallbackValue = "") {
       seen.add(key);
       return true;
     });
+}
+
+function formatBoardCellObjectValue(rawValue) {
+  if (rawValue === null || rawValue === undefined) return "";
+  if (typeof rawValue !== "object") return String(rawValue);
+
+  if (Array.isArray(rawValue)) {
+    const multiSelectLabel = formatBoardMultiSelectDetailValue(rawValue);
+    if (multiSelectLabel) return multiSelectLabel;
+    return rawValue
+      .map((entry) => formatBoardCellObjectValue(entry))
+      .filter(Boolean)
+      .join(" | ");
+  }
+
+  const inventoryLookupLabel = formatInventoryLookupLabel(rawValue);
+  if (inventoryLookupLabel) return inventoryLookupLabel;
+
+  const code = String(rawValue.code || rawValue.sku || "").trim();
+  const name = String(rawValue.name || "").trim();
+  const presentation = String(rawValue.presentation || "").trim();
+  if (code || name || presentation) {
+    return [code, name, presentation].filter(Boolean).join(" · ");
+  }
+
+  if (rawValue.option || rawValue.label || rawValue.detail) {
+    const optionLabel = String(rawValue.label || rawValue.option || "").trim();
+    const detail = String(rawValue.detail || "").trim();
+    return detail ? `${optionLabel}: ${detail}` : optionLabel;
+  }
+
+  const printableEntries = Object.entries(rawValue)
+    .map(([key, value]) => {
+      if (value === null || value === undefined) return "";
+      if (typeof value === "object") return "";
+      const printableValue = String(value).trim();
+      return printableValue ? `${key}: ${printableValue}` : "";
+    })
+    .filter(Boolean);
+
+  if (printableEntries.length) {
+    return printableEntries.join(" | ");
+  }
+
+  try {
+    return JSON.stringify(rawValue);
+  } catch {
+    return "";
+  }
 }
 
 export default function MisTableros({ contexto }) {
@@ -1567,12 +1618,16 @@ export default function MisTableros({ contexto }) {
                           }
 
                           if (field.type === "formula" || field.type === "inventoryProperty") {
-                            return <td key={field.id} style={columnStyle}><span style={style}>{String(value || 0)}</span></td>;
+                            const formattedValue = formatBoardCellObjectValue(value);
+                            const displayValue = formattedValue === "" && field.type === "formula" ? "0" : formattedValue;
+                            return <td key={field.id} style={columnStyle}><span style={style}>{displayValue}</span></td>;
                           }
 
                           const fieldEditKey = `${row.id}-${field.id}`;
                           const hasDraft = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey);
-                          const inputValue = hasDraft ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || "");
+                          const inputValue = hasDraft
+                            ? fieldEditDrafts[fieldEditKey]
+                            : formatBoardCellObjectValue(row.values?.[field.id] ?? "");
                           return <td key={field.id} style={columnStyle}><input value={inputValue} onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))} onBlur={() => setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; })} onKeyDown={(event) => { if (event.key !== "Enter") return; event.preventDefault(); const nextValue = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey) ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || ""); updateBoardRowValue(selectedCustomBoard.id, row.id, field, nextValue); setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; }); }} placeholder={field.placeholder || "Captura un valor"} style={rule ? { ...controlStyle, backgroundColor: rule.color, color: rule.textColor || "inherit" } : controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
                         })}
                       </tr>

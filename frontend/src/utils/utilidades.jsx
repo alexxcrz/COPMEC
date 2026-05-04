@@ -2258,15 +2258,54 @@ export function formatBoardPreviewValue(value, field, userMap, inventoryItems) {
 }
 
 export function normalizeBoardMultiSelectDetailValue(value) {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter((item) => item && typeof item === "object")
-    .map((item) => ({
-      option: String(item.option || "").trim(),
-      label: String(item.label || item.option || "").trim(),
-      detail: String(item.detail || "").trim(),
-    }))
-    .filter((item) => item.option);
+  let source = value;
+  if (typeof source === "string") {
+    const rawText = source.trim();
+    if (!rawText) return [];
+    if ((rawText.startsWith("[") && rawText.endsWith("]")) || (rawText.startsWith("{") && rawText.endsWith("}"))) {
+      try {
+        source = JSON.parse(rawText);
+      } catch {
+        return [];
+      }
+    } else {
+      return [];
+    }
+  }
+
+  if (Array.isArray(source)) {
+    return source
+      .filter((item) => item && typeof item === "object")
+      .map((item) => ({
+        option: String(item.option || item.label || "").trim(),
+        label: String(item.label || item.option || "").trim(),
+        detail: String(item.detail ?? item.quantity ?? item.value ?? "").trim(),
+      }))
+      .filter((item) => item.option);
+  }
+
+  if (source && typeof source === "object") {
+    if (source.option || source.label || source.detail || source.quantity || source.value) {
+      const option = String(source.option || source.label || "").trim();
+      const label = String(source.label || source.option || option).trim();
+      const detail = String(source.detail ?? source.quantity ?? source.value ?? "").trim();
+      return option ? [{ option, label, detail }] : [];
+    }
+
+    return Object.entries(source)
+      .map(([key, detailValue]) => {
+        const option = String(key || "").trim();
+        if (!option) return null;
+        if (detailValue && typeof detailValue === "object") {
+          const detail = String(detailValue.detail ?? detailValue.quantity ?? detailValue.value ?? "").trim();
+          return { option, label: option, detail };
+        }
+        return { option, label: option, detail: String(detailValue ?? "").trim() };
+      })
+      .filter(Boolean);
+  }
+
+  return [];
 }
 
 function buildBoardAssigneeInitials(name) {

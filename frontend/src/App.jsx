@@ -6801,6 +6801,77 @@ function App() { // NOSONAR
     const boardFields = board?.fields || [];
     const rawValue = values[field.id];
 
+    function resolveInventoryItemFromLookupValue(lookupValue) {
+      const inventoryItems = state.inventoryItems || [];
+      if (!inventoryItems.length) return null;
+
+      const candidateTokens = [];
+      const appendToken = (value) => {
+        const next = String(value || "").trim();
+        if (next) candidateTokens.push(next);
+      };
+
+      if (lookupValue && typeof lookupValue === "object") {
+        appendToken(lookupValue.id);
+        appendToken(lookupValue.code);
+        appendToken(lookupValue.sku);
+        appendToken(lookupValue.name);
+      } else {
+        const rawText = String(lookupValue || "").trim();
+        if (rawText) {
+          appendToken(rawText);
+          if (rawText.startsWith("{") && rawText.endsWith("}")) {
+            try {
+              const parsed = JSON.parse(rawText);
+              if (parsed && typeof parsed === "object") {
+                appendToken(parsed.id);
+                appendToken(parsed.code);
+                appendToken(parsed.sku);
+                appendToken(parsed.name);
+              }
+            } catch {
+              // Ignore invalid JSON lookup payloads.
+            }
+          }
+
+          if (rawText.includes("·")) {
+            const [firstPart] = rawText.split("·");
+            appendToken(firstPart);
+          }
+
+          if (rawText.includes("-")) {
+            const [firstPart] = rawText.split("-");
+            appendToken(firstPart);
+          }
+        }
+      }
+
+      const seenTokens = new Set();
+      const normalizedTokens = candidateTokens
+        .map((token) => token.trim())
+        .filter((token) => {
+          if (!token) return false;
+          const key = normalizeKey(token);
+          if (seenTokens.has(key)) return false;
+          seenTokens.add(key);
+          return true;
+        });
+
+      for (const token of normalizedTokens) {
+        const tokenKey = normalizeKey(token);
+        const matchedItem = inventoryItems.find((item) => {
+          const idMatch = String(item?.id || "").trim() === token;
+          const codeMatch = normalizeKey(item?.code) === tokenKey;
+          const skuMatch = normalizeKey(item?.sku) === tokenKey;
+          const nameMatch = normalizeKey(item?.name) === tokenKey;
+          return idMatch || codeMatch || skuMatch || nameMatch;
+        });
+        if (matchedItem) return matchedItem;
+      }
+
+      return null;
+    }
+
     if (field.type === "inventoryProperty") {
       const rawInventoryOverride = values[field.id];
       const allowManualInventoryValue = ["lot", "expiry", "label"].includes(field.inventoryProperty);
@@ -6808,8 +6879,8 @@ function App() { // NOSONAR
         return rawInventoryOverride;
       }
       const resolvedSourceFieldId = resolveInventoryPropertySourceFieldId(boardFields, field.sourceFieldId, field.id);
-      const lookupId = values[resolvedSourceFieldId];
-      const inventoryItem = (state.inventoryItems || []).find((item) => item.id === lookupId);
+      const lookupValue = values[resolvedSourceFieldId];
+      const inventoryItem = resolveInventoryItemFromLookupValue(lookupValue);
       return resolveInventoryPropertyValue(inventoryItem, field.inventoryProperty);
     }
 
