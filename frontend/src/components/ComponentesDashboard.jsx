@@ -257,11 +257,11 @@ export function DashboardLineChart({ series = [], emptyLabel = "No hay datos par
   }
 
   const width  = 520;
-  const height = 220;
+  const height = 210;
   const padLeft   = 36;
   const padRight  = 12;
-  const padTop    = 16;
-  const padBottom = 32;
+  const padTop    = 14;
+  const padBottom = 70;
   const chartW = width  - padLeft - padRight;
   const chartH = height - padTop  - padBottom;
 
@@ -273,10 +273,15 @@ export function DashboardLineChart({ series = [], emptyLabel = "No hay datos par
   const pointCount = xLabels.length;
   const xStep      = pointCount > 1 ? chartW / (pointCount - 1) : 0;
 
+  // Smart interval: skip labels when they would overlap when rotated
+  const avgLabelPx = (xLabels.reduce((s, l) => s + l.length, 0) / (xLabels.length || 1)) * 6.2 * 0.64;
+  const labelInterval = xStep > 0 ? Math.max(1, Math.ceil(avgLabelPx / xStep)) : 1;
+
   function toX(index) { return pointCount === 1 ? padLeft + chartW / 2 : padLeft + index * xStep; }
   function toY(value) { return padTop + chartH - ((value - minVal) / range) * chartH; }
 
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => Math.round(minVal + t * range));
+  const baselineY = height - padBottom;
 
   return (
     <div className="dashboard-linechart-shell">
@@ -286,7 +291,7 @@ export function DashboardLineChart({ series = [], emptyLabel = "No hay datos par
             const color = s.color || DASHBOARD_LINE_PALETTE[idx % DASHBOARD_LINE_PALETTE.length];
             return (
               <linearGradient key={`lg-${s.key || idx}`} id={`lineArea-${s.key || idx}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"   stopColor={color} stopOpacity="0.22" />
+                <stop offset="0%"   stopColor={color} stopOpacity="0.18" />
                 <stop offset="100%" stopColor={color} stopOpacity="0.02" />
               </linearGradient>
             );
@@ -300,12 +305,25 @@ export function DashboardLineChart({ series = [], emptyLabel = "No hay datos par
           </g>
         ))}
 
-        <line x1={padLeft} y1={padTop} x2={padLeft} y2={height - padBottom} className="dashboard-axis-line" />
-        <line x1={padLeft} y1={height - padBottom} x2={width - padRight} y2={height - padBottom} className="dashboard-axis-line" />
+        <line x1={padLeft} y1={padTop} x2={padLeft} y2={baselineY} className="dashboard-axis-line" />
+        <line x1={padLeft} y1={baselineY} x2={width - padRight} y2={baselineY} className="dashboard-axis-line" />
 
-        {xLabels.map((label, idx) => (
-          <text key={idx} x={toX(idx)} y={height - 8} className="dashboard-axis-label" textAnchor="middle">{label}</text>
-        ))}
+        {xLabels.map((label, idx) => {
+          if (idx % labelInterval !== 0) return null;
+          const x = toX(idx);
+          return (
+            <text
+              key={idx}
+              x={x}
+              y={baselineY + 4}
+              className="dashboard-axis-label"
+              textAnchor="end"
+              transform={`rotate(-38, ${x}, ${baselineY + 4})`}
+            >
+              {label}
+            </text>
+          );
+        })}
 
         {series.map((s, idx) => {
           if (!s.data?.length) return null;
