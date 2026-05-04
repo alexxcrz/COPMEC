@@ -754,10 +754,6 @@ export default function MisTableros({ contexto }) {
     )
     : null;
   const visibleRows = (boardView?.rows || []).filter((row) => {
-    // Tableros de devoluciones/reacondicionado: ocultar filas ya cerradas (pertenecen a tarimas anteriores)
-    if (boardLooksReturnsRecondition && row.status === STATUS_FINISHED) return false;
-    // Tableros de limpieza: mostrar solo actividades accionables (no terminadas)
-    if (!isHistoricalCustomBoardView && showCleaningNaveSelector && row.status === STATUS_FINISHED) return false;
     if (!isHistoricalCustomBoardView && showCleaningNaveSelector && boardDateField && targetOperationalDateKey) {
       const rowDate = String(row?.values?.[boardDateField.id] || "").trim();
       // En limpieza, la lista operativa se limita estrictamente al dia seleccionado.
@@ -1075,15 +1071,15 @@ export default function MisTableros({ contexto }) {
                   {visibleRows.map((row) => {
                     const isLeadPrincipal = Boolean(canManageDashboardState);
                     // Cell value edits are allowed even during global pause (only workflow is blocked).
-                    const rowCaptureEnabled = !isHistoricalCustomBoardView && (isLeadPrincipal || (canEditBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions) && row.status !== STATUS_FINISHED));
+                    const rowCaptureEnabled = !isHistoricalCustomBoardView && (isLeadPrincipal || canEditBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions));
                     const rowWorkflowEnabled = !isHistoricalCustomBoardView && (isLeadPrincipal || (!globalPauseLocked && canOperateBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions)));
                     const canDeleteBoardRows = Boolean(selectedBoardActionPermissions.deleteBoardRow) || isLeadPrincipal;
                     const rowDeleteEnabled = canDeleteBoardRows
                       && !isHistoricalCustomBoardView
                       && (isLeadPrincipal || (!globalPauseLocked && row.status !== STATUS_FINISHED && canEditBoardRowRecord(currentUser, selectedCustomBoard, row, normalizedPermissions)));
                     const isFinishedRow = row.status === STATUS_FINISHED;
-                    const rowFieldEditable = rowCaptureEnabled || (isLeadPrincipal && isFinishedRow);
-                    const rowDisplayReadOnly = isHistoricalCustomBoardView || isFinishedRow;
+                    const rowFieldEditable = rowCaptureEnabled;
+                    const rowDisplayReadOnly = isHistoricalCustomBoardView;
                     const canStartRow = row.status === STATUS_PENDING || row.status === STATUS_PAUSED;
                     const canPauseRow = row.status === STATUS_RUNNING;
                     const canFinishRow = row.status === STATUS_RUNNING;
