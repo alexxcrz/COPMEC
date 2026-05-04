@@ -1146,7 +1146,7 @@ function TemplateQuestionEditor({
               </button>
             </div>
             <div className="audit-question-editor-grid">
-              {/* Fila 1: Tipo | Pregunta | Categoría */}
+              {/* Fila 1: Tipo | Categoría | vacío */}
               <label className="app-modal-field">
                 <span>Tipo</span>
                 <select
@@ -1175,18 +1175,6 @@ function TemplateQuestionEditor({
                 </select>
               </label>
               <label className="app-modal-field">
-                <span>Pregunta</span>
-                <input
-                  value={question.text}
-                  onChange={(event) => setDraft((current) => ({
-                    ...current,
-                    questions: current.questions.map((item) => (item.id === question.id ? { ...item, text: event.target.value } : item)),
-                  }))}
-                  placeholder="Escribe la pregunta"
-                  disabled={disabled}
-                />
-              </label>
-              <label className="app-modal-field">
                 <span>Categoría</span>
                 <input
                   value={question.category || "General"}
@@ -1198,7 +1186,21 @@ function TemplateQuestionEditor({
                   disabled={disabled}
                 />
               </label>
-              {/* Fila 2: 3 switches — label arriba, switch abajo */}
+              <div />
+              {/* Fila 2: Pregunta — ancho completo */}
+              <label className="app-modal-field audit-field-span-full">
+                <span>Pregunta</span>
+                <input
+                  value={question.text}
+                  onChange={(event) => setDraft((current) => ({
+                    ...current,
+                    questions: current.questions.map((item) => (item.id === question.id ? { ...item, text: event.target.value } : item)),
+                  }))}
+                  placeholder="Escribe la pregunta"
+                  disabled={disabled}
+                />
+              </label>
+              {/* Fila 3: 3 switches — label arriba, switch abajo */}
               <div className="app-modal-field">
                 <span>Activa</span>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", paddingTop: "0.1rem" }}>
