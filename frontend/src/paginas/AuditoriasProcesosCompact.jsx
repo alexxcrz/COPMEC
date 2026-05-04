@@ -1411,6 +1411,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
   const [newAuditSubArea, setNewAuditSubArea] = useState("");
   const [newAuditProcess, setNewAuditProcess] = useState("");
   const [newAuditTemplateId, setNewAuditTemplateId] = useState("");
+  const [newAuditTargetName, setNewAuditTargetName] = useState("");
   const [selectedAuditId, setSelectedAuditId] = useState("");
   const [auditDraft, setAuditDraft] = useState(null);
   const [auditQuestionsDraft, setAuditQuestionsDraft] = useState(null);
@@ -2310,6 +2311,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     const template = resolvedTemplates.find((entry) => entry.id === newAuditTemplateId) || null;
 
     try {
+      const targetName = newAuditTargetName.trim();
       const createdAuditId = await createProcessAudit({
         area: newAuditArea.trim(),
         subArea: newAuditSubArea.trim(),
@@ -2318,8 +2320,12 @@ export default function AuditoriasProcesosCompact({ contexto }) {
         questions: template
           ? normalizeQuestionsForSave(template.questions || []).map(({ answer: _answer, ...question }) => question)
           : [{ type: "yesno", text: "¿Cumple con el estándar definido?", required: true }],
+        subResponses: targetName
+          ? [{ id: crypto.randomUUID(), personName: targetName, personRole: "", notes: "", answers: {}, createdAt: new Date().toISOString() }]
+          : [],
       });
       if (createdAuditId) setSelectedAuditId(createdAuditId);
+      setNewAuditTargetName("");
       pushAppToast("Auditoría creada.", "success");
     } catch (error) {
       pushAppToast(error?.message || "No se pudo crear la auditoría.", "danger");
@@ -2541,6 +2547,14 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                     <option key={template.id} value={template.id}>{template.area} · {template.process} · {template.questions?.length || 0} preg.</option>
                   ))}
                 </select>
+              </label>
+              <label className="app-modal-field">
+                <span>Auditado (nombre)</span>
+                <input
+                  value={newAuditTargetName}
+                  onChange={(event) => setNewAuditTargetName(event.target.value)}
+                  placeholder="Ej. Juan Pérez"
+                />
               </label>
             </div>
             <div className="audit-inline-actions">

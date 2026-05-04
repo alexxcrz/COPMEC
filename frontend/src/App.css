@@ -10723,8 +10723,13 @@ tbody tr:hover {
   align-items: start;
 }
 
+/* Inside each question card: single column since cards are now narrow */
 .audit-question-editor-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.audit-question-editor-grid .audit-field-span-2 {
+  grid-column: 1;
 }
 
 .audit-template-library-card,
@@ -10956,6 +10961,31 @@ tbody tr:hover {
 .audit-template-library-item strong,
 .audit-question-editor-card strong {
   font-size: 1rem;
+}
+
+/* Compact input styling inside question editor cards */
+.audit-question-editor-card .app-modal-field {
+  gap: 0.18rem;
+  min-height: 2rem;
+  padding: 0.28rem 0.38rem;
+  border-radius: 0.65rem;
+}
+
+.audit-question-editor-card .app-modal-field > span {
+  font-size: 0.62rem;
+  line-height: 1.1;
+}
+
+.audit-question-editor-card .app-modal-field input,
+.audit-question-editor-card .app-modal-field select,
+.audit-question-editor-card .app-modal-field textarea {
+  min-height: 1.35rem;
+  font-size: 0.78rem;
+  padding: 0.12rem 0;
+}
+
+.audit-question-editor-card .audit-question-editor-grid {
+  gap: 0.6rem;
 }
 
 .audit-evidence-section {
@@ -11295,11 +11325,18 @@ tbody tr:hover {
   overflow-x: hidden;
 }
 
-.audit-template-library-list,
+.audit-template-library-list {
+  max-height: 52vh;
+  overflow: auto;
+  padding-right: 0.5rem;
+}
+
 .audit-question-editor-list {
   max-height: 52vh;
   overflow: auto;
   padding-right: 0.5rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
 }
 
 .audit-template-mobile-tabs {
@@ -11387,6 +11424,10 @@ tbody tr:hover {
   .audit-question-editor-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .audit-question-editor-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 720px) {
@@ -11394,6 +11435,10 @@ tbody tr:hover {
   .audit-active-meta-grid,
   .audit-response-grid,
   .audit-question-editor-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .audit-question-editor-list {
     grid-template-columns: minmax(0, 1fr);
   }
 

@@ -4020,7 +4020,14 @@ export function createProcessAudit(auth, payload = {}) {
     followUp: (Array.isArray(payload?.followUp) ? payload.followUp : []).map((entry) => normalizeProcessAuditFollowUpRecord(entry, entry?.id || null)),
     implementationPlan: normalizeProcessAuditImplementationPlan(payload?.implementationPlan || EMPTY_OBJECT),
     boardLinks: Array.isArray(payload?.boardLinks) ? payload.boardLinks.map((entry) => String(entry || "").trim()).filter(Boolean) : [],
-    subResponses: [],
+    subResponses: Array.isArray(payload?.subResponses) ? payload.subResponses.map((sr) => ({
+      id: String(sr?.id || "").trim() || makeId("sr"),
+      personName: String(sr?.personName || "").trim(),
+      personRole: String(sr?.personRole || "").trim(),
+      notes: String(sr?.notes || "").trim(),
+      answers: (sr?.answers && typeof sr.answers === "object" && !Array.isArray(sr.answers)) ? sr.answers : {},
+      createdAt: sr?.createdAt || startedAt,
+    })).filter((sr) => sr.personName) : [],
     scoring: initialScoring,
     updatedAt: startedAt,
   };
