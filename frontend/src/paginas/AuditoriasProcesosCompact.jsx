@@ -1448,8 +1448,11 @@ export default function AuditoriasProcesosCompact({ contexto }) {
   const [historyDirty, setHistoryDirty] = useState(false);
   const [historySaving, setHistorySaving] = useState(false);
   const [historyRichEditorState, setHistoryRichEditorState] = useState({});
+  const [historyFollowUpUploading, setHistoryFollowUpUploading] = useState(false);
   const [activeSubResponseId, setActiveSubResponseId] = useState(null); // null = respuesta principal
   const [subResponseRichState, setSubResponseRichState] = useState({});
+  const historyFollowUpFileRef = useRef(null);
+  const historyClosureFileRef = useRef(null);
   const galleryEvidenceInputRef = useRef(null);
   const mobileCameraInputRef = useRef(null);
   function openAuditViewer(audit) {
@@ -1891,6 +1894,69 @@ export default function AuditoriasProcesosCompact({ contexto }) {
       }
     } catch (err) {
       pushAppToast(err?.message || "No se pudo avanzar el paso.", "danger");
+    }
+  }
+
+  async function uploadFollowUpEvidence(entryId, files) {
+    const normalizedFiles = Array.from(files || []).filter(Boolean);
+    if (!normalizedFiles.length || !historyDraft || !canManageAudits) return;
+    setHistoryFollowUpUploading(true);
+    try {
+      for (const file of normalizedFiles) {
+        const uploaded = await uploadFileToCloudinary(file);
+        const ev = {
+          url: uploaded.url,
+          thumbnailUrl: uploaded.thumbnailUrl || uploaded.url,
+          name: uploaded.originalName || file.name,
+          mimeType: uploaded.fileMimeType || file.type,
+          createdAt: new Date().toISOString(),
+        };
+        setHistoryDraft((c) => ({
+          ...c,
+          followUp: (c.followUp || []).map((entry) =>
+            entry.id === entryId
+              ? { ...entry, evidences: [...(entry.evidences || []), ev] }
+              : entry
+          ),
+        }));
+        setHistoryDirty(true);
+      }
+      pushAppToast("Evidencia de verificación subida.", "success");
+    } catch (err) {
+      pushAppToast(err?.message || "No se pudo subir la evidencia.", "danger");
+    } finally {
+      setHistoryFollowUpUploading(false);
+    }
+  }
+
+  async function uploadClosureEvidence(files) {
+    const normalizedFiles = Array.from(files || []).filter(Boolean);
+    if (!normalizedFiles.length || !historyDraft || !canManageAudits) return;
+    setHistoryFollowUpUploading(true);
+    try {
+      for (const file of normalizedFiles) {
+        const uploaded = await uploadFileToCloudinary(file);
+        const ev = {
+          url: uploaded.url,
+          thumbnailUrl: uploaded.thumbnailUrl || uploaded.url,
+          name: uploaded.originalName || file.name,
+          mimeType: uploaded.fileMimeType || file.type,
+          createdAt: new Date().toISOString(),
+        };
+        setHistoryDraft((c) => ({
+          ...c,
+          implementationPlan: {
+            ...(c.implementationPlan || {}),
+            closureEvidences: [...((c.implementationPlan?.closureEvidences) || []), ev],
+          },
+        }));
+        setHistoryDirty(true);
+      }
+      pushAppToast("Evidencia de cierre subida.", "success");
+    } catch (err) {
+      pushAppToast(err?.message || "No se pudo subir la evidencia.", "danger");
+    } finally {
+      setHistoryFollowUpUploading(false);
     }
   }
 
@@ -3247,6 +3313,113 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                               <textarea rows={3} value={historyDraft.implementationPlan?.instructions || ""} placeholder="Pasos claros de ejecución" onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, implementationPlan: { ...(c.implementationPlan || {}), instructions: v } })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone} style={{ resize: "vertical" }} />
                             </label>
                           </div>
+
+                          {/* Verificaciones de proceso */}
+                          <div className="card-header-row" style={{ marginTop: "1rem", marginBottom: "0.4rem" }}>
+                            <strong>Verificaciones de proceso</strong>
+                            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                              <span className="chip">{(historyDraft.followUp || []).length}</span>
+                              {!isCycleDone ? (
+                                <button
+                                  type="button"
+                                  className="icon-button"
+                                  onClick={() => {
+                                    const newEntry = {
+                                      id: crypto.randomUUID(),
+                                      verificationStatus: "ok",
+                                      verifiedBy: currentUser?.name || "",
+                                      note: "",
+                                      evidences: [],
+                                      dueDate: new Date().toISOString().slice(0, 10),
+                                      createdAt: new Date().toISOString(),
+                                    };
+                                    setHistoryDraft((c) => ({ ...c, followUp: [...(c.followUp || []), newEntry] }));
+                                    setHistoryDirty(true);
+                                  }}
+                                  disabled={!canManageAudits}
+                                >
+                                  <Plus size={14} /> Nueva verificación
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                          {!(historyDraft.followUp || []).length ? (
+                            <p className="subtle-line">Sin verificaciones registradas. Agrega una para documentar el avance.</p>
+                          ) : null}
+                          <div style={{ display: "grid", gap: "0.65rem" }}>
+                            {(historyDraft.followUp || []).map((entry) => (
+                              <article key={entry.id} className="surface-card audit-history-card" style={{ display: "grid", gap: "0.6rem" }}>
+                                <div className="card-header-row">
+                                  <span className={`chip ${entry.verificationStatus === "ok" ? "success" : entry.verificationStatus === "partial" ? "warning" : "danger"}`}>
+                                    {entry.verificationStatus === "ok" ? "✔ Conforme" : entry.verificationStatus === "partial" ? "⚠ Parcial" : "✘ No conforme"}
+                                  </span>
+                                  {!isCycleDone ? (
+                                    <button
+                                      type="button"
+                                      className="icon-button danger"
+                                      onClick={() => { setHistoryDraft((c) => ({ ...c, followUp: (c.followUp || []).filter((e) => e.id !== entry.id) })); setHistoryDirty(true); }}
+                                      disabled={!canManageAudits}
+                                    >
+                                      <Trash2 size={13} />
+                                    </button>
+                                  ) : null}
+                                </div>
+                                <div className="audit-form-grid">
+                                  <label className="app-modal-field">
+                                    <span>Fecha</span>
+                                    <input type="date" value={entry.dueDate || ""} disabled={!canManageAudits || isCycleDone}
+                                      onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, followUp: (c.followUp || []).map((en) => en.id === entry.id ? { ...en, dueDate: v } : en) })); setHistoryDirty(true); }} />
+                                  </label>
+                                  <label className="app-modal-field">
+                                    <span>Estado</span>
+                                    <select value={entry.verificationStatus || "ok"} disabled={!canManageAudits || isCycleDone}
+                                      onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, followUp: (c.followUp || []).map((en) => en.id === entry.id ? { ...en, verificationStatus: v } : en) })); setHistoryDirty(true); }}>
+                                      <option value="ok">Conforme</option>
+                                      <option value="partial">Parcial</option>
+                                      <option value="issue">No conforme</option>
+                                    </select>
+                                  </label>
+                                  <label className="app-modal-field">
+                                    <span>Verificado por</span>
+                                    <input type="text" value={entry.verifiedBy || ""} placeholder="Nombre" disabled={!canManageAudits || isCycleDone}
+                                      onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, followUp: (c.followUp || []).map((en) => en.id === entry.id ? { ...en, verifiedBy: v } : en) })); setHistoryDirty(true); }} />
+                                  </label>
+                                  <label className="app-modal-field audit-field-span-full">
+                                    <span>Observaciones</span>
+                                    <textarea rows={2} value={entry.note || ""} placeholder="Describe lo observado durante la verificación" disabled={!canManageAudits || isCycleDone} style={{ resize: "vertical" }}
+                                      onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, followUp: (c.followUp || []).map((en) => en.id === entry.id ? { ...en, note: v } : en) })); setHistoryDirty(true); }} />
+                                  </label>
+                                </div>
+                                {/* Evidencias de verificación */}
+                                {!isCycleDone ? (
+                                  <div>
+                                    <input
+                                      type="file"
+                                      accept="image/*,video/*,application/pdf"
+                                      multiple
+                                      style={{ display: "none" }}
+                                      id={`fu-file-${entry.id}`}
+                                      onChange={(e) => { uploadFollowUpEvidence(entry.id, e.target.files); e.target.value = ""; }}
+                                      disabled={historyFollowUpUploading || !canManageAudits}
+                                    />
+                                    <label htmlFor={`fu-file-${entry.id}`} className="icon-button" style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                                      <Upload size={13} /> {historyFollowUpUploading ? "Subiendo…" : "Subir evidencia"}
+                                    </label>
+                                  </div>
+                                ) : null}
+                                {(entry.evidences || []).length > 0 ? (
+                                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.25rem" }}>
+                                    {(entry.evidences || []).map((ev, i) => (
+                                      <a key={i} href={ev.url} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.78rem", color: "#0f766e", borderRadius: "0.65rem", background: "rgba(15,118,110,0.07)", padding: "0.2rem 0.55rem" }}>
+                                        {ev.mimeType?.startsWith("image/") ? "🖼" : ev.mimeType?.startsWith("video/") ? "🎥" : "📄"} {ev.name || `Archivo ${i + 1}`}
+                                      </a>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </article>
+                            ))}
+                          </div>
+
                           {!isCycleDone && (hLc === "in_implementation" || hLc === "in_validation") ? (
                             <div className="audit-inline-actions" style={{ marginTop: "0.75rem" }}>
                               <button type="button" className="primary-button" onClick={() => setHistoryActiveTab("close")} disabled={!canManageAudits}>Ir a Cierre →</button>
@@ -3258,9 +3431,64 @@ export default function AuditoriasProcesosCompact({ contexto }) {
                       {historyActiveTab === "close" && !isCycleDone ? (
                         <div className="audit-cycle-tab-content">
                           <p className="subtle-line" style={{ marginBottom: "0.75rem" }}>
-                            Confirma que la implementación fue completada y cierra el ciclo de esta auditoría. Esta acción es permanente.
+                            Documenta el resultado final y cierra el ciclo. Esta acción es permanente.
                           </p>
+                          <div className="audit-form-grid" style={{ marginBottom: "0.75rem" }}>
+                            <label className="app-modal-field audit-field-span-full">
+                              <span>Observaciones de cierre</span>
+                              <textarea rows={3} value={historyDraft.implementationPlan?.closureNotes || ""} placeholder="¿Qué quedó resuelto? ¿Qué queda pendiente?" style={{ resize: "vertical" }}
+                                onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, implementationPlan: { ...(c.implementationPlan || {}), closureNotes: v } })); setHistoryDirty(true); }}
+                                disabled={!canManageAudits} />
+                            </label>
+                          </div>
+                          {/* Evidencias de cierre */}
+                          <div style={{ marginBottom: "0.75rem" }}>
+                            <div className="card-header-row" style={{ marginBottom: "0.4rem" }}>
+                              <strong style={{ fontSize: "0.88rem" }}>Evidencias / reporte de cierre</strong>
+                              <div>
+                                <input
+                                  ref={historyClosureFileRef}
+                                  type="file"
+                                  accept="image/*,video/*,application/pdf"
+                                  multiple
+                                  style={{ display: "none" }}
+                                  onChange={(e) => { uploadClosureEvidence(e.target.files); e.target.value = ""; }}
+                                  disabled={historyFollowUpUploading || !canManageAudits}
+                                />
+                                <button
+                                  type="button"
+                                  className="icon-button"
+                                  onClick={() => historyClosureFileRef.current?.click()}
+                                  disabled={historyFollowUpUploading || !canManageAudits}
+                                >
+                                  <Upload size={14} /> {historyFollowUpUploading ? "Subiendo…" : "Subir reporte / evidencia"}
+                                </button>
+                              </div>
+                            </div>
+                            {(historyDraft.implementationPlan?.closureEvidences || []).length > 0 ? (
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                                {(historyDraft.implementationPlan.closureEvidences).map((ev, i) => (
+                                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.4rem", background: "rgba(3,33,33,0.05)", borderRadius: "0.75rem", padding: "0.3rem 0.65rem" }}>
+                                    <a href={ev.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: "0.78rem", color: "#032121" }}>
+                                      {ev.mimeType?.startsWith("image/") ? "🖼" : ev.mimeType?.startsWith("video/") ? "🎥" : "📄"} {ev.name || `Archivo ${i + 1}`}
+                                    </a>
+                                    <button type="button" className="icon-button danger" style={{ minHeight: "unset", padding: "0.1rem 0.2rem" }}
+                                      onClick={() => { setHistoryDraft((c) => ({ ...c, implementationPlan: { ...(c.implementationPlan || {}), closureEvidences: (c.implementationPlan?.closureEvidences || []).filter((_, idx) => idx !== i) } })); setHistoryDirty(true); }}>
+                                      <Trash2 size={11} />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="subtle-line">Sin evidencias de cierre todavía.</p>
+                            )}
+                          </div>
                           <div className="audit-inline-actions">
+                            {historyDirty && canManageAudits ? (
+                              <button type="button" className="icon-button" onClick={handleSaveHistoryAudit} disabled={historySaving}>
+                                {historySaving ? "Guardando…" : "Guardar borrador"}
+                              </button>
+                            ) : null}
                             <button type="button" className="primary-button" onClick={() => handleHistoryAdvanceStep("closed")} disabled={!canManageAudits}>
                               ✅ Cerrar ciclo completo
                             </button>

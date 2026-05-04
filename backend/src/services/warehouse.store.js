@@ -3793,9 +3793,12 @@ function normalizeProcessAuditProposal(proposal = {}, fallbackId = null) {
 }
 
 function normalizeProcessAuditFollowUpRecord(entry = {}, fallbackId = null) {
+  const vs = String(entry?.verificationStatus || "").toLowerCase();
   return {
     id: fallbackId || String(entry?.id || makeId("pafu")).trim(),
     status: normalizeProcessAuditLifecycleStatus(entry?.status),
+    verificationStatus: ["ok", "partial", "issue"].includes(vs) ? vs : "ok",
+    verifiedBy: String(entry?.verifiedBy || "").trim(),
     note: String(entry?.note || "").trim(),
     evidences: Array.isArray(entry?.evidences) ? entry.evidences : [],
     dueDate: entry?.dueDate ? String(entry.dueDate) : "",
@@ -3811,6 +3814,8 @@ function normalizeProcessAuditImplementationPlan(plan = {}) {
     instructions: String(plan?.instructions || "").trim(),
     estimatedTime: String(plan?.estimatedTime || "").trim(),
     deadline: plan?.deadline ? String(plan.deadline) : "",
+    closureNotes: String(plan?.closureNotes || "").trim(),
+    closureEvidences: Array.isArray(plan?.closureEvidences) ? plan.closureEvidences : [],
   };
 }
 
