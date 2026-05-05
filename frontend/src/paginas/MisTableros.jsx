@@ -1032,7 +1032,7 @@ export default function MisTableros({ contexto }) {
                     onClick={() => {
                       if (!customBoardActionsMenuOpen) {
                         const rect = menuTriggerRef.current?.getBoundingClientRect();
-                        if (rect) setDropdownPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+                        if (rect) setDropdownPos({ top: rect.bottom + 6, left: Math.min(rect.left, window.innerWidth - 244) });
                       }
                       setCustomBoardActionsMenuOpen((current) => !current);
                     }}
@@ -1043,7 +1043,7 @@ export default function MisTableros({ contexto }) {
                   {customBoardActionsMenuOpen && !isHistoricalCustomBoardView && dropdownPos ? createPortal(
                     <div
                       className="custom-board-actions-dropdown"
-                      style={{ position: "fixed", top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999 }}
+                      style={{ position: "fixed", top: dropdownPos.top, left: dropdownPos.left, zIndex: 9999 }}
                       onPointerDown={(e) => e.stopPropagation()}
                     >
                       <button type="button" className="custom-board-menu-item" onClick={() => { setCustomBoardActionsMenuOpen(false); void saveCurrentBoardAsTemplate(); }}>
