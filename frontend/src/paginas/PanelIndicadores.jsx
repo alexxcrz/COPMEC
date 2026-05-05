@@ -203,6 +203,7 @@ export default function PanelIndicadores({ contexto }) {
     setDashboardSectionsOpen,
     dashboardFilters,
     setDashboardFilters,
+    filteredDashboardRecords,
     visibleUsers,
     departmentOptions,
     DashboardSection,
@@ -468,6 +469,121 @@ export default function PanelIndicadores({ contexto }) {
   // Si el tablero seleccionado ya no existe en las opciones, resetear
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const leaderboardBoardFilterSafe = leaderboardBoardOptions.some((o) => o.value === leaderboardBoardFilter) ? leaderboardBoardFilter : "all";
+
+  const scopedLeaderboardBoardRecords = useMemo(() => {
+    const rows = Array.isArray(filteredDashboardRecords)
+      ? filteredDashboardRecords.filter((item) => item.source === "board")
+      : [];
+    const areaFiltered = dashboardFilters.area === "all"
+      ? rows
+      : rows.filter((item) => areaMatchesFilter(item.area, dashboardFilters.area));
+    const boardFiltered = leaderboardBoardFilterSafe === "all"
+      ? areaFiltered
+      : areaFiltered.filter((item) => String(item.boardId || "") === leaderboardBoardFilterSafe);
+
+    return [...boardFiltered].sort((left, right) => new Date(right.occurredAt || 0).getTime() - new Date(left.occurredAt || 0).getTime());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dashboardFilters.area, filteredDashboardRecords, leaderboardBoardFilterSafe]);
+
+  const leaderboardDynamicBoardFields = useMemo(() => {
+    if (leaderboardBoardFilterSafe === "all") return [];
+    const fieldMap = new Map();
+
+    scopedLeaderboardBoardRecords.forEach((record) => {
+      const fields = Array.isArray(record.sourceFields) ? record.sourceFields : [];
+      fields.forEach((field, index) => {
+        const key = String(field?.id || field?.key || field?.name || `field-${index}`);
+        if (!key || fieldMap.has(key)) return;
+        fieldMap.set(key, {
+          key,
+          label: String(field?.label || field?.name || key),
+          type: String(field?.type || "text"),
+          order: Number.isFinite(Number(field?.order)) ? Number(field.order) : index,
+        });
+      });
+    });
+
+    if (!fieldMap.size) {
+      scopedLeaderboardBoardRecords.forEach((record) => {
+        Object.keys(record?.rowValues || {}).forEach((rawKey, index) => {
+          const key = String(rawKey || "").trim();
+          if (!key || fieldMap.has(key)) return;
+          fieldMap.set(key, {
+            key,
+            label: key,
+            type: "text",
+            order: index,
+          });
+        });
+      });
+    }
+
+    return Array.from(fieldMap.values())
+      .sort((left, right) => left.order - right.order)
+      .slice(0, 14);
+  }, [leaderboardBoardFilterSafe, scopedLeaderboardBoardRecords]);
+
+  function getBoardRecordFieldValue(record, field) {
+    const values = record?.rowValues && typeof record.rowValues === "object" ? record.rowValues : {};
+    const candidates = [field.key, field.id, field.name, field.label].filter(Boolean);
+    for (const candidate of candidates) {
+      if (Object.prototype.hasOwnProperty.call(values, candidate)) {
+        return values[candidate];
+      }
+    }
+
+    const lowerMap = new Map(Object.keys(values).map((key) => [String(key).toLowerCase(), key]));
+    for (const candidate of candidates) {
+      const normalized = String(candidate).toLowerCase();
+      if (lowerMap.has(normalized)) {
+        return values[lowerMap.get(normalized)];
+      }
+    }
+    return "";
+  }
+
+  function formatLeaderboardBoardValue(value, fieldType) {
+    if (value === null || value === undefined || value === "") return "-";
+
+    if (typeof value === "object") {
+      if (Array.isArray(value)) return value.join(", ") || "-";
+      if (typeof value.label === "string") return value.label;
+      if (typeof value.value === "string" || typeof value.value === "number") return String(value.value);
+      return JSON.stringify(value);
+    }
+
+    if (typeof value === "boolean") return value ? "Sí" : "No";
+
+    const normalizedType = String(fieldType || "").toLowerCase();
+    const textValue = String(value).trim();
+    const numericValue = Number(textValue.replace(/,/g, "."));
+
+    if (["number", "counter", "quantity", "currency", "rating", "percentage", "progress", "score"].includes(normalizedType) && Number.isFinite(numericValue)) {
+      return normalizedType === "currency" ? `$${formatMetricNumber(numericValue, 2)}` : formatMetricNumber(numericValue, 2);
+    }
+
+    if (normalizedType === "time" && Number.isFinite(numericValue)) {
+      return `${formatMetricNumber(numericValue, 2)} min`;
+    }
+
+    if (["date", "datetime"].includes(normalizedType)) {
+      const parsed = new Date(textValue);
+      if (!Number.isNaN(parsed.getTime())) {
+        return new Intl.DateTimeFormat("es-MX", { day: "2-digit", month: "short", year: "numeric" }).format(parsed);
+      }
+    }
+
+    return textValue || "-";
+  }
+
+  function formatLeaderboardStatus(status) {
+    const normalized = String(status || "").toLowerCase();
+    if (normalized === "finished") return "Finalizado";
+    if (normalized === "running") return "En curso";
+    if (normalized === "paused") return "Pausado";
+    if (normalized === "pending") return "Pendiente";
+    return status || "-";
+  }
 
   const scopedAreaBoardDetailedRows = useMemo(() => {
     const rows = Array.isArray(dashboardAreaBoardDetailedRows) ? dashboardAreaBoardDetailedRows : [];
@@ -1747,46 +1863,79 @@ export default function PanelIndicadores({ contexto }) {
               emptyLabel="No hay datos suficientes de producto/SKU con tiempo para este filtro."
             />
             <div className="dashboard-table-wrap">
-              <table className="dashboard-table-clean">
-                <thead>
-                  <tr>
-                    <th>Área</th>
-                    <th>Tablero</th>
-                    <th>Proceso</th>
-                    <th>Producto / SKU</th>
-                    <th>Tarima</th>
-                    <th>Piezas</th>
-                    <th>Recibidas</th>
-                    <th>Merma</th>
-                    <th>Aptas</th>
-                    <th>Total (min)</th>
-                    <th>Promedio (min)</th>
-                    <th>Mín</th>
-                    <th>Máx</th>
-                    <th>Registros</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {scopedInventoryProductTimeRows.slice(0, 30).map((item) => (
-                    <tr key={item.key}>
-                      <td>{item.area}</td>
-                      <td>{item.boardName}</td>
-                      <td>{item.process || "General"}</td>
-                      <td>{item.product}</td>
-                      <td>{item.tarima || "Sin tarima"}</td>
-                      <td>{formatMetricNumber(item.totalPieces || 0, 0)}</td>
-                      <td>{formatMetricNumber(item.totalReceivedPieces || 0, 0)}</td>
-                      <td>{formatMetricNumber(item.totalMermaPieces || 0, 0)}</td>
-                      <td>{formatMetricNumber(item.totalAptasPieces || 0, 0)}</td>
-                      <td>{formatMetricNumber(item.totalMinutes, 2)}</td>
-                      <td>{formatMetricNumber(item.averageMinutes, 2)}</td>
-                      <td>{formatMetricNumber(item.minMinutes, 2)}</td>
-                      <td>{formatMetricNumber(item.maxMinutes, 2)}</td>
-                      <td>{item.count}</td>
+              {leaderboardBoardFilterSafe === "all" ? (
+                <table className="dashboard-table-clean">
+                  <thead>
+                    <tr>
+                      <th>Área</th>
+                      <th>Tablero</th>
+                      <th>Proceso</th>
+                      <th>Producto / SKU</th>
+                      <th>Tarima</th>
+                      <th>Piezas</th>
+                      <th>Recibidas</th>
+                      <th>Merma</th>
+                      <th>Aptas</th>
+                      <th>Total (min)</th>
+                      <th>Promedio (min)</th>
+                      <th>Mín</th>
+                      <th>Máx</th>
+                      <th>Registros</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {scopedInventoryProductTimeRows.slice(0, 30).map((item) => (
+                      <tr key={item.key}>
+                        <td>{item.area}</td>
+                        <td>{item.boardName}</td>
+                        <td>{item.process || "General"}</td>
+                        <td>{item.product}</td>
+                        <td>{item.tarima || "Sin tarima"}</td>
+                        <td>{formatMetricNumber(item.totalPieces || 0, 0)}</td>
+                        <td>{formatMetricNumber(item.totalReceivedPieces || 0, 0)}</td>
+                        <td>{formatMetricNumber(item.totalMermaPieces || 0, 0)}</td>
+                        <td>{formatMetricNumber(item.totalAptasPieces || 0, 0)}</td>
+                        <td>{formatMetricNumber(item.totalMinutes, 2)}</td>
+                        <td>{formatMetricNumber(item.averageMinutes, 2)}</td>
+                        <td>{formatMetricNumber(item.minMinutes, 2)}</td>
+                        <td>{formatMetricNumber(item.maxMinutes, 2)}</td>
+                        <td>{item.count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <table className="dashboard-table-clean">
+                  <thead>
+                    <tr>
+                      <th>Área</th>
+                      <th>Tablero</th>
+                      <th>Responsable</th>
+                      {leaderboardDynamicBoardFields.map((field) => (
+                        <th key={`leaderboard-col-${field.key}`}>{field.label}</th>
+                      ))}
+                      <th>Estatus</th>
+                      <th>Duración (min)</th>
+                      <th>Fecha</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {scopedLeaderboardBoardRecords.slice(0, 30).map((record) => (
+                      <tr key={record.id}>
+                        <td>{record.area || "Sin área"}</td>
+                        <td>{record.boardName || "Tablero"}</td>
+                        <td>{record.responsibleName || "Sin responsable"}</td>
+                        {leaderboardDynamicBoardFields.map((field) => (
+                          <td key={`${record.id}-${field.key}`}>{formatLeaderboardBoardValue(getBoardRecordFieldValue(record, field), field.type)}</td>
+                        ))}
+                        <td>{formatLeaderboardStatus(record.status)}</td>
+                        <td>{formatMetricNumber((record.durationSeconds || 0) / 60, 2)}</td>
+                        <td>{record.occurredAt ? new Intl.DateTimeFormat("es-MX", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(record.occurredAt)) : "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </article>
         </div>
