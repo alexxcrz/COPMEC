@@ -433,6 +433,8 @@ export default function MisTableros({ contexto }) {
   const [openAssigneeMenuRowId, setOpenAssigneeMenuRowId] = useState("");
   const [isBoardImporting, setIsBoardImporting] = useState(false);
   const boardImportInputRef = useRef(null);
+  const menuTriggerRef = useRef(null);
+  const [dropdownPos, setDropdownPos] = useState(null);
   const [selectedWeekdayFilter, setSelectedWeekdayFilter] = useState("auto");
   const [histViewNave, setHistViewNave] = useState("");
   const [currentWeekdayOffset, setCurrentWeekdayOffset] = useState(() => {
@@ -1010,7 +1012,7 @@ export default function MisTableros({ contexto }) {
                   </label>
                 ) : null}
               </div>
-              <div className="custom-board-actions-menu-shell" ref={customBoardActionsMenuRef}>
+                <div className="custom-board-actions-menu-shell" ref={customBoardActionsMenuRef}>
                   <button
                     type="button"
                     className="primary-button custom-board-add-row-button"
@@ -1022,17 +1024,28 @@ export default function MisTableros({ contexto }) {
                     <Plus size={16} />
                   </button>
                   <button
+                    ref={menuTriggerRef}
                     type="button"
                     className="icon-button custom-board-menu-trigger"
                     aria-label="Abrir acciones del tablero"
                     aria-expanded={customBoardActionsMenuOpen}
-                    onClick={() => setCustomBoardActionsMenuOpen((current) => !current)}
+                    onClick={() => {
+                      if (!customBoardActionsMenuOpen) {
+                        const rect = menuTriggerRef.current?.getBoundingClientRect();
+                        if (rect) setDropdownPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+                      }
+                      setCustomBoardActionsMenuOpen((current) => !current);
+                    }}
                     disabled={isHistoricalCustomBoardView}
                   >
                     <Menu size={16} />
                   </button>
-                  {customBoardActionsMenuOpen && !isHistoricalCustomBoardView ? (
-                    <div className="custom-board-actions-dropdown">
+                  {customBoardActionsMenuOpen && !isHistoricalCustomBoardView && dropdownPos ? createPortal(
+                    <div
+                      className="custom-board-actions-dropdown"
+                      style={{ position: "fixed", top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999 }}
+                      onPointerDown={(e) => e.stopPropagation()}
+                    >
                       <button type="button" className="custom-board-menu-item" onClick={() => { setCustomBoardActionsMenuOpen(false); void saveCurrentBoardAsTemplate(); }}>
                         Guardar como plantilla
                       </button>
@@ -1059,9 +1072,10 @@ export default function MisTableros({ contexto }) {
                         {isBoardImporting ? "Importando..." : "Importar tablero desde JSON"}
                       </button>
                       <input ref={boardImportInputRef} type="file" accept=".json" style={{ display: "none" }} onChange={handleBoardImportFile} />
-                    </div>
+                    </div>,
+                    document.body
                   ) : null}
-              </div>
+                </div>
             </div>
 
             <div className="board-meta-inline board-meta-inline-header">
