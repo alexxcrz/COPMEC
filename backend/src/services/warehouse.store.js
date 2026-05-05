@@ -1203,7 +1203,7 @@ function normalizePermissionEntry(entry, fallbackRoles = []) {
 
 function normalizePermissions(permissions) {
   const defaults = buildDefaultPermissions();
-  return {
+  const normalized = {
     pages: Object.fromEntries(Object.keys(PAGE_PERMISSIONS).map((key) => [key, normalizePermissionEntry(permissions?.pages?.[key], defaults.pages[key].roles)])),
     actions: Object.fromEntries(Object.keys(ACTION_PERMISSIONS).map((key) => [key, normalizePermissionEntry(permissions?.actions?.[key], defaults.actions[key].roles)])),
     userOverrides: Object.fromEntries(Object.entries(permissions?.userOverrides ?? EMPTY_OBJECT).map(([userId, override]) => [
@@ -1214,6 +1214,15 @@ function normalizePermissions(permissions) {
       },
     ])),
   };
+
+  // Hard-lock default visibility: only LEAD has AI access unless explicit user override is set.
+  if (normalized.actions?.useCopmecAI) {
+    normalized.actions.useCopmecAI.roles = [ROLE_LEAD];
+    normalized.actions.useCopmecAI.userIds = [];
+    normalized.actions.useCopmecAI.departments = [];
+  }
+
+  return normalized;
 }
 
 function userMatchesPermissionEntry(user, entry) {

@@ -669,7 +669,7 @@ export const ACTION_DEFINITIONS = [
   { id: "manageProcessAuditTemplates", label: "Gestionar plantillas de auditoría",    category: "Auditorías",          defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "manageSystemSettings",    label: "Configurar parámetros globales del sistema", category: "Configuración",      defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "deleteWeekActivity",      label: "Eliminar actividades de semana",            category: "Operación semanal",   defaultRoles: [ROLE_LEAD] },
-  { id: "useCopmecAI",             label: "Usar COPMEC AI (Cerebro Operativo)",        category: "COPMEC AI",           defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
+  { id: "useCopmecAI",             label: "Usar COPMEC AI (Cerebro Operativo)",        category: "COPMEC AI",           defaultRoles: [ROLE_LEAD] },
 ];
 
 export const BOARD_PERMISSION_ACTION_IDS = new Set([
@@ -692,7 +692,7 @@ export const PAGE_ACTION_GROUPS = {
   [PAGE_HISTORY]: ["editHistoryRecords"],
   [PAGE_PROCESS_AUDITS]: ["viewProcessAudits", "manageProcessAudits", "manageProcessAuditTemplates"],
   [PAGE_INVENTORY]: ["viewBaseInventory", "manageInventory", "deleteInventory", "importInventory", "viewCleaningInventory", "manageCleaningInventory", "deleteCleaningInventory", "importCleaningInventory", "viewOrderInventory", "manageOrderInventory", "deleteOrderInventory", "importOrderInventory"],
-  [PAGE_USERS]: ["createUsers", "editUsers", "deleteUsers", "resetPasswords", "managePermissions"],
+  [PAGE_USERS]: ["createUsers", "editUsers", "deleteUsers", "resetPasswords", "managePermissions", "useCopmecAI"],
   [PAGE_BIBLIOTECA]: ["uploadBiblioteca", "deleteBiblioteca"],
   [PAGE_INCIDENCIAS]: ["createIncidencia", "editIncidencia", "deleteIncidencia"],
   [PAGE_SYSTEM_SETTINGS]: ["manageSystemSettings"],
