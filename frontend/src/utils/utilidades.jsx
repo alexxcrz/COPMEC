@@ -3538,7 +3538,8 @@ export function getOperationalElapsedSeconds(startTime, now, pauseState) {
   if (!Number.isFinite(startMs)) return 0;
   const effectiveNow = typeof now === "number" ? now : new Date(now).getTime();
   const resolvedNow = Number.isFinite(effectiveNow) ? effectiveNow : Date.now();
-  return Math.max(0, Math.floor((resolvedNow - startMs) / 1000));
+  const cappedNow = getEffectiveOperationalNow(resolvedNow, pauseState);
+  return Math.max(0, Math.floor((cappedNow - startMs) / 1000));
 }
 
 export function resolveWorkHoursForArea(pauseState, areaKey) {
@@ -3579,7 +3580,8 @@ export function getElapsedSeconds(activity, now, pauseState) {
 
   const effectiveNow = typeof now === "number" ? now : new Date(now).getTime();
   const resolvedNow = Number.isFinite(effectiveNow) ? effectiveNow : Date.now();
-  const delta = Math.max(0, Math.floor((resolvedNow - resumedMs) / 1000));
+  const cappedNow = getEffectiveOperationalNow(resolvedNow, pauseState);
+  const delta = Math.max(0, Math.floor((cappedNow - resumedMs) / 1000));
   return Math.max(0, accumulatedSeconds + delta);
 }
 
