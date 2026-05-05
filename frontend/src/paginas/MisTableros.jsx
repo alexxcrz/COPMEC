@@ -431,6 +431,8 @@ export default function MisTableros({ contexto }) {
   const boardView = selectedCustomBoardDisplay || selectedCustomBoard;
   const isBoardOwner = Boolean(selectedCustomBoard && currentUser && (currentUser.role === "Lead" || selectedCustomBoard.createdById === currentUser.id || selectedCustomBoard.ownerId === currentUser.id));
   const [openAssigneeMenuRowId, setOpenAssigneeMenuRowId] = useState("");
+  const [isBoardImporting, setIsBoardImporting] = useState(false);
+  const boardImportInputRef = useRef(null);
   const [selectedWeekdayFilter, setSelectedWeekdayFilter] = useState("auto");
   const [histViewNave, setHistViewNave] = useState("");
   const [currentWeekdayOffset, setCurrentWeekdayOffset] = useState(() => {
@@ -826,6 +828,64 @@ export default function MisTableros({ contexto }) {
     return Math.max(0, persistedPauseSeconds + livePauseSeconds);
   };
 
+  function exportCurrentBoardAsJson() {
+    if (!selectedCustomBoard) return;
+    const payload = {
+      version: "copmec-board/1",
+      exportedAt: new Date().toISOString(),
+      name: selectedCustomBoard.name || "Tablero",
+      description: selectedCustomBoard.description || "",
+      category: selectedCustomBoard.category || "",
+      visibilityType: selectedCustomBoard.visibilityType || "department",
+      sharedDepartments: Array.isArray(selectedCustomBoard.sharedDepartments) ? selectedCustomBoard.sharedDepartments : [],
+      accessUserIds: Array.isArray(selectedCustomBoard.accessUserIds) ? selectedCustomBoard.accessUserIds : [],
+      settings: selectedCustomBoard.settings || {},
+      fields: Array.isArray(selectedCustomBoard.fields) ? selectedCustomBoard.fields : [],
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `tablero-${(selectedCustomBoard.name || "tablero").replace(/\s+/g, "-").toLowerCase()}-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleBoardImportFile(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const parsed = JSON.parse(evt.target.result);
+        if (!parsed?.fields) throw new Error("El archivo no tiene la estructura esperada (falta 'fields').");
+        setIsBoardImporting(true);
+        const createPayload = {
+          name: `${parsed.name || "Tablero importado"} (importado)`,
+          description: parsed.description || "",
+          category: parsed.category || "Personalizada",
+          visibilityType: parsed.visibilityType || "department",
+          sharedDepartments: Array.isArray(parsed.sharedDepartments) ? parsed.sharedDepartments : [],
+          accessUserIds: Array.isArray(parsed.accessUserIds) ? parsed.accessUserIds : [],
+          settings: parsed.settings || {},
+          columns: Array.isArray(parsed.fields) ? parsed.fields : [],
+        };
+        const result = await requestJson("/warehouse/boards", {
+          method: "POST",
+          body: JSON.stringify(createPayload),
+        });
+        applyRemoteWarehouseState(result?.data?.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+        if (typeof pushAppToast === "function") pushAppToast(`Tablero "${createPayload.name}" importado correctamente.`, "success");
+      } catch (err) {
+        if (typeof pushAppToast === "function") pushAppToast(String(err?.message || "No se pudo importar el tablero."), "danger");
+      } finally {
+        setIsBoardImporting(false);
+      }
+    };
+    reader.readAsText(file);
+  }
+
   async function saveCurrentBoardAsTemplate() {
     if (!selectedCustomBoard) return;
     const columns = Array.isArray(selectedCustomBoard.fields) ? selectedCustomBoard.fields : [];
@@ -990,10 +1050,18 @@ export default function MisTableros({ contexto }) {
                       <button type="button" className="custom-board-menu-item" onClick={() => { setCustomBoardActionsMenuOpen(false); exportSelectedBoardToCopmec(); }} disabled={!selectedBoardActionPermissions.exportBoardPdf}>
                         Descargar .copmec
                       </button>
+                      <hr style={{ margin: "0.3rem 0", border: "none", borderTop: "1px solid rgba(3,33,33,0.1)" }} />
+                      <button type="button" className="custom-board-menu-item" onClick={() => { setCustomBoardActionsMenuOpen(false); exportCurrentBoardAsJson(); }}>
+                        Exportar estructura JSON
+                      </button>
+                      <button type="button" className="custom-board-menu-item" disabled={isBoardImporting} onClick={() => { setCustomBoardActionsMenuOpen(false); boardImportInputRef.current?.click(); }}>
+                        {isBoardImporting ? "Importando..." : "Importar tablero desde JSON"}
+                      </button>
+                      <input ref={boardImportInputRef} type="file" accept=".json" style={{ display: "none" }} onChange={handleBoardImportFile} />
                     </div>
                   ) : null}
-                </div>
               </div>
+            </div>
             </div>
 
             <div className="board-meta-inline board-meta-inline-header">

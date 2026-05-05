@@ -7169,6 +7169,7 @@ function App() { // NOSONAR
     dashboardDistributionRows,
     dashboardFilters,
     filteredDashboardRecords,
+    dashboardVisibleControlBoards,
     dashboardIshikawaRows,
     dashboardMetrics,
     dashboardParetoRows,

@@ -1406,6 +1406,7 @@ export function BoardBuilderModal({
               </section>
 
               <div className="builder-settings-grid board-builder-settings-grid board-builder-short-select-grid">
+                <div className="board-builder-switch-inline-row">
                 <div className="builder-card compact-builder-card board-builder-switch-row">
                   <div>
                     <strong>Workflow</strong>
@@ -1459,6 +1460,7 @@ export function BoardBuilderModal({
                   <button type="button" className={draft.settings.showEfficiency !== false ? "switch-button on" : "switch-button"} aria-label="Alternar columna eficiencia" aria-pressed={draft.settings.showEfficiency !== false} onClick={() => onChange((current) => ({ ...current, settings: { ...current.settings, showEfficiency: current.settings.showEfficiency === false } }))}>
                     <span className="switch-thumb" />
                   </button>
+                </div>
                 </div>
 
                 <div className="builder-card compact-builder-card board-context-card">

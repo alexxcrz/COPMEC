@@ -5530,6 +5530,17 @@ tbody tr:hover {
   gap: 0.4rem;
 }
 
+.board-builder-switch-inline-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  grid-column: 1 / -1;
+}
+
+.board-builder-switch-inline-row .board-builder-switch-row {
+  flex: 1 1 130px;
+}
+
 .board-builder-switch-row > div {
   display: grid;
   gap: 0.08rem;
@@ -5622,6 +5633,7 @@ tbody tr:hover {
 .board-builder-focus-layout.base-stage {
   grid-template-columns: 1fr;
   position: relative;
+  height: 68vh;
   min-height: 0;
 }
 
@@ -5699,7 +5711,7 @@ tbody tr:hover {
 .board-builder-workbench {
   display: grid;
   gap: 0.7rem;
-  max-height: 72vh;
+  max-height: 68vh;
   overflow: auto;
   padding-right: 0.1rem;
 }
@@ -5712,11 +5724,11 @@ tbody tr:hover {
   width: min(390px, calc(100vw - 4rem));
   max-height: 100%;
   overflow: auto;
-  padding: 0.8rem;
-  border: 1px solid rgba(162, 170, 181, 0.24);
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(162, 170, 181, 0.28);
   border-radius: 1rem;
-  background: linear-gradient(180deg, rgba(250, 254, 252, 0.98) 0%, rgba(241, 248, 245, 0.98) 100%);
-  box-shadow: 0 16px 38px rgba(16, 57, 47, 0.12);
+  background: linear-gradient(180deg, rgba(250, 254, 252, 0.99) 0%, rgba(241, 248, 245, 0.99) 100%);
+  box-shadow: 0 16px 48px rgba(16, 57, 47, 0.16);
   z-index: 6;
   transition: transform 0.2s ease, opacity 0.2s ease;
 }
@@ -5823,8 +5835,7 @@ tbody tr:hover {
 }
 
 .board-template-library {
-  max-height: 58vh;
-  overflow: auto;
+  overflow: visible;
   padding-right: 0.12rem;
 }
 

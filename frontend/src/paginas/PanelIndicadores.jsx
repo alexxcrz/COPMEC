@@ -261,7 +261,13 @@ export default function PanelIndicadores({ contexto }) {
     activateDemoMode,
     deactivateDemoMode,
     pushAppToast,
+    getBoardFieldValue,
+    currentInventoryItems,
+    filteredVisibleControlBoards,
+    dashboardVisibleControlBoards: rawDashboardVisibleControlBoards,
   } = contexto;
+
+  const dashboardVisibleControlBoards = rawDashboardVisibleControlBoards ?? filteredVisibleControlBoards ?? [];
 
   const areAllSectionsOpen = Object.values(dashboardSectionsOpen).every(Boolean);
   const dashboardExportRef = useRef(null);
@@ -309,6 +315,8 @@ export default function PanelIndicadores({ contexto }) {
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
   const [isResetSubmitting, setIsResetSubmitting] = useState(false);
   const [leaderboardBoardFilter, setLeaderboardBoardFilter] = useState("all");
+  const [templateExportError, setTemplateExportError] = useState("");
+  const templateImportRef = useRef(null);
 
   useEffect(() => {
     if (!confirmResetOpen) return undefined;
@@ -523,21 +531,35 @@ export default function PanelIndicadores({ contexto }) {
       .slice(0, 14);
   }, [leaderboardBoardFilterSafe, scopedLeaderboardBoardRecords]);
 
-  function getBoardRecordFieldValue(record, field) {
+  // Board map for resolving getBoardFieldValue (needs board object with .fields)
+  const leaderboardBoardMap = useMemo(() => {
+    const boards = Array.isArray(dashboardVisibleControlBoards) ? dashboardVisibleControlBoards : [];
+    return new Map(boards.map((b) => [String(b.id || ""), b]));
+  }, [dashboardVisibleControlBoards]);
+
+  function resolveBoardRecordFieldValue(record, field) {
+    const board = leaderboardBoardMap.get(String(record?.boardId || ""));
+    if (board && getBoardFieldValue) {
+      // Build a minimal row compatible with getBoardFieldValue
+      const fakeRow = { values: record?.rowValues || {}, id: record?.rawId || "", status: record?.status };
+      const realField = (board.fields || []).find((f) => String(f.id || "") === String(field.key || "")) || field;
+      try {
+        const resolved = getBoardFieldValue(board, fakeRow, realField);
+        if (resolved !== null && resolved !== undefined && String(resolved).trim() !== "") return resolved;
+      } catch {
+        // fallback below
+      }
+    }
+    // Fallback: direct rowValues lookup
     const values = record?.rowValues && typeof record.rowValues === "object" ? record.rowValues : {};
     const candidates = [field.key, field.id, field.name, field.label].filter(Boolean);
     for (const candidate of candidates) {
-      if (Object.prototype.hasOwnProperty.call(values, candidate)) {
-        return values[candidate];
-      }
+      if (Object.prototype.hasOwnProperty.call(values, candidate)) return values[candidate];
     }
-
-    const lowerMap = new Map(Object.keys(values).map((key) => [String(key).toLowerCase(), key]));
+    const lowerMap = new Map(Object.keys(values).map((k) => [String(k).toLowerCase(), k]));
     for (const candidate of candidates) {
-      const normalized = String(candidate).toLowerCase();
-      if (lowerMap.has(normalized)) {
-        return values[lowerMap.get(normalized)];
-      }
+      const lc = String(candidate).toLowerCase();
+      if (lowerMap.has(lc)) return values[lowerMap.get(lc)];
     }
     return "";
   }
@@ -583,6 +605,96 @@ export default function PanelIndicadores({ contexto }) {
     if (normalized === "paused") return "Pausado";
     if (normalized === "pending") return "Pendiente";
     return status || "-";
+  }
+
+  // ── Merma analysis ──────────────────────────────────────────────────────────
+  const mermaAnalysisRows = useMemo(() => {
+    const source = leaderboardBoardFilterSafe === "all"
+      ? scopedInventoryProductTimeRows
+      : scopedLeaderboardBoardRecords.map((rec) => {
+          // Build a lightweight item-like object from the raw board record for merma fields
+          const mermaField = leaderboardDynamicBoardFields.find((f) => /merma|faltante|dano|danado|defect|rechazo/i.test(f.label));
+          const motiField = leaderboardDynamicBoardFields.find((f) => /motivo|razon|causa|tipo.*merma|merma.*tipo/i.test(f.label));
+          const mermaVal = mermaField ? Number(resolveBoardRecordFieldValue(rec, mermaField)) || 0 : 0;
+          const motiVal = motiField ? String(resolveBoardRecordFieldValue(rec, motiField) || "").trim() : "";
+          return { product: rec.responsibleName, totalMermaPieces: mermaVal, mermaMotive: motiVal, boardName: rec.boardName };
+        });
+
+    const map = new Map();
+    source.forEach((item) => {
+      const motivo = String(item?.mermaMotive || "Sin motivo especificado").trim() || "Sin motivo especificado";
+      if (!map.has(motivo)) map.set(motivo, { motivo, count: 0, totalPiezas: 0 });
+      const entry = map.get(motivo);
+      entry.count += 1;
+      entry.totalPiezas += Number(item.totalMermaPieces || 0);
+    });
+
+    return Array.from(map.values())
+      .filter((row) => row.totalPiezas > 0 || row.count > 0)
+      .sort((a, b) => b.totalPiezas - a.totalPiezas || b.count - a.count);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leaderboardBoardFilterSafe, leaderboardDynamicBoardFields, scopedInventoryProductTimeRows, scopedLeaderboardBoardRecords]);
+
+  // ── Template export/import ────────────────────────────────────────────────
+  function exportLeaderboardTemplate() {
+    try {
+      const boardId = leaderboardBoardFilterSafe;
+      const board = boardId !== "all" ? leaderboardBoardMap.get(boardId) : null;
+      const fields = board
+        ? (board.fields || []).map((f) => ({ id: f.id, label: f.label || f.name || f.id, type: f.type, order: f.order }))
+        : leaderboardDynamicBoardFields.map((f) => ({ id: f.key, label: f.label, type: f.type, order: f.order }));
+
+      const sampleRows = scopedLeaderboardBoardRecords.slice(0, 3).map((rec) => {
+        const row = { _area: rec.area, _tablero: rec.boardName, _responsable: rec.responsibleName, _estatus: rec.status };
+        fields.forEach((f) => {
+          row[f.label || f.id] = resolveBoardRecordFieldValue(rec, f);
+        });
+        return row;
+      });
+
+      const template = {
+        version: "1.0",
+        exportedAt: new Date().toISOString(),
+        boardName: board?.name || "Todos los tableros",
+        fields,
+        sampleRows,
+      };
+
+      const blob = new Blob([JSON.stringify(template, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `plantilla-${(board?.name || "leaderboard").replace(/\s+/g, "-").toLowerCase()}-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setTemplateExportError("");
+    } catch (err) {
+      setTemplateExportError(String(err?.message || "Error al exportar plantilla."));
+    }
+  }
+
+  function handleTemplateImport(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const parsed = JSON.parse(evt.target.result);
+        if (!parsed?.fields) throw new Error("El archivo no tiene la estructura esperada (falta 'fields').");
+        const summary = [
+          `Tablero: ${parsed.boardName || "(sin nombre)"}`,
+          `Campos: ${(parsed.fields || []).map((f) => f.label || f.id).join(", ")|| "ninguno"}`,
+          `Exportado: ${parsed.exportedAt || "desconocido"}`,
+          `Filas de muestra: ${(parsed.sampleRows || []).length}`,
+        ].join("\n");
+        pushAppToast?.(`Plantilla cargada exitosamente:\n${summary}`, "success");
+        setTemplateExportError("");
+      } catch (err) {
+        setTemplateExportError(String(err?.message || "Archivo inválido."));
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = "";
   }
 
   const scopedAreaBoardDetailedRows = useMemo(() => {
@@ -1850,6 +1962,7 @@ export default function PanelIndicadores({ contexto }) {
                   Limpiar
                 </button>
               )}
+
             </div>
             <DashboardColumnChart
               rows={scopedInventoryProductTimeRows.slice(0, 12).map((item) => ({
@@ -1926,7 +2039,7 @@ export default function PanelIndicadores({ contexto }) {
                         <td>{record.boardName || "Tablero"}</td>
                         <td>{record.responsibleName || "Sin responsable"}</td>
                         {leaderboardDynamicBoardFields.map((field) => (
-                          <td key={`${record.id}-${field.key}`}>{formatLeaderboardBoardValue(getBoardRecordFieldValue(record, field), field.type)}</td>
+                          <td key={`${record.id}-${field.key}`}>{formatLeaderboardBoardValue(resolveBoardRecordFieldValue(record, field), field.type)}</td>
                         ))}
                         <td>{formatLeaderboardStatus(record.status)}</td>
                         <td>{formatMetricNumber((record.durationSeconds || 0) / 60, 2)}</td>
@@ -1939,6 +2052,53 @@ export default function PanelIndicadores({ contexto }) {
             </div>
           </article>
         </div>
+
+        {mermaAnalysisRows.length > 0 && (
+        <div className="dashboard-main-grid">
+          <article className="dashboard-panel dashboard-panel-full">
+            <div className="dashboard-panel-header">
+              <h3>Análisis de merma por motivo</h3>
+              <AlertTriangle size={18} />
+            </div>
+            <p className="dashboard-panel-subtitle">
+              Motivos de merma con mayor frecuencia y piezas faltantes acumuladas. Aplica el filtro de tablero arriba para ver motivos específicos.
+            </p>
+            <DashboardColumnChart
+              rows={mermaAnalysisRows.slice(0, 10).map((row) => ({
+                key: row.motivo,
+                label: row.motivo.length > 28 ? `${row.motivo.slice(0, 27)}…` : row.motivo,
+                value: row.totalPiezas,
+                valueLabel: `${formatMetricNumber(row.totalPiezas, 0)} pzas`,
+                tooltip: `${row.motivo}: ${formatMetricNumber(row.totalPiezas, 0)} piezas de merma · ${row.count} registro(s)`,
+                color: "linear-gradient(180deg, #b91c1c 0%, #f87171 100%)",
+              }))}
+              emptyLabel="No hay datos de merma con motivo registrado."
+            />
+            <div className="dashboard-table-wrap">
+              <table className="dashboard-table-clean">
+                <thead>
+                  <tr>
+                    <th>Motivo de merma</th>
+                    <th>Registros</th>
+                    <th>Piezas de merma</th>
+                    <th>Piezas/registro</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mermaAnalysisRows.map((row) => (
+                    <tr key={row.motivo}>
+                      <td>{row.motivo}</td>
+                      <td>{row.count}</td>
+                      <td>{formatMetricNumber(row.totalPiezas, 0)}</td>
+                      <td>{formatMetricNumber(row.count ? row.totalPiezas / row.count : 0, 2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+        )}
 
         <div className="dashboard-main-grid">
           <article className="dashboard-panel dashboard-panel-full">
