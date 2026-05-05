@@ -962,7 +962,7 @@ export default function MisTableros({ contexto }) {
                     </select>
                   </label>
                 ) : null}
-                <div className="board-context-inline-filters" style={{ flexShrink: 0 }}>
+                <div className="board-context-inline-filters">
                   <label className="board-top-select min-width board-week-select-inline">
                     <span>Semana</span>
                     <select value={selectedCustomBoardViewId} onChange={(event) => setSelectedCustomBoardViewId(event.target.value)}>
@@ -1009,8 +1009,7 @@ export default function MisTableros({ contexto }) {
                     </select>
                   </label>
                 ) : null}
-              </div>
-              <div className="custom-board-actions-menu-shell" ref={customBoardActionsMenuRef}>
+                <div className="custom-board-actions-menu-shell" ref={customBoardActionsMenuRef}>
                   <button
                     type="button"
                     className="primary-button custom-board-add-row-button"
@@ -1061,6 +1060,7 @@ export default function MisTableros({ contexto }) {
                       <input ref={boardImportInputRef} type="file" accept=".json" style={{ display: "none" }} onChange={handleBoardImportFile} />
                     </div>
                   ) : null}
+                </div>
               </div>
             </div>
 
