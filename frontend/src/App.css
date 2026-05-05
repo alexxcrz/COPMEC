@@ -3418,7 +3418,8 @@ html {
   position: absolute;
   top: calc(100% + 0.35rem);
   right: 0;
-  min-width: 220px;
+  width: max-content;
+  min-width: 0;
   display: grid;
   gap: 0.1rem;
   padding: 0.35rem;
