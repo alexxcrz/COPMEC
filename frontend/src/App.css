@@ -3286,6 +3286,9 @@ html {
   align-items: center;
   gap: 0.4rem;
   flex: 0 0 auto;
+  /* Separado del contenedor overflow para que el dropdown sea visible */
+  align-self: flex-end;
+  padding-bottom: 0;
 }
 
 .mis-tableros-shell,
@@ -3315,7 +3318,7 @@ html {
 
 .mis-tableros-shell .card-header-row {
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: flex-start;
 }
 
