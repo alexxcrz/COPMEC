@@ -261,6 +261,14 @@ export default function TablerosCreados({ contexto }) {
               </article>
             )}
           </div>
+
+          {importMessage ? (
+            <article className="surface-card full-width compact-surface-card" style={{ marginTop: "0.25rem" }}>
+              <p className={`validation-text ${importMessage.type === "ok" ? "success" : ""}`.trim()} style={{ margin: 0 }}>
+                {importMessage.text}
+              </p>
+            </article>
+          ) : null}
         </>
       ) : null}
 

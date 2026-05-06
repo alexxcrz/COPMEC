@@ -831,6 +831,7 @@ function App() { // NOSONAR
   const [editWeekActivityId, setEditWeekActivityId] = useState("");
   const [historyPauseActivityId, setHistoryPauseActivityId] = useState(null);
   const [userModal, setUserModal] = useState(() => createUserModalState());
+  const [userModalMessage, setUserModalMessage] = useState({ tone: "", text: "" });
   const [deleteUserId, setDeleteUserId] = useState(null);
   const [transferLeadTargetId, setTransferLeadTargetId] = useState(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -4487,6 +4488,7 @@ function App() { // NOSONAR
 
   function closeUserModal() {
     setShowUserModalPassword(false);
+    setUserModalMessage({ tone: "", text: "" });
     setUserModal(createUserModalState());
   }
 
@@ -4545,6 +4547,7 @@ function App() { // NOSONAR
 
   function openCreateUser() {
     if (!actionPermissions.createUsers) return;
+    setUserModalMessage({ tone: "", text: "" });
     const defaultRole = creatableRoles[0] || ROLE_JR;
     const currentUserAreaFull = getUserArea(currentUser);
     const { area: currentRootArea, subArea: currentSubArea } = splitAreaAndSubArea(currentUserAreaFull);
@@ -4570,6 +4573,7 @@ function App() { // NOSONAR
 
   function openEditUser(user) {
     if (!actionPermissions.editUsers) return;
+    setUserModalMessage({ tone: "", text: "" });
     const fullArea = getUserArea(user);
     const { area: rootArea, subArea } = splitAreaAndSubArea(fullArea);
     const nextModal = createUserModalState({
@@ -4616,18 +4620,32 @@ function App() { // NOSONAR
       permissionOverrides: userModal.permissionOverrides,
     };
 
-    if (!payload.name || !payload.area || !payload.jobTitle) return;
+    if (!payload.name || !payload.area || !payload.jobTitle) {
+      const missing = [];
+      if (!payload.name) missing.push("Nombre completo");
+      if (!payload.area) missing.push("Área");
+      if (!payload.jobTitle) missing.push("Cargo");
+      setUserModalMessage({
+        tone: "danger",
+        text: `Faltan campos obligatorios: ${missing.join(", ")}.`,
+      });
+      return;
+    }
     if (userModal.mode === "create" && supportsManagedPermissionOverrides(userModal.role)) {
       const pageValues = Object.values(userModal.permissionOverrides.pages || {});
       const actionValues = Object.values(userModal.permissionOverrides.actions || {});
       const hasAtLeastOnePermission = pageValues.concat(actionValues).some(Boolean);
       if (!hasAtLeastOnePermission) {
+        setUserModalMessage({ tone: "danger", text: "Asigna al menos un permiso antes de crear el player." });
         pushAppToast("Asigna al menos un permiso antes de crear el player.", "danger");
         return;
       }
     }
     if (userModal.mode === "create") {
-      if (!isTemporaryPassword(trimmedPassword)) return;
+      if (!isTemporaryPassword(trimmedPassword)) {
+        setUserModalMessage({ tone: "danger", text: `La contraseña temporal debe tener al menos ${TEMPORARY_PASSWORD_MIN_LENGTH} caracteres.` });
+        return;
+      }
       payload.password = trimmedPassword;
     } else if (trimmedPassword) {
       payload.password = trimmedPassword;
@@ -4648,8 +4666,10 @@ function App() { // NOSONAR
           : `Cambios de ${payload.name} guardados correctamente.`,
         "success",
       );
+      setUserModalMessage({ tone: "success", text: userModal.mode === "create" ? `Player ${payload.name} creado correctamente.` : `Cambios de ${payload.name} guardados correctamente.` });
       closeUserModal();
     } catch (error) {
+      setUserModalMessage({ tone: "danger", text: error?.message || "No se pudieron guardar los cambios. Intenta de nuevo." });
       pushAppToast(error?.message || "No se pudieron guardar los cambios. Intenta de nuevo.", "danger");
     }
   }
@@ -7962,6 +7982,11 @@ function App() { // NOSONAR
 
       <Modal open={userModal.open} className="user-management-modal" title={userModal.mode === "create" ? "Crear nuevo player" : "Editar player"} confirmLabel={userModal.mode === "create" ? "Guardar player" : "Guardar cambios"} cancelLabel="Cancelar" onClose={closeUserModal} onConfirm={submitUserModal}>
         <div className="modal-form-grid">
+          {userModalMessage.text ? (
+            <p className={`validation-text ${userModalMessage.tone === "success" ? "success" : ""}`.trim()} style={{ margin: 0 }}>
+              {userModalMessage.text}
+            </p>
+          ) : null}
           <div className="user-modal-grid">
             <label className="app-modal-field">
               <span>Nombre completo</span>
