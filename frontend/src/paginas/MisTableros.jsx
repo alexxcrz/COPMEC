@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import ReturnsReconditionScanner from "../features/boards/ReturnsReconditionScanner.jsx";
+import OperationalInspectionStartModal from "../components/OperationalInspectionStartModal.jsx";
 import { BoardEditableInventoryPropertyInput, BoardEvidenceCell, BoardMultiSelectDetailCell } from "../components/BoardRuntimeFieldCells.jsx";
+import { shouldOpenOperationalInspectionForActivity } from "../utils/operationalInspectionTemplate";
 import {
   formatBoardMultiSelectDetailValue,
   formatInventoryLookupLabel,
@@ -449,6 +451,8 @@ export default function MisTableros({ contexto }) {
   const assigneeTriggerRef = useRef(null);
   const [assigneeMenuPosition, setAssigneeMenuPosition] = useState({ top: 0, left: 0, width: 0, openUp: false });
   const [pauseDetailsRow, setPauseDetailsRow] = useState(null);
+  const [inspectionModalState, setInspectionModalState] = useState({ open: false, rowId: "", activityLabel: "" });
+  const [inspectionSubmitting, setInspectionSubmitting] = useState(false);
   // Local edit buffer for Lead time overrides: key = "rowId-colId", value = string being typed
   const [leadTimeEdits, setLeadTimeEdits] = useState({});
   const [fieldEditDrafts, setFieldEditDrafts] = useState({});
@@ -768,6 +772,55 @@ export default function MisTableros({ contexto }) {
     if (!activityValue) return true;
     return activityOptionNames.has(activityValue);
   });
+
+  function getRowActivityLabel(rowRecord) {
+    if (!activityListField?.id) return "";
+    return String(rowRecord?.values?.[activityListField.id] || "").trim();
+  }
+
+  function handleStartRow(rowRecord) {
+    if (!selectedCustomBoard || !rowRecord?.id) return;
+    const activityLabel = getRowActivityLabel(rowRecord);
+    if (!shouldOpenOperationalInspectionForActivity(activityLabel)) {
+      void changeBoardRowStatus(selectedCustomBoard.id, rowRecord.id, STATUS_RUNNING);
+      return;
+    }
+
+    setInspectionModalState({
+      open: true,
+      rowId: rowRecord.id,
+      activityLabel,
+    });
+  }
+
+  async function handleConfirmOperationalInspection({ incidencias }) {
+    if (!selectedCustomBoard || !inspectionModalState.rowId) return;
+
+    setInspectionSubmitting(true);
+    try {
+      const incidentPayloads = Array.isArray(incidencias) ? incidencias : [];
+      for (const payload of incidentPayloads) {
+        const response = await requestJson("/warehouse/incidencias", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        if (response?.data?.state) {
+          setState(response.data.state);
+        }
+      }
+
+      await changeBoardRowStatus(selectedCustomBoard.id, inspectionModalState.rowId, STATUS_RUNNING);
+      setInspectionModalState({ open: false, rowId: "", activityLabel: "" });
+      pushAppToast(`Checklist guardado. ${incidentPayloads.length} incidencia(s) generada(s).`, "success");
+    } catch (error) {
+      setBoardRuntimeFeedback({
+        tone: "danger",
+        message: error?.message || "No se pudo guardar el checklist de inspeccion.",
+      });
+    } finally {
+      setInspectionSubmitting(false);
+    }
+  }
 
   function updateRowResponsibleAssignments(rowId, nextResponsibleIds) {
     if (!selectedCustomBoard) return;
@@ -1370,7 +1423,7 @@ export default function MisTableros({ contexto }) {
                               <td key={`${row.id}-${column.token}`} className="board-workflow-cell board-pdf-hide" style={getEffectiveColumnWidth(column)}>
                                 <div className="row-actions compact board-workflow-actions">
                                   {canStartRow ? (
-                                    <button type="button" className="board-action-button start icon-only" title={row.status === STATUS_PAUSED ? "Reanudar" : "Iniciar"} aria-label={row.status === STATUS_PAUSED ? "Reanudar" : "Iniciar"} onClick={() => changeBoardRowStatus(selectedCustomBoard.id, row.id, STATUS_RUNNING)} disabled={!rowWorkflowEnabled}>
+                                    <button type="button" className="board-action-button start icon-only" title={row.status === STATUS_PAUSED ? "Reanudar" : "Iniciar"} aria-label={row.status === STATUS_PAUSED ? "Reanudar" : "Iniciar"} onClick={() => handleStartRow(row)} disabled={!rowWorkflowEnabled}>
                                       <Play size={13} />
                                     </button>
                                   ) : null}
@@ -1882,6 +1935,20 @@ export default function MisTableros({ contexto }) {
           <p>{currentUser.role === ROLE_JR ? "Tu líder aún no te asigna un tablero." : "Crea un tablero desde Creador de tableros para comenzar."}</p>
         </article>
       )}
+
+      <OperationalInspectionStartModal
+        open={inspectionModalState.open}
+        activityLabel={inspectionModalState.activityLabel}
+        currentUser={currentUser}
+        defaultArea={boardOperationalContextValue || boardOwnerAreaKey || ""}
+        defaultProcess={boardView?.name || ""}
+        onClose={() => {
+          if (inspectionSubmitting) return;
+          setInspectionModalState({ open: false, rowId: "", activityLabel: "" });
+        }}
+        onConfirm={handleConfirmOperationalInspection}
+        confirmBusy={inspectionSubmitting}
+      />
 
       <Modal
         open={Boolean(pauseDetailsRow)}

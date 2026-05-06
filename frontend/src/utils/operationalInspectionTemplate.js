@@ -63,6 +63,30 @@ export const OPERATIONAL_INSPECTION_TEMPLATE = {
   ],
 };
 
+export const OPERATIONAL_INSPECTION_ACTIVITY_BINDINGS = [
+  {
+    templateId: OPERATIONAL_INSPECTION_TEMPLATE.id,
+    activityMatchers: [
+      "chequeo de naves",
+      "revision de naves",
+      "inspeccion operativa",
+      "revisar naves",
+    ],
+  },
+];
+
+export function shouldOpenOperationalInspectionForActivity(activityLabel = "") {
+  const normalizedLabel = String(activityLabel || "").trim().toLowerCase();
+  if (!normalizedLabel) return false;
+  for (const binding of OPERATIONAL_INSPECTION_ACTIVITY_BINDINGS) {
+    const matchers = Array.isArray(binding?.activityMatchers) ? binding.activityMatchers : [];
+    if (matchers.some((matcher) => normalizedLabel.includes(String(matcher || "").trim().toLowerCase()))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function toIsoDate(value) {
   if (!value) return new Date().toISOString();
   const asDate = new Date(value);
