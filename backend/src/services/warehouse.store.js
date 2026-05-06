@@ -370,8 +370,20 @@ function normalizeAreaPauseControl(value) {
   const source = value && typeof value === "object" ? value : EMPTY_OBJECT;
   return {
     enabled: Boolean(source.enabled),
+    includeInGlobalPause: source.includeInGlobalPause !== false,
     workHours: normalizeWorkHoursWithMinutes(source.workHours),
   };
+}
+
+function resolveOperationalTimeZone(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return OPERATIONAL_TIMEZONE;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: raw }).format(new Date());
+    return raw;
+  } catch {
+    return OPERATIONAL_TIMEZONE;
+  }
 }
 
 function normalizeSystemPauseControl(value) {
@@ -398,9 +410,15 @@ function normalizeSystemPauseControl(value) {
     const normalizedArea = normalizeBoardOwnerArea(areaKey) || normalizeAreaOption(areaKey);
     if (!normalizedArea) return accumulator;
     const mergedCurrent = accumulator[normalizedArea] || normalizeAreaPauseControl(EMPTY_OBJECT);
-    const normalizedIncoming = normalizeAreaPauseControl(areaSource[areaKey]);
+    const rawAreaSource = areaSource[areaKey] && typeof areaSource[areaKey] === "object" ? areaSource[areaKey] : EMPTY_OBJECT;
+    const normalizedIncoming = normalizeAreaPauseControl(rawAreaSource);
     accumulator[normalizedArea] = {
-      enabled: Boolean(normalizedIncoming.enabled || mergedCurrent.enabled),
+      enabled: Object.hasOwn(rawAreaSource, "enabled")
+        ? Boolean(rawAreaSource.enabled)
+        : Boolean(mergedCurrent.enabled),
+      includeInGlobalPause: Object.hasOwn(rawAreaSource, "includeInGlobalPause")
+        ? rawAreaSource.includeInGlobalPause !== false
+        : mergedCurrent.includeInGlobalPause !== false,
       workHours: normalizeWorkHoursWithMinutes(normalizedIncoming.workHours || mergedCurrent.workHours || EMPTY_OBJECT),
     };
     return accumulator;
@@ -412,6 +430,10 @@ function normalizeSystemPauseControl(value) {
   const globalPauseAutoDisabledUntil = (rawAutoDisabledUntil && !Number.isNaN(Date.parse(rawAutoDisabledUntil)))
     ? String(rawAutoDisabledUntil)
     : null;
+  const accumulatedSecondsRaw = Number(source.globalPauseAccumulatedSeconds ?? 0);
+  const globalPauseAccumulatedSeconds = Number.isFinite(accumulatedSecondsRaw)
+    ? Math.max(0, Math.floor(accumulatedSecondsRaw))
+    : 0;
   return {
     globalPauseEnabled: Boolean(source.globalPauseEnabled),
     forceGlobalPause: Boolean(source.forceGlobalPause),
@@ -421,13 +443,14 @@ function normalizeSystemPauseControl(value) {
     areaPauseControls,
     globalPauseActivatedAt,
     globalPauseAutoDisabledUntil,
+    globalPauseAccumulatedSeconds,
   };
 }
 
-function getTimePartsInOperationalTimezone(nowMs) {
+function getTimePartsInOperationalTimezone(nowMs, timeZone = OPERATIONAL_TIMEZONE) {
   try {
     const formatter = new Intl.DateTimeFormat("en-US", {
-      timeZone: OPERATIONAL_TIMEZONE,
+      timeZone: resolveOperationalTimeZone(timeZone),
       hourCycle: "h23",
       weekday: "short",
       hour: "2-digit",
@@ -463,9 +486,9 @@ function getTimePartsInOperationalTimezone(nowMs) {
   };
 }
 
-function isWithinPauseControlWorkHours(nowMs, workHours, workWeek = EMPTY_OBJECT) {
+function isWithinPauseControlWorkHours(nowMs, workHours, workWeek = EMPTY_OBJECT, timeZone = OPERATIONAL_TIMEZONE) {
   const normalizedWeek = normalizeWorkWeekSchedule(workWeek, workHours);
-  const timeParts = getTimePartsInOperationalTimezone(nowMs);
+  const timeParts = getTimePartsInOperationalTimezone(nowMs, timeZone);
   const dayConfig = normalizedWeek[timeParts.weekdayKey] && typeof normalizedWeek[timeParts.weekdayKey] === "object"
     ? normalizedWeek[timeParts.weekdayKey]
     : null;
@@ -488,14 +511,34 @@ function isWithinPauseControlWorkHours(nowMs, workHours, workWeek = EMPTY_OBJECT
   return nowTotal >= startTotal && nowTotal < endTotal;
 }
 
-function resolveAutomatedGlobalPauseControl(pauseControl) {
+function finalizeGlobalPauseAccumulation(pauseControl, nowMs = Date.now()) {
+  const normalizedPauseControl = normalizeSystemPauseControl(pauseControl);
+  const activatedAtMs = normalizedPauseControl.globalPauseActivatedAt
+    ? new Date(normalizedPauseControl.globalPauseActivatedAt).getTime()
+    : NaN;
+  if (!Number.isFinite(activatedAtMs)) {
+    return {
+      ...normalizedPauseControl,
+      globalPauseActivatedAt: null,
+    };
+  }
+
+  const elapsedSeconds = Math.max(0, Math.floor((nowMs - activatedAtMs) / 1000));
+  return {
+    ...normalizedPauseControl,
+    globalPauseActivatedAt: null,
+    globalPauseAccumulatedSeconds: Math.max(0, Number(normalizedPauseControl.globalPauseAccumulatedSeconds || 0) + elapsedSeconds),
+  };
+}
+
+function resolveAutomatedGlobalPauseControl(pauseControl, timeZone = OPERATIONAL_TIMEZONE) {
   const normalizedPauseControl = normalizeSystemPauseControl(pauseControl);
   const nowMs = Date.now();
   const autoDisabledUntilMs = normalizedPauseControl.globalPauseAutoDisabledUntil
     ? new Date(normalizedPauseControl.globalPauseAutoDisabledUntil).getTime()
     : NaN;
   const hasActiveTemporaryDisable = Number.isFinite(autoDisabledUntilMs) && autoDisabledUntilMs > nowMs;
-  const isWithinGlobalWindow = isWithinPauseControlWorkHours(nowMs, normalizedPauseControl.workHours, normalizedPauseControl.workWeek);
+  const isWithinGlobalWindow = isWithinPauseControlWorkHours(nowMs, normalizedPauseControl.workHours, normalizedPauseControl.workWeek, timeZone);
   const desiredGlobalPauseEnabled = normalizedPauseControl.forceGlobalPause
     ? true
     : hasActiveTemporaryDisable
@@ -511,7 +554,7 @@ function resolveAutomatedGlobalPauseControl(pauseControl) {
   if (!normalizedPauseControl.globalPauseEnabled && desiredGlobalPauseEnabled) {
     nextPauseControl.globalPauseActivatedAt = new Date(nowMs).toISOString();
   } else if (normalizedPauseControl.globalPauseEnabled && !desiredGlobalPauseEnabled) {
-    nextPauseControl.globalPauseActivatedAt = null;
+    return finalizeGlobalPauseAccumulation(nextPauseControl, nowMs);
   }
 
   return nextPauseControl;
@@ -519,7 +562,7 @@ function resolveAutomatedGlobalPauseControl(pauseControl) {
 
 function applyAutomatedGlobalPauseState(currentState) {
   const currentOperational = normalizeSystemOperationalSettings(currentState?.system?.operational);
-  const nextPauseControl = resolveAutomatedGlobalPauseControl(currentOperational.pauseControl);
+  const nextPauseControl = resolveAutomatedGlobalPauseControl(currentOperational.pauseControl, currentOperational.timeZone);
   const changed = JSON.stringify(nextPauseControl) !== JSON.stringify(currentOperational.pauseControl);
   if (!changed) {
     return { state: currentState, changed: false };
@@ -543,6 +586,7 @@ function applyAutomatedGlobalPauseState(currentState) {
 function normalizeSystemOperationalSettings(value) {
   const source = value && typeof value === "object" ? value : EMPTY_OBJECT;
   return {
+    timeZone: resolveOperationalTimeZone(source.timeZone),
     naveWeekSchedules: normalizeSystemNaveWeekSchedules(source.naveWeekSchedules),
     pauseControl: normalizeSystemPauseControl(source.pauseControl),
   };
@@ -1384,6 +1428,28 @@ export function createIncidencia(auth, payload = {}) {
 
   if (!String(payload.title || "").trim()) return { ok: false, reason: "invalid_payload" };
 
+  const payloadEvidencias = Array.isArray(payload.evidencias)
+    ? payload.evidencias
+        .map((evidencia, index) => {
+          const url = String(evidencia?.url || "").trim();
+          if (!url) return null;
+          const thumbnailUrl = String(evidencia?.thumbnailUrl || url).trim();
+          const name = String(evidencia?.name || `evidencia-${index + 1}`).trim();
+          const type = String(evidencia?.type || "image").trim();
+          return {
+            id: crypto.randomUUID(),
+            url,
+            thumbnailUrl,
+            name,
+            type,
+            uploadedById: currentUser.id,
+            uploadedByName: currentUser.name,
+            uploadedAt: new Date().toISOString(),
+          };
+        })
+        .filter(Boolean)
+    : [];
+
   const item = {
     id: crypto.randomUUID(),
     title: String(payload.title || "").trim(),
@@ -1402,7 +1468,7 @@ export function createIncidencia(auth, payload = {}) {
     invoiceNumber: String(payload.invoiceNumber || "").trim(),
     paymentStatus: "pendiente",
     resolution: "",
-    evidencias: [],
+    evidencias: payloadEvidencias,
     cotizaciones: [],
     reportedAt: new Date().toISOString(),
     resolvedAt: null,
@@ -2113,7 +2179,12 @@ export function updateWarehouseSystemOperationalSettings(auth, patch = {}) {
     if (!currentlyPaused && nextPaused) {
       merged.pauseControl = { ...merged.pauseControl, globalPauseActivatedAt: new Date().toISOString() };
     } else if (currentlyPaused && !nextPaused) {
-      merged.pauseControl = { ...merged.pauseControl, globalPauseActivatedAt: null };
+      const finalizedCurrentPause = finalizeGlobalPauseAccumulation(currentOperational.pauseControl, Date.now());
+      merged.pauseControl = {
+        ...merged.pauseControl,
+        globalPauseActivatedAt: null,
+        globalPauseAccumulatedSeconds: finalizedCurrentPause.globalPauseAccumulatedSeconds,
+      };
     }
   }
   const nextOperational = normalizeSystemOperationalSettings(merged);
@@ -4253,6 +4324,18 @@ export function removeProcessAuditEvidence(auth, auditId, evidenceId) {
 function sanitizeCatalogItemDraft(payload = {}, existingId = null) {
   const frequency = normalizeCatalogFrequency(payload.frequency);
   const scheduledDays = normalizeCatalogScheduledDays(payload.scheduledDays, frequency);
+  const rawChecklistConfig = payload?.operationalChecklistConfig;
+  const normalizedChecklistConfig = rawChecklistConfig && typeof rawChecklistConfig === "object"
+    ? {
+        enabled: rawChecklistConfig.enabled !== false,
+        template: rawChecklistConfig.template && typeof rawChecklistConfig.template === "object"
+          ? JSON.parse(JSON.stringify(rawChecklistConfig.template))
+          : null,
+        linkedAt: String(rawChecklistConfig.linkedAt || "").trim(),
+        linkedById: String(rawChecklistConfig.linkedById || "").trim(),
+        linkedByName: String(rawChecklistConfig.linkedByName || "").trim(),
+      }
+    : null;
   return {
     id: existingId || payload.id || makeId("cat"),
     name: String(payload.name || "").trim(),
@@ -4264,6 +4347,7 @@ function sanitizeCatalogItemDraft(payload = {}, existingId = null) {
     cleaningSites: normalizeCatalogCleaningSites(payload.cleaningSites),
     category: normalizeCatalogCategory(payload.category),
     area: normalizeCatalogArea(payload.area, payload.category),
+    operationalChecklistConfig: normalizedChecklistConfig,
     isDeleted: Boolean(payload.isDeleted),
   };
 }
@@ -5139,6 +5223,12 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
         ));
       }
     }
+  }
+
+  if (hasOwn(patch, "operationalInspectionRecord")) {
+    nextRow.operationalInspectionRecord = patch.operationalInspectionRecord && typeof patch.operationalInspectionRecord === "object"
+      ? JSON.parse(JSON.stringify(patch.operationalInspectionRecord))
+      : null;
   }
 
   // Lead-only direct overrides for time fields (startTime, endTime, accumulatedSeconds) and persisted pause logs.

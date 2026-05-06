@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { isBoardActivityListField } from "../utils/utilidades.jsx";
 import { buildEncryptedCopmecHistoryPackage, triggerCopmecDownload } from "../utils/copmecFiles.js";
+import OperationalInspectionRecordModal from "../components/OperationalInspectionRecordModal.jsx";
 
 const HISTORY_WORK_WEEK_DEFAULTS = {
   mon: { enabled: true },
@@ -380,6 +381,9 @@ export default function HistorialSemanas({ contexto }) {
   const [openReportYear, setOpenReportYear] = useState("");
   const [expandedDayKey, setExpandedDayKey] = useState("");
   const [openHistoryMonth, setOpenHistoryMonth] = useState("");
+  const [historyDetailTab, setHistoryDetailTab] = useState("activities");
+  const [isExportingChecklistPdf, setIsExportingChecklistPdf] = useState(false);
+  const [checklistRecordModalState, setChecklistRecordModalState] = useState({ open: false, activityLabel: "", record: null });
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   function resolveBoardHistoryAreaLabel(snapshot, responsibleUser) {
@@ -578,6 +582,9 @@ export default function HistorialSemanas({ contexto }) {
             lastPauseReason: String(row?.lastPauseReason || "").trim(),
             snapshotFields: Array.isArray(snapshot.fields) ? snapshot.fields : [],
             rowValues: row.values && typeof row.values === "object" ? row.values : {},
+            operationalInspectionRecord: row?.operationalInspectionRecord && typeof row.operationalInspectionRecord === "object"
+              ? row.operationalInspectionRecord
+              : null,
             derivedFromBoardHistory: true,
           };
         });
@@ -763,6 +770,16 @@ export default function HistorialSemanas({ contexto }) {
         return String(left.boardName || "").localeCompare(String(right.boardName || ""), "es-MX");
       });
   }, [exportWindow, playerScopedActivities]);
+
+  const visibleChecklistActivities = useMemo(
+    () => visibleHistoryActivities.filter((activity) => activity?.operationalInspectionRecord),
+    [visibleHistoryActivities],
+  );
+
+  const exportableChecklistActivities = useMemo(
+    () => exportableHistoryActivities.filter((activity) => activity?.operationalInspectionRecord),
+    [exportableHistoryActivities],
+  );
 
   const reportYearSections = useMemo(() => {
     const grouped = new Map();
@@ -1073,6 +1090,69 @@ export default function HistorialSemanas({ contexto }) {
     }
   }
 
+  async function exportChecklistHistoryToPdf() {
+    if (isExportingChecklistPdf) return;
+    if (!exportWindow) {
+      pushAppToast("No hay rango de exportación válido.", "danger");
+      return;
+    }
+    if (!exportableChecklistActivities.length) {
+      pushAppToast("No hay checklist realizados para exportar.", "danger");
+      return;
+    }
+    try {
+      setIsExportingChecklistPdf(true);
+      const [{ jsPDF }, autoTableModule] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
+      const autoTable = autoTableModule.default || autoTableModule.autoTable;
+      const pdf = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+
+      pdf.setFontSize(14);
+      pdf.text("Checklist realizados COPMEC", 36, 40);
+      pdf.setFontSize(10);
+      pdf.text(`Periodo: ${exportWindow.label}`, 36, 58);
+      pdf.text(`Area: ${selectedAreaTab || "-"} | Tablero: ${selectedBoardTab || "-"} | Player: ${selectedPlayerTab === "all" ? "Todos" : (playerTabs.find((tab) => tab.value === selectedPlayerTab)?.label || selectedPlayerTab)}`, 36, 74);
+      pdf.text(`Generado: ${new Date().toLocaleString("es-MX")}`, 36, 90);
+
+      const body = exportableChecklistActivities.map((activity) => {
+        const record = activity.operationalInspectionRecord || {};
+        const observations = String(record?.draft?.observations || "").trim() || "-";
+        const evidenceUrls = Object.values(record?.draft?.checks || {})
+          .flatMap((check) => (Array.isArray(check?.photos) ? check.photos : []))
+          .map((photo) => String(photo?.url || "").trim())
+          .filter(Boolean)
+          .join("\n") || "-";
+        return [
+          formatDate(activity.activityDate),
+          activity.areaRoot,
+          activity.boardName || "General",
+          resolveHistoryActivityLabel(activity),
+          resolveHistoryPlayerLabel(activity),
+          String(record?.completedAt || activity.activityDate || ""),
+          String(record?.incidencias?.length || 0),
+          observations,
+          evidenceUrls,
+        ];
+      });
+
+      autoTable(pdf, {
+        startY: 104,
+        head: [["Fecha", "Area", "Tablero", "Actividad", "Player", "Completado", "Incidencias", "Observaciones", "Evidencias"]],
+        body,
+        styles: { fontSize: 7, cellPadding: 4, valign: "top" },
+        headStyles: { fillColor: [3, 33, 33], textColor: [255, 255, 255] },
+        theme: "grid",
+      });
+
+      const fileSuffix = sanitizeFileNamePart(exportWindow.fileSuffix || "checklists");
+      pdf.save(`copmec_checklists_${fileSuffix || "export"}.pdf`);
+      pushAppToast("PDF de checklist exportado correctamente.", "success");
+    } catch (error) {
+      pushAppToast(error?.message || "No se pudo exportar el checklist a PDF.", "danger");
+    } finally {
+      setIsExportingChecklistPdf(false);
+    }
+  }
+
   const confirmDeleteWeek = useCallback(async () => {
     if (!deleteWeekModal.weekId || deleteWeekModal.isSubmitting) return;
     setDeleteWeekModal((current) => ({ ...current, isSubmitting: true }));
@@ -1266,6 +1346,11 @@ export default function HistorialSemanas({ contexto }) {
                   </button>
                 ))}
               </div>
+
+              <div className="history-area-tabs" style={{ paddingLeft: "0.7rem" }}>
+                <button type="button" className={`tab ${historyDetailTab === "activities" ? "active" : ""}`} onClick={() => setHistoryDetailTab("activities")}>Actividades</button>
+                <button type="button" className={`tab ${historyDetailTab === "checklists" ? "active" : ""}`} onClick={() => setHistoryDetailTab("checklists")}>Checklist realizados</button>
+              </div>
             </div>
 
             <div style={{ display: "grid", gap: "0.9rem" }}>
@@ -1353,17 +1438,29 @@ export default function HistorialSemanas({ contexto }) {
                           <button
                             type="button"
                             className="icon-button"
-                            onClick={() => { void exportHistoryToPdf(); }}
-                            disabled={!exportableHistoryActivities.length || isExportingHistoryPdf}
-                            title={isExportingHistoryPdf ? "Exportando PDF" : "Exportar a PDF"}
+                            onClick={() => {
+                              if (historyDetailTab === "checklists") {
+                                void exportChecklistHistoryToPdf();
+                                return;
+                              }
+                              void exportHistoryToPdf();
+                            }}
+                            disabled={historyDetailTab === "checklists"
+                              ? (!exportableChecklistActivities.length || isExportingChecklistPdf)
+                              : (!exportableHistoryActivities.length || isExportingHistoryPdf)}
+                            title={historyDetailTab === "checklists"
+                              ? (isExportingChecklistPdf ? "Exportando PDF" : "Exportar checklist a PDF")
+                              : (isExportingHistoryPdf ? "Exportando PDF" : "Exportar a PDF")}
                           >
-                            {isExportingHistoryPdf ? "Exportando PDF..." : "Exportar PDF"}
+                            {historyDetailTab === "checklists"
+                              ? (isExportingChecklistPdf ? "Exportando PDF..." : "Exportar PDF")
+                              : (isExportingHistoryPdf ? "Exportando PDF..." : "Exportar PDF")}
                           </button>
                           <button
                             type="button"
                             className="icon-button"
                             onClick={() => { void downloadHistoryPackageFile(); }}
-                            disabled={!exportableHistoryActivities.length}
+                            disabled={historyDetailTab === "checklists" || !exportableHistoryActivities.length}
                             title="Descargar formato único COPMEC (.copmec)"
                           >
                             Descargar .copmec
@@ -1376,7 +1473,81 @@ export default function HistorialSemanas({ contexto }) {
                         </div>
 
                         <div style={{ display: "grid", gap: "0.9rem" }}>
-                          {weeklyDaySections.map((dayEntry) => {
+                          {historyDetailTab === "checklists" ? buildWeekDaySections(effectiveHistoryWeek, visibleChecklistActivities, STATUS_FINISHED, normalizedOperationalWorkWeek).map((dayEntry) => {
+                            const dayToggleKey = `check-${dayEntry.dayKey}`;
+                            const isExpanded = expandedDayKey === dayToggleKey;
+                            const dayDate = parseHistoryDate(dayEntry.dayKey);
+                            const weekday = dayDate ? dayDate.toLocaleDateString("es-MX", { weekday: "long" }) : "";
+                            const weekdayLabel = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+                            return (
+                              <article key={dayToggleKey} className="surface-card" style={{ padding: "1rem 1.1rem", display: "grid", gap: "0.9rem" }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedDayKey(isExpanded ? "" : dayToggleKey)}
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    gap: "1rem",
+                                    width: "100%",
+                                    background: "transparent",
+                                    border: "none",
+                                    padding: 0,
+                                    cursor: "pointer",
+                                    textAlign: "left",
+                                  }}
+                                >
+                                  <div>
+                                    <h3 style={{ margin: 0, color: "#032121", fontSize: "1rem" }}>{weekdayLabel}</h3>
+                                    <p className="subtle-line" style={{ margin: "0.25rem 0 0" }}>{dayDate ? formatDate(dayDate) : dayEntry.dayKey}</p>
+                                  </div>
+                                  <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                                    <span className="chip">{dayEntry.activities.length} checklist</span>
+                                    <span className="chip">{dayEntry.activities.reduce((sum, activity) => sum + Number(activity?.operationalInspectionRecord?.incidencias?.length || 0), 0)} incidencias</span>
+                                    <span className="chip primary">{isExpanded ? "Ocultar" : "Ver día"}</span>
+                                  </div>
+                                </button>
+
+                                {isExpanded ? (
+                                  dayEntry.activities.length ? (
+                                    <div style={{ display: "grid", gap: "0.75rem" }}>
+                                      {dayEntry.activities.map((activity) => {
+                                        const record = activity.operationalInspectionRecord;
+                                        const evidenceCount = Object.values(record?.draft?.checks || {}).reduce((sum, check) => sum + (Array.isArray(check?.photos) ? check.photos.length : 0), 0);
+                                        return (
+                                          <article key={activity.id} className="surface-card" style={{ padding: "0.9rem", display: "grid", gap: "0.55rem" }}>
+                                            <div className="card-header-row">
+                                              <div>
+                                                <strong>{activity.activityLabel}</strong>
+                                                <p className="subtle-line" style={{ margin: "0.2rem 0 0" }}>{activity.boardName || "General"} · {resolveHistoryPlayerLabel(activity)}</p>
+                                              </div>
+                                              <button
+                                                type="button"
+                                                className="icon-button"
+                                                onClick={() => setChecklistRecordModalState({ open: true, activityLabel: activity.activityLabel, record })}
+                                              >
+                                                Ver checklist
+                                              </button>
+                                            </div>
+                                            <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap" }}>
+                                              <span className="chip">Incidencias: {record?.incidencias?.length || 0}</span>
+                                              <span className="chip">Evidencias: {evidenceCount}</span>
+                                              <span className="chip">Fecha: {formatDate(record?.completedAt || activity.activityDate)}</span>
+                                            </div>
+                                            {String(record?.draft?.observations || "").trim() ? (
+                                              <p className="subtle-line" style={{ margin: 0 }}>{String(record.draft.observations).trim()}</p>
+                                            ) : null}
+                                          </article>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <span className="subtle-line">No hay checklist realizados para este día.</span>
+                                  )
+                                ) : null}
+                              </article>
+                            );
+                          }) : weeklyDaySections.map((dayEntry) => {
                             const isExpanded = expandedDayKey === dayEntry.dayKey;
                             const dayDate = parseHistoryDate(dayEntry.dayKey);
                             const weekday = dayDate ? dayDate.toLocaleDateString("es-MX", { weekday: "long" }) : "";
@@ -1500,6 +1671,13 @@ export default function HistorialSemanas({ contexto }) {
           </div>
         </div>,
         document.body,
+
+      <OperationalInspectionRecordModal
+        open={checklistRecordModalState.open}
+        activityLabel={checklistRecordModalState.activityLabel}
+        record={checklistRecordModalState.record}
+        onClose={() => setChecklistRecordModalState({ open: false, activityLabel: "", record: null })}
+      />
       ) : null}
     </section>
   );

@@ -113,6 +113,7 @@ import {
   sanitizeCopmecFileBaseName,
   triggerCopmecDownload,
 } from "./utils/copmecFiles.js";
+import { normalizeOperationalInspectionTemplate } from "./utils/operationalInspectionTemplate";
 
 // â”€â”€ Constantes globales â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -910,6 +911,7 @@ function App() { // NOSONAR
   const operationalPauseState = useMemo(() => ({
     globalPauseEnabled: Boolean(state?.system?.operational?.pauseControl?.globalPauseEnabled),
     globalPauseActivatedAt: state?.system?.operational?.pauseControl?.globalPauseActivatedAt || null,
+    globalPauseAccumulatedSeconds: Math.max(0, Number(state?.system?.operational?.pauseControl?.globalPauseAccumulatedSeconds || 0)),
     workHours: state?.system?.operational?.pauseControl?.workHours || { startHour: 0, endHour: 24 },
     workWeek: state?.system?.operational?.pauseControl?.workWeek || EMPTY_OBJECT,
     areaPauseControls: state?.system?.operational?.pauseControl?.areaPauseControls || EMPTY_OBJECT,
@@ -969,6 +971,8 @@ function App() { // NOSONAR
   const boardCellSaveTimersRef = useRef(new Map());
   const boardCellSaveVersionRef = useRef(new Map());
   const boardCellDraftValueRef = useRef(new Map());
+  const routeLastUrlRef = useRef(`${globalThis.location.pathname}${globalThis.location.search}${globalThis.location.hash || ""}`);
+  const routeSyncFromPopRef = useRef(false);
   const BOARD_CELL_DRAFT_TTL_MS = 4500;
 
   useEffect(() => {
@@ -1183,8 +1187,6 @@ function App() { // NOSONAR
     const handleWindowBlur = () => setGlobalCaptureShieldActive(true);
     const handleWindowFocus = () => setGlobalCaptureShieldActive(false);
 
-    const handleContextMenu = (event) => event.preventDefault();
-
     const handleClipboardBlock = (event) => {
       const tagName = String(event.target?.tagName || "").toLowerCase();
       if (tagName === "input" || tagName === "textarea") return;
@@ -1212,7 +1214,6 @@ function App() { // NOSONAR
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    document.addEventListener("contextmenu", handleContextMenu);
     document.addEventListener("copy", handleClipboardBlock);
     document.addEventListener("cut", handleClipboardBlock);
     document.addEventListener("dragstart", handleDragStart);
@@ -1227,7 +1228,6 @@ function App() { // NOSONAR
         globalCaptureShieldTimerRef.current = null;
       }
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      document.removeEventListener("contextmenu", handleContextMenu);
       document.removeEventListener("copy", handleClipboardBlock);
       document.removeEventListener("cut", handleClipboardBlock);
       document.removeEventListener("dragstart", handleDragStart);
@@ -1361,8 +1361,32 @@ function App() { // NOSONAR
     const nextPath = shouldPersistRoute ? buildRoutePath(page) : "/";
     const queryPrefix = nextQuery ? `?${nextQuery}` : "";
     const nextUrl = `${nextPath}${queryPrefix}${globalThis.location.hash || ""}`;
-    globalThis.history.replaceState(null, "", nextUrl);
+
+    if (routeSyncFromPopRef.current) {
+      routeSyncFromPopRef.current = false;
+      routeLastUrlRef.current = `${globalThis.location.pathname}${globalThis.location.search}${globalThis.location.hash || ""}`;
+      return;
+    }
+
+    if (routeLastUrlRef.current === nextUrl) return;
+
+    globalThis.history.pushState(null, "", nextUrl);
+    routeLastUrlRef.current = nextUrl;
   }, [adminTab, page, selectedCustomBoardId, selectedHistoryWeekId, selectedWeekId, sessionUserId]);
+
+  useEffect(() => {
+    function handlePopState() {
+      const routeState = getInitialRouteState();
+      routeSyncFromPopRef.current = true;
+      setPage(routeState.page || PAGE_DASHBOARD);
+      setAdminTab(normalizeAdminTab(routeState.adminTab));
+      setSelectedCustomBoardId(routeState.selectedBoardId || "");
+      setSelectedHistoryWeekId(routeState.selectedHistoryWeekId || "");
+    }
+
+    globalThis.addEventListener("popstate", handlePopState);
+    return () => globalThis.removeEventListener("popstate", handlePopState);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -5498,6 +5522,30 @@ function App() { // NOSONAR
     setControlBoardFeedback("");
   }
 
+  function openCreateBoardBuilderFromChecklistTemplate(template) {
+    const ownerId = currentUser?.id || "";
+    const normalizedTemplate = normalizeOperationalInspectionTemplate(template);
+    setControlBoardDraft({
+      ...createEmptyBoardDraft(),
+      ownerId,
+      settings: {
+        ...withDefaultBoardSettings(createEmptyBoardDraft().settings),
+        ownerArea: resolveBoardOwnerAreaByUserId(ownerId),
+        operationalChecklistConfig: {
+          enabled: true,
+          linkedActivityNames: [],
+          template: normalizedTemplate,
+        },
+      },
+    });
+    setBoardImportedRowsDraft([]);
+    setExcelFormulaWizard({ open: false, items: [] });
+    setBoardBuilderModal({ open: true, mode: "create", boardId: null });
+    setTemplatePreviewId(null);
+    setEditingDraftColumnId(null);
+    setControlBoardFeedback("");
+  }
+
   function openEditBoardBuilder(board) {
     if (!actionPermissions.editBoard || !canEditBoard(currentUser, board)) return;
     const boardDraft = createBoardDraftFromBoard(board);
@@ -7337,6 +7385,7 @@ function App() { // NOSONAR
     exportCatalogToCsv,
     importCatalogFromCsv,
     openCreateBoardBuilder,
+    openCreateBoardBuilderFromChecklistTemplate,
     openCreateInventoryItem,
     openCreateUser,
     openEditBoardBuilder,
@@ -8365,6 +8414,7 @@ function App() { // NOSONAR
         onEditDraftColumn={editDraftColumn}
         onRemoveDraftColumn={removeDraftColumn}
         visibleUsers={visibleUsers}
+        catalog={state.catalog}
         departmentOptions={departmentOptions}
         currentUser={currentUser}
         userMap={userMap}

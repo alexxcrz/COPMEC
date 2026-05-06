@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -10,6 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Modal } from "./Modal";
+import { OPERATIONAL_INSPECTION_TEMPLATE, normalizeOperationalInspectionTemplate } from "../utils/operationalInspectionTemplate";
 
 const COMPONENT_TYPE_CATEGORIES = [
   {
@@ -83,10 +84,14 @@ const COMPONENT_TYPE_CATEGORIES = [
     icon: "⚡",
     types: [
       { value: "activityList", emoji: "⚡", label: "Lista de actividades" },
-      { value: "activityChecklistStart", emoji: "📋", label: "Checklist operativo (inicio)" },
     ],
   },
 ];
+
+function createChecklistToken(prefix = "item") {
+  const randomPart = Math.random().toString(36).slice(2, 7);
+  return `${prefix}-${Date.now().toString(36)}-${randomPart}`;
+}
 
 function getDraftFormulaTerms(draft) {
   const source = Array.isArray(draft?.formulaTerms) ? draft.formulaTerms : [];
@@ -271,20 +276,9 @@ export function BoardComponentStudioModal({
 
   function handleTypeSelection(nextType) {
     onChange((current) => {
-      const isChecklistStartType = nextType === "activityChecklistStart";
-      const resolvedType = isChecklistStartType ? BOARD_ACTIVITY_LIST_FIELD : nextType;
-      const nextDraft = { ...current, fieldType: resolvedType };
+      const nextDraft = { ...current, fieldType: nextType };
       if (nextType === BOARD_ACTIVITY_LIST_FIELD) {
         nextDraft.optionSource = "catalogByCategory";
-        nextDraft.enableOperationalChecklistStart = false;
-        if (!String(current.optionCatalogCategory || "").trim()) {
-          nextDraft.optionCatalogCategory = normalizedActivityCategoryOptions[0] || "";
-        }
-        return nextDraft;
-      }
-      if (isChecklistStartType) {
-        nextDraft.optionSource = "catalogByCategory";
-        nextDraft.enableOperationalChecklistStart = true;
         if (!String(current.optionCatalogCategory || "").trim()) {
           nextDraft.optionCatalogCategory = normalizedActivityCategoryOptions[0] || "";
         }
@@ -414,20 +408,14 @@ export function BoardComponentStudioModal({
                     </div>
                     <div className="ctp-type-row">
                       {categoryTypes.map((t) => {
-                        const isActivityField = draft.fieldType === (contextoConstructor.BOARD_ACTIVITY_LIST_FIELD || "activityList");
-                        const isChecklistEnabled = Boolean(draft.enableOperationalChecklistStart);
-                        const isActive = t.value === "activityChecklistStart"
-                          ? isActivityField && isChecklistEnabled
-                          : t.value === "activityList"
-                            ? isActivityField && !isChecklistEnabled
-                            : draft.fieldType === t.actualValue;
+                        const isActive = draft.fieldType === t.actualValue;
                         const isDisabled = t.actualValue === contextoConstructor.INVENTORY_LOOKUP_LOGISTICS_FIELD;
                         return (
                           <button
                             key={`${t.value}-${t.actualValue}`}
                             type="button"
                             className={["ctp-type-chip", isActive ? "active" : "", isDisabled ? "hidden" : ""].filter(Boolean).join(" ")}
-                            onClick={() => !isDisabled && handleTypeSelection(t.value === "activityChecklistStart" ? "activityChecklistStart" : t.actualValue)}
+                            onClick={() => !isDisabled && handleTypeSelection(t.actualValue)}
                           >
                             <span className="ctp-type-emoji">{t.emoji}</span>
                             <span className="ctp-type-name">{t.label}</span>
@@ -554,17 +542,6 @@ export function BoardComponentStudioModal({
                     <small className="builder-help-text">Si aún no tiene actividades, podrás usar este mismo nombre después en el catálogo.</small>
                   </label>
                 ) : <div className="component-rule-hint compact-surface-card"><strong>Tablero precargado</strong><p>Cada actividad de la lista elegida se convertirá en una fila del tablero.</p></div>}
-                <label className="app-modal-field">
-                  <span>Checklist de inicio por actividad</span>
-                  <select
-                    value={draft.enableOperationalChecklistStart ? "enabled" : "disabled"}
-                    onChange={(event) => onChange((current) => ({ ...current, enableOperationalChecklistStart: event.target.value === "enabled" }))}
-                  >
-                    <option value="disabled">Desactivado</option>
-                    <option value="enabled">Activado (abre checklist al iniciar)</option>
-                  </select>
-                  <small className="builder-help-text">Cuando está activado, al presionar Iniciar en actividades vinculadas se abre el checklist operativo antes de arrancar.</small>
-                </label>
                 <div className="component-rule-hint compact-surface-card"><strong>No es un desplegable</strong><p>Si necesitas un menú dentro de cada fila, usa el tipo Menú desplegable.</p></div>
               </section>
             ) : null}
@@ -787,6 +764,7 @@ export function BoardBuilderModal({
   onEditDraftColumn,
   onRemoveDraftColumn,
   visibleUsers,
+  catalog = [],
   departmentOptions = [],
   currentUser,
   userMap,
@@ -885,6 +863,22 @@ export function BoardBuilderModal({
   const operationalContextValue = String(draft.settings?.operationalContextValue || "").trim()
     || operationalContextOptions[0]
     || "";
+  const activityCatalogNames = useMemo(
+    () => Array.from(new Set((catalog || [])
+      .filter((item) => !item?.isDeleted)
+      .map((item) => String(item?.name || "").trim())
+      .filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" })),
+    [catalog],
+  );
+  const checklistConfigRaw = draft.settings?.operationalChecklistConfig && typeof draft.settings.operationalChecklistConfig === "object"
+    ? draft.settings.operationalChecklistConfig
+    : {};
+  const checklistTemplate = normalizeOperationalInspectionTemplate(checklistConfigRaw.template || OPERATIONAL_INSPECTION_TEMPLATE);
+  const checklistLinkedActivities = Array.isArray(checklistConfigRaw.linkedActivityNames)
+    ? checklistConfigRaw.linkedActivityNames.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+  const checklistEnabled = Boolean(checklistConfigRaw.enabled);
   const selectedPreviewTemplateId = selectedPreviewTemplate?.id || "";
   const defaultAuxWidths = Object.fromEntries(Object.values(BOARD_AUX_COLUMN_DEFINITIONS).map((item) => [item.id, item.defaultWidth]));
   const fieldTypeMinWidths = {
@@ -897,9 +891,10 @@ export function BoardBuilderModal({
     date: 140,
   };
   const auxMinWidths = Object.fromEntries(Object.values(BOARD_AUX_COLUMN_DEFINITIONS).map((item) => [item.id, item.minWidth]));
-  const builderTabs = ["base", "identity"];
+  const builderTabs = ["base", "checklist", "identity"];
   const builderTabLabels = {
     base: "Base",
+    checklist: "Checklist",
     identity: "Identidad",
   };
   const currentBuilderTabIndex = Math.max(0, builderTabs.indexOf(builderTab));
@@ -1065,6 +1060,67 @@ export function BoardBuilderModal({
     }));
   }
 
+  function updateChecklistConfig(nextConfig) {
+    onChange((current) => ({
+      ...current,
+      settings: {
+        ...current.settings,
+        operationalChecklistConfig: {
+          ...nextConfig,
+          linkedActivityNames: Array.from(new Set((nextConfig?.linkedActivityNames || []).map((item) => String(item || "").trim()).filter(Boolean))),
+        },
+      },
+    }));
+  }
+
+  function toggleChecklistLinkedActivity(activityName) {
+    const normalizedName = String(activityName || "").trim();
+    if (!normalizedName) return;
+    const hasActivity = checklistLinkedActivities.some((item) => item.toLowerCase() === normalizedName.toLowerCase());
+    updateChecklistConfig({
+      ...checklistConfigRaw,
+      enabled: checklistEnabled,
+      template: checklistTemplate,
+      linkedActivityNames: hasActivity
+        ? checklistLinkedActivities.filter((item) => item.toLowerCase() !== normalizedName.toLowerCase())
+        : [...checklistLinkedActivities, normalizedName],
+    });
+  }
+
+  function updateChecklistSection(sectionId, patch) {
+    const nextSections = checklistTemplate.sections.map((section) => (
+      section.id === sectionId ? { ...section, ...patch } : section
+    ));
+    updateChecklistConfig({
+      ...checklistConfigRaw,
+      enabled: checklistEnabled,
+      linkedActivityNames: checklistLinkedActivities,
+      template: {
+        ...checklistTemplate,
+        sections: nextSections,
+      },
+    });
+  }
+
+  function updateChecklistCheck(sectionId, checkId, patch) {
+    const nextSections = checklistTemplate.sections.map((section) => {
+      if (section.id !== sectionId) return section;
+      return {
+        ...section,
+        checks: section.checks.map((check) => (check.id === checkId ? { ...check, ...patch } : check)),
+      };
+    });
+    updateChecklistConfig({
+      ...checklistConfigRaw,
+      enabled: checklistEnabled,
+      linkedActivityNames: checklistLinkedActivities,
+      template: {
+        ...checklistTemplate,
+        sections: nextSections,
+      },
+    });
+  }
+
   function handlePreviewColumnDrop(targetToken, fromTokenOverride = "") {
     const fromToken = fromTokenOverride || draggingColumnTokenRef.current || draggingColumnToken;
     if (!fromToken || !targetToken || fromToken === targetToken) return;
@@ -1209,6 +1265,7 @@ export function BoardBuilderModal({
   const focusLayoutClassName = [
     "board-builder-focus-layout",
     builderTab === "identity" ? "identity-stage" : "",
+    builderTab === "checklist" ? "checklist-stage" : "",
     builderTab === "base" ? "base-stage" : "",
   ].filter(Boolean).join(" ");
 
@@ -1233,6 +1290,7 @@ export function BoardBuilderModal({
             </div>
             <div className="saved-board-list board-builder-intuitive-chips">
               <button type="button" className={builderTab === "base" ? "tab active" : "tab"} onClick={() => setBuilderTab("base")}>Base</button>
+              <button type="button" className={builderTab === "checklist" ? "tab active" : "tab"} onClick={() => setBuilderTab("checklist")}>Checklist</button>
               <button type="button" className={builderTab === "identity" ? "tab active" : "tab"} onClick={() => setBuilderTab("identity")}>Identidad</button>
             </div>
           </div>
@@ -1532,10 +1590,184 @@ export function BoardBuilderModal({
             </div>
           </section>
           ) : null}
+
+          {builderTab === "checklist" ? (
+          <section id="bb-step-checklist" className="builder-card compact-builder-card board-builder-identity-panel">
+            <div className="builder-section-head board-builder-section-head">
+              <div>
+                <h4>Checklist de arranque</h4>
+                <p>Configura un checklist editable y vincúlalo a una o varias actividades para abrirlo automáticamente al iniciar.</p>
+              </div>
+              <div className="saved-board-list">
+                <button
+                  type="button"
+                  className={checklistEnabled ? "switch-button on" : "switch-button"}
+                  aria-label="Activar checklist de arranque"
+                  aria-pressed={checklistEnabled}
+                  onClick={() => updateChecklistConfig({
+                    ...checklistConfigRaw,
+                    enabled: !checklistEnabled,
+                    template: checklistTemplate,
+                    linkedActivityNames: checklistLinkedActivities,
+                  })}
+                >
+                  <span className="switch-thumb" />
+                </button>
+                <button
+                  type="button"
+                  className="icon-button"
+                  onClick={() => updateChecklistConfig({
+                    ...checklistConfigRaw,
+                    enabled: checklistEnabled,
+                    linkedActivityNames: checklistLinkedActivities,
+                    template: normalizeOperationalInspectionTemplate(OPERATIONAL_INSPECTION_TEMPLATE),
+                  })}
+                >
+                  Restaurar plantilla base
+                </button>
+              </div>
+            </div>
+
+            <div className="modal-form-grid" style={{ gridTemplateColumns: "minmax(0,1fr)", gap: "0.8rem" }}>
+              <label className="app-modal-field">
+                <span>Nombre de checklist</span>
+                <input
+                  value={checklistTemplate.name}
+                  onChange={(event) => updateChecklistConfig({
+                    ...checklistConfigRaw,
+                    enabled: checklistEnabled,
+                    linkedActivityNames: checklistLinkedActivities,
+                    template: {
+                      ...checklistTemplate,
+                      name: event.target.value,
+                    },
+                  })}
+                  placeholder="Checklist operativo de arranque"
+                />
+              </label>
+
+              <div className="surface-card" style={{ padding: "0.75rem", display: "grid", gap: "0.65rem" }}>
+                <strong>Vincular a actividades</strong>
+                <p className="subtle-line" style={{ margin: 0 }}>Selecciona una o varias actividades. Al iniciar una vinculada, se abrirá este checklist antes de arrancar la fila.</p>
+                {activityCatalogNames.length ? (
+                  <div className="saved-board-list" style={{ gap: "0.35rem" }}>
+                    {activityCatalogNames.map((activityName) => {
+                      const isLinked = checklistLinkedActivities.some((item) => item.toLowerCase() === activityName.toLowerCase());
+                      return (
+                        <button
+                          key={activityName}
+                          type="button"
+                          className={isLinked ? "chip primary" : "chip"}
+                          onClick={() => toggleChecklistLinkedActivity(activityName)}
+                        >
+                          {activityName}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : <p className="subtle-line" style={{ margin: 0 }}>No hay actividades en catalogo para vincular todavia.</p>}
+              </div>
+
+              <div style={{ display: "grid", gap: "0.6rem" }}>
+                {checklistTemplate.sections.map((section) => (
+                  <article key={section.id} className="surface-card" style={{ padding: "0.7rem", display: "grid", gap: "0.55rem" }}>
+                    <div style={{ display: "grid", gap: "0.5rem", gridTemplateColumns: "1.2fr 0.8fr auto" }}>
+                      <label className="app-modal-field" style={{ margin: 0 }}>
+                        <span>Seccion</span>
+                        <input value={section.title} onChange={(event) => updateChecklistSection(section.id, { title: event.target.value })} />
+                      </label>
+                      <label className="app-modal-field" style={{ margin: 0 }}>
+                        <span>Categoria incidencia</span>
+                        <input value={section.incidenceCategory || ""} onChange={(event) => updateChecklistSection(section.id, { incidenceCategory: event.target.value })} placeholder="Operativa" />
+                      </label>
+                      <button
+                        type="button"
+                        className="icon-button danger"
+                        onClick={() => updateChecklistConfig({
+                          ...checklistConfigRaw,
+                          enabled: checklistEnabled,
+                          linkedActivityNames: checklistLinkedActivities,
+                          template: {
+                            ...checklistTemplate,
+                            sections: checklistTemplate.sections.filter((item) => item.id !== section.id),
+                          },
+                        })}
+                        disabled={checklistTemplate.sections.length <= 1}
+                      >
+                        Eliminar seccion
+                      </button>
+                    </div>
+
+                    <div style={{ display: "grid", gap: "0.35rem" }}>
+                      {section.checks.map((check) => (
+                        <div key={check.id} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "0.4rem" }}>
+                          <input
+                            value={check.label}
+                            onChange={(event) => updateChecklistCheck(section.id, check.id, { label: event.target.value })}
+                            placeholder="Nombre del check"
+                          />
+                          <button
+                            type="button"
+                            className="icon-button danger"
+                            onClick={() => updateChecklistSection(section.id, {
+                              checks: section.checks.filter((item) => item.id !== check.id),
+                            })}
+                            disabled={section.checks.length <= 1}
+                          >
+                            Quitar
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="saved-board-list" style={{ justifyContent: "flex-end" }}>
+                      <button
+                        type="button"
+                        className="icon-button"
+                        onClick={() => updateChecklistSection(section.id, {
+                          checks: [
+                            ...section.checks,
+                            { id: createChecklistToken("chk"), label: "Nuevo check" },
+                          ],
+                        })}
+                      >
+                        <Plus size={14} /> Agregar check
+                      </button>
+                    </div>
+                  </article>
+                ))}
+
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => updateChecklistConfig({
+                    ...checklistConfigRaw,
+                    enabled: checklistEnabled,
+                    linkedActivityNames: checklistLinkedActivities,
+                    template: {
+                      ...checklistTemplate,
+                      sections: [
+                        ...checklistTemplate.sections,
+                        {
+                          id: createChecklistToken("sec"),
+                          title: `Seccion ${checklistTemplate.sections.length + 1}`,
+                          incidenceCategory: "Operativa",
+                          checks: [{ id: createChecklistToken("chk"), label: "Nuevo check" }],
+                        },
+                      ],
+                    },
+                  })}
+                >
+                  <Plus size={15} /> Agregar seccion
+                </button>
+              </div>
+            </div>
+          </section>
+          ) : null}
         </section>
         ) : null}
 
-        {builderTab !== "identity" ? (
+        {builderTab === "base" ? (
         <aside className="board-builder-preview-panel">
           <div className="board-preview-surface">
             <div className="board-preview-head">

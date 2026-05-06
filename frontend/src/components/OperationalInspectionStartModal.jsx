@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Modal } from "./Modal";
 import { uploadFileToCloudinary } from "../services/upload.service";
 import {
@@ -6,14 +6,8 @@ import {
   createOperationalInspectionDraft,
   validateOperationalInspection,
   buildIncidenciasFromOperationalInspection,
+  normalizeOperationalInspectionTemplate,
 } from "../utils/operationalInspectionTemplate";
-
-const STATUS_OPTIONS = [
-  { value: "pending", label: "Pendiente" },
-  { value: "ok", label: "OK" },
-  { value: "no_ok", label: "NO OK" },
-  { value: "na", label: "N/A" },
-];
 
 const SEVERITY_OPTIONS = [
   { value: "baja", label: "Baja" },
@@ -22,8 +16,15 @@ const SEVERITY_OPTIONS = [
   { value: "critica", label: "Critica" },
 ];
 
-function buildInitialDraft(currentUser, defaultArea, defaultProcess, requireIncidentSiteSelection = false) {
-  const base = createOperationalInspectionDraft(OPERATIONAL_INSPECTION_TEMPLATE);
+function buildInitialDraft(template, currentUser, defaultArea, defaultProcess, requireIncidentSiteSelection = false) {
+  const base = createOperationalInspectionDraft(template);
+  const normalizedChecks = Object.fromEntries(Object.entries(base.checks || {}).map(([checkId, checkState]) => ([
+    checkId,
+    {
+      ...checkState,
+      status: "ok",
+    },
+  ])));
   return {
     ...base,
     metadata: {
@@ -33,6 +34,7 @@ function buildInitialDraft(currentUser, defaultArea, defaultProcess, requireInci
       responsable: String(currentUser?.name || "").trim(),
       requireIncidentSiteSelection: Boolean(requireIncidentSiteSelection),
     },
+    checks: normalizedChecks,
   };
 }
 
@@ -47,10 +49,21 @@ export default function OperationalInspectionStartModal({
   confirmBusy = false,
   requireIncidentSiteSelection = false,
   incidentSiteOptions = [],
+  checklistTemplate,
+  existingInspectionRecord,
 }) {
-  const [draft, setDraft] = useState(() => buildInitialDraft(currentUser, defaultArea, defaultProcess, requireIncidentSiteSelection));
+  const resolvedTemplate = useMemo(
+    () => normalizeOperationalInspectionTemplate(checklistTemplate || OPERATIONAL_INSPECTION_TEMPLATE),
+    [checklistTemplate],
+  );
+  const [siteDrafts, setSiteDrafts] = useState({});
+  const [activeSite, setActiveSite] = useState("");
+  const [completedSites, setCompletedSites] = useState([]);
   const [savingEvidenceByCheckId, setSavingEvidenceByCheckId] = useState({});
   const [formError, setFormError] = useState("");
+  const galleryInputRefs = useRef({});
+  const cameraInputRefs = useRef({});
+  const hasInitializedOpenCycleRef = useRef(false);
   const normalizedIncidentSiteOptions = useMemo(() => {
     const seen = new Set();
     return (Array.isArray(incidentSiteOptions) ? incidentSiteOptions : [])
@@ -62,19 +75,106 @@ export default function OperationalInspectionStartModal({
       });
   }, [incidentSiteOptions]);
 
+  const isMultiSiteMode = normalizedIncidentSiteOptions.length > 1;
+  const singleSiteKey = "__single__";
+  const currentSiteKey = isMultiSiteMode ? activeSite : singleSiteKey;
+  const currentDraft = siteDrafts[currentSiteKey] || buildInitialDraft(resolvedTemplate, currentUser, defaultArea, defaultProcess, requireIncidentSiteSelection);
+
+  const saveActionLabel = useMemo(() => {
+    if (confirmBusy) return "Guardando...";
+    if (!isMultiSiteMode) return "Guardar y finalizar";
+    const alreadyCompleted = new Set(completedSites);
+    alreadyCompleted.add(currentSiteKey);
+    return alreadyCompleted.size >= normalizedIncidentSiteOptions.length ? "Guardar y finalizar" : "Guardar";
+  }, [completedSites, confirmBusy, currentSiteKey, isMultiSiteMode, normalizedIncidentSiteOptions.length]);
+
+  function hydrateDraft(rawDraft = null, site = "") {
+    const base = buildInitialDraft(resolvedTemplate, currentUser, defaultArea, defaultProcess, requireIncidentSiteSelection);
+    const source = rawDraft && typeof rawDraft === "object" ? rawDraft : {};
+    const mergedChecks = { ...base.checks };
+    Object.keys(mergedChecks).forEach((checkId) => {
+      const sourceCheck = source?.checks?.[checkId] && typeof source.checks[checkId] === "object" ? source.checks[checkId] : null;
+      if (!sourceCheck) return;
+      mergedChecks[checkId] = {
+        ...mergedChecks[checkId],
+        ...sourceCheck,
+        photos: Array.isArray(sourceCheck.photos) ? sourceCheck.photos : mergedChecks[checkId].photos,
+      };
+    });
+    return {
+      ...base,
+      ...source,
+      metadata: {
+        ...base.metadata,
+        ...(source.metadata && typeof source.metadata === "object" ? source.metadata : {}),
+        site: String(site || source?.metadata?.site || "").trim().toUpperCase(),
+      },
+      checks: mergedChecks,
+      observations: String(source.observations || "").trim(),
+    };
+  }
+
+  function updateCurrentDraft(updater) {
+    setSiteDrafts((prev) => {
+      const previousDraft = prev[currentSiteKey] || hydrateDraft(null, isMultiSiteMode ? currentSiteKey : "");
+      const nextDraft = typeof updater === "function" ? updater(previousDraft) : previousDraft;
+      return {
+        ...prev,
+        [currentSiteKey]: nextDraft,
+      };
+    });
+  }
+
   useEffect(() => {
-    if (!open) return;
-    setDraft(buildInitialDraft(currentUser, defaultArea, defaultProcess, requireIncidentSiteSelection));
+    if (!open) {
+      hasInitializedOpenCycleRef.current = false;
+      return;
+    }
+    if (hasInitializedOpenCycleRef.current) return;
+
+    if (isMultiSiteMode) {
+      const nextDrafts = {};
+      const previousBySiteDrafts = existingInspectionRecord?.bySiteDrafts && typeof existingInspectionRecord.bySiteDrafts === "object"
+        ? existingInspectionRecord.bySiteDrafts
+        : {};
+      normalizedIncidentSiteOptions.forEach((site) => {
+        nextDrafts[site] = hydrateDraft(previousBySiteDrafts[site], site);
+      });
+      const normalizedCompleted = Array.isArray(existingInspectionRecord?.completedSites)
+        ? existingInspectionRecord.completedSites.map((site) => String(site || "").trim().toUpperCase()).filter((site) => normalizedIncidentSiteOptions.includes(site))
+        : [];
+      const firstPendingSite = normalizedIncidentSiteOptions.find((site) => !normalizedCompleted.includes(site)) || normalizedIncidentSiteOptions[0];
+      setSiteDrafts(nextDrafts);
+      setCompletedSites(normalizedCompleted);
+      setActiveSite(firstPendingSite || "");
+    } else {
+      setSiteDrafts({
+        [singleSiteKey]: hydrateDraft(existingInspectionRecord?.draft || null),
+      });
+      setCompletedSites(existingInspectionRecord?.draft ? [singleSiteKey] : []);
+      setActiveSite(singleSiteKey);
+    }
     setSavingEvidenceByCheckId({});
     setFormError("");
-  }, [open, currentUser, defaultArea, defaultProcess, requireIncidentSiteSelection]);
+    hasInitializedOpenCycleRef.current = true;
+  }, [
+    open,
+    resolvedTemplate,
+    currentUser,
+    defaultArea,
+    defaultProcess,
+    requireIncidentSiteSelection,
+    existingInspectionRecord,
+    isMultiSiteMode,
+    normalizedIncidentSiteOptions,
+  ]);
 
   const totalNoOk = useMemo(() => {
-    return Object.values(draft.checks || {}).filter((entry) => entry?.status === "no_ok").length;
-  }, [draft.checks]);
+    return Object.values(currentDraft.checks || {}).filter((entry) => entry?.status === "no_ok").length;
+  }, [currentDraft.checks]);
 
   function updateMetadata(key, value) {
-    setDraft((prev) => ({
+    updateCurrentDraft((prev) => ({
       ...prev,
       metadata: {
         ...prev.metadata,
@@ -84,12 +184,23 @@ export default function OperationalInspectionStartModal({
   }
 
   function updateCheck(checkId, patch) {
-    setDraft((prev) => ({
+    updateCurrentDraft((prev) => ({
       ...prev,
       checks: {
         ...prev.checks,
         [checkId]: {
-          ...(prev.checks?.[checkId] || { status: "pending", notes: "", severity: "media", photos: [], site: "" }),
+          ...(prev.checks?.[checkId] || {
+            status: Object.hasOwn(patch || {}, "notes")
+              || Object.hasOwn(patch || {}, "severity")
+              || Object.hasOwn(patch || {}, "photos")
+              || Object.hasOwn(patch || {}, "site")
+              ? "no_ok"
+              : "pending",
+            notes: "",
+            severity: "media",
+            photos: [],
+            site: "",
+          }),
           ...patch,
         },
       },
@@ -100,7 +211,8 @@ export default function OperationalInspectionStartModal({
     const files = Array.from(fileList || []);
     if (!files.length) return;
 
-    setSavingEvidenceByCheckId((prev) => ({ ...prev, [checkId]: true }));
+    const saveKey = `${currentSiteKey}:${checkId}`;
+    setSavingEvidenceByCheckId((prev) => ({ ...prev, [saveKey]: true }));
     setFormError("");
 
     try {
@@ -115,14 +227,15 @@ export default function OperationalInspectionStartModal({
           type: file.type,
         });
       }
-      setDraft((prev) => {
+      updateCurrentDraft((prev) => {
         const previousPhotos = Array.isArray(prev.checks?.[checkId]?.photos) ? prev.checks[checkId].photos : [];
         return {
           ...prev,
           checks: {
             ...prev.checks,
             [checkId]: {
-              ...(prev.checks?.[checkId] || { status: "pending", notes: "", severity: "media", photos: [], site: "" }),
+              ...(prev.checks?.[checkId] || { status: "no_ok", notes: "", severity: "media", photos: [], site: "" }),
+              status: "no_ok",
               photos: [...previousPhotos, ...uploaded],
             },
           },
@@ -131,24 +244,59 @@ export default function OperationalInspectionStartModal({
     } catch (error) {
       setFormError(error?.message || "No se pudo subir una evidencia.");
     } finally {
-      setSavingEvidenceByCheckId((prev) => ({ ...prev, [checkId]: false }));
+      setSavingEvidenceByCheckId((prev) => ({ ...prev, [saveKey]: false }));
     }
   }
 
   async function handleConfirm() {
-    const validation = validateOperationalInspection(draft, OPERATIONAL_INSPECTION_TEMPLATE);
+    const validation = validateOperationalInspection(currentDraft, resolvedTemplate);
     if (!validation.ok) {
       setFormError(validation.errors[0] || "Completa la inspeccion antes de continuar.");
       return;
     }
 
     const incidencias = buildIncidenciasFromOperationalInspection({
-      draft,
-      template: OPERATIONAL_INSPECTION_TEMPLATE,
+      draft: currentDraft,
+      template: resolvedTemplate,
       currentUser,
     });
 
-    await onConfirm?.({ draft, incidencias });
+    if (isMultiSiteMode) {
+      const nextCompletedSites = Array.from(new Set([...completedSites, currentSiteKey]));
+      const shouldFinalize = nextCompletedSites.length >= normalizedIncidentSiteOptions.length;
+      await onConfirm?.({
+        draft: currentDraft,
+        incidencias,
+        shouldFinalize,
+        recordPayload: {
+          activityLabel,
+          template: resolvedTemplate,
+          multiSite: true,
+          siteOptions: normalizedIncidentSiteOptions,
+          bySiteDrafts: {
+            ...siteDrafts,
+            [currentSiteKey]: currentDraft,
+          },
+          completedSites: nextCompletedSites,
+          lastSite: currentSiteKey,
+          partialUpdatedAt: new Date().toISOString(),
+          draft: currentDraft,
+        },
+      });
+      return;
+    }
+
+    await onConfirm?.({
+      draft: currentDraft,
+      incidencias,
+      shouldFinalize: true,
+      recordPayload: {
+        activityLabel,
+        template: resolvedTemplate,
+        multiSite: false,
+        draft: currentDraft,
+      },
+    });
   }
 
   return (
@@ -157,42 +305,92 @@ export default function OperationalInspectionStartModal({
       title={`Checklist de inicio${activityLabel ? ` · ${activityLabel}` : ""}`}
       onClose={confirmBusy ? undefined : onClose}
       onConfirm={handleConfirm}
-      confirmLabel={confirmBusy ? "Guardando..." : "Guardar e iniciar"}
+      confirmLabel={saveActionLabel}
       cancelLabel="Cancelar"
       confirmDisabled={confirmBusy}
       className="operational-inspection-modal"
     >
       <div style={{ display: "grid", gap: "0.85rem" }}>
+        {isMultiSiteMode ? (
+          <div className="history-area-tabs" style={{ paddingLeft: 0 }}>
+            {normalizedIncidentSiteOptions.map((siteOption) => {
+              const done = completedSites.includes(siteOption);
+              const active = currentSiteKey === siteOption;
+              return (
+                <button
+                  key={siteOption}
+                  type="button"
+                  className={`tab ${active ? "active" : ""}`}
+                  onClick={() => setActiveSite(siteOption)}
+                >
+                  {siteOption} {done ? "(Hecha)" : "(Pendiente)"}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "0.55rem" }}>
           <label style={{ display: "grid", gap: "0.2rem" }}>
             <span>Area</span>
-            <input value={draft.metadata.area} onChange={(event) => updateMetadata("area", event.target.value)} placeholder="Area" />
+            <input value={currentDraft.metadata.area} onChange={(event) => updateMetadata("area", event.target.value)} placeholder="Area" />
           </label>
           <label style={{ display: "grid", gap: "0.2rem" }}>
             <span>Fecha</span>
-            <input type="date" value={draft.metadata.date} onChange={(event) => updateMetadata("date", event.target.value)} />
+            <input type="date" value={currentDraft.metadata.date} onChange={(event) => updateMetadata("date", event.target.value)} />
           </label>
           <label style={{ display: "grid", gap: "0.2rem" }}>
             <span>Responsable</span>
-            <input value={draft.metadata.responsable} onChange={(event) => updateMetadata("responsable", event.target.value)} placeholder="Responsable" />
+            <input value={currentDraft.metadata.responsable} onChange={(event) => updateMetadata("responsable", event.target.value)} placeholder="Responsable" />
           </label>
         </div>
 
-        {OPERATIONAL_INSPECTION_TEMPLATE.sections.map((section) => (
+        {resolvedTemplate.sections.map((section) => (
           <article key={section.id} style={{ border: "1px solid rgba(3,33,33,0.14)", borderRadius: "0.9rem", padding: "0.7rem", display: "grid", gap: "0.6rem" }}>
             <strong>{section.title}</strong>
             <div style={{ display: "grid", gap: "0.45rem" }}>
               {section.checks.map((check) => {
-                const current = draft.checks?.[check.id] || { status: "pending", notes: "", severity: "media", photos: [], site: "" };
+                const current = currentDraft.checks?.[check.id] || { status: "pending", notes: "", severity: "media", photos: [], site: "" };
                 const isNoOk = current.status === "no_ok";
                 const photos = Array.isArray(current.photos) ? current.photos : [];
+                const saveKey = `${currentSiteKey}:${check.id}`;
                 return (
                   <div key={check.id} style={{ border: "1px solid rgba(3,33,33,0.08)", borderRadius: "0.75rem", padding: "0.55rem", display: "grid", gap: "0.45rem" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.6rem", flexWrap: "wrap" }}>
                       <span>{check.label}</span>
-                      <select value={current.status} onChange={(event) => updateCheck(check.id, { status: event.target.value })} style={{ minWidth: "110px" }}>
-                        {STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                      </select>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", fontWeight: 700 }}>
+                        <span style={{ color: isNoOk ? "#b91c1c" : "#166534" }}>{isNoOk ? "NO OK" : "OK"}</span>
+                        <button
+                          type="button"
+                          aria-label={`Cambiar estado de ${check.label}`}
+                          aria-pressed={!isNoOk}
+                          onClick={() => updateCheck(check.id, { status: isNoOk ? "ok" : "no_ok" })}
+                          style={{
+                            cursor: "pointer",
+                            position: "relative",
+                            width: "44px",
+                            height: "24px",
+                            borderRadius: "999px",
+                            background: isNoOk ? "#dc2626" : "#16a34a",
+                            transition: "all 0.2s ease",
+                            border: "none",
+                            padding: 0,
+                          }}
+                        >
+                          <span
+                            style={{
+                              position: "absolute",
+                              top: "3px",
+                              left: isNoOk ? "3px" : "23px",
+                              width: "18px",
+                              height: "18px",
+                              borderRadius: "50%",
+                              background: "#fff",
+                              transition: "all 0.2s ease",
+                            }}
+                          />
+                        </button>
+                      </div>
                     </div>
 
                     {isNoOk ? (
@@ -215,16 +413,39 @@ export default function OperationalInspectionStartModal({
                             </select>
                           </label>
 
-                          <label style={{ display: "grid", gap: "0.2rem" }}>
+                          <div style={{ display: "grid", gap: "0.2rem" }}>
                             <span>Evidencia (obligatoria)</span>
+                            <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                              <button type="button" className="icon-button" onClick={() => galleryInputRefs.current[saveKey]?.click()} disabled={savingEvidenceByCheckId[saveKey]}>
+                                {savingEvidenceByCheckId[saveKey] ? "Subiendo..." : "Galería"}
+                              </button>
+                              <button type="button" className="icon-button" onClick={() => cameraInputRefs.current[saveKey]?.click()} disabled={savingEvidenceByCheckId[saveKey]}>
+                                {savingEvidenceByCheckId[saveKey] ? "Subiendo..." : "Cámara"}
+                              </button>
+                            </div>
                             <input
+                              ref={(node) => {
+                                if (node) galleryInputRefs.current[saveKey] = node;
+                              }}
                               type="file"
                               accept="image/*"
                               multiple
+                              style={{ display: "none" }}
                               onChange={(event) => handleUploadEvidence(check.id, event.target.files)}
-                              disabled={savingEvidenceByCheckId[check.id]}
+                              disabled={savingEvidenceByCheckId[saveKey]}
                             />
-                          </label>
+                            <input
+                              ref={(node) => {
+                                if (node) cameraInputRefs.current[saveKey] = node;
+                              }}
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              style={{ display: "none" }}
+                              onChange={(event) => handleUploadEvidence(check.id, event.target.files)}
+                              disabled={savingEvidenceByCheckId[saveKey]}
+                            />
+                          </div>
                         </div>
 
                         {normalizedIncidentSiteOptions.length ? (
@@ -269,7 +490,7 @@ export default function OperationalInspectionStartModal({
 
         <label style={{ display: "grid", gap: "0.2rem" }}>
           <span>Observaciones generales</span>
-          <textarea value={draft.observations} onChange={(event) => setDraft((prev) => ({ ...prev, observations: event.target.value }))} rows={3} placeholder="Opcional" />
+          <textarea value={currentDraft.observations} onChange={(event) => updateCurrentDraft((prev) => ({ ...prev, observations: event.target.value }))} rows={3} placeholder="Opcional" />
         </label>
 
         <p className="subtle-line" style={{ margin: 0 }}>

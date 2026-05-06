@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import ReturnsReconditionScanner from "../features/boards/ReturnsReconditionScanner.jsx";
 import OperationalInspectionStartModal from "../components/OperationalInspectionStartModal.jsx";
+import OperationalInspectionRecordModal from "../components/OperationalInspectionRecordModal.jsx";
 import { BoardEditableInventoryPropertyInput, BoardEvidenceCell, BoardMultiSelectDetailCell } from "../components/BoardRuntimeFieldCells.jsx";
 import { downloadBoardAsJson, parseBoardImportJson } from "../utils/boardImportExport";
-import { shouldOpenOperationalInspectionForActivity } from "../utils/operationalInspectionTemplate";
+import { normalizeOperationalInspectionTemplate } from "../utils/operationalInspectionTemplate";
 import {
   formatBoardMultiSelectDetailValue,
   formatInventoryLookupLabel,
@@ -275,6 +276,8 @@ export default function MisTableros({ contexto }) {
     getElapsedSeconds,
     now,
     changeBoardRowStatus,
+    ClipboardList,
+    Eye,
     Play,
     openBoardPauseModal,
     PauseCircle,
@@ -462,8 +465,16 @@ export default function MisTableros({ contexto }) {
     open: false,
     rowId: "",
     activityLabel: "",
+    checklistTemplate: null,
+    existingInspectionRecord: null,
     requireIncidentSiteSelection: false,
     incidentSiteOptions: [],
+  });
+  const [inspectionRecordModalState, setInspectionRecordModalState] = useState({
+    open: false,
+    rowId: "",
+    activityLabel: "",
+    record: null,
   });
   const [inspectionSubmitting, setInspectionSubmitting] = useState(false);
   // Local edit buffer for Lead time overrides: key = "rowId-colId", value = string being typed
@@ -478,6 +489,7 @@ export default function MisTableros({ contexto }) {
   const areaPauseControls = systemPauseControl?.areaPauseControls || {};
   const areaSpecificConfig = boardOwnerAreaKey ? areaPauseControls[boardOwnerAreaKey] : null;
   const areaHasOwnSchedule = Boolean(areaSpecificConfig?.enabled && areaSpecificConfig?.workHours);
+  const areaIncludesGlobalPause = areaSpecificConfig?.includeInGlobalPause !== false;
   const effectiveWorkHours = areaHasOwnSchedule
     ? areaSpecificConfig.workHours
     : (systemPauseControl?.workHours || { startHour: 0, endHour: 24, startMinute: 0, endMinute: 0 });
@@ -485,23 +497,25 @@ export default function MisTableros({ contexto }) {
   const globalForceActive = Boolean(systemPauseControl?.forceGlobalPause);
   // Area-aware pause: if the board's area has its own schedule, compute pause from that schedule.
   // forceGlobalPause (tiempo extra / manual lead override) always takes precedence.
-  const areaEffectivePauseEnabled = globalForceActive
-    ? true
-    : areaHasOwnSchedule
-      ? (() => {
-          const now = new Date();
-          const wh = areaSpecificConfig.workHours;
-          const startTotal = Number(wh?.startHour ?? 0) * 60 + Number(wh?.startMinute ?? 0);
-          const endTotal = Number(wh?.endHour ?? 24) * 60 + Number(wh?.endMinute ?? 0);
-          if (startTotal === endTotal) return true;
-          const nowTotal = now.getHours() * 60 + now.getMinutes();
-          return !(nowTotal >= startTotal && nowTotal < endTotal);
-        })()
-      : manualGlobalPause;
+  const areaSchedulePauseEnabled = areaHasOwnSchedule
+    ? (() => {
+        const now = new Date();
+        const wh = areaSpecificConfig.workHours;
+        const startTotal = Number(wh?.startHour ?? 0) * 60 + Number(wh?.startMinute ?? 0);
+        const endTotal = Number(wh?.endHour ?? 24) * 60 + Number(wh?.endMinute ?? 0);
+        if (startTotal === endTotal) return true;
+        const nowTotal = now.getHours() * 60 + now.getMinutes();
+        return !(nowTotal >= startTotal && nowTotal < endTotal);
+      })()
+    : false;
+  const areaEffectivePauseEnabled = areaIncludesGlobalPause
+    ? (manualGlobalPause || globalForceActive || (areaHasOwnSchedule ? areaSchedulePauseEnabled : false))
+    : (areaHasOwnSchedule ? areaSchedulePauseEnabled : false);
   const globalPauseLocked = areaEffectivePauseEnabled;
   const pauseState = {
     globalPauseEnabled: areaEffectivePauseEnabled,
     globalPauseActivatedAt: areaEffectivePauseEnabled ? (systemPauseControl?.globalPauseActivatedAt || null) : null,
+    globalPauseAccumulatedSeconds: Math.max(0, Number(systemPauseControl?.globalPauseAccumulatedSeconds || 0)),
     workHours: effectiveWorkHours,
     workWeek: systemPauseControl?.workWeek || {},
     areaPauseControls: areaPauseControls,
@@ -794,41 +808,92 @@ export default function MisTableros({ contexto }) {
   function resolveCatalogItemByActivityLabel(activityLabel) {
     const normalizedLabel = String(activityLabel || "").trim().toLowerCase();
     if (!normalizedLabel) return null;
+    const scopedCategory = String(activityListField?.optionCatalogCategory || "").trim().toLowerCase();
     return (state?.catalog || []).find((item) => {
       if (item?.isDeleted) return false;
-      return String(item?.name || "").trim().toLowerCase() === normalizedLabel;
+      if (String(item?.name || "").trim().toLowerCase() !== normalizedLabel) return false;
+      if (!scopedCategory || scopedCategory === "general") return true;
+      return String(item?.category || "general").trim().toLowerCase() === scopedCategory;
     }) || null;
   }
 
-  function handleStartRow(rowRecord) {
+  function resolveChecklistTemplateForActivity(activityLabel) {
+    const matchedCatalogItem = resolveCatalogItemByActivityLabel(activityLabel);
+    const catalogChecklistConfig = matchedCatalogItem?.operationalChecklistConfig;
+    if (catalogChecklistConfig?.enabled) {
+      const catalogTemplate = normalizeOperationalInspectionTemplate(catalogChecklistConfig?.template);
+      if (Array.isArray(catalogTemplate?.sections) && catalogTemplate.sections.length) {
+        return catalogTemplate;
+      }
+    }
+
+    const checklistConfig = boardView?.settings?.operationalChecklistConfig;
+    if (!checklistConfig?.enabled) return null;
+
+    const normalizedActivity = String(activityLabel || "").trim().toLowerCase();
+    const linkedActivityNames = Array.isArray(checklistConfig?.linkedActivityNames)
+      ? checklistConfig.linkedActivityNames
+        .map((item) => String(item || "").trim().toLowerCase())
+        .filter(Boolean)
+      : [];
+
+    if (!normalizedActivity || !linkedActivityNames.includes(normalizedActivity)) {
+      return null;
+    }
+
+    const resolvedTemplate = normalizeOperationalInspectionTemplate(checklistConfig?.template);
+    return Array.isArray(resolvedTemplate?.sections) && resolvedTemplate.sections.length
+      ? resolvedTemplate
+      : null;
+  }
+
+  function getRowInspectionRecord(rowRecord) {
+    return rowRecord?.operationalInspectionRecord && typeof rowRecord.operationalInspectionRecord === "object"
+      ? rowRecord.operationalInspectionRecord
+      : null;
+  }
+
+  function openInspectionRecord(rowRecord) {
+    const record = getRowInspectionRecord(rowRecord);
+    if (!record) return;
+    setInspectionRecordModalState({
+      open: true,
+      rowId: rowRecord.id,
+      activityLabel: getRowActivityLabel(rowRecord),
+      record,
+    });
+  }
+
+  async function handleStartRow(rowRecord) {
     if (!selectedCustomBoard || !rowRecord?.id) return;
-    const checklistEnabledForBoard = Boolean(activityListField?.enableOperationalChecklistStart);
     const activityLabel = getRowActivityLabel(rowRecord);
-    if (!checklistEnabledForBoard || !shouldOpenOperationalInspectionForActivity(activityLabel)) {
-      void changeBoardRowStatus(selectedCustomBoard.id, rowRecord.id, STATUS_RUNNING);
+    const checklistTemplate = resolveChecklistTemplateForActivity(activityLabel);
+    if (!checklistTemplate) {
+      await changeBoardRowStatus(selectedCustomBoard.id, rowRecord.id, STATUS_RUNNING);
       return;
     }
+
+    if (rowRecord.status === STATUS_PENDING || rowRecord.status === STATUS_PAUSED) {
+      await changeBoardRowStatus(selectedCustomBoard.id, rowRecord.id, STATUS_RUNNING, { skipStartConfirm: true });
+    }
+
+    const templateSites = Array.isArray(checklistTemplate?.siteOptions)
+      ? checklistTemplate.siteOptions.map((site) => String(site || "").trim().toUpperCase()).filter(Boolean)
+      : [];
+    const resolvedIncidentSites = templateSites;
 
     setInspectionModalState({
       open: true,
       rowId: rowRecord.id,
       activityLabel,
-      requireIncidentSiteSelection: (() => {
-        const matchedCatalogItem = resolveCatalogItemByActivityLabel(activityLabel);
-        const matchedSites = normalizeCatalogSites(matchedCatalogItem?.cleaningSites);
-        return matchedSites.length === 0;
-      })(),
-      incidentSiteOptions: (() => {
-        const matchedCatalogItem = resolveCatalogItemByActivityLabel(activityLabel);
-        const matchedSites = normalizeCatalogSites(matchedCatalogItem?.cleaningSites);
-        return matchedSites.length
-          ? matchedSites
-          : effectiveCleaningNaves;
-      })(),
+      checklistTemplate,
+      existingInspectionRecord: getRowInspectionRecord(rowRecord),
+        requireIncidentSiteSelection: resolvedIncidentSites.length > 0,
+      incidentSiteOptions: resolvedIncidentSites,
     });
   }
 
-  async function handleConfirmOperationalInspection({ incidencias }) {
+  async function handleConfirmOperationalInspection({ draft, incidencias, shouldFinalize = true, recordPayload = null }) {
     if (!selectedCustomBoard || !inspectionModalState.rowId) return;
 
     setInspectionSubmitting(true);
@@ -844,15 +909,40 @@ export default function MisTableros({ contexto }) {
         }
       }
 
-      await changeBoardRowStatus(selectedCustomBoard.id, inspectionModalState.rowId, STATUS_RUNNING);
+      const checklistRecord = {
+        activityLabel: inspectionModalState.activityLabel,
+        completedAt: shouldFinalize ? new Date().toISOString() : "",
+        completedById: currentUser?.id || "",
+        completedByName: currentUser?.name || "",
+        template: inspectionModalState.checklistTemplate,
+        draft,
+        incidencias: incidentPayloads,
+        ...(recordPayload && typeof recordPayload === "object" ? recordPayload : {}),
+      };
+
+      const patchedState = await requestJson(`/warehouse/boards/${selectedCustomBoard.id}/rows/${inspectionModalState.rowId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ operationalInspectionRecord: checklistRecord }),
+      });
+      applyRemoteWarehouseState(patchedState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+
+      if (shouldFinalize) {
+        await changeBoardRowStatus(selectedCustomBoard.id, inspectionModalState.rowId, STATUS_FINISHED);
+      }
       setInspectionModalState({
         open: false,
         rowId: "",
         activityLabel: "",
+        checklistTemplate: null,
+        existingInspectionRecord: null,
         requireIncidentSiteSelection: false,
         incidentSiteOptions: [],
       });
-      pushAppToast(`Checklist guardado. ${incidentPayloads.length} incidencia(s) generada(s).`, "success");
+      if (shouldFinalize) {
+        pushAppToast(`Checklist guardado. ${incidentPayloads.length} incidencia(s) generada(s) y la actividad quedó finalizada.`, "success");
+      } else {
+        pushAppToast(`Checklist guardado para la nave actual. ${incidentPayloads.length} incidencia(s) generada(s).`, "success");
+      }
     } catch (error) {
       setBoardRuntimeFeedback({
         tone: "danger",
@@ -1232,7 +1322,23 @@ export default function MisTableros({ contexto }) {
                     const rowDisplayReadOnly = isHistoricalCustomBoardView;
                     const canStartRow = row.status === STATUS_PENDING || row.status === STATUS_PAUSED;
                     const canPauseRow = row.status === STATUS_RUNNING;
-                    const canFinishRow = row.status === STATUS_RUNNING;
+                    const checklistTemplateForRow = resolveChecklistTemplateForActivity(getRowActivityLabel(row));
+                    const checklistRecordForRow = getRowInspectionRecord(row);
+                    const checklistPendingCompletion = (() => {
+                      if (!checklistTemplateForRow || row.status !== STATUS_RUNNING) return false;
+                      const matchedCatalogItem = resolveCatalogItemByActivityLabel(getRowActivityLabel(row));
+                      const matchedSites = normalizeCatalogSites(matchedCatalogItem?.cleaningSites);
+                      const totalSites = Array.isArray(checklistRecordForRow?.siteOptions) && checklistRecordForRow.siteOptions.length
+                        ? checklistRecordForRow.siteOptions.length
+                        : matchedSites.length;
+                      if (totalSites > 1) {
+                        const completedCount = Array.isArray(checklistRecordForRow?.completedSites) ? checklistRecordForRow.completedSites.length : 0;
+                        return completedCount < totalSites;
+                      }
+                      return !String(checklistRecordForRow?.completedAt || "").trim();
+                    })();
+                    const canFinishRow = row.status === STATUS_RUNNING && !checklistPendingCompletion;
+                    const canOpenChecklistWhileRunning = row.status === STATUS_RUNNING && Boolean(resolveChecklistTemplateForActivity(getRowActivityLabel(row)));
                     const rowResponsibleIds = getBoardRowResponsibleIds(row);
                     const assigneeDisplayLabel = formatBoardRowAssigneeLabel(row, userMap, { useInitialsForMultiple: true, emptyLabel: "Asignar player(s)" });
                     const assigneeFullLabel = formatBoardRowAssigneeLabel(row, userMap, { emptyLabel: "Asignar player(s)" });
@@ -1438,8 +1544,13 @@ export default function MisTableros({ contexto }) {
                               <td key={`${row.id}-${column.token}`} className="board-workflow-cell board-pdf-hide" style={getEffectiveColumnWidth(column)}>
                                 <div className="row-actions compact board-workflow-actions">
                                   {canStartRow ? (
-                                    <button type="button" className="board-action-button start icon-only" title={row.status === STATUS_PAUSED ? "Reanudar" : "Iniciar"} aria-label={row.status === STATUS_PAUSED ? "Reanudar" : "Iniciar"} onClick={() => handleStartRow(row)} disabled={!rowWorkflowEnabled}>
+                                    <button type="button" className="board-action-button start icon-only" title={row.status === STATUS_PAUSED ? "Reanudar" : "Iniciar"} aria-label={row.status === STATUS_PAUSED ? "Reanudar" : "Iniciar"} onClick={() => { void handleStartRow(row); }} disabled={!rowWorkflowEnabled}>
                                       <Play size={13} />
+                                    </button>
+                                  ) : null}
+                                  {canOpenChecklistWhileRunning ? (
+                                    <button type="button" className="board-action-button pause icon-only" title="Abrir checklist" aria-label="Abrir checklist" onClick={() => { void handleStartRow(row); }} disabled={!rowWorkflowEnabled}>
+                                      <ClipboardList size={13} />
                                     </button>
                                   ) : null}
                                   {canPauseRow ? (
@@ -1452,9 +1563,19 @@ export default function MisTableros({ contexto }) {
                                       <Square size={13} />
                                     </button>
                                   ) : null}
+                                  {row.status === STATUS_RUNNING && checklistPendingCompletion ? (
+                                    <button type="button" className="board-action-button finish icon-only" title="Completa todas las naves del checklist para finalizar" aria-label="Completa todas las naves del checklist para finalizar" disabled>
+                                      <Square size={13} />
+                                    </button>
+                                  ) : null}
                                   {isFinishedRow ? (
                                     <button type="button" className="board-action-button finish icon-only static" title="Terminado" aria-label="Terminado" disabled>
                                       <Square size={13} />
+                                    </button>
+                                  ) : null}
+                                  {getRowInspectionRecord(row) ? (
+                                    <button type="button" className="board-action-button pause icon-only" title="Ver checklist realizado" aria-label="Ver checklist realizado" onClick={() => openInspectionRecord(row)}>
+                                      <Eye size={13} />
                                     </button>
                                   ) : null}
                                   {canDeleteBoardRows ? (
@@ -1957,6 +2078,8 @@ export default function MisTableros({ contexto }) {
         currentUser={currentUser}
         defaultArea={boardOperationalContextValue || boardOwnerAreaKey || ""}
         defaultProcess={boardView?.name || ""}
+        checklistTemplate={inspectionModalState.checklistTemplate}
+        existingInspectionRecord={inspectionModalState.existingInspectionRecord}
         requireIncidentSiteSelection={inspectionModalState.requireIncidentSiteSelection}
         incidentSiteOptions={inspectionModalState.incidentSiteOptions}
         onClose={() => {
@@ -1965,12 +2088,20 @@ export default function MisTableros({ contexto }) {
             open: false,
             rowId: "",
             activityLabel: "",
+            checklistTemplate: null,
+            existingInspectionRecord: null,
             requireIncidentSiteSelection: false,
             incidentSiteOptions: [],
           });
         }}
         onConfirm={handleConfirmOperationalInspection}
         confirmBusy={inspectionSubmitting}
+      />
+      <OperationalInspectionRecordModal
+        open={inspectionRecordModalState.open}
+        activityLabel={inspectionRecordModalState.activityLabel}
+        record={inspectionRecordModalState.record}
+        onClose={() => setInspectionRecordModalState({ open: false, rowId: "", activityLabel: "", record: null })}
       />
 
       <Modal

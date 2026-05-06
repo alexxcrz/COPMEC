@@ -16,6 +16,7 @@ export const OPERATIONAL_INSPECTION_TEMPLATE = {
     { key: "shift", label: "Turno", required: false },
     { key: "process", label: "Proceso/Tablero", required: false },
   ],
+  siteOptions: [],
   sections: [
     {
       id: "naves",
@@ -63,6 +64,68 @@ export const OPERATIONAL_INSPECTION_TEMPLATE = {
   ],
 };
 
+function makeChecklistToken(value, fallback) {
+  const normalized = String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return normalized || fallback;
+}
+
+export function normalizeOperationalInspectionTemplate(rawTemplate) {
+  const source = rawTemplate && typeof rawTemplate === "object" ? rawTemplate : OPERATIONAL_INSPECTION_TEMPLATE;
+  const sourceSections = Array.isArray(source.sections) ? source.sections : [];
+  const normalizedSiteOptions = Array.isArray(source.siteOptions)
+    ? Array.from(new Set(source.siteOptions
+      .map((site) => String(site || "").trim().toUpperCase())
+      .filter(Boolean)))
+    : [];
+
+  const normalizedSections = sourceSections
+    .map((section, sectionIndex) => {
+      const sectionTitle = String(section?.title || `Seccion ${sectionIndex + 1}`).trim();
+      const sectionId = String(section?.id || "").trim() || makeChecklistToken(sectionTitle, `sec-${sectionIndex + 1}`);
+      const checks = (Array.isArray(section?.checks) ? section.checks : [])
+        .map((check, checkIndex) => {
+          const checkLabel = String(check?.label || "").trim();
+          if (!checkLabel) return null;
+          const checkId = String(check?.id || "").trim() || `${sectionId}-${makeChecklistToken(checkLabel, `chk-${checkIndex + 1}`)}`;
+          return { id: checkId, label: checkLabel };
+        })
+        .filter(Boolean);
+
+      if (!checks.length) return null;
+      return {
+        id: sectionId,
+        title: sectionTitle,
+        incidenceCategory: String(section?.incidenceCategory || "Otro").trim() || "Otro",
+        checks,
+      };
+    })
+    .filter(Boolean);
+
+  return {
+    ...OPERATIONAL_INSPECTION_TEMPLATE,
+    ...source,
+    id: String(source.id || OPERATIONAL_INSPECTION_TEMPLATE.id).trim() || OPERATIONAL_INSPECTION_TEMPLATE.id,
+    name: String(source.name || OPERATIONAL_INSPECTION_TEMPLATE.name).trim() || OPERATIONAL_INSPECTION_TEMPLATE.name,
+    version: Number(source.version || OPERATIONAL_INSPECTION_TEMPLATE.version) || OPERATIONAL_INSPECTION_TEMPLATE.version,
+    incidenceRules: {
+      ...OPERATIONAL_INSPECTION_TEMPLATE.incidenceRules,
+      ...(source.incidenceRules && typeof source.incidenceRules === "object" ? source.incidenceRules : {}),
+    },
+    metadataFields: Array.isArray(source.metadataFields) && source.metadataFields.length
+      ? source.metadataFields
+      : OPERATIONAL_INSPECTION_TEMPLATE.metadataFields,
+    siteOptions: normalizedSiteOptions,
+    sections: normalizedSections.length
+      ? normalizedSections
+      : OPERATIONAL_INSPECTION_TEMPLATE.sections,
+  };
+}
+
 export const OPERATIONAL_INSPECTION_ACTIVITY_BINDINGS = [
   {
     templateId: OPERATIONAL_INSPECTION_TEMPLATE.id,
@@ -93,6 +156,15 @@ function toIsoDate(value) {
   return Number.isNaN(asDate.getTime()) ? new Date().toISOString() : asDate.toISOString();
 }
 
+function toInspectionHour(value, fallbackDate = "") {
+  const candidate = value || fallbackDate;
+  const asDate = new Date(candidate);
+  if (Number.isNaN(asDate.getTime())) return "N/A";
+  const hh = String(asDate.getHours()).padStart(2, "0");
+  const mm = String(asDate.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
 export function createOperationalInspectionDraft(template = OPERATIONAL_INSPECTION_TEMPLATE) {
   const checkMap = {};
   for (const section of template.sections || []) {
@@ -112,6 +184,7 @@ export function createOperationalInspectionDraft(template = OPERATIONAL_INSPECTI
     metadata: {
       area: "",
       date: new Date().toISOString().slice(0, 10),
+      inspectedAt: new Date().toISOString(),
       responsable: "",
       shift: "",
       process: "",
@@ -176,13 +249,23 @@ export function buildIncidenciasFromOperationalInspection({
     for (const check of section.checks || []) {
       const state = draft?.checks?.[check.id];
       if (!state || state.status !== "no_ok") continue;
-      const affectedSite = String(state.site || "").trim().toUpperCase();
+      const inspectedSite = String(metadata.site || metadata.area || "").trim().toUpperCase();
+      const affectedSite = String(state.site || inspectedSite || "").trim().toUpperCase();
 
       const notes = String(state.notes || "").trim();
       const photos = Array.isArray(state.photos) ? state.photos : [];
-      const photoLines = photos
-        .map((photo, index) => `- Evidencia ${index + 1}: ${String(photo?.url || photo?.secureUrl || "").trim()}`)
-        .filter((line) => !line.endsWith(": "));
+      const evidencias = photos
+        .map((photo, index) => {
+          const url = String(photo?.url || photo?.secureUrl || "").trim();
+          if (!url) return null;
+          return {
+            url,
+            thumbnailUrl: String(photo?.thumbnailUrl || url).trim(),
+            name: String(photo?.name || `evidencia-${index + 1}`).trim(),
+            type: String(photo?.type || "image").trim(),
+          };
+        })
+        .filter(Boolean);
 
       const descriptionParts = [
         notes || "Hallazgo detectado durante checklist de inspeccion operativa.",
@@ -194,25 +277,26 @@ export function buildIncidenciasFromOperationalInspection({
         `Nave afectada: ${affectedSite || "N/A"}`,
         `Responsable inspeccion: ${String(metadata.responsable || "").trim() || reporterName || "N/A"}`,
         `Fecha inspeccion: ${toIsoDate(metadata.date)}`,
-        `Turno: ${String(metadata.shift || "").trim() || "N/A"}`,
+        `Hora inspeccion: ${toInspectionHour(metadata.inspectedAt, metadata.date)}`,
         `Proceso/Tablero: ${String(metadata.process || "").trim() || "N/A"}`,
       ];
 
-      if (photoLines.length > 0) {
-        descriptionParts.push("", "Evidencias:", ...photoLines);
-      }
+      const normalizedArea = String(metadata.area || section.title || "").trim();
+      const normalizedAreaUpper = normalizedArea.toUpperCase();
+      const resolvedArea = affectedSite && affectedSite !== normalizedAreaUpper
+        ? `${normalizedArea || "General"} · ${affectedSite}`
+        : (normalizedArea || affectedSite || "General");
 
       incidencias.push({
         title: `[Inspeccion] ${check.label}`,
         description: descriptionParts.join("\n"),
         category: section.incidenceCategory || "Otro",
-        area: affectedSite
-          ? `${String(metadata.area || section.title || "").trim() || "General"} · ${affectedSite}`
-          : String(metadata.area || section.title || "").trim(),
+        area: resolvedArea,
         priority: ["baja", "media", "alta", "critica"].includes(state.severity) ? state.severity : template.incidenceRules.defaultPriority || "media",
         status: template.incidenceRules.defaultStatus || "abierta",
         assignedToId: template.incidenceRules.autoAssignToReporter ? reporterId : "",
         assignedToName: template.incidenceRules.autoAssignToReporter ? reporterName : "",
+        evidencias,
       });
     }
   }

@@ -3533,7 +3533,15 @@ function calcWorkSeconds(fromMs, toMs, startHour, endHour, startMinute = 0, endM
   return total;
 }
 
-export function getEffectiveOperationalNow(now, pauseState) {
+function shouldAreaUseGlobalPause(areaKey, pauseState) {
+  const normalizedArea = normalizeAreaOption(getAreaRoot(areaKey) || areaKey);
+  if (!normalizedArea) return true;
+  const areaConfig = pauseState?.areaPauseControls?.[normalizedArea];
+  if (!areaConfig || typeof areaConfig !== "object") return true;
+  return areaConfig.includeInGlobalPause !== false;
+}
+
+export function getEffectiveOperationalNow(now, pauseState, areaKey = "") {
   let effectiveNow = typeof now === "number" ? now : Number(now);
   if (!Number.isFinite(effectiveNow)) {
     effectiveNow = new Date(now).getTime();
@@ -3541,9 +3549,21 @@ export function getEffectiveOperationalNow(now, pauseState) {
   if (!Number.isFinite(effectiveNow)) {
     effectiveNow = Date.now();
   }
+
+  if (!shouldAreaUseGlobalPause(areaKey, pauseState)) {
+    return effectiveNow;
+  }
+
+  const accumulatedSeconds = Math.max(0, Number(pauseState?.globalPauseAccumulatedSeconds || 0));
+  let totalPausedMs = accumulatedSeconds * 1000;
   if (pauseState?.globalPauseEnabled && pauseState?.globalPauseActivatedAt) {
     const pausedAt = new Date(pauseState.globalPauseActivatedAt).getTime();
-    if (!isNaN(pausedAt)) effectiveNow = Math.min(effectiveNow, pausedAt);
+    if (Number.isFinite(pausedAt)) {
+      totalPausedMs += Math.max(0, effectiveNow - pausedAt);
+    }
+  }
+  if (totalPausedMs > 0) {
+    effectiveNow = Math.max(0, effectiveNow - totalPausedMs);
   }
   return effectiveNow;
 }
@@ -3575,13 +3595,13 @@ function parseOperationalTimestamp(value, referenceNow) {
   return base.getTime();
 }
 
-export function getOperationalElapsedSeconds(startTime, now, pauseState) {
+export function getOperationalElapsedSeconds(startTime, now, pauseState, areaKey = "") {
   if (!startTime) return 0;
   const startMs = parseOperationalTimestamp(startTime, now);
   if (!Number.isFinite(startMs)) return 0;
   const effectiveNow = typeof now === "number" ? now : new Date(now).getTime();
   const resolvedNow = Number.isFinite(effectiveNow) ? effectiveNow : Date.now();
-  const cappedNow = getEffectiveOperationalNow(resolvedNow, pauseState);
+  const cappedNow = getEffectiveOperationalNow(resolvedNow, pauseState, areaKey);
   return Math.max(0, Math.floor((cappedNow - startMs) / 1000));
 }
 
@@ -3596,6 +3616,7 @@ export function resolveWorkHoursForArea(pauseState, areaKey) {
 
 export function getElapsedSeconds(activity, now, pauseState) {
   if (!activity) return 0;
+  const areaKey = String(activity.cleaningSite || activity.area || "").trim().toUpperCase();
   const accumulatedSeconds = Number(activity.accumulatedSeconds || 0);
   if (activity.status !== STATUS_RUNNING) {
     if (activity.status === STATUS_PAUSED) {
@@ -3606,7 +3627,7 @@ export function getElapsedSeconds(activity, now, pauseState) {
     }
     // Fallback for legacy finished rows that have start/end but accumulatedSeconds was not persisted.
     if (activity.status === STATUS_FINISHED && accumulatedSeconds <= 0 && activity.startTime && activity.endTime) {
-      return Math.max(0, getOperationalElapsedSeconds(activity.startTime, activity.endTime, pauseState));
+      return Math.max(0, getOperationalElapsedSeconds(activity.startTime, activity.endTime, pauseState, areaKey));
     }
     return Math.max(0, accumulatedSeconds);
   }
@@ -3623,19 +3644,20 @@ export function getElapsedSeconds(activity, now, pauseState) {
 
   const effectiveNow = typeof now === "number" ? now : new Date(now).getTime();
   const resolvedNow = Number.isFinite(effectiveNow) ? effectiveNow : Date.now();
-  const cappedNow = getEffectiveOperationalNow(resolvedNow, pauseState);
+  const cappedNow = getEffectiveOperationalNow(resolvedNow, pauseState, areaKey);
   const delta = Math.max(0, Math.floor((cappedNow - resumedMs) / 1000));
   return Math.max(0, accumulatedSeconds + delta);
 }
 
 export function getLivePauseOverflowSeconds(activity, now, pauseState) {
   if (!activity?.pauseStartedAt) return 0;
+  const areaKey = String(activity.cleaningSite || activity.area || "").trim().toUpperCase();
   const authorizedPauseSeconds = Math.max(0, Number(activity.pauseAuthorizedSeconds || 0));
   const pausedElapsedSeconds = getOperationalElapsedSeconds(
     activity.pauseStartedAt,
     now,
     pauseState,
-    activity.cleaningSite,
+    areaKey,
   );
   if (authorizedPauseSeconds <= 0) return Math.max(0, pausedElapsedSeconds);
   return Math.max(0, pausedElapsedSeconds - authorizedPauseSeconds);
@@ -3781,13 +3803,22 @@ export function normalizeSystemOperationalSettings(value) {
           const rawAreaSource = areaSource[key] || EMPTY_OBJECT;
           accumulator[normalizedArea] = {
             enabled: Boolean(rawAreaSource?.enabled ?? current.enabled),
+            includeInGlobalPause: rawAreaSource?.includeInGlobalPause !== false,
             workHours: normalizeWorkHoursWithMinutes(rawAreaSource?.workHours || current.workHours, 0, 24),
           };
           return accumulator;
         }, {});
       })(),
       globalPauseActivatedAt: (() => { const raw = source.pauseControl?.globalPauseActivatedAt; return (raw && !isNaN(Date.parse(raw))) ? String(raw) : null; })(),
+        globalPauseAccumulatedSeconds: (() => {
+          const raw = Number(source.pauseControl?.globalPauseAccumulatedSeconds ?? 0);
+          return Number.isFinite(raw) ? Math.max(0, Math.floor(raw)) : 0;
+        })(),
     },
+      timeZone: (() => {
+        const raw = String(source.timeZone || "").trim();
+        return raw || "America/Mexico_City";
+      })(),
   };
 }
 

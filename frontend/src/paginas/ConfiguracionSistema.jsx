@@ -16,6 +16,12 @@ const WEEKDAY_META = [
   { key: "sat", label: "Sabado" },
   { key: "sun", label: "Domingo" },
 ];
+const TIMEZONE_OPTIONS = [
+  { value: "America/Mexico_City", label: "America/Mexico_City (Centro)" },
+  { value: "America/Tijuana", label: "America/Tijuana (Pacífico)" },
+  { value: "America/Cancun", label: "America/Cancun (Quintana Roo)" },
+  { value: "UTC", label: "UTC" },
+];
 const DEFAULT_GLOBAL_WORK_WEEK = {
   mon: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
   tue: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
@@ -91,17 +97,22 @@ export default function ConfiguracionSistema({ contexto }) {
     return Array.from(new Set([...(realAreaOptions || []), ...fromPause, ...fromDefaults])).sort((a, b) => a.localeCompare(b, "es-MX"));
   }, [operationalSettings.pauseControl?.areaPauseControls, realAreaOptions]);
   const [pauseDraft, setPauseDraft] = useState(() => operationalSettings.pauseControl);
+  const [timeZoneDraft, setTimeZoneDraft] = useState(() => operationalSettings.timeZone || "America/Mexico_City");
   const [workWeekDraft, setWorkWeekDraft] = useState(() => normalizeWorkWeekSchedule(
     operationalSettings.pauseControl.workWeek,
     operationalSettings.pauseControl.workHours || { startHour: 8, endHour: 16, startMinute: 0, endMinute: 0 },
   ));
   const [areaPauseControlsDraft, setAreaPauseControlsDraft] = useState(() => operationalSettings.pauseControl.areaPauseControls || {});
   const [isSavingPause, setIsSavingPause] = useState(false);
+  const [isSavingTimeZone, setIsSavingTimeZone] = useState(false);
   const [isSavingAreaPauseControls, setIsSavingAreaPauseControls] = useState(false);
 
   useEffect(() => {
     setPauseDraft(operationalSettings.pauseControl);
   }, [operationalSettings.pauseControl]);
+  useEffect(() => {
+    setTimeZoneDraft(operationalSettings.timeZone || "America/Mexico_City");
+  }, [operationalSettings.timeZone]);
   useEffect(() => {
     setWorkWeekDraft(normalizeWorkWeekSchedule(
       operationalSettings.pauseControl.workWeek,
@@ -115,11 +126,25 @@ export default function ConfiguracionSistema({ contexto }) {
       const entry = source[key] || {};
       normalized[key] = {
         enabled: Boolean(entry.enabled),
+        includeInGlobalPause: entry.includeInGlobalPause !== false,
         workHours: entry.workHours || { startHour: 0, startMinute: 0, endHour: 24, endMinute: 0 },
       };
     });
     setAreaPauseControlsDraft(normalized);
   }, [operationalSettings.pauseControl.areaPauseControls, areaKeys]);
+
+  async function handleSaveTimeZone() {
+    if (!canManageSystemSettings || isSavingTimeZone) return;
+    setIsSavingTimeZone(true);
+    try {
+      await updateSystemOperationalSettings({ timeZone: timeZoneDraft });
+      pushAppToast("Zona horaria guardada correctamente.", "success");
+    } catch (error) {
+      pushAppToast(error?.message || "No se pudo guardar la zona horaria.", "danger");
+    } finally {
+      setIsSavingTimeZone(false);
+    }
+  }
 
   async function handleSavePauseRules() {
     if (!canManageSystemSettings || isSavingPause) return;
@@ -296,6 +321,32 @@ export default function ConfiguracionSistema({ contexto }) {
         </div>
       </article>
 
+      <article className="surface-card full-width admin-surface-card">
+        <div className="card-header-row">
+          <div>
+            <h3>Zona horaria operativa</h3>
+            <p className="subtle-line">Controla los horarios y cortes automáticos con una sola zona horaria oficial.</p>
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(240px, 360px) auto", gap: 12, alignItems: "end" }}>
+          <label className="app-modal-field" style={{ margin: 0 }}>
+            <span>Zona horaria</span>
+            <select
+              value={timeZoneDraft}
+              onChange={(event) => setTimeZoneDraft(event.target.value)}
+              disabled={!canManageSystemSettings || isSavingTimeZone}
+            >
+              {TIMEZONE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+          <div className="row-actions compact system-config-actions" style={{ margin: 0 }}>
+            <button type="button" className="primary-button" onClick={handleSaveTimeZone} disabled={!canManageSystemSettings || isSavingTimeZone}>
+              {isSavingTimeZone ? "Guardando..." : "Guardar zona horaria"}
+            </button>
+          </div>
+        </div>
+      </article>
+
       <div className="system-config-dual-sections">
       <article className="surface-card admin-surface-card system-config-compact-surface">
         <div className="card-header-row">
@@ -327,21 +378,24 @@ export default function ConfiguracionSistema({ contexto }) {
               <div key={day.key} className="system-config-card" style={{ display: "grid", gap: 10 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <strong>{day.label}</strong>
-                  <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <input
-                      type="checkbox"
-                      checked={Boolean(dayEntry?.enabled)}
-                      disabled={!canManageSystemSettings}
-                      onChange={(event) => setWorkWeekDraft((current) => ({
+                  <div className="app-modal-field" style={{ display: "inline-flex", flexDirection: "row", gap: 8, alignItems: "center", margin: 0 }}>
+                    <span style={{ fontSize: "0.9rem" }}>Laborable</span>
+                    <button
+                      type="button"
+                      className={`switch-button system-config-switch ${dayEntry?.enabled ? "on" : ""}`}
+                      onClick={() => setWorkWeekDraft((current) => ({
                         ...current,
                         [day.key]: {
                           ...(current[day.key] || DEFAULT_GLOBAL_WORK_WEEK[day.key]),
-                          enabled: event.target.checked,
+                          enabled: current[day.key]?.enabled !== true,
                         },
                       }))}
-                    />
-                    <span style={{ fontSize: "0.9rem" }}>Laborable</span>
-                  </label>
+                      disabled={!canManageSystemSettings}
+                      aria-label={`Alternar día laborable para ${day.label}`}
+                    >
+                      <span className="switch-thumb" />
+                    </button>
+                  </div>
                 </div>
                 {dayEntry?.enabled ? (
                   <div className="system-config-clock-grid system-config-clock-grid-two">
@@ -424,20 +478,49 @@ export default function ConfiguracionSistema({ contexto }) {
 
         <div className="system-config-grid">
           {areaKeys.map((area) => {
-            const areaControl = areaPauseControlsDraft[area] || { enabled: false, workHours: {} };
+            const areaControl = areaPauseControlsDraft[area] || { enabled: false, includeInGlobalPause: true, workHours: {} };
             return (
               <div key={area} className="system-config-card">
                 <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", alignItems: "center", gap: 10, marginBottom: 8 }}>
                   <strong>{area}</strong>
-                  <label style={{ display: "inline-flex", gap: 8, alignItems: "center", whiteSpace: "nowrap", fontSize: "0.88rem" }}>
-                    <input
-                      type="checkbox"
-                      checked={areaControl.enabled || false}
-                      onChange={(e) => setAreaPauseControlsDraft((current) => ({ ...current, [area]: { ...areaControl, enabled: e.target.checked } }))}
+                  <div className="app-modal-field" style={{ display: "inline-flex", flexDirection: "row", gap: 8, alignItems: "center", whiteSpace: "nowrap", margin: 0 }}>
+                    <span>Incluye pausa global</span>
+                    <button
+                      type="button"
+                      className={`switch-button system-config-switch ${areaControl.includeInGlobalPause === false ? "" : "on"}`}
+                      onClick={() => setAreaPauseControlsDraft((current) => ({
+                        ...current,
+                        [area]: {
+                          ...(current[area] || areaControl),
+                          includeInGlobalPause: current[area]?.includeInGlobalPause === false,
+                        },
+                      }))}
                       disabled={!canManageSystemSettings}
-                    />
-                    <span>Horario propio</span>
-                  </label>
+                      aria-label={`Alternar inclusión de pausa global para ${area}`}
+                    >
+                      <span className="switch-thumb" />
+                    </button>
+                  </div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                  <span className="subtle-line" style={{ margin: 0 }}>Horario propio</span>
+                  <div className="app-modal-field" style={{ display: "inline-flex", flexDirection: "row", gap: 8, alignItems: "center", whiteSpace: "nowrap", margin: 0 }}>
+                    <button
+                      type="button"
+                      className={`switch-button system-config-switch ${areaControl.enabled ? "on" : ""}`}
+                      onClick={() => setAreaPauseControlsDraft((current) => ({
+                        ...current,
+                        [area]: {
+                          ...areaControl,
+                          enabled: current[area]?.enabled !== true,
+                        },
+                      }))}
+                      disabled={!canManageSystemSettings}
+                      aria-label={`Alternar horario propio para ${area}`}
+                    >
+                      <span className="switch-thumb" />
+                    </button>
+                  </div>
                 </div>
                 {areaControl.enabled && (
                   <div className="system-area-time-grid system-config-clock-grid-two">
