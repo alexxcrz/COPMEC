@@ -1059,10 +1059,30 @@ function App() { // NOSONAR
   }
 
   function dismissAppToast(toastId) {
+    let shouldClose = false;
+    setAppToasts((current) => current.map((toast) => {
+      if (toast.id !== toastId) return toast;
+      if (toast.pinned) return toast;
+      shouldClose = true;
+      return { ...toast, isClosing: true };
+    }));
+    if (!shouldClose) return;
+    globalThis.setTimeout(() => {
+      setAppToasts((current) => current.filter((toast) => toast.id !== toastId));
+    }, 180);
+  }
+
+  function dismissAppToastForced(toastId) {
     setAppToasts((current) => current.map((toast) => (toast.id === toastId ? { ...toast, isClosing: true } : toast)));
     globalThis.setTimeout(() => {
       setAppToasts((current) => current.filter((toast) => toast.id !== toastId));
     }, 180);
+  }
+
+  function pinAppToast(toastId) {
+    setAppToasts((current) => current.map((toast) => (
+      toast.id === toastId ? { ...toast, pinned: true } : toast
+    )));
   }
 
   function pushAppToast(message, tone = "success") {
@@ -1070,10 +1090,14 @@ function App() { // NOSONAR
     if (!trimmedMessage) return;
 
     const nextToastId = makeId("toast");
-    setAppToasts((current) => current.concat({ id: nextToastId, message: trimmedMessage, tone, isClosing: false }).slice(-4));
+    const normalizedTone = ["success", "danger", "warning"].includes(String(tone || "").toLowerCase())
+      ? String(tone || "").toLowerCase()
+      : "success";
+    const durationMs = normalizedTone === "danger" ? 5200 : normalizedTone === "warning" ? 4600 : 3800;
+    setAppToasts((current) => current.concat({ id: nextToastId, message: trimmedMessage, tone: normalizedTone, isClosing: false, createdAt: Date.now(), durationMs, pinned: false }).slice(-4));
     globalThis.setTimeout(() => {
       dismissAppToast(nextToastId);
-    }, 3400);
+    }, durationMs);
   }
 
   function markNotificationIdsAsRead(notificationIds = []) {
@@ -7603,7 +7627,7 @@ function App() { // NOSONAR
 
   return (
     <main className={`warehouse-app ${isSidebarCollapsed ? "sidebar-collapsed" : ""}`}>
-      <AppToastStack toasts={appToasts} onDismiss={dismissAppToast} />
+      <AppToastStack toasts={appToasts} onDismiss={dismissAppToastForced} onPin={pinAppToast} />
       {antiCaptureEnabled && globalCaptureShieldActive ? (
         <div className="global-capture-shield" role="status" aria-live="polite">
           <strong>Contenido protegido</strong>

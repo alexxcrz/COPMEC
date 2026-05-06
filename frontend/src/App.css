@@ -7471,8 +7471,9 @@ tbody tr:hover {
   box-shadow: 0 16px 34px rgba(18, 42, 35, 0.14);
   backdrop-filter: blur(12px);
   opacity: 0;
-  transform: translateY(10px) scale(0.98);
-  animation: appToastEnter 0.22s ease forwards;
+  transform: translateY(14px) scale(0.95);
+  animation: appToastEnter 0.42s cubic-bezier(0.18, 0.88, 0.25, 1.2) forwards;
+  cursor: pointer;
 }
 
 .app-toast.closing {
@@ -7481,15 +7482,25 @@ tbody tr:hover {
 }
 
 .app-toast.success {
-  background: rgba(236, 250, 241, 0.96);
-  border-color: #b7e7c8;
-  color: #176339;
+  background: rgba(220, 252, 231, 0.98);
+  border-color: #4ade80;
+  color: #14532d;
 }
 
 .app-toast.danger {
-  background: rgba(255, 240, 238, 0.97);
-  border-color: #f1c2bb;
-  color: #b13f34;
+  background: rgba(254, 226, 226, 0.99);
+  border-color: #ef4444;
+  color: #991b1b;
+}
+
+.app-toast.warning {
+  background: rgba(254, 243, 199, 0.98);
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.app-toast.pinned {
+  box-shadow: 0 20px 38px rgba(18, 42, 35, 0.2);
 }
 
 .app-toast p {
@@ -7502,24 +7513,56 @@ tbody tr:hover {
   border: 0;
   background: transparent;
   color: inherit;
-  padding: 0;
-  min-width: auto;
-  min-height: auto;
+  padding: 0.1rem;
+  min-width: 1.7rem;
+  min-height: 1.7rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   opacity: 0.82;
+  position: relative;
 }
 
 .app-toast-close:hover {
   opacity: 1;
 }
 
+.app-toast-timer {
+  position: absolute;
+  inset: 1px;
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
+  transform: rotate(-90deg);
+  pointer-events: none;
+}
+
+.app-toast-timer-track {
+  fill: none;
+  stroke: currentColor;
+  opacity: 0.2;
+  stroke-width: 2;
+}
+
+.app-toast-timer-progress {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 56.55;
+  stroke-dashoffset: 56.55;
+  transition: stroke-dashoffset 100ms linear;
+}
+
 @keyframes appToastEnter {
   from {
     opacity: 0;
-    transform: translateY(10px) scale(0.98);
+    transform: translateY(14px) scale(0.95);
+  }
+
+  65% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.02);
   }
 
   to {

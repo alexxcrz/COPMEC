@@ -1,15 +1,53 @@
-﻿import { Bell, X } from "lucide-react";
+﻿import { Bell, Pin, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { formatNotificationTimestamp } from "../utils/utilidades.jsx";
 
-function AppToastStack({ toasts, onDismiss }) {
+function AppToastStack({ toasts, onDismiss, onPin }) {
+  const [nowMs, setNowMs] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = globalThis.setInterval(() => setNowMs(Date.now()), 100);
+    return () => globalThis.clearInterval(timer);
+  }, []);
+
+  function getProgress(toast) {
+    if (!toast?.createdAt || !toast?.durationMs) return 0;
+    const elapsed = Math.max(0, nowMs - toast.createdAt);
+    return Math.max(0, Math.min(1, elapsed / toast.durationMs));
+  }
+
   if (!toasts.length) return null;
 
   return (
     <div className="app-toast-stack" aria-live="polite" aria-atomic="true">
       {toasts.map((toast) => (
-        <article key={toast.id} className={`app-toast ${toast.tone === "danger" ? "danger" : "success"} ${toast.isClosing ? "closing" : ""}`.trim()}>
+        <article
+          key={toast.id}
+          className={`app-toast ${toast.tone === "danger" ? "danger" : toast.tone === "warning" ? "warning" : "success"} ${toast.isClosing ? "closing" : ""} ${toast.pinned ? "pinned" : ""}`.trim()}
+          onClick={() => onPin?.(toast.id)}
+          title={toast.pinned ? "Aviso fijado" : "Clic para fijar este aviso"}
+        >
           <p>{toast.message}</p>
-          <button type="button" className="app-toast-close" onClick={() => onDismiss(toast.id)} aria-label="Cerrar aviso">
+          <button
+            type="button"
+            className="app-toast-close"
+            onClick={(event) => {
+              event.stopPropagation();
+              onDismiss(toast.id);
+            }}
+            aria-label="Cerrar aviso"
+          >
+            <svg className="app-toast-timer" viewBox="0 0 22 22" aria-hidden="true">
+              <circle cx="11" cy="11" r="9" className="app-toast-timer-track" />
+              <circle
+                cx="11"
+                cy="11"
+                r="9"
+                className="app-toast-timer-progress"
+                style={{ strokeDashoffset: `${56.55 * (1 - (toast.pinned ? 1 : getProgress(toast)))}` }}
+              />
+            </svg>
+            {toast.pinned ? <Pin size={12} /> : null}
             <X size={14} />
           </button>
         </article>
