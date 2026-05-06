@@ -382,6 +382,7 @@ export default function HistorialSemanas({ contexto }) {
   const [expandedDayKey, setExpandedDayKey] = useState("");
   const [openHistoryMonth, setOpenHistoryMonth] = useState("");
   const [historyDetailTab, setHistoryDetailTab] = useState("activities");
+  const [selectedChecklistAreaTab, setSelectedChecklistAreaTab] = useState("");
   const [isExportingChecklistPdf, setIsExportingChecklistPdf] = useState(false);
   const [checklistRecordModalState, setChecklistRecordModalState] = useState({ open: false, activityLabel: "", record: null });
 
@@ -771,15 +772,55 @@ export default function HistorialSemanas({ contexto }) {
       });
   }, [exportWindow, playerScopedActivities]);
 
-  const visibleChecklistActivities = useMemo(
-    () => visibleHistoryActivities.filter((activity) => activity?.operationalInspectionRecord),
-    [visibleHistoryActivities],
+  const checklistActivities = useMemo(
+    () => historyActivities.filter((activity) => activity?.operationalInspectionRecord),
+    [historyActivities],
   );
 
-  const exportableChecklistActivities = useMemo(
-    () => exportableHistoryActivities.filter((activity) => activity?.operationalInspectionRecord),
-    [exportableHistoryActivities],
+  const checklistAreaTabs = useMemo(() => {
+    const grouped = new Map();
+
+    (state.areaCatalog || []).forEach((areaEntry) => {
+      const areaRoot = String(areaEntry || "").split("/")[0]?.trim();
+      if (!areaRoot) return;
+      if (!grouped.has(areaRoot)) grouped.set(areaRoot, 0);
+    });
+
+    checklistActivities.forEach((activity) => {
+      grouped.set(activity.areaRoot, (grouped.get(activity.areaRoot) || 0) + 1);
+    });
+
+    return Array.from(grouped.entries())
+      .map(([area, total]) => ({ value: area, label: area, total }))
+      .sort((left, right) => left.label.localeCompare(right.label, "es-MX"));
+  }, [checklistActivities, state.areaCatalog]);
+
+  const checklistAreaScopedActivities = useMemo(() => {
+    if (!selectedChecklistAreaTab) return [];
+    return checklistActivities
+      .filter((activity) => activity.areaRoot === selectedChecklistAreaTab)
+      .sort((left, right) => {
+        const leftTime = parseHistoryDate(left.activityDate)?.getTime() ?? 0;
+        const rightTime = parseHistoryDate(right.activityDate)?.getTime() ?? 0;
+        return leftTime - rightTime;
+      });
+  }, [checklistActivities, selectedChecklistAreaTab]);
+
+  const visibleChecklistActivities = useMemo(
+    () => checklistAreaScopedActivities,
+    [checklistAreaScopedActivities],
   );
+
+  const exportableChecklistActivities = useMemo(() => {
+    if (!exportWindow) return [];
+    const startMs = exportWindow.start.getTime();
+    const endMs = exportWindow.end.getTime();
+    return checklistAreaScopedActivities.filter((activity) => {
+      const activityMs = parseHistoryDate(activity.activityDate)?.getTime() ?? Number.NaN;
+      if (!Number.isFinite(activityMs)) return false;
+      return activityMs >= startMs && activityMs <= endMs;
+    });
+  }, [checklistAreaScopedActivities, exportWindow]);
 
   const reportYearSections = useMemo(() => {
     const grouped = new Map();
@@ -1110,7 +1151,7 @@ export default function HistorialSemanas({ contexto }) {
       pdf.text("Checklist realizados COPMEC", 36, 40);
       pdf.setFontSize(10);
       pdf.text(`Periodo: ${exportWindow.label}`, 36, 58);
-      pdf.text(`Area: ${selectedAreaTab || "-"} | Tablero: ${selectedBoardTab || "-"} | Player: ${selectedPlayerTab === "all" ? "Todos" : (playerTabs.find((tab) => tab.value === selectedPlayerTab)?.label || selectedPlayerTab)}`, 36, 74);
+      pdf.text(`Area: ${selectedChecklistAreaTab || "-"}`, 36, 74);
       pdf.text(`Generado: ${new Date().toLocaleString("es-MX")}`, 36, 90);
 
       const body = exportableChecklistActivities.map((activity) => {
@@ -1168,6 +1209,7 @@ export default function HistorialSemanas({ contexto }) {
 
   useEffect(() => {
     setSelectedAreaTab("");
+    setSelectedChecklistAreaTab("");
     setSelectedBoardTab("");
     setSelectedPlayerTab("all");
     setSelectedYearFilter("all");
@@ -1205,6 +1247,16 @@ export default function HistorialSemanas({ contexto }) {
       setSelectedAreaTab(areaTabs[0].value);
     }
   }, [areaTabs, selectedAreaTab]);
+
+  useEffect(() => {
+    if (!checklistAreaTabs.length) {
+      if (selectedChecklistAreaTab) setSelectedChecklistAreaTab("");
+      return;
+    }
+    if (!selectedChecklistAreaTab || !checklistAreaTabs.some((tab) => tab.value === selectedChecklistAreaTab)) {
+      setSelectedChecklistAreaTab(checklistAreaTabs[0].value);
+    }
+  }, [checklistAreaTabs, selectedChecklistAreaTab]);
 
   useEffect(() => {
     setSelectedBoardTab("");
@@ -1302,55 +1354,72 @@ export default function HistorialSemanas({ contexto }) {
           <>
             <div style={{ display: "grid", gap: "0.75rem" }}>
               <div className="history-area-tabs">
-                {areaTabs.map((tab) => (
-                  <button
-                    key={tab.value}
-                    type="button"
-                    className={`tab ${selectedAreaTab === tab.value ? "active" : ""}`}
-                    onClick={() => setSelectedAreaTab(tab.value)}
-                  >
-                    {tab.label} ({tab.total})
-                  </button>
-                ))}
-              </div>
-
-              <div className="history-area-tabs" style={{ paddingLeft: "0.35rem" }}>
-                {boardTabs.map((tab) => (
-                  <button
-                    key={tab.value}
-                    type="button"
-                    className={`tab ${selectedBoardTab === tab.value ? "active" : ""}`}
-                    onClick={() => setSelectedBoardTab(tab.value)}
-                  >
-                    {tab.label} ({tab.total})
-                  </button>
-                ))}
-              </div>
-
-              <div className="history-area-tabs" style={{ paddingLeft: "0.7rem" }}>
-                <button
-                  type="button"
-                  className={`tab ${selectedPlayerTab === "all" ? "active" : ""}`}
-                  onClick={() => setSelectedPlayerTab("all")}
-                >
-                  Todos los players ({boardScopedActivities.length})
-                </button>
-                {playerTabs.map((tab) => (
-                  <button
-                    key={tab.value}
-                    type="button"
-                    className={`tab ${selectedPlayerTab === tab.value ? "active" : ""}`}
-                    onClick={() => setSelectedPlayerTab(tab.value)}
-                  >
-                    {tab.label} ({tab.total})
-                  </button>
-                ))}
-              </div>
-
-              <div className="history-area-tabs" style={{ paddingLeft: "0.7rem" }}>
                 <button type="button" className={`tab ${historyDetailTab === "activities" ? "active" : ""}`} onClick={() => setHistoryDetailTab("activities")}>Actividades</button>
                 <button type="button" className={`tab ${historyDetailTab === "checklists" ? "active" : ""}`} onClick={() => setHistoryDetailTab("checklists")}>Checklist realizados</button>
               </div>
+
+              {historyDetailTab === "activities" ? (
+                <>
+                  <div className="history-area-tabs">
+                    {areaTabs.map((tab) => (
+                      <button
+                        key={tab.value}
+                        type="button"
+                        className={`tab ${selectedAreaTab === tab.value ? "active" : ""}`}
+                        onClick={() => setSelectedAreaTab(tab.value)}
+                      >
+                        {tab.label} ({tab.total})
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="history-area-tabs" style={{ paddingLeft: "0.35rem" }}>
+                    {boardTabs.map((tab) => (
+                      <button
+                        key={tab.value}
+                        type="button"
+                        className={`tab ${selectedBoardTab === tab.value ? "active" : ""}`}
+                        onClick={() => setSelectedBoardTab(tab.value)}
+                      >
+                        {tab.label} ({tab.total})
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="history-area-tabs" style={{ paddingLeft: "0.7rem" }}>
+                    <button
+                      type="button"
+                      className={`tab ${selectedPlayerTab === "all" ? "active" : ""}`}
+                      onClick={() => setSelectedPlayerTab("all")}
+                    >
+                      Todos los players ({boardScopedActivities.length})
+                    </button>
+                    {playerTabs.map((tab) => (
+                      <button
+                        key={tab.value}
+                        type="button"
+                        className={`tab ${selectedPlayerTab === tab.value ? "active" : ""}`}
+                        onClick={() => setSelectedPlayerTab(tab.value)}
+                      >
+                        {tab.label} ({tab.total})
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="history-area-tabs" style={{ paddingLeft: "0.35rem" }}>
+                  {checklistAreaTabs.map((tab) => (
+                    <button
+                      key={tab.value}
+                      type="button"
+                      className={`tab ${selectedChecklistAreaTab === tab.value ? "active" : ""}`}
+                      onClick={() => setSelectedChecklistAreaTab(tab.value)}
+                    >
+                      {tab.label} ({tab.total})
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div style={{ display: "grid", gap: "0.9rem" }}>
