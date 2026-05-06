@@ -4598,7 +4598,11 @@ function App() { // NOSONAR
 
   async function submitUserModal() {
     const requiredPermission = userModal.mode === "create" ? actionPermissions.createUsers : actionPermissions.editUsers;
-    if (!currentUser || !requiredPermission) return;
+    if (!currentUser || !requiredPermission) {
+      setUserModalMessage({ tone: "danger", text: "No tienes permiso para guardar este player." });
+      pushAppToast("No tienes permiso para guardar este player.", "danger");
+      return;
+    }
     const trimmedPassword = userModal.password.trim();
     const resolvedPlayerAccess = userModal.username.trim() || buildUniquePlayerAccess(
       userModal.name || userModal.role || "player",
@@ -4625,10 +4629,12 @@ function App() { // NOSONAR
       if (!payload.name) missing.push("Nombre completo");
       if (!payload.area) missing.push("Área");
       if (!payload.jobTitle) missing.push("Cargo");
+      const message = `Faltan campos obligatorios: ${missing.join(", ")}.`;
       setUserModalMessage({
         tone: "danger",
-        text: `Faltan campos obligatorios: ${missing.join(", ")}.`,
+        text: message,
       });
+      pushAppToast(message, "danger");
       return;
     }
     if (userModal.mode === "create" && supportsManagedPermissionOverrides(userModal.role)) {
@@ -4636,14 +4642,17 @@ function App() { // NOSONAR
       const actionValues = Object.values(userModal.permissionOverrides.actions || {});
       const hasAtLeastOnePermission = pageValues.concat(actionValues).some(Boolean);
       if (!hasAtLeastOnePermission) {
-        setUserModalMessage({ tone: "danger", text: "Asigna al menos un permiso antes de crear el player." });
-        pushAppToast("Asigna al menos un permiso antes de crear el player.", "danger");
+        const message = "Asigna al menos un permiso antes de crear el player.";
+        setUserModalMessage({ tone: "danger", text: message });
+        pushAppToast(message, "danger");
         return;
       }
     }
     if (userModal.mode === "create") {
       if (!isTemporaryPassword(trimmedPassword)) {
-        setUserModalMessage({ tone: "danger", text: `La contraseña temporal debe tener al menos ${TEMPORARY_PASSWORD_MIN_LENGTH} caracteres.` });
+        const message = `La contraseña temporal debe tener al menos ${TEMPORARY_PASSWORD_MIN_LENGTH} caracteres.`;
+        setUserModalMessage({ tone: "danger", text: message });
+        pushAppToast(message, "danger");
         return;
       }
       payload.password = trimmedPassword;
