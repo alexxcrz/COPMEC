@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import ReturnsReconditionScanner from "../features/boards/ReturnsReconditionScanner.jsx";
 import OperationalInspectionStartModal from "../components/OperationalInspectionStartModal.jsx";
 import { BoardEditableInventoryPropertyInput, BoardEvidenceCell, BoardMultiSelectDetailCell } from "../components/BoardRuntimeFieldCells.jsx";
+import { downloadBoardAsJson, parseBoardImportJson } from "../utils/boardImportExport";
 import { shouldOpenOperationalInspectionForActivity } from "../utils/operationalInspectionTemplate";
 import {
   formatBoardMultiSelectDetailValue,
@@ -885,25 +886,7 @@ export default function MisTableros({ contexto }) {
 
   function exportCurrentBoardAsJson() {
     if (!selectedCustomBoard) return;
-    const payload = {
-      version: "copmec-board/1",
-      exportedAt: new Date().toISOString(),
-      name: selectedCustomBoard.name || "Tablero",
-      description: selectedCustomBoard.description || "",
-      category: selectedCustomBoard.category || "",
-      visibilityType: selectedCustomBoard.visibilityType || "department",
-      sharedDepartments: Array.isArray(selectedCustomBoard.sharedDepartments) ? selectedCustomBoard.sharedDepartments : [],
-      accessUserIds: Array.isArray(selectedCustomBoard.accessUserIds) ? selectedCustomBoard.accessUserIds : [],
-      settings: selectedCustomBoard.settings || {},
-      fields: Array.isArray(selectedCustomBoard.fields) ? selectedCustomBoard.fields : [],
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `tablero-${(selectedCustomBoard.name || "tablero").replace(/\s+/g, "-").toLowerCase()}-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBoardAsJson(selectedCustomBoard);
   }
 
   function handleBoardImportFile(event) {
@@ -913,24 +896,16 @@ export default function MisTableros({ contexto }) {
     const reader = new FileReader();
     reader.onload = async (evt) => {
       try {
-        const parsed = JSON.parse(evt.target.result);
-        if (!parsed?.fields) throw new Error("El archivo no tiene la estructura esperada (falta 'fields').");
+        const { createPayload } = parseBoardImportJson(String(evt.target.result || ""));
         setIsBoardImporting(true);
-        const createPayload = {
-          name: `${parsed.name || "Tablero importado"} (importado)`,
-          description: parsed.description || "",
-          category: parsed.category || "Personalizada",
-          visibilityType: parsed.visibilityType || "department",
-          sharedDepartments: Array.isArray(parsed.sharedDepartments) ? parsed.sharedDepartments : [],
-          accessUserIds: Array.isArray(parsed.accessUserIds) ? parsed.accessUserIds : [],
-          settings: parsed.settings || {},
-          columns: Array.isArray(parsed.fields) ? parsed.fields : [],
-        };
         const result = await requestJson("/warehouse/boards", {
           method: "POST",
           body: JSON.stringify(createPayload),
         });
         applyRemoteWarehouseState(result?.data?.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+        if (result?.data?.boardId) {
+          setSelectedCustomBoardId(result.data.boardId);
+        }
         if (typeof pushAppToast === "function") pushAppToast(`Tablero "${createPayload.name}" importado correctamente.`, "success");
       } catch (err) {
         if (typeof pushAppToast === "function") pushAppToast(String(err?.message || "No se pudo importar el tablero."), "danger");

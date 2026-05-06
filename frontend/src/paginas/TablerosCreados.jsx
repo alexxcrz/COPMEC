@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Modal } from "../components/Modal";
+import { downloadBoardAsJson, parseBoardImportJson } from "../utils/boardImportExport";
 
 export default function TablerosCreados({ contexto }) {
   const {
@@ -30,6 +31,13 @@ export default function TablerosCreados({ contexto }) {
     setDeleteBoardId,
     Trash2,
     ROLE_LEAD,
+    requestJson,
+    applyRemoteWarehouseState,
+    setState,
+    setLoginDirectory,
+    skipNextSyncRef,
+    setSyncStatus,
+    pushAppToast,
   } = contexto;
 
   const activeCatalogItems = state.catalog.filter((item) => !item.isDeleted);
@@ -40,6 +48,7 @@ export default function TablerosCreados({ contexto }) {
   const [isImporting, setIsImporting] = useState(false);
   const [importMessage, setImportMessage] = useState(null); // { type: "ok"|"error", text: string }
   const catalogImportRef = useRef(null);
+  const boardImportRef = useRef(null);
   const isLeadCreatorView = currentUser?.role === ROLE_LEAD;
 
   const catalogCategories = useMemo(() => {
@@ -107,6 +116,31 @@ export default function TablerosCreados({ contexto }) {
     }
   }
 
+  async function handleBoardImportChange(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    event.target.value = "";
+    setIsImporting(true);
+    setImportMessage(null);
+    try {
+      const text = await file.text();
+      const { createPayload } = parseBoardImportJson(text);
+      const result = await requestJson("/warehouse/boards", {
+        method: "POST",
+        body: JSON.stringify(createPayload),
+      });
+      applyRemoteWarehouseState(result?.data?.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setImportMessage({ type: "ok", text: `Tablero "${createPayload.name}" importado correctamente.` });
+      if (typeof pushAppToast === "function") pushAppToast(`Tablero "${createPayload.name}" importado correctamente.`, "success");
+    } catch (err) {
+      const message = err?.message || "Error al importar el tablero JSON.";
+      setImportMessage({ type: "error", text: message });
+      if (typeof pushAppToast === "function") pushAppToast(message, "danger");
+    } finally {
+      setIsImporting(false);
+    }
+  }
+
   function handleCloseCreateCategoryModal() {
     setCreateListModal({ open: false, name: "", error: "" });
   }
@@ -135,12 +169,23 @@ export default function TablerosCreados({ contexto }) {
           </div>
           <div className="creator-tabs-actions">
             {creatorTab === "boards" ? (
-              <button type="button" className="primary-button" onClick={openCreateBoardBuilder} disabled={!actionPermissions.createBoard}>
-                <Plus size={16} /> Crear tablero
-              </button>
+              <>
+                <button type="button" className="icon-button sm-button" onClick={() => boardImportRef.current?.click()} disabled={isImporting || !actionPermissions.createBoard}>
+                  {isImporting ? "Importando..." : "Importar JSON"}
+                </button>
+                <input ref={boardImportRef} type="file" accept=".json,application/json" style={{ display: "none" }} onChange={handleBoardImportChange} />
+                <button type="button" className="primary-button" onClick={openCreateBoardBuilder} disabled={!actionPermissions.createBoard}>
+                  <Plus size={16} /> Crear tablero
+                </button>
+              </>
             ) : null}
           </div>
         </div>
+        {creatorTab === "boards" && importMessage ? (
+          <p className="subtle-line" style={{ margin: "0.4rem 0 0 0", color: importMessage.type === "ok" ? "var(--color-success, #16a34a)" : "var(--color-error, #dc2626)" }}>
+            {importMessage.text}
+          </p>
+        ) : null}
       </article>
 
       {creatorTab === "boards" ? (
@@ -198,6 +243,9 @@ export default function TablerosCreados({ contexto }) {
                       <Pencil size={15} /> Editar tablero
                     </button>
                   ) : null}
+                  <button type="button" className="icon-button" onClick={() => downloadBoardAsJson(board)}>
+                    Exportar JSON
+                  </button>
                   {actionPermissions.deleteBoard && canEditBoard(currentUser, board) ? (
                     <button type="button" className="icon-button danger created-board-delete-action" onClick={() => setDeleteBoardId(board.id)}>
                       <Trash2 size={15} /> Eliminar tablero
