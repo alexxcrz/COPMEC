@@ -1,4 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+
+let modalLayerCounter = 0;
+let activeTopModalLayer = 0;
 
 export function Modal({
   open,
@@ -14,10 +17,27 @@ export function Modal({
   footerActions = null,
   confirmDisabled = false,
 }) {
+  const [modalLayer, setModalLayer] = useState(0);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    modalLayerCounter += 1;
+    const nextLayer = modalLayerCounter;
+    activeTopModalLayer = nextLayer;
+    setModalLayer(nextLayer);
+    return () => {
+      if (activeTopModalLayer === nextLayer) {
+        activeTopModalLayer = Math.max(0, nextLayer - 1);
+      }
+    };
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
 
     function handleKeyDown(event) {
+      if (modalLayer !== activeTopModalLayer) return;
+
       if (event.key === "Enter") {
         if (onConfirm && !confirmDisabled) {
           onConfirm();
@@ -33,7 +53,7 @@ export function Modal({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose, onConfirm, confirmDisabled]);
+  }, [open, onClose, onConfirm, confirmDisabled, modalLayer]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -46,8 +66,10 @@ export function Modal({
 
   if (!open) return null;
 
+  const backdropZIndex = 20000 + (modalLayer * 10);
+
   return (
-    <div className={`sicfla-modal-backdrop ${backdropClassName}`.trim()} role="presentation" onClick={onClose}>
+    <div className={`sicfla-modal-backdrop ${backdropClassName}`.trim()} style={{ zIndex: backdropZIndex }} role="presentation" onClick={onClose}>
       <section
         className={`sicfla-modal ${className}`.trim()}
         role="dialog"
