@@ -695,9 +695,52 @@ export function createInventoryRestockModalState(domain = INVENTORY_DOMAIN_CLEAN
 export function inferFeedbackToneFromMessage(message) {
   const normalizedMessage = normalizeKey(message);
   if (!normalizedMessage) return "success";
-  if (["no se pudo", "error", "completa", "define", "agrega", "escribe", "selecciona", "inval", "obligatoria", "obligatorio"].some((term) => normalizedMessage.includes(term))) {
+
+  const successMarkers = [
+    "agregado",
+    "agregada",
+    "actualizado",
+    "actualizada",
+    "eliminado",
+    "eliminada",
+    "duplicado",
+    "duplicada",
+    "guardado",
+    "guardada",
+    "limpiado",
+    "limpiada",
+    "creado",
+    "creada",
+    "exportado",
+    "exportada",
+    "descargado",
+    "descargada",
+    "correctamente",
+  ];
+  if (successMarkers.some((term) => normalizedMessage.includes(term))) {
+    return "success";
+  }
+
+  const warningMarkers = [
+    "completa",
+    "define",
+    "escribe",
+    "selecciona",
+    "agrega primero",
+    "agrega al menos",
+    "antes de guardar",
+    "debe tener",
+    "no se aplicaron",
+  ];
+  if (warningMarkers.some((term) => normalizedMessage.includes(term))) {
+    return "warning";
+  }
+
+  const dangerMarkers = ["no se pudo", "error", "fallo", "inval", "obligatoria", "obligatorio"];
+  if (dangerMarkers.some((term) => normalizedMessage.includes(term))) {
     return "danger";
   }
+
   return "success";
 }
 
