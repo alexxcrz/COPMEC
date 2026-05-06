@@ -781,8 +781,9 @@ export default function MisTableros({ contexto }) {
 
   function handleStartRow(rowRecord) {
     if (!selectedCustomBoard || !rowRecord?.id) return;
+    const checklistEnabledForBoard = Boolean(activityListField?.enableOperationalChecklistStart);
     const activityLabel = getRowActivityLabel(rowRecord);
-    if (!shouldOpenOperationalInspectionForActivity(activityLabel)) {
+    if (!checklistEnabledForBoard || !shouldOpenOperationalInspectionForActivity(activityLabel)) {
       void changeBoardRowStatus(selectedCustomBoard.id, rowRecord.id, STATUS_RUNNING);
       return;
     }

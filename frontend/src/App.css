@@ -4388,7 +4388,7 @@ tbody tr:hover {
 .created-board-grid {
   display: grid;
   gap: 0.88rem;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: stretch;
   min-width: 0;
 }
@@ -6769,7 +6769,7 @@ tbody tr:hover {
 
 /* Layout estable para tarjetas de tableros en cualquier pantalla */
 .created-board-grid {
-  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)) !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   min-width: 0;
 }
 

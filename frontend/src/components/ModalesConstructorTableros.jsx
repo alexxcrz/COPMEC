@@ -83,6 +83,7 @@ const COMPONENT_TYPE_CATEGORIES = [
     icon: "⚡",
     types: [
       { value: "activityList", emoji: "⚡", label: "Lista de actividades" },
+      { value: "activityChecklistStart", emoji: "📋", label: "Checklist operativo (inicio)" },
     ],
   },
 ];
@@ -270,9 +271,20 @@ export function BoardComponentStudioModal({
 
   function handleTypeSelection(nextType) {
     onChange((current) => {
-      const nextDraft = { ...current, fieldType: nextType };
+      const isChecklistStartType = nextType === "activityChecklistStart";
+      const resolvedType = isChecklistStartType ? BOARD_ACTIVITY_LIST_FIELD : nextType;
+      const nextDraft = { ...current, fieldType: resolvedType };
       if (nextType === BOARD_ACTIVITY_LIST_FIELD) {
         nextDraft.optionSource = "catalogByCategory";
+        nextDraft.enableOperationalChecklistStart = false;
+        if (!String(current.optionCatalogCategory || "").trim()) {
+          nextDraft.optionCatalogCategory = normalizedActivityCategoryOptions[0] || "";
+        }
+        return nextDraft;
+      }
+      if (isChecklistStartType) {
+        nextDraft.optionSource = "catalogByCategory";
+        nextDraft.enableOperationalChecklistStart = true;
         if (!String(current.optionCatalogCategory || "").trim()) {
           nextDraft.optionCatalogCategory = normalizedActivityCategoryOptions[0] || "";
         }
@@ -402,14 +414,20 @@ export function BoardComponentStudioModal({
                     </div>
                     <div className="ctp-type-row">
                       {categoryTypes.map((t) => {
-                        const isActive = draft.fieldType === t.actualValue;
+                        const isActivityField = draft.fieldType === (contextoConstructor.BOARD_ACTIVITY_LIST_FIELD || "activityList");
+                        const isChecklistEnabled = Boolean(draft.enableOperationalChecklistStart);
+                        const isActive = t.value === "activityChecklistStart"
+                          ? isActivityField && isChecklistEnabled
+                          : t.value === "activityList"
+                            ? isActivityField && !isChecklistEnabled
+                            : draft.fieldType === t.actualValue;
                         const isDisabled = t.actualValue === contextoConstructor.INVENTORY_LOOKUP_LOGISTICS_FIELD;
                         return (
                           <button
-                            key={t.actualValue}
+                            key={`${t.value}-${t.actualValue}`}
                             type="button"
                             className={["ctp-type-chip", isActive ? "active" : "", isDisabled ? "hidden" : ""].filter(Boolean).join(" ")}
-                            onClick={() => !isDisabled && handleTypeSelection(t.actualValue)}
+                            onClick={() => !isDisabled && handleTypeSelection(t.value === "activityChecklistStart" ? "activityChecklistStart" : t.actualValue)}
                           >
                             <span className="ctp-type-emoji">{t.emoji}</span>
                             <span className="ctp-type-name">{t.label}</span>
@@ -536,6 +554,17 @@ export function BoardComponentStudioModal({
                     <small className="builder-help-text">Si aún no tiene actividades, podrás usar este mismo nombre después en el catálogo.</small>
                   </label>
                 ) : <div className="component-rule-hint compact-surface-card"><strong>Tablero precargado</strong><p>Cada actividad de la lista elegida se convertirá en una fila del tablero.</p></div>}
+                <label className="app-modal-field">
+                  <span>Checklist de inicio por actividad</span>
+                  <select
+                    value={draft.enableOperationalChecklistStart ? "enabled" : "disabled"}
+                    onChange={(event) => onChange((current) => ({ ...current, enableOperationalChecklistStart: event.target.value === "enabled" }))}
+                  >
+                    <option value="disabled">Desactivado</option>
+                    <option value="enabled">Activado (abre checklist al iniciar)</option>
+                  </select>
+                  <small className="builder-help-text">Cuando está activado, al presionar Iniciar en actividades vinculadas se abre el checklist operativo antes de arrancar.</small>
+                </label>
                 <div className="component-rule-hint compact-surface-card"><strong>No es un desplegable</strong><p>Si necesitas un menú dentro de cada fila, usa el tipo Menú desplegable.</p></div>
               </section>
             ) : null}
