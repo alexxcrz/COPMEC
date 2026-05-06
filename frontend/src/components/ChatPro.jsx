@@ -2536,6 +2536,25 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     setOpen(!open);
   };
 
+  const closeChatPanel = () => {
+    if (!open) return;
+    abrirCerrarChat();
+    if (onClose) onClose();
+  };
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const handleEscapeCloseChat = (event) => {
+      if (event.key !== "Escape") return;
+      if (event.defaultPrevented) return;
+      closeChatPanel();
+    };
+
+    window.addEventListener("keydown", handleEscapeCloseChat);
+    return () => window.removeEventListener("keydown", handleEscapeCloseChat);
+  }, [open, onClose]);
+
   // ============================
   // 📎 Funciones para archivos
   // ============================
@@ -5904,12 +5923,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                   <h2 className="chat-sidebar-title">Mensajes</h2>
                   <button 
                     className="chat-close-btn"
-                    onClick={() => {
-                      abrirCerrarChat();
-                      if (onClose) {
-                        onClose();
-                      }
-                    }}
+                    onClick={closeChatPanel}
                     title="Cerrar chat"
                   >
                     ✕
