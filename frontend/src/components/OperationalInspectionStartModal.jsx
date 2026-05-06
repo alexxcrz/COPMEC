@@ -22,7 +22,7 @@ const SEVERITY_OPTIONS = [
   { value: "critica", label: "Critica" },
 ];
 
-function buildInitialDraft(currentUser, defaultArea, defaultProcess) {
+function buildInitialDraft(currentUser, defaultArea, defaultProcess, requireIncidentSiteSelection = false) {
   const base = createOperationalInspectionDraft(OPERATIONAL_INSPECTION_TEMPLATE);
   return {
     ...base,
@@ -31,6 +31,7 @@ function buildInitialDraft(currentUser, defaultArea, defaultProcess) {
       area: String(defaultArea || "").trim(),
       process: String(defaultProcess || "").trim(),
       responsable: String(currentUser?.name || "").trim(),
+      requireIncidentSiteSelection: Boolean(requireIncidentSiteSelection),
     },
   };
 }
@@ -44,17 +45,29 @@ export default function OperationalInspectionStartModal({
   onClose,
   onConfirm,
   confirmBusy = false,
+  requireIncidentSiteSelection = false,
+  incidentSiteOptions = [],
 }) {
-  const [draft, setDraft] = useState(() => buildInitialDraft(currentUser, defaultArea, defaultProcess));
+  const [draft, setDraft] = useState(() => buildInitialDraft(currentUser, defaultArea, defaultProcess, requireIncidentSiteSelection));
   const [savingEvidenceByCheckId, setSavingEvidenceByCheckId] = useState({});
   const [formError, setFormError] = useState("");
+  const normalizedIncidentSiteOptions = useMemo(() => {
+    const seen = new Set();
+    return (Array.isArray(incidentSiteOptions) ? incidentSiteOptions : [])
+      .map((entry) => String(entry || "").trim().toUpperCase())
+      .filter((entry) => {
+        if (!entry || seen.has(entry)) return false;
+        seen.add(entry);
+        return true;
+      });
+  }, [incidentSiteOptions]);
 
   useEffect(() => {
     if (!open) return;
-    setDraft(buildInitialDraft(currentUser, defaultArea, defaultProcess));
+    setDraft(buildInitialDraft(currentUser, defaultArea, defaultProcess, requireIncidentSiteSelection));
     setSavingEvidenceByCheckId({});
     setFormError("");
-  }, [open, currentUser, defaultArea, defaultProcess]);
+  }, [open, currentUser, defaultArea, defaultProcess, requireIncidentSiteSelection]);
 
   const totalNoOk = useMemo(() => {
     return Object.values(draft.checks || {}).filter((entry) => entry?.status === "no_ok").length;
@@ -76,7 +89,7 @@ export default function OperationalInspectionStartModal({
       checks: {
         ...prev.checks,
         [checkId]: {
-          ...(prev.checks?.[checkId] || { status: "pending", notes: "", severity: "media", photos: [] }),
+          ...(prev.checks?.[checkId] || { status: "pending", notes: "", severity: "media", photos: [], site: "" }),
           ...patch,
         },
       },
@@ -109,7 +122,7 @@ export default function OperationalInspectionStartModal({
           checks: {
             ...prev.checks,
             [checkId]: {
-              ...(prev.checks?.[checkId] || { status: "pending", notes: "", severity: "media", photos: [] }),
+              ...(prev.checks?.[checkId] || { status: "pending", notes: "", severity: "media", photos: [], site: "" }),
               photos: [...previousPhotos, ...uploaded],
             },
           },
@@ -170,7 +183,7 @@ export default function OperationalInspectionStartModal({
             <strong>{section.title}</strong>
             <div style={{ display: "grid", gap: "0.45rem" }}>
               {section.checks.map((check) => {
-                const current = draft.checks?.[check.id] || { status: "pending", notes: "", severity: "media", photos: [] };
+                const current = draft.checks?.[check.id] || { status: "pending", notes: "", severity: "media", photos: [], site: "" };
                 const isNoOk = current.status === "no_ok";
                 const photos = Array.isArray(current.photos) ? current.photos : [];
                 return (
@@ -213,6 +226,21 @@ export default function OperationalInspectionStartModal({
                             />
                           </label>
                         </div>
+
+                        {normalizedIncidentSiteOptions.length ? (
+                          <label style={{ display: "grid", gap: "0.2rem" }}>
+                            <span>{requireIncidentSiteSelection ? "Nave afectada (obligatoria)" : "Nave afectada (opcional)"}</span>
+                            <select
+                              value={current.site || ""}
+                              onChange={(event) => updateCheck(check.id, { site: event.target.value })}
+                            >
+                              <option value="">Seleccionar nave</option>
+                              {normalizedIncidentSiteOptions.map((siteOption) => (
+                                <option key={siteOption} value={siteOption}>{siteOption}</option>
+                              ))}
+                            </select>
+                          </label>
+                        ) : null}
 
                         {photos.length ? (
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: "0.35rem" }}>

@@ -565,6 +565,7 @@ function createEmptyCatalogModalState() {
     scheduledDays: [0, 1, 2, 3, 4, 5],
     scheduledDaysBySite: {},
     cleaningSites: [],
+    siteMode: "general",
   };
 }
 
@@ -4395,6 +4396,7 @@ function App() { // NOSONAR
 
 
   function openCatalogEdit(item) {
+    const itemCleaningSites = normalizeCatalogCleaningSites(item.cleaningSites);
     setCatalogModal({
       ...createEmptyCatalogModalState(),
       open: true,
@@ -4408,19 +4410,27 @@ function App() { // NOSONAR
       area: normalizeCatalogArea(item.area, item.category),
       scheduledDays: normalizeCatalogScheduledDays(item.scheduledDays, item.frequency),
       scheduledDaysBySite: normalizeCatalogScheduledDaysBySite(item.scheduledDaysBySite, normalizeCatalogScheduledDays(item.scheduledDays, item.frequency)),
-      cleaningSites: normalizeCatalogCleaningSites(item.cleaningSites),
+      cleaningSites: itemCleaningSites,
+      siteMode: itemCleaningSites.length ? "bySite" : "general",
     });
   }
 
   async function submitCatalogModal() {
+    const siteMode = catalogModal.siteMode === "bySite" ? "bySite" : "general";
+    const normalizedCleaningSites = siteMode === "bySite"
+      ? normalizeCatalogCleaningSites(catalogModal.cleaningSites)
+      : [];
+    const normalizedScheduledDays = normalizeCatalogScheduledDays(catalogModal.scheduledDays, catalogModal.frequency);
     const payload = {
       name: catalogModal.name.trim(),
       timeLimitMinutes: Number(catalogModal.limit || 0),
       isMandatory: catalogModal.mandatory === "true",
       frequency: normalizeActivityFrequency(catalogModal.frequency),
-      scheduledDays: normalizeCatalogScheduledDays(catalogModal.scheduledDays, catalogModal.frequency),
-      cleaningSites: normalizeCatalogCleaningSites(catalogModal.cleaningSites),
-      scheduledDaysBySite: normalizeCatalogScheduledDaysBySite(catalogModal.scheduledDaysBySite, normalizeCatalogScheduledDays(catalogModal.scheduledDays, catalogModal.frequency)),
+      scheduledDays: normalizedScheduledDays,
+      cleaningSites: normalizedCleaningSites,
+      scheduledDaysBySite: siteMode === "bySite"
+        ? normalizeCatalogScheduledDaysBySite(catalogModal.scheduledDaysBySite, normalizedScheduledDays)
+        : {},
       category: String(catalogModal.category || "General").trim() || "General",
       area: normalizeCatalogArea(catalogModal.area, catalogModal.category),
       isDeleted: false,
@@ -7876,16 +7886,46 @@ function App() { // NOSONAR
             </select>
           </label>
           <label className="app-modal-field catalog-activity-chip-field">
-            <span>Naves (opcional, vacio = todas)</span>
+            <span>Alcance de naves</span>
+            <div className="catalog-activity-chip-row">
+              <button
+                type="button"
+                className={`catalog-site-chip ${catalogModal.siteMode !== "bySite" ? "active" : ""}`.trim()}
+                onClick={() => setCatalogModal((current) => ({
+                  ...current,
+                  siteMode: "general",
+                  cleaningSites: [],
+                  scheduledDaysBySite: {},
+                }))}
+              >
+                General (todas)
+              </button>
+              <button
+                type="button"
+                className={`catalog-site-chip ${catalogModal.siteMode === "bySite" ? "active" : ""}`.trim()}
+                onClick={() => setCatalogModal((current) => ({
+                  ...current,
+                  siteMode: "bySite",
+                }))}
+              >
+                Por nave
+              </button>
+            </div>
+          </label>
+          <label className="app-modal-field catalog-activity-chip-field">
+            <span>Naves {catalogModal.siteMode === "bySite" ? "(seleccion obligatoria)" : "(no aplica en general)"}</span>
             <div className="catalog-activity-chip-row">
               {CLEANING_SITE_OPTIONS.map((site) => {
                 const siteValue = String(site.value || "").trim().toUpperCase();
                 const isActive = (catalogModal.cleaningSites || []).includes(siteValue);
+                const isDisabled = catalogModal.siteMode !== "bySite";
                 return (
                   <button
                     key={siteValue}
                     type="button"
+                    disabled={isDisabled}
                     onClick={() => setCatalogModal((current) => {
+                      if (current.siteMode !== "bySite") return current;
                       const currentSites = normalizeCatalogCleaningSites(current.cleaningSites);
                       const hasSite = currentSites.includes(siteValue);
                       const nextSites = hasSite
@@ -7910,7 +7950,9 @@ function App() { // NOSONAR
           <label className="app-modal-field catalog-activity-chip-field">
             <span>Dias por nave</span>
             <div className="modal-form-grid catalog-days-by-site-grid">
-              {(catalogModal.cleaningSites || []).length ? (catalogModal.cleaningSites || []).map((siteValue) => {
+              {catalogModal.siteMode !== "bySite" ? (
+                <p className="modal-footnote">Esta actividad queda en modo general. Si hay incidencia, la nave se podra elegir al reportarla.</p>
+              ) : (catalogModal.cleaningSites || []).length ? (catalogModal.cleaningSites || []).map((siteValue) => {
                 const siteLabel = CLEANING_SITE_OPTIONS.find((site) => String(site.value || "").trim().toUpperCase() === siteValue)?.label || siteValue;
                 const siteDays = normalizeCatalogScheduledDaysBySite(catalogModal.scheduledDaysBySite, normalizeCatalogScheduledDays(catalogModal.scheduledDays, catalogModal.frequency))[siteValue]
                   || normalizeCatalogScheduledDays(catalogModal.scheduledDays, catalogModal.frequency);

@@ -179,6 +179,12 @@ function resolveInventoryItemFromLookupValue(inventoryItems, lookupValue) {
   return null;
 }
 
+function normalizeCatalogSites(value) {
+  return Array.from(new Set((Array.isArray(value) ? value : [])
+    .map((entry) => String(entry || "").trim().toUpperCase())
+    .filter(Boolean))).sort();
+}
+
 function formatBoardReadOnlyValue(field, rawValue, inventoryItems) {
   if (!field) return formatBoardCellObjectValue(rawValue);
 
@@ -452,7 +458,13 @@ export default function MisTableros({ contexto }) {
   const assigneeTriggerRef = useRef(null);
   const [assigneeMenuPosition, setAssigneeMenuPosition] = useState({ top: 0, left: 0, width: 0, openUp: false });
   const [pauseDetailsRow, setPauseDetailsRow] = useState(null);
-  const [inspectionModalState, setInspectionModalState] = useState({ open: false, rowId: "", activityLabel: "" });
+  const [inspectionModalState, setInspectionModalState] = useState({
+    open: false,
+    rowId: "",
+    activityLabel: "",
+    requireIncidentSiteSelection: false,
+    incidentSiteOptions: [],
+  });
   const [inspectionSubmitting, setInspectionSubmitting] = useState(false);
   // Local edit buffer for Lead time overrides: key = "rowId-colId", value = string being typed
   const [leadTimeEdits, setLeadTimeEdits] = useState({});
@@ -779,6 +791,15 @@ export default function MisTableros({ contexto }) {
     return String(rowRecord?.values?.[activityListField.id] || "").trim();
   }
 
+  function resolveCatalogItemByActivityLabel(activityLabel) {
+    const normalizedLabel = String(activityLabel || "").trim().toLowerCase();
+    if (!normalizedLabel) return null;
+    return (state?.catalog || []).find((item) => {
+      if (item?.isDeleted) return false;
+      return String(item?.name || "").trim().toLowerCase() === normalizedLabel;
+    }) || null;
+  }
+
   function handleStartRow(rowRecord) {
     if (!selectedCustomBoard || !rowRecord?.id) return;
     const checklistEnabledForBoard = Boolean(activityListField?.enableOperationalChecklistStart);
@@ -792,6 +813,18 @@ export default function MisTableros({ contexto }) {
       open: true,
       rowId: rowRecord.id,
       activityLabel,
+      requireIncidentSiteSelection: (() => {
+        const matchedCatalogItem = resolveCatalogItemByActivityLabel(activityLabel);
+        const matchedSites = normalizeCatalogSites(matchedCatalogItem?.cleaningSites);
+        return matchedSites.length === 0;
+      })(),
+      incidentSiteOptions: (() => {
+        const matchedCatalogItem = resolveCatalogItemByActivityLabel(activityLabel);
+        const matchedSites = normalizeCatalogSites(matchedCatalogItem?.cleaningSites);
+        return matchedSites.length
+          ? matchedSites
+          : effectiveCleaningNaves;
+      })(),
     });
   }
 
@@ -812,7 +845,13 @@ export default function MisTableros({ contexto }) {
       }
 
       await changeBoardRowStatus(selectedCustomBoard.id, inspectionModalState.rowId, STATUS_RUNNING);
-      setInspectionModalState({ open: false, rowId: "", activityLabel: "" });
+      setInspectionModalState({
+        open: false,
+        rowId: "",
+        activityLabel: "",
+        requireIncidentSiteSelection: false,
+        incidentSiteOptions: [],
+      });
       pushAppToast(`Checklist guardado. ${incidentPayloads.length} incidencia(s) generada(s).`, "success");
     } catch (error) {
       setBoardRuntimeFeedback({
@@ -1918,9 +1957,17 @@ export default function MisTableros({ contexto }) {
         currentUser={currentUser}
         defaultArea={boardOperationalContextValue || boardOwnerAreaKey || ""}
         defaultProcess={boardView?.name || ""}
+        requireIncidentSiteSelection={inspectionModalState.requireIncidentSiteSelection}
+        incidentSiteOptions={inspectionModalState.incidentSiteOptions}
         onClose={() => {
           if (inspectionSubmitting) return;
-          setInspectionModalState({ open: false, rowId: "", activityLabel: "" });
+          setInspectionModalState({
+            open: false,
+            rowId: "",
+            activityLabel: "",
+            requireIncidentSiteSelection: false,
+            incidentSiteOptions: [],
+          });
         }}
         onConfirm={handleConfirmOperationalInspection}
         confirmBusy={inspectionSubmitting}

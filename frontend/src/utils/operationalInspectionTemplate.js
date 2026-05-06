@@ -102,6 +102,7 @@ export function createOperationalInspectionDraft(template = OPERATIONAL_INSPECTI
         notes: "",
         severity: "media", // baja | media | alta | critica
         photos: [],
+        site: "",
       };
     }
   }
@@ -114,6 +115,7 @@ export function createOperationalInspectionDraft(template = OPERATIONAL_INSPECTI
       responsable: "",
       shift: "",
       process: "",
+      requireIncidentSiteSelection: false,
     },
     checks: checkMap,
     observations: "",
@@ -146,6 +148,11 @@ export function validateOperationalInspection(draft, template = OPERATIONAL_INSP
           errors.push(`Debes adjuntar evidencia para incidencia: ${check.label}.`);
         }
       }
+      if (state.status === "no_ok" && draft?.metadata?.requireIncidentSiteSelection) {
+        if (!String(state.site || "").trim()) {
+          errors.push(`Selecciona la nave afectada para incidencia: ${check.label}.`);
+        }
+      }
     }
   }
 
@@ -169,6 +176,7 @@ export function buildIncidenciasFromOperationalInspection({
     for (const check of section.checks || []) {
       const state = draft?.checks?.[check.id];
       if (!state || state.status !== "no_ok") continue;
+      const affectedSite = String(state.site || "").trim().toUpperCase();
 
       const notes = String(state.notes || "").trim();
       const photos = Array.isArray(state.photos) ? state.photos : [];
@@ -183,6 +191,7 @@ export function buildIncidenciasFromOperationalInspection({
         `Seccion: ${section.title}`,
         `Check: ${check.label}`,
         `Area inspeccion: ${String(metadata.area || "").trim() || "N/A"}`,
+        `Nave afectada: ${affectedSite || "N/A"}`,
         `Responsable inspeccion: ${String(metadata.responsable || "").trim() || reporterName || "N/A"}`,
         `Fecha inspeccion: ${toIsoDate(metadata.date)}`,
         `Turno: ${String(metadata.shift || "").trim() || "N/A"}`,
@@ -197,7 +206,9 @@ export function buildIncidenciasFromOperationalInspection({
         title: `[Inspeccion] ${check.label}`,
         description: descriptionParts.join("\n"),
         category: section.incidenceCategory || "Otro",
-        area: String(metadata.area || section.title || "").trim(),
+        area: affectedSite
+          ? `${String(metadata.area || section.title || "").trim() || "General"} · ${affectedSite}`
+          : String(metadata.area || section.title || "").trim(),
         priority: ["baja", "media", "alta", "critica"].includes(state.severity) ? state.severity : template.incidenceRules.defaultPriority || "media",
         status: template.incidenceRules.defaultStatus || "abierta",
         assignedToId: template.incidenceRules.autoAssignToReporter ? reporterId : "",
