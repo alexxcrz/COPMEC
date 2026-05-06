@@ -7510,29 +7510,55 @@ tbody tr:hover {
 }
 
 .app-toast-close {
-  border: 0;
-  background: transparent;
+  border: 1.5px solid currentColor;
+  background: rgba(255, 255, 255, 0.45);
   color: inherit;
-  padding: 0.1rem;
-  min-width: 1.7rem;
-  min-height: 1.7rem;
+  padding: 0;
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+  min-height: 2rem;
+  border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  opacity: 0.82;
+  opacity: 0.94;
   position: relative;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(14, 35, 30, 0.18);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .app-toast-close:hover {
   opacity: 1;
+  transform: translateY(-1px) scale(1.05);
+  box-shadow: 0 8px 16px rgba(14, 35, 30, 0.24);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.app-toast-close.is-pinned {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.app-toast-pin-indicator {
+  position: absolute;
+  top: -0.18rem;
+  right: -0.12rem;
+  background: #ffffff;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  width: 0.95rem;
+  height: 0.95rem;
+  padding: 0.05rem;
+  box-shadow: 0 2px 6px rgba(15, 43, 36, 0.2);
 }
 
 .app-toast-timer {
   position: absolute;
-  inset: 1px;
-  width: calc(100% - 2px);
-  height: calc(100% - 2px);
+  inset: -3px;
+  width: calc(100% + 6px);
+  height: calc(100% + 6px);
   transform: rotate(-90deg);
   pointer-events: none;
 }
@@ -7557,12 +7583,16 @@ tbody tr:hover {
 @keyframes appToastEnter {
   from {
     opacity: 0;
-    transform: translateY(14px) scale(0.95);
+    transform: translateY(18px) scale(0.9);
   }
 
-  65% {
+  45% {
     opacity: 1;
-    transform: translateY(-2px) scale(1.02);
+    transform: translateY(-7px) scale(1.07);
+  }
+
+  72% {
+    transform: translateY(2px) scale(0.99);
   }
 
   to {

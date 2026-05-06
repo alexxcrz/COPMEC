@@ -30,12 +30,13 @@ function AppToastStack({ toasts, onDismiss, onPin }) {
           <p>{toast.message}</p>
           <button
             type="button"
-            className="app-toast-close"
+            className={`app-toast-close ${toast.pinned ? "is-pinned" : ""}`.trim()}
             onClick={(event) => {
               event.stopPropagation();
               onDismiss(toast.id);
             }}
-            aria-label="Cerrar aviso"
+            aria-label={toast.pinned ? "Cerrar aviso fijado" : "Cerrar aviso"}
+            title={toast.pinned ? "Cerrar aviso fijado" : "Cerrar aviso"}
           >
             <svg className="app-toast-timer" viewBox="0 0 22 22" aria-hidden="true">
               <circle cx="11" cy="11" r="9" className="app-toast-timer-track" />
@@ -47,8 +48,8 @@ function AppToastStack({ toasts, onDismiss, onPin }) {
                 style={{ strokeDashoffset: `${56.55 * (1 - (toast.pinned ? 1 : getProgress(toast)))}` }}
               />
             </svg>
-            {toast.pinned ? <Pin size={12} /> : null}
-            <X size={14} />
+            {toast.pinned ? <Pin size={11} className="app-toast-pin-indicator" aria-hidden="true" /> : null}
+            <X size={15} />
           </button>
         </article>
       ))}
