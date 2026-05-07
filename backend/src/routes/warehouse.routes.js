@@ -201,7 +201,13 @@ warehouseRouter.patch("/boards/:boardId", requireWarehouseAction("saveBoard"), (
 warehouseRouter.delete("/boards/:boardId", requireWarehouseAction("deleteBoard"), (req, res) => {
   const result = deleteWarehouseBoard(req.auth, req.params.boardId);
   if (!result.ok) {
-    const status = result.reason === "auth_required" ? 401 : result.reason === "board_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
+    const status = result.reason === "auth_required"
+      ? 401
+      : result.reason === "board_not_found"
+        ? 404
+        : result.reason === "forbidden" || result.reason === "system_board"
+          ? 403
+          : 400;
     res.status(status).json({ ok: false, message: "No fue posible eliminar el tablero." });
     return;
   }
@@ -267,7 +273,13 @@ warehouseRouter.patch("/templates/:templateId", requireWarehouseAction("editTemp
 warehouseRouter.delete("/templates/:templateId", requireWarehouseAction("deleteTemplate"), (req, res) => {
   const result = deleteWarehouseTemplate(req.auth, req.params.templateId);
   if (!result.ok) {
-    const status = result.reason === "auth_required" ? 401 : result.reason === "template_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
+    const status = result.reason === "auth_required"
+      ? 401
+      : result.reason === "template_not_found"
+        ? 404
+        : result.reason === "forbidden" || result.reason === "system_template"
+          ? 403
+          : 400;
     res.status(status).json({ ok: false, message: "No fue posible eliminar la plantilla." });
     return;
   }

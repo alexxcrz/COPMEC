@@ -67,10 +67,20 @@ export function BoardEditableInventoryPropertyInput({ value, suggestions, disabl
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownStyle, setDropdownStyle] = useState(null);
   const normalizedValue = String(value || "");
+  const [draftValue, setDraftValue] = useState(normalizedValue);
   const normalizedSuggestions = useMemo(
     () => (Array.isArray(suggestions) ? suggestions.map((item) => String(item || "").trim()).filter(Boolean) : []),
     [suggestions],
   );
+  const filteredSuggestions = useMemo(() => {
+    const search = draftValue.trim().toLowerCase();
+    if (!search) return normalizedSuggestions;
+    return normalizedSuggestions.filter((option) => option.toLowerCase().includes(search));
+  }, [draftValue, normalizedSuggestions]);
+
+  useEffect(() => {
+    setDraftValue(normalizedValue);
+  }, [normalizedValue]);
 
   useEffect(() => {
     function handlePointerDown(event) {
@@ -90,7 +100,7 @@ export function BoardEditableInventoryPropertyInput({ value, suggestions, disabl
       const rect = rootRef.current?.getBoundingClientRect();
       if (!rect) return;
 
-      const estimatedHeight = Math.min(240, Math.max(56, normalizedSuggestions.length * 36 + 18));
+      const estimatedHeight = Math.min(240, Math.max(56, filteredSuggestions.length * 36 + 18));
       const viewportSpaceBelow = globalThis.innerHeight - rect.bottom;
       const shouldOpenAbove = viewportSpaceBelow < estimatedHeight && rect.top > estimatedHeight;
 
@@ -109,19 +119,35 @@ export function BoardEditableInventoryPropertyInput({ value, suggestions, disabl
       globalThis.removeEventListener("resize", updateDropdownPosition);
       globalThis.removeEventListener("scroll", updateDropdownPosition, true);
     };
-  }, [isOpen, normalizedSuggestions.length]);
+  }, [filteredSuggestions.length, isOpen]);
+
+  function commitDraft(nextValue = draftValue) {
+    const normalizedNextValue = String(nextValue || "");
+    setDraftValue(normalizedNextValue);
+    if (normalizedNextValue !== normalizedValue) {
+      onChange(normalizedNextValue);
+    }
+  }
 
   return (
     <div ref={rootRef} style={{ position: "relative", minWidth: 0 }}>
       <input
         type="text"
-        value={normalizedValue}
-        onFocus={() => !disabled && normalizedSuggestions.length && setIsOpen(true)}
+        value={draftValue}
+        onFocus={() => !disabled && filteredSuggestions.length && setIsOpen(true)}
         onChange={(event) => {
-          onChange(event.target.value);
+          const nextValue = event.target.value;
+          setDraftValue(nextValue);
           if (!disabled && normalizedSuggestions.length) {
             setIsOpen(true);
           }
+        }}
+        onBlur={() => commitDraft()}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter") return;
+          event.preventDefault();
+          commitDraft();
+          setIsOpen(false);
         }}
         placeholder={placeholder}
         title={title}
@@ -153,7 +179,7 @@ export function BoardEditableInventoryPropertyInput({ value, suggestions, disabl
           ▼
         </button>
       ) : null}
-      {isOpen && normalizedSuggestions.length && dropdownStyle ? createPortal(
+      {isOpen && filteredSuggestions.length && dropdownStyle ? createPortal(
         <div
           style={{
             ...dropdownStyle,
@@ -170,15 +196,15 @@ export function BoardEditableInventoryPropertyInput({ value, suggestions, disabl
             boxShadow: "0 12px 24px rgba(3, 33, 33, 0.12)",
           }}
         >
-          {normalizedSuggestions.map((option) => {
-            const isActive = option === normalizedValue;
+          {filteredSuggestions.map((option) => {
+            const isActive = option === draftValue;
             return (
               <button
                 key={option}
                 type="button"
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => {
-                  onChange(option);
+                  commitDraft(option);
                   setIsOpen(false);
                 }}
                 style={{

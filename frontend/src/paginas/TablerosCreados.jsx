@@ -29,6 +29,7 @@ export default function TablerosCreados({ contexto }) {
     LayoutDashboard,
     actionPermissions,
     canDoBoardAction,
+    canDeleteControlBoardEntry,
     currentUser,
     duplicateBoardRecord,
     Copy,
@@ -62,7 +63,6 @@ export default function TablerosCreados({ contexto }) {
   const [selectedBoardCreatorId, setSelectedBoardCreatorId] = useState("all");
   const [createListModal, setCreateListModal] = useState({ open: false, name: "", error: "" });
   const [isImporting, setIsImporting] = useState(false);
-  const [importMessage, setImportMessage] = useState(null); // { type: "ok"|"error", text: string }
   const catalogImportRef = useRef(null);
   const boardImportRef = useRef(null);
   const isLeadCreatorView = currentUser?.role === ROLE_LEAD;
@@ -341,12 +341,15 @@ export default function TablerosCreados({ contexto }) {
     if (!file) return;
     event.target.value = "";
     setIsImporting(true);
-    setImportMessage(null);
     try {
       const count = await importCatalogFromCsv(file);
-      setImportMessage({ type: "ok", text: `${count} actividad${count !== 1 ? "es" : ""} importada${count !== 1 ? "s" : ""} correctamente.` });
+      if (typeof pushAppToast === "function") {
+        pushAppToast(`${count} actividad${count !== 1 ? "es" : ""} importada${count !== 1 ? "s" : ""} correctamente.`, "success");
+      }
     } catch (err) {
-      setImportMessage({ type: "error", text: err?.message || "Error al importar el archivo." });
+      if (typeof pushAppToast === "function") {
+        pushAppToast(err?.message || "Error al importar el archivo.", "danger");
+      }
     } finally {
       setIsImporting(false);
     }
@@ -357,7 +360,6 @@ export default function TablerosCreados({ contexto }) {
     if (!file) return;
     event.target.value = "";
     setIsImporting(true);
-    setImportMessage(null);
     try {
       const text = await file.text();
       const { createPayload } = parseBoardImportJson(text);
@@ -366,11 +368,9 @@ export default function TablerosCreados({ contexto }) {
         body: JSON.stringify(createPayload),
       });
       applyRemoteWarehouseState(result?.data?.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
-      setImportMessage({ type: "ok", text: `Tablero "${createPayload.name}" importado correctamente.` });
       if (typeof pushAppToast === "function") pushAppToast(`Tablero "${createPayload.name}" importado correctamente.`, "success");
     } catch (err) {
       const message = err?.message || "Error al importar el tablero JSON.";
-      setImportMessage({ type: "error", text: message });
       if (typeof pushAppToast === "function") pushAppToast(message, "danger");
     } finally {
       setIsImporting(false);
@@ -423,11 +423,6 @@ export default function TablerosCreados({ contexto }) {
             ) : null}
           </div>
         </div>
-        {creatorTab === "boards" && importMessage ? (
-          <p className="subtle-line" style={{ margin: "0.4rem 0 0 0", color: importMessage.type === "ok" ? "var(--color-success, #16a34a)" : "var(--color-error, #dc2626)" }}>
-            {importMessage.text}
-          </p>
-        ) : null}
       </article>
 
       {creatorTab === "boards" ? (
@@ -488,7 +483,7 @@ export default function TablerosCreados({ contexto }) {
                   <button type="button" className="icon-button" onClick={() => downloadBoardAsJson(board)}>
                     Exportar JSON
                   </button>
-                  {actionPermissions.deleteBoard && canEditBoard(currentUser, board) ? (
+                  {actionPermissions.deleteBoard && canEditBoard(currentUser, board) && canDeleteControlBoardEntry(board) ? (
                     <button type="button" className="icon-button danger created-board-delete-action" onClick={() => setDeleteBoardId(board.id)}>
                       <Trash2 size={15} /> Eliminar tablero
                     </button>
@@ -503,14 +498,6 @@ export default function TablerosCreados({ contexto }) {
               </article>
             )}
           </div>
-
-          {importMessage ? (
-            <article className="surface-card full-width compact-surface-card" style={{ marginTop: "0.25rem" }}>
-              <p className={`validation-text ${importMessage.type === "ok" ? "success" : ""}`.trim()} style={{ margin: 0 }}>
-                {importMessage.text}
-              </p>
-            </article>
-          ) : null}
         </>
       ) : null}
 
@@ -528,11 +515,6 @@ export default function TablerosCreados({ contexto }) {
                 {isImporting ? "Importando…" : "↑ Importar CSV"}
               </button>
               <input ref={catalogImportRef} type="file" accept=".csv,text/csv" style={{ display: "none" }} onChange={handleCatalogImportChange} />
-              {importMessage ? (
-                <span style={{ fontSize: "0.78rem", color: importMessage.type === "ok" ? "var(--color-success, #16a34a)" : "var(--color-error, #dc2626)", marginLeft: 4 }}>
-                  {importMessage.text}
-                </span>
-              ) : null}
               {selectedCatalogCategory === "General" ? (
                 <button type="button" className="primary-button sm-button" onClick={handleOpenCreateCategoryModal} disabled={!actionPermissions.createCatalog}>
                   <Plus size={14} /> Crear lista

@@ -607,17 +607,47 @@ export default function PanelIndicadores({ contexto }) {
     return status || "-";
   }
 
+  function findLeaderboardFieldByKeywords(keywords = []) {
+    return leaderboardDynamicBoardFields.find((field) => {
+      const label = String(field?.label || "").toLowerCase();
+      return keywords.some((keyword) => label.includes(keyword));
+    }) || null;
+  }
+
+  function resolveLeaderboardNumericField(record, keywords = []) {
+    const field = findLeaderboardFieldByKeywords(keywords);
+    if (!field) return null;
+    const raw = resolveBoardRecordFieldValue(record, field);
+    const parsed = Number(String(raw || "").replace(/,/g, "."));
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function resolveLeaderboardMermaMotive(record) {
+    const field = findLeaderboardFieldByKeywords(["causal", "motivo", "causa", "razon"]);
+    if (!field) return "Sin motivo especificado";
+    const raw = resolveBoardRecordFieldValue(record, field);
+    const text = String(raw || "").trim();
+    if (!text) return "Sin motivo especificado";
+    const compact = text.split("|").map((part) => part.trim()).filter(Boolean)[0];
+    return compact || text;
+  }
+
   // ── Merma analysis ──────────────────────────────────────────────────────────
   const mermaAnalysisRows = useMemo(() => {
     const source = leaderboardBoardFilterSafe === "all"
       ? scopedInventoryProductTimeRows
       : scopedLeaderboardBoardRecords.map((rec) => {
-          // Build a lightweight item-like object from the raw board record for merma fields
-          const mermaField = leaderboardDynamicBoardFields.find((f) => /merma|faltante|dano|danado|defect|rechazo/i.test(f.label));
-          const motiField = leaderboardDynamicBoardFields.find((f) => /motivo|razon|causa|tipo.*merma|merma.*tipo/i.test(f.label));
-          const mermaVal = mermaField ? Number(resolveBoardRecordFieldValue(rec, mermaField)) || 0 : 0;
-          const motiVal = motiField ? String(resolveBoardRecordFieldValue(rec, motiField) || "").trim() : "";
-          return { product: rec.responsibleName, totalMermaPieces: mermaVal, mermaMotive: motiVal, boardName: rec.boardName };
+          const mermaVal = resolveLeaderboardNumericField(rec, ["merma", "rechazo", "defect", "dano", "danado"]) || 0;
+          const missingPiecesVal = resolveLeaderboardNumericField(rec, ["piezas falt", "faltante", "diferencia", "faltan"]) || 0;
+          const missingBoxesVal = resolveLeaderboardNumericField(rec, ["cajas falt", "caja falt", "faltante cajas"]) || 0;
+          return {
+            product: rec.responsibleName,
+            totalMermaPieces: Math.max(0, mermaVal),
+            totalMissingPieces: Math.max(0, missingPiecesVal),
+            totalMissingBoxes: Math.max(0, missingBoxesVal),
+            mermaMotive: resolveLeaderboardMermaMotive(rec),
+            boardName: rec.boardName,
+          };
         });
 
     const map = new Map();
@@ -626,12 +656,13 @@ export default function PanelIndicadores({ contexto }) {
       if (!map.has(motivo)) map.set(motivo, { motivo, count: 0, totalPiezas: 0 });
       const entry = map.get(motivo);
       entry.count += 1;
-      entry.totalPiezas += Number(item.totalMermaPieces || 0);
+      entry.totalPiezas += Number(item.totalMermaPieces || 0) + Number(item.totalMissingPieces || 0);
+      entry.totalCajas = Number(entry.totalCajas || 0) + Number(item.totalMissingBoxes || 0);
     });
 
     return Array.from(map.values())
       .filter((row) => row.totalPiezas > 0 || row.count > 0)
-      .sort((a, b) => b.totalPiezas - a.totalPiezas || b.count - a.count);
+        .sort((a, b) => b.totalPiezas - a.totalPiezas || b.count - a.count);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leaderboardBoardFilterSafe, leaderboardDynamicBoardFields, scopedInventoryProductTimeRows, scopedLeaderboardBoardRecords]);
 
@@ -1988,6 +2019,8 @@ export default function PanelIndicadores({ contexto }) {
                       <th>Piezas</th>
                       <th>Recibidas</th>
                       <th>Merma</th>
+                      <th>Pzas faltantes</th>
+                      <th>Cajas faltantes</th>
                       <th>Aptas</th>
                       <th>Total (min)</th>
                       <th>Promedio (min)</th>
@@ -2007,6 +2040,8 @@ export default function PanelIndicadores({ contexto }) {
                         <td>{formatMetricNumber(item.totalPieces || 0, 0)}</td>
                         <td>{formatMetricNumber(item.totalReceivedPieces || 0, 0)}</td>
                         <td>{formatMetricNumber(item.totalMermaPieces || 0, 0)}</td>
+                        <td>{formatMetricNumber((item.totalMissingPieces ?? item.totalMermaPieces ?? 0), 0)}</td>
+                        <td>{item.totalMissingBoxes !== undefined ? formatMetricNumber(item.totalMissingBoxes || 0, 0) : "-"}</td>
                         <td>{formatMetricNumber(item.totalAptasPieces || 0, 0)}</td>
                         <td>{formatMetricNumber(item.totalMinutes, 2)}</td>
                         <td>{formatMetricNumber(item.averageMinutes, 2)}</td>
@@ -2027,6 +2062,9 @@ export default function PanelIndicadores({ contexto }) {
                       {leaderboardDynamicBoardFields.map((field) => (
                         <th key={`leaderboard-col-${field.key}`}>{field.label}</th>
                       ))}
+                      <th>Pzas faltantes</th>
+                      <th>Cajas faltantes</th>
+                      <th>Motivo merma</th>
                       <th>Estatus</th>
                       <th>Duración (min)</th>
                       <th>Fecha</th>
@@ -2041,6 +2079,9 @@ export default function PanelIndicadores({ contexto }) {
                         {leaderboardDynamicBoardFields.map((field) => (
                           <td key={`${record.id}-${field.key}`}>{formatLeaderboardBoardValue(resolveBoardRecordFieldValue(record, field), field.type)}</td>
                         ))}
+                        <td>{formatMetricNumber(resolveLeaderboardNumericField(record, ["piezas falt", "faltante", "diferencia", "faltan"]) || 0, 0)}</td>
+                        <td>{formatMetricNumber(resolveLeaderboardNumericField(record, ["cajas falt", "caja falt", "faltante cajas"]) || 0, 0)}</td>
+                        <td>{resolveLeaderboardMermaMotive(record)}</td>
                         <td>{formatLeaderboardStatus(record.status)}</td>
                         <td>{formatMetricNumber((record.durationSeconds || 0) / 60, 2)}</td>
                         <td>{record.occurredAt ? new Intl.DateTimeFormat("es-MX", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(record.occurredAt)) : "-"}</td>
@@ -2081,6 +2122,7 @@ export default function PanelIndicadores({ contexto }) {
                     <th>Motivo de merma</th>
                     <th>Registros</th>
                     <th>Piezas de merma</th>
+                    <th>Cajas faltantes</th>
                     <th>Piezas/registro</th>
                   </tr>
                 </thead>
@@ -2090,6 +2132,7 @@ export default function PanelIndicadores({ contexto }) {
                       <td>{row.motivo}</td>
                       <td>{row.count}</td>
                       <td>{formatMetricNumber(row.totalPiezas, 0)}</td>
+                      <td>{formatMetricNumber(row.totalCajas || 0, 0)}</td>
                       <td>{formatMetricNumber(row.count ? row.totalPiezas / row.count : 0, 2)}</td>
                     </tr>
                   ))}

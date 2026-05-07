@@ -480,6 +480,23 @@ export default function MisTableros({ contexto }) {
   // Local edit buffer for Lead time overrides: key = "rowId-colId", value = string being typed
   const [leadTimeEdits, setLeadTimeEdits] = useState({});
   const [fieldEditDrafts, setFieldEditDrafts] = useState({});
+  function commitBoardFieldDraft(boardId, row, field, fieldEditKey, options = {}) {
+    const hasDraft = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey);
+    if (!hasDraft) return;
+
+    const draftValue = fieldEditDrafts[fieldEditKey];
+    const nextValue = options.parseAsNumber
+      ? (draftValue === "" ? "" : Number(draftValue))
+      : draftValue;
+
+    updateBoardRowValue(boardId, row.id, field, nextValue);
+    setFieldEditDrafts((prev) => {
+      const next = { ...prev };
+      delete next[fieldEditKey];
+      return next;
+    });
+  }
+
   const [pauseDurationEdits, setPauseDurationEdits] = useState({});
   const boardColumns = boardView ? getOrderedBoardColumns(boardView, isBoardOwner) : [];
   const systemOperationalSettings = normalizeSystemOperationalSettings(state?.system?.operational);
@@ -1685,23 +1702,11 @@ export default function MisTableros({ contexto }) {
                                   type="number"
                                   value={inputValue}
                                   onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))}
-                                  onBlur={() => setFieldEditDrafts((prev) => {
-                                    const next = { ...prev };
-                                    delete next[fieldEditKey];
-                                    return next;
-                                  })}
+                                  onBlur={() => commitBoardFieldDraft(selectedCustomBoard.id, row, field, fieldEditKey, { parseAsNumber: true })}
                                   onKeyDown={(event) => {
                                     if (event.key !== "Enter") return;
                                     event.preventDefault();
-                                    const rawValue = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey)
-                                      ? fieldEditDrafts[fieldEditKey]
-                                      : row.values?.[field.id] ?? "";
-                                    updateBoardRowValue(selectedCustomBoard.id, row.id, field, rawValue === "" ? "" : Number(rawValue));
-                                    setFieldEditDrafts((prev) => {
-                                      const next = { ...prev };
-                                      delete next[fieldEditKey];
-                                      return next;
-                                    });
+                                    commitBoardFieldDraft(selectedCustomBoard.id, row, field, fieldEditKey, { parseAsNumber: true });
                                   }}
                                   placeholder={field.placeholder || "Escribe un valor"}
                                   style={controlStyle}
@@ -1716,14 +1721,14 @@ export default function MisTableros({ contexto }) {
                             const fieldEditKey = `${row.id}-${field.id}`;
                             const hasDraft = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey);
                             const inputValue = hasDraft ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || "");
-                            return <td key={field.id} style={columnStyle}><input value={inputValue} onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))} onBlur={() => setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; })} onKeyDown={(event) => { if (event.key !== "Enter") return; event.preventDefault(); const nextValue = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey) ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || ""); updateBoardRowValue(selectedCustomBoard.id, row.id, field, nextValue); setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; }); }} placeholder={field.placeholder || "Escribe una nota"} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
+                            return <td key={field.id} style={columnStyle}><input value={inputValue} onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))} onBlur={() => commitBoardFieldDraft(selectedCustomBoard.id, row, field, fieldEditKey)} onKeyDown={(event) => { if (event.key !== "Enter") return; event.preventDefault(); commitBoardFieldDraft(selectedCustomBoard.id, row, field, fieldEditKey); }} placeholder={field.placeholder || "Escribe una nota"} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
                           }
 
                           if (field.type === "date") {
                             const fieldEditKey = `${row.id}-${field.id}`;
                             const hasDraft = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey);
                             const inputValue = hasDraft ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || "");
-                            return <td key={field.id} style={columnStyle}><input type="date" value={inputValue} onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))} onBlur={() => setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; })} onKeyDown={(event) => { if (event.key !== "Enter") return; event.preventDefault(); const nextValue = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey) ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || ""); updateBoardRowValue(selectedCustomBoard.id, row.id, field, nextValue); setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; }); }} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
+                            return <td key={field.id} style={columnStyle}><input type="date" value={inputValue} onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))} onBlur={() => commitBoardFieldDraft(selectedCustomBoard.id, row, field, fieldEditKey)} onKeyDown={(event) => { if (event.key !== "Enter") return; event.preventDefault(); commitBoardFieldDraft(selectedCustomBoard.id, row, field, fieldEditKey); }} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
                           }
 
                           if (field.type === "time") {
@@ -1851,21 +1856,21 @@ export default function MisTableros({ contexto }) {
                             const fieldEditKey = `${row.id}-${field.id}`;
                             const hasDraft = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey);
                             const inputValue = hasDraft ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || "");
-                            return <td key={field.id} style={columnStyle}><input type="email" value={inputValue} onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))} onBlur={() => setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; })} onKeyDown={(event) => { if (event.key !== "Enter") return; event.preventDefault(); const nextValue = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey) ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || ""); updateBoardRowValue(selectedCustomBoard.id, row.id, field, nextValue); setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; }); }} placeholder={field.placeholder || "nombre@empresa.com"} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
+                            return <td key={field.id} style={columnStyle}><input type="email" value={inputValue} onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))} onBlur={() => commitBoardFieldDraft(selectedCustomBoard.id, row, field, fieldEditKey)} onKeyDown={(event) => { if (event.key !== "Enter") return; event.preventDefault(); commitBoardFieldDraft(selectedCustomBoard.id, row, field, fieldEditKey); }} placeholder={field.placeholder || "nombre@empresa.com"} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
                           }
 
                           if (field.type === "phone") {
                             const fieldEditKey = `${row.id}-${field.id}`;
                             const hasDraft = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey);
                             const inputValue = hasDraft ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || "");
-                            return <td key={field.id} style={columnStyle}><input type="tel" value={inputValue} onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))} onBlur={() => setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; })} onKeyDown={(event) => { if (event.key !== "Enter") return; event.preventDefault(); const nextValue = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey) ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || ""); updateBoardRowValue(selectedCustomBoard.id, row.id, field, nextValue); setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; }); }} placeholder={field.placeholder || "Ej: 5512345678"} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
+                            return <td key={field.id} style={columnStyle}><input type="tel" value={inputValue} onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))} onBlur={() => commitBoardFieldDraft(selectedCustomBoard.id, row, field, fieldEditKey)} onKeyDown={(event) => { if (event.key !== "Enter") return; event.preventDefault(); commitBoardFieldDraft(selectedCustomBoard.id, row, field, fieldEditKey); }} placeholder={field.placeholder || "Ej: 5512345678"} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
                           }
 
                           if (field.type === "url") {
                             const fieldEditKey = `${row.id}-${field.id}`;
                             const hasDraft = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey);
                             const inputValue = hasDraft ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || "");
-                            return <td key={field.id} style={columnStyle}><input type="url" value={inputValue} onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))} onBlur={() => setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; })} onKeyDown={(event) => { if (event.key !== "Enter") return; event.preventDefault(); const nextValue = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey) ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || ""); updateBoardRowValue(selectedCustomBoard.id, row.id, field, nextValue); setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; }); }} placeholder={field.placeholder || "https://..."} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
+                            return <td key={field.id} style={columnStyle}><input type="url" value={inputValue} onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))} onBlur={() => commitBoardFieldDraft(selectedCustomBoard.id, row, field, fieldEditKey)} onKeyDown={(event) => { if (event.key !== "Enter") return; event.preventDefault(); commitBoardFieldDraft(selectedCustomBoard.id, row, field, fieldEditKey); }} placeholder={field.placeholder || "https://..."} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
                           }
 
                           if (field.type === "boolean") {
@@ -1981,19 +1986,11 @@ export default function MisTableros({ contexto }) {
                                 <input
                                   value={inputValue}
                                   onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))}
-                                  onBlur={() => setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; })}
+                                  onBlur={() => commitBoardFieldDraft(selectedCustomBoard.id, row, field, fieldEditKey)}
                                   onKeyDown={(event) => {
                                     if (event.key !== "Enter") return;
                                     event.preventDefault();
-                                    const nextValue = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey)
-                                      ? fieldEditDrafts[fieldEditKey]
-                                      : (row.values?.[field.id] || "");
-                                    updateBoardRowValue(selectedCustomBoard.id, row.id, field, nextValue);
-                                    setFieldEditDrafts((prev) => {
-                                      const next = { ...prev };
-                                      delete next[fieldEditKey];
-                                      return next;
-                                    });
+                                    commitBoardFieldDraft(selectedCustomBoard.id, row, field, fieldEditKey);
                                   }}
                                   placeholder={field.placeholder || "tag1, tag2, tag3"}
                                   style={controlStyle}
@@ -2047,7 +2044,7 @@ export default function MisTableros({ contexto }) {
                           const inputValue = hasDraft
                             ? fieldEditDrafts[fieldEditKey]
                             : formatBoardCellObjectValue(row.values?.[field.id] ?? "");
-                          return <td key={field.id} style={columnStyle}><input value={inputValue} onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))} onBlur={() => setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; })} onKeyDown={(event) => { if (event.key !== "Enter") return; event.preventDefault(); const nextValue = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey) ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || ""); updateBoardRowValue(selectedCustomBoard.id, row.id, field, nextValue); setFieldEditDrafts((prev) => { const next = { ...prev }; delete next[fieldEditKey]; return next; }); }} placeholder={field.placeholder || "Captura un valor"} style={rule ? { ...controlStyle, backgroundColor: rule.color, color: rule.textColor || "inherit" } : controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
+                          return <td key={field.id} style={columnStyle}><input value={inputValue} onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))} onBlur={() => commitBoardFieldDraft(selectedCustomBoard.id, row, field, fieldEditKey)} onKeyDown={(event) => { if (event.key !== "Enter") return; event.preventDefault(); commitBoardFieldDraft(selectedCustomBoard.id, row, field, fieldEditKey); }} placeholder={field.placeholder || "Captura un valor"} style={rule ? { ...controlStyle, backgroundColor: rule.color, color: rule.textColor || "inherit" } : controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
                         })}
                       </tr>
                     );

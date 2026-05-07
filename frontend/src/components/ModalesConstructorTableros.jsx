@@ -739,6 +739,8 @@ export function BoardBuilderModal({
   onChange,
   onClose,
   onConfirm,
+  confirmDisabled = false,
+  confirmLabel,
   onOpenComponentStudio,
   onImportFromExcel,
   onSaveTemplate,
@@ -1274,8 +1276,9 @@ export function BoardBuilderModal({
       open={open}
       className="board-builder-modal"
       title={mode === "edit" ? "Editar tablero" : "Nuevo tablero"}
-      confirmLabel={mode === "edit" ? "Guardar cambios" : "Crear tablero"}
+      confirmLabel={confirmLabel || (mode === "edit" ? "Guardar cambios" : "Crear tablero")}
       cancelLabel="Cerrar"
+      confirmDisabled={confirmDisabled}
       onClose={onClose}
       onConfirm={onConfirm}
     >

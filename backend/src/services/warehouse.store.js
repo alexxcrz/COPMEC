@@ -694,6 +694,29 @@ function normalizeBoardFields(board) {
   return [];
 }
 
+function normalizeMisplacedHistoryBoardEntry(snapshot) {
+  const boardId = String(snapshot?.id || "").trim();
+  if (!boardId || !boardId.startsWith("board-")) return null;
+  const boardName = String(snapshot?.boardName || "").trim();
+  if (!boardName) return null;
+  if (String(snapshot?.boardId || "").trim()) return null;
+
+  return {
+    id: boardId,
+    name: boardName,
+    description: String(snapshot?.description || "").trim(),
+    createdById: snapshot?.createdById ?? null,
+    ownerId: snapshot?.ownerId ?? snapshot?.createdById ?? null,
+    visibilityType: snapshot?.visibilityType || "users",
+    sharedDepartments: Array.isArray(snapshot?.sharedDepartments) ? snapshot.sharedDepartments : [],
+    accessUserIds: Array.isArray(snapshot?.accessUserIds) ? snapshot.accessUserIds : [],
+    settings: withDefaultBoardSettings(snapshot?.settings),
+    fields: normalizeBoardFields(snapshot),
+    rows: Array.isArray(snapshot?.rows) ? snapshot.rows : [],
+    permissions: snapshot?.permissions,
+  };
+}
+
 function normalizeBoardWeeklyCycle(cycle, referenceDate = new Date()) {
   const weekStart = getBoardWeekStart(referenceDate);
   const activeWeekKey = String(cycle?.activeWeekKey || "").trim() || formatBoardWeekKey(weekStart);
@@ -1326,6 +1349,14 @@ function normalizeState(state, previousState = null) {
   const users = Array.isArray(state.users) && state.users.length ? state.users : fallbackUsers;
   const permissions = normalizePermissions(state.permissions);
   const fallbackCatalog = buildSampleState().catalog;
+  const rawControlBoards = Array.isArray(state.controlBoards) ? state.controlBoards : [];
+  const misplacedBoards = (Array.isArray(state.boardWeekHistory) ? state.boardWeekHistory : [])
+    .map((snapshot) => normalizeMisplacedHistoryBoardEntry(snapshot))
+    .filter(Boolean);
+  const mergedControlBoards = rawControlBoards.concat(
+    misplacedBoards.filter((candidate) => !rawControlBoards.some((board) => board?.id === candidate.id)),
+  );
+
   return {
     ...state,
     system: {
@@ -1380,8 +1411,7 @@ function normalizeState(state, previousState = null) {
     boardWeekHistory: Array.isArray(state.boardWeekHistory)
       ? state.boardWeekHistory.map((snapshot) => normalizeBoardHistorySnapshot(snapshot, permissions, users))
       : [],
-    controlBoards: Array.isArray(state.controlBoards)
-      ? state.controlBoards.map((board) => {
+    controlBoards: mergedControlBoards.map((board) => {
           const ownerId = board.ownerId ?? board.createdById ?? users[0]?.id ?? null;
           const visibility = resolveBoardVisibilitySnapshot(board, ownerId);
           const normalizedBoard = {
@@ -1399,8 +1429,7 @@ function normalizeState(state, previousState = null) {
             ...normalizedBoard,
             permissions: normalizeBoardPermissions(board.permissions, permissions, normalizedBoard),
           };
-        })
-      : [],
+        }),
     bibliotecaFiles: Array.isArray(state.bibliotecaFiles) ? state.bibliotecaFiles : [],
     bibliotecaNotifications: Array.isArray(state.bibliotecaNotifications) ? state.bibliotecaNotifications : [],
     customRoles: Array.isArray(state.customRoles) ? state.customRoles : [],
@@ -2084,7 +2113,7 @@ export function getWarehouseState() {
   return sanitizeState(getRawWarehouseState());
 }
 
-function getRawWarehouseState() {
+export function getRawWarehouseState() {
   const currentState = readStore();
   const { state: boardState, changed: boardChanged } = applyAutomatedBoardWeeklyCut(currentState);
   const { state: dailyRowsState, changed: dailyRowsChanged } = applyAutomatedBoardDailyRows(boardState);
@@ -3078,6 +3107,35 @@ function normalizeKey(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+const OFFICIAL_SYSTEM_BOARD_TEMPLATES = [
+  { id: "revision-tarimas", name: "Revisión de tarimas", aliases: [] },
+  { id: "revision-causales", name: "Revisión de merma y causales", aliases: [] },
+  {
+    id: "actividades-limpieza",
+    name: "Actividades de limpieza",
+    aliases: ["activiades de limpieza", "control de actividades de limpieza"],
+  },
+];
+
+function resolveOfficialSystemBoardTemplate(entry) {
+  if (!entry) return null;
+  const systemTemplateId = String(entry?.settings?.systemBoardTemplateId || "").trim();
+  if (systemTemplateId) {
+    const byId = OFFICIAL_SYSTEM_BOARD_TEMPLATES.find((template) => template.id === systemTemplateId);
+    if (byId) return byId;
+  }
+
+  const normalizedName = normalizeKey(entry?.name || "");
+  return OFFICIAL_SYSTEM_BOARD_TEMPLATES.find((template) => {
+    if (normalizeKey(template.name) === normalizedName) return true;
+    return (template.aliases || []).some((alias) => normalizeKey(alias) === normalizedName);
+  }) || null;
+}
+
+function isProtectedSystemBoard(entry) {
+  return Boolean(resolveOfficialSystemBoardTemplate(entry));
+}
+
 function normalizeAreaOption(area) {
   return String(area || "")
     .trim()
@@ -3379,6 +3437,127 @@ export function updateWarehouseInventoryLotHistory(auth, itemId, payload = {}) {
   };
 
   return { ok: true, state: replaceWarehouseState(nextState), itemId: nextItem.id, itemCode: nextItem.code };
+}
+
+function parseWarehouseInventoryLotHistory(rawValue) {
+  if (!rawValue) return [];
+  if (Array.isArray(rawValue)) return rawValue;
+  if (typeof rawValue !== "string") return [];
+  try {
+    const parsed = JSON.parse(rawValue);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function buildWarehouseInventoryLotHistoryKey(entry) {
+  const lot = String(entry?.lot || "").trim();
+  const expiry = String(entry?.expiry || "").trim();
+  const etiqueta = String(entry?.etiqueta || entry?.label || "").trim();
+  return `${normalizeKey(lot)}::${expiry}::${normalizeKey(etiqueta)}`;
+}
+
+function mergeWarehouseInventoryLotHistoryEntries(...sources) {
+  const merged = [];
+  const seen = new Set();
+
+  sources.forEach((source) => {
+    (Array.isArray(source) ? source : []).forEach((entry) => {
+      const lot = String(entry?.lot || "").trim();
+      const expiry = String(entry?.expiry || "").trim();
+      if (!lot || !expiry) return;
+      const etiqueta = String(entry?.etiqueta || entry?.label || "").trim();
+      const key = buildWarehouseInventoryLotHistoryKey({ lot, expiry, etiqueta });
+      if (seen.has(key)) return;
+      seen.add(key);
+      merged.push({
+        lot,
+        expiry,
+        etiqueta,
+        updatedAt: String(entry?.updatedAt || "").trim(),
+      });
+    });
+  });
+
+  return merged;
+}
+
+function getWarehouseLegacyLotHistoryEntry(item) {
+  const lot = String(item?.customFields?.lote || "").trim();
+  const expiry = String(item?.customFields?.caducidad || "").trim();
+  if (!lot || !expiry) return null;
+  return {
+    lot,
+    expiry,
+    etiqueta: String(item?.customFields?.etiqueta || "").trim(),
+    updatedAt: "",
+  };
+}
+
+function syncBoardRowInventoryTraceability(state, board, row, valuesPatch = {}) {
+  const safePatch = valuesPatch && typeof valuesPatch === "object" ? valuesPatch : EMPTY_OBJECT;
+  if (!Object.keys(safePatch).length) return state;
+
+  const editableTraceabilityFields = (board?.fields || []).filter((field) => (
+    field?.type === "inventoryProperty"
+    && ["lot", "expiry", "label"].includes(String(field?.inventoryProperty || "").trim())
+  ));
+  if (!editableTraceabilityFields.length) return state;
+
+  const touchedFields = editableTraceabilityFields.filter((field) => hasOwn(safePatch, field.id));
+  if (!touchedFields.length) return state;
+
+  const rowValues = row?.values && typeof row.values === "object" ? row.values : EMPTY_OBJECT;
+  const sourceFieldId = String(
+    touchedFields.find((field) => field?.sourceFieldId)?.sourceFieldId
+      || editableTraceabilityFields.find((field) => field?.sourceFieldId)?.sourceFieldId
+      || "",
+  ).trim();
+  if (!sourceFieldId) return state;
+
+  const inventoryItemId = String(rowValues[sourceFieldId] || "").trim();
+  if (!inventoryItemId) return state;
+
+  const currentItem = (state?.inventoryItems || []).find((item) => item.id === inventoryItemId);
+  if (!currentItem) return state;
+
+  const lotField = editableTraceabilityFields.find((field) => field.inventoryProperty === "lot") || null;
+  const expiryField = editableTraceabilityFields.find((field) => field.inventoryProperty === "expiry") || null;
+  const labelField = editableTraceabilityFields.find((field) => field.inventoryProperty === "label") || null;
+  const nextLot = String(lotField ? rowValues[lotField.id] || "" : "").trim();
+  const nextExpiry = String(expiryField ? rowValues[expiryField.id] || "" : "").trim();
+  const nextEtiqueta = String(labelField ? rowValues[labelField.id] || "" : "").trim();
+
+  if (!nextLot && !nextExpiry && !nextEtiqueta) return state;
+
+  const existingHistory = parseWarehouseInventoryLotHistory(currentItem?.customFields?.lotesCaducidades);
+  const legacyEntry = getWarehouseLegacyLotHistoryEntry(currentItem);
+  const nextHistory = nextLot && nextExpiry
+    ? mergeWarehouseInventoryLotHistoryEntries(
+        [{ lot: nextLot, expiry: nextExpiry, etiqueta: nextEtiqueta, updatedAt: new Date().toISOString() }],
+        existingHistory,
+        legacyEntry ? [legacyEntry] : [],
+      ).slice(0, 300)
+    : mergeWarehouseInventoryLotHistoryEntries(existingHistory, legacyEntry ? [legacyEntry] : []).slice(0, 300);
+
+  const nextCustomFields = {
+    ...(currentItem.customFields || {}),
+    ...(nextLot ? { lote: nextLot } : {}),
+    ...(nextExpiry ? { caducidad: nextExpiry } : {}),
+    ...(nextEtiqueta ? { etiqueta: nextEtiqueta } : {}),
+    ...(nextHistory.length ? { lotesCaducidades: JSON.stringify(nextHistory) } : {}),
+  };
+
+  const nextItem = normalizeInventoryItemRecord({
+    ...currentItem,
+    customFields: nextCustomFields,
+  }, currentItem.id);
+
+  return {
+    ...state,
+    inventoryItems: (state.inventoryItems || []).map((item) => (item.id === currentItem.id ? nextItem : item)),
+  };
 }
 
 export function deleteWarehouseInventoryItem(auth, itemId) {
@@ -4600,6 +4779,7 @@ export function deleteWarehouseTemplate(auth, templateId) {
   const currentState = getRawWarehouseState();
   const template = (currentState.boardTemplates || []).find((item) => item.id === templateId);
   if (!template) return { ok: false, reason: "template_not_found" };
+  if (isProtectedSystemBoard(template)) return { ok: false, reason: "system_template" };
   if (!template.isCustom) return { ok: false, reason: "forbidden" };
   if (!canUserDoWarehouseAction(currentUser, "deleteTemplate", currentState.permissions) || !canManageWarehouseTemplate(currentUser, template)) {
     return { ok: false, reason: "forbidden" };
@@ -4746,6 +4926,12 @@ export function createWarehouseBoard(auth, draft) {
     return { ok: false, reason: "invalid_payload" };
   }
 
+  const systemTemplate = resolveOfficialSystemBoardTemplate(normalizedDraft);
+  const nextBoardSettings = withDefaultBoardSettings({
+    ...normalizedDraft.settings,
+    ...(systemTemplate ? { systemBoardTemplateId: systemTemplate.id, systemBoardLocked: true } : {}),
+  });
+
   const board = {
     id: makeId("board"),
     name: normalizedDraft.name,
@@ -4755,7 +4941,7 @@ export function createWarehouseBoard(auth, draft) {
     visibilityType: normalizedDraft.visibilityType,
     sharedDepartments: normalizedDraft.sharedDepartments,
     accessUserIds: normalizedDraft.accessUserIds,
-    settings: normalizedDraft.settings,
+    settings: nextBoardSettings,
     fields: normalizedDraft.fields,
     rows: buildBoardRowsFromActivityList(normalizedDraft.fields, currentState.catalog, "", [], []),
   };
@@ -4809,6 +4995,23 @@ export function updateWarehouseBoard(auth, boardId, draft) {
     return { ok: false, reason: "invalid_payload" };
   }
 
+  const systemTemplate = resolveOfficialSystemBoardTemplate({
+    ...board,
+    ...normalizedDraft,
+    settings: {
+      ...board.settings,
+      ...normalizedDraft.settings,
+    },
+  });
+  const nextBoardSettings = withDefaultBoardSettings({
+    ...normalizedDraft.settings,
+    ...(!systemTemplate && board?.settings?.systemBoardTemplateId ? {
+      systemBoardTemplateId: board.settings.systemBoardTemplateId,
+      systemBoardLocked: Boolean(board.settings.systemBoardLocked),
+    } : {}),
+    ...(systemTemplate ? { systemBoardTemplateId: systemTemplate.id, systemBoardLocked: true } : {}),
+  });
+
   const updatedBoard = {
     ...board,
     name: normalizedDraft.name,
@@ -4817,7 +5020,7 @@ export function updateWarehouseBoard(auth, boardId, draft) {
     visibilityType: normalizedDraft.visibilityType,
     sharedDepartments: normalizedDraft.sharedDepartments,
     accessUserIds: normalizedDraft.accessUserIds,
-    settings: normalizedDraft.settings,
+    settings: nextBoardSettings,
     fields: normalizedDraft.fields,
     rows: buildBoardRowsFromActivityList(
       normalizedDraft.fields,
@@ -4898,6 +5101,7 @@ export function deleteWarehouseBoard(auth, boardId) {
   const currentState = getRawWarehouseState();
   const { board } = findBoardAndRow(currentState, boardId);
   if (!board) return { ok: false, reason: "board_not_found" };
+  // Los tableros siempre se pueden eliminar; solo las plantillas del sistema están protegidas.
   if (!canEditWarehouseBoard(currentUser, board) || !canUserDoWarehouseAction(currentUser, "deleteBoard", currentState.permissions)) {
     return { ok: false, reason: "forbidden" };
   }
@@ -5288,9 +5492,11 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
     }),
   };
 
+  const traceabilitySyncedState = syncBoardRowInventoryTraceability(nextStateBase, board, nextRow, normalizedValuesPatch);
+
   const nextState = shouldApplyCleaningConsumption
-    ? applyBoardRowCleaningInventoryConsumption(nextStateBase, nextRow, board, currentUser, nowIso)
-    : nextStateBase;
+    ? applyBoardRowCleaningInventoryConsumption(traceabilitySyncedState, nextRow, board, currentUser, nowIso)
+    : traceabilitySyncedState;
 
   return { ok: true, state: replaceWarehouseState(nextState), row: nextRow };
 }

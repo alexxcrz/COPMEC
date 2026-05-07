@@ -848,6 +848,7 @@ function App() { // NOSONAR
   const [areaModal, setAreaModal] = useState({ open: false, target: "user", name: "", parentArea: "", error: "" });
   const [areaDeleteModal, setAreaDeleteModal] = useState({ open: false, areaName: "", label: "", error: "", submitting: false });
   const [controlBoardDraft, setControlBoardDraft] = useState(createEmptyBoardDraft);
+  const [isBoardSaveSubmitting, setIsBoardSaveSubmitting] = useState(false);
   const [controlBoardFeedback, setControlBoardFeedback] = useState("");
   const [boardImportedRowsDraft, setBoardImportedRowsDraft] = useState([]);
   const [excelFormulaWizard, setExcelFormulaWizard] = useState({ open: false, items: [] });
@@ -3895,17 +3896,93 @@ function App() { // NOSONAR
       || canDoAction(currentUser, "saveBoard", normalizedPermissions);
   }, [currentUser, normalizedPermissions, selectedCustomBoard]);
 
+  const extraSystemBoardTemplates = useMemo(() => ([
+    {
+      id: "actividades-limpieza",
+      name: "Actividades de limpieza",
+      category: "Limpieza",
+      description: "Plantilla oficial para control de actividades de limpieza.",
+      aliases: ["activiades de limpieza", "control de actividades de limpieza"],
+      settings: {
+        showWorkflow: true,
+        showMetrics: true,
+        showAssignee: true,
+        showDates: true,
+      },
+      columns: [],
+    },
+  ]), []);
+
+  const officialSystemTemplates = useMemo(
+    () => BOARD_TEMPLATES.concat(extraSystemBoardTemplates),
+    [extraSystemBoardTemplates],
+  );
+
+  const officialBoardTemplatesById = useMemo(
+    () => new Map(officialSystemTemplates.map((template) => [String(template.id || "").trim(), template])),
+    [officialSystemTemplates],
+  );
+
   const availableBoardTemplates = useMemo(() => {
-    const visibleBaseTemplates = BOARD_TEMPLATES.filter((template) => !hiddenBaseTemplateIds.includes(template.id));
-    if (!currentUser) return visibleBaseTemplates;
+    const boardDerivedSystemTemplates = (state.controlBoards || [])
+      .map((board) => {
+        const systemTemplate = resolveProtectedSystemTemplate(board);
+        if (!systemTemplate || hiddenBaseTemplateIds.includes(systemTemplate.id)) return null;
+        return {
+          ...systemTemplate,
+          settings: board.settings || systemTemplate.settings,
+          columns: (board.fields || []).map((field) => ({
+            ...field,
+            templateKey: field.templateKey || field.id,
+          })),
+        };
+      })
+      .filter(Boolean);
+
+    const visibleBaseTemplates = officialSystemTemplates.filter((template) => !hiddenBaseTemplateIds.includes(template.id));
+    const mergedBaseTemplateMap = new Map(visibleBaseTemplates.map((template) => [template.id, template]));
+    boardDerivedSystemTemplates.forEach((template) => {
+      mergedBaseTemplateMap.set(template.id, template);
+    });
+    const mergedBaseTemplates = Array.from(mergedBaseTemplateMap.values());
+
+    if (!currentUser) return mergedBaseTemplates;
     const sharedTemplates = (state.boardTemplates || []).filter((template) => canUserAccessTemplate(template, currentUser));
-    return visibleBaseTemplates.concat(sharedTemplates);
-  }, [currentUser, hiddenBaseTemplateIds, state.boardTemplates]);
+    return mergedBaseTemplates.concat(sharedTemplates);
+  }, [currentUser, hiddenBaseTemplateIds, officialSystemTemplates, state.boardTemplates, state.controlBoards]);
 
   const customTemplateIds = useMemo(
     () => new Set((state.boardTemplates || []).map((template) => template.id)),
     [state.boardTemplates],
   );
+
+  function resolveProtectedSystemTemplate(entry) {
+    if (!entry) return null;
+    const systemTemplateId = String(entry?.settings?.systemBoardTemplateId || "").trim();
+    if (systemTemplateId && officialBoardTemplatesById.has(systemTemplateId)) {
+      return officialBoardTemplatesById.get(systemTemplateId);
+    }
+
+    const normalizedName = normalizeKey(entry?.name || "");
+    return officialSystemTemplates.find((template) => {
+      const normalizedTemplateName = normalizeKey(template.name || "");
+      if (normalizedTemplateName === normalizedName) return true;
+      return (template.aliases || []).some((alias) => normalizeKey(alias) === normalizedName);
+    }) || null;
+  }
+
+  function isProtectedSystemBoard(entry) {
+    return Boolean(resolveProtectedSystemTemplate(entry));
+  }
+
+  function canDeleteControlBoardEntry(entry) {
+    // Los tableros creados siempre se pueden eliminar; solo las plantillas del sistema están protegidas.
+    return true;
+  }
+
+  function canDeleteBoardTemplateEntry(entry) {
+    return !isProtectedSystemBoard(entry);
+  }
 
   const allowedNavItems = useMemo(
     () => currentUser ? NAV_ITEMS.filter((item) => canAccessPage(currentUser, item.id, normalizedPermissions)) : [],
@@ -5361,11 +5438,22 @@ function App() { // NOSONAR
 
   function openDeleteBoardTemplateModal(template) {
     if (!template || !actionPermissions.deleteTemplate) return;
+    if (!canDeleteBoardTemplateEntry(template)) {
+      setControlBoardFeedback(`La plantilla ${template.name || "seleccionada"} es original del sistema y no se puede eliminar.`);
+      return;
+    }
     setTemplateDeleteModal({ open: true, id: template.id, name: template.name || "Plantilla" });
   }
 
   async function confirmDeleteBoardTemplate() {
     if (!templateDeleteModal.id || !actionPermissions.deleteTemplate) return;
+
+    const templateToDelete = availableBoardTemplates.find((template) => template.id === templateDeleteModal.id) || null;
+    if (templateToDelete && !canDeleteBoardTemplateEntry(templateToDelete)) {
+      setControlBoardFeedback(`La plantilla ${templateDeleteModal.name} es original del sistema y no se puede eliminar.`);
+      setTemplateDeleteModal({ open: false, id: null, name: "" });
+      return;
+    }
 
     if (!customTemplateIds.has(templateDeleteModal.id)) {
       setHiddenBaseTemplateIds((current) => current.includes(templateDeleteModal.id)
@@ -5420,6 +5508,7 @@ function App() { // NOSONAR
   }
 
   async function saveControlBoard() {
+    if (isBoardSaveSubmitting) return;
     const isEditing = boardBuilderModal.mode === "edit" && boardBuilderModal.boardId;
     const hasPermission = isEditing ? actionPermissions.editBoard : actionPermissions.createBoard;
     if (!currentUser || !hasPermission || !controlBoardDraft.name.trim() || !controlBoardDraft.columns.length) {
@@ -5435,6 +5524,16 @@ function App() { // NOSONAR
 
     const ownerId = controlBoardDraft.ownerId || currentUser.id;
     const { payload } = buildBoardSavePayload(controlBoardDraft, ownerId);
+    const protectedTemplate = resolveProtectedSystemTemplate(controlBoardDraft);
+    if (protectedTemplate) {
+      payload.settings = {
+        ...payload.settings,
+        systemBoardTemplateId: protectedTemplate.id,
+        systemBoardLocked: true,
+      };
+    }
+    setIsBoardSaveSubmitting(true);
+    setControlBoardFeedback("");
 
     try {
       const result = await requestJson(
@@ -5484,6 +5583,8 @@ function App() { // NOSONAR
       }
     } catch (error) {
       setControlBoardFeedback(error?.message || "No se pudo guardar el tablero.");
+    } finally {
+      setIsBoardSaveSubmitting(false);
     }
   }
 
@@ -5572,6 +5673,11 @@ function App() { // NOSONAR
     if (!currentUser || !boardId) return;
     const boardToDelete = (state.controlBoards || []).find((board) => board.id === boardId);
     if (!actionPermissions.deleteBoard || !boardToDelete || !canEditBoard(currentUser, boardToDelete)) return;
+    if (!canDeleteControlBoardEntry(boardToDelete)) {
+      setDeleteBoardId(null);
+      setBoardRuntimeFeedback({ tone: "danger", message: `El tablero ${boardToDelete.name} es una plantilla original del sistema y no se puede eliminar.` });
+      return;
+    }
 
     try {
       const result = await requestJson(`/warehouse/boards/${boardId}`, {
@@ -7612,6 +7718,7 @@ function App() { // NOSONAR
     operationalWorkWeek: operationalPauseState.workWeek,
     setRoleModalOpen,
     Users,
+    canDeleteControlBoardEntry,
     visibleControlBoards,
     visibleUsers,
     weeklyAreaCoverageRows,
@@ -8389,6 +8496,8 @@ function App() { // NOSONAR
         onChange={setControlBoardDraft}
         onClose={closeBoardBuilderModal}
         onConfirm={saveControlBoard}
+        confirmDisabled={isBoardSaveSubmitting}
+        confirmLabel={isBoardSaveSubmitting ? (boardBuilderModal.mode === "edit" ? "Guardando cambios..." : "Creando tablero...") : undefined}
         onOpenComponentStudio={openComponentStudio}
         onImportFromExcel={openBoardExcelImportPicker}
         onSaveTemplate={actionPermissions.saveTemplate ? saveDraftAsBoardTemplate : null}
@@ -8403,7 +8512,7 @@ function App() { // NOSONAR
         onPreviewTemplate={previewBoardTemplate}
         onApplyTemplate={applyBoardTemplate}
         onDeleteTemplate={actionPermissions.deleteTemplate ? openDeleteBoardTemplateModal : null}
-        canDeleteTemplate={() => true}
+        canDeleteTemplate={canDeleteBoardTemplateEntry}
         selectedPreviewTemplate={selectedPreviewTemplate}
         onClearTemplatePreview={() => setTemplatePreviewId(null)}
         previewBoard={boardBuilderPreview}
