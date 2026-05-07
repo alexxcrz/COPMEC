@@ -2979,6 +2979,17 @@ function createBoardRowRecord(fields, responsibleId, partial = {}) {
   const totalElapsedSecondsOverride = Number.isFinite(rawTotalOverride) && rawTotalOverride >= 0
     ? Math.max(0, rawTotalOverride)
     : null;
+  const normalizedStatus = String(partial?.status || "Pendiente");
+  const createdAtIso = partial?.createdAt || new Date().toISOString();
+  let normalizedStartTime = partial?.startTime ?? null;
+  let normalizedLastResumedAt = partial?.lastResumedAt ?? null;
+
+  if (normalizedStatus === "En curso") {
+    const baselineIso = normalizedStartTime || normalizedLastResumedAt || createdAtIso;
+    normalizedStartTime = normalizedStartTime || baselineIso;
+    normalizedLastResumedAt = normalizedLastResumedAt || baselineIso;
+  }
+
   const baseValues = (fields || []).reduce((accumulator, field) => {
     accumulator[field.id] = getBoardFieldDefaultValue(field, effectiveResponsibleId);
     return accumulator;
@@ -2992,12 +3003,12 @@ function createBoardRowRecord(fields, responsibleId, partial = {}) {
     },
     responsibleId: effectiveResponsibleId,
     responsibleIds,
-    status: partial?.status || "Pendiente",
-    startTime: partial?.startTime ?? null,
+    status: normalizedStatus,
+    startTime: normalizedStartTime,
     endTime: partial?.endTime ?? null,
     accumulatedSeconds: Number(partial?.accumulatedSeconds || 0),
     totalElapsedSecondsOverride,
-    lastResumedAt: partial?.lastResumedAt ?? null,
+    lastResumedAt: normalizedLastResumedAt,
     pauseUsageByDay: partial?.pauseUsageByDay && typeof partial.pauseUsageByDay === "object" ? partial.pauseUsageByDay : {},
     pauseLogs: Array.isArray(partial?.pauseLogs)
       ? partial.pauseLogs.map((entry) => ({
@@ -3008,7 +3019,7 @@ function createBoardRowRecord(fields, responsibleId, partial = {}) {
           pauseDurationSeconds: Math.max(0, Number(entry?.pauseDurationSeconds || 0)),
         }))
       : [],
-    createdAt: partial?.createdAt || new Date().toISOString(),
+    createdAt: createdAtIso,
   };
 
   if (hasOwn(partial, "lastPauseReason")) {
