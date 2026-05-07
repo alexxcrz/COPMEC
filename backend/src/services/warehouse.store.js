@@ -1399,7 +1399,9 @@ function normalizeState(state, previousState = null) {
     permissions,
     auditLog: Array.isArray(state.auditLog) ? state.auditLog : [],
     boardTemplates: Array.isArray(state.boardTemplates)
-      ? state.boardTemplates.map((template) => ({
+      ? state.boardTemplates
+        .filter((template) => isAllowedSystemBoardTemplateEntry(template))
+        .map((template) => ({
           ...template,
           category: template.category || "Personalizada",
           visibilityType: template.visibilityType || "department",
@@ -3118,13 +3120,38 @@ function normalizeKey(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+const ALLOWED_SYSTEM_BOARD_TEMPLATE_IDS = new Set([
+  "actividades-limpieza",
+  "revision-tarimas",
+  "devoluciones-reacondicionado",
+]);
+
+const ALLOWED_SYSTEM_BOARD_TEMPLATE_NAMES = new Set([
+  normalizeKey("Actividades de limpieza"),
+  normalizeKey("Control de actividades de limpieza"),
+  normalizeKey("Revisión de tarimas"),
+  normalizeKey("Devoluciones / Reacondicionado por tarima"),
+  normalizeKey("Devoluciones y reacondicionado"),
+]);
+
+function isAllowedSystemBoardTemplateEntry(entry) {
+  const rawId = normalizeKey(entry?.id || entry?.settings?.systemBoardTemplateId || "");
+  if (rawId && ALLOWED_SYSTEM_BOARD_TEMPLATE_IDS.has(rawId)) return true;
+  const normalizedName = normalizeKey(entry?.name || "");
+  return Boolean(normalizedName) && ALLOWED_SYSTEM_BOARD_TEMPLATE_NAMES.has(normalizedName);
+}
+
 const OFFICIAL_SYSTEM_BOARD_TEMPLATES = [
   { id: "revision-tarimas", name: "Revisión de tarimas", aliases: [] },
-  { id: "revision-causales", name: "Revisión de merma y causales", aliases: [] },
   {
     id: "actividades-limpieza",
     name: "Actividades de limpieza",
     aliases: ["activiades de limpieza", "control de actividades de limpieza"],
+  },
+  {
+    id: "devoluciones-reacondicionado",
+    name: "Devoluciones / Reacondicionado por tarima",
+    aliases: ["devoluciones y reacondicionado", "reacondicionado por tarima"],
   },
 ];
 

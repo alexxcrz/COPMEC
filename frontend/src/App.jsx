@@ -3933,8 +3933,27 @@ function App() { // NOSONAR
     },
   ]), []);
 
+  const allowedSystemTemplateIds = useMemo(
+    () => new Set(["actividades-limpieza", "revision-tarimas", "devoluciones-reacondicionado"]),
+    [],
+  );
+
+  const allowedSystemTemplateNames = useMemo(
+    () => new Set([
+      normalizeKey("Actividades de limpieza"),
+      normalizeKey("Revisión de tarimas"),
+      normalizeKey("Devoluciones / Reacondicionado por tarima"),
+      normalizeKey("Control de actividades de limpieza"),
+      normalizeKey("Devoluciones y reacondicionado"),
+    ]),
+    [],
+  );
+
   const officialSystemTemplates = useMemo(
-    () => BOARD_TEMPLATES.concat(extraSystemBoardTemplates),
+    () => BOARD_TEMPLATES
+      .filter((template) => allowedSystemTemplateIds.has(String(template.id || "").trim()))
+      .concat(extraSystemBoardTemplates)
+      .filter((template) => allowedSystemTemplateIds.has(String(template.id || "").trim())),
     [extraSystemBoardTemplates],
   );
 
@@ -3942,6 +3961,27 @@ function App() { // NOSONAR
     () => new Map(officialSystemTemplates.map((template) => [String(template.id || "").trim(), template])),
     [officialSystemTemplates],
   );
+
+  function isAllowedSystemTemplateEntry(entry) {
+    const protectedTemplate = resolveProtectedSystemTemplate(entry);
+    if (protectedTemplate) {
+      return allowedSystemTemplateIds.has(String(protectedTemplate.id || "").trim());
+    }
+
+    const rawId = String(entry?.id || "").trim();
+    if (rawId && allowedSystemTemplateIds.has(rawId)) return true;
+
+    const normalizedName = normalizeKey(entry?.name || "");
+    return Boolean(normalizedName) && allowedSystemTemplateNames.has(normalizedName);
+  }
+
+  function getAllowedSystemTemplateKey(entry) {
+    const protectedTemplate = resolveProtectedSystemTemplate(entry);
+    if (protectedTemplate?.id) return String(protectedTemplate.id).trim();
+    const rawId = String(entry?.id || "").trim();
+    if (rawId) return rawId;
+    return normalizeKey(entry?.name || "");
+  }
 
   const availableBoardTemplates = useMemo(() => {
     const boardDerivedSystemTemplates = (state.controlBoards || [])
@@ -3964,11 +4004,30 @@ function App() { // NOSONAR
     boardDerivedSystemTemplates.forEach((template) => {
       mergedBaseTemplateMap.set(template.id, template);
     });
-    const mergedBaseTemplates = Array.from(mergedBaseTemplateMap.values());
+    const mergedBaseTemplates = Array.from(mergedBaseTemplateMap.values()).filter(isAllowedSystemTemplateEntry);
 
-    if (!currentUser) return mergedBaseTemplates;
-    const sharedTemplates = (state.boardTemplates || []).filter((template) => canUserAccessTemplate(template, currentUser));
-    return mergedBaseTemplates.concat(sharedTemplates);
+    const sourceTemplates = currentUser
+      ? mergedBaseTemplates.concat((state.boardTemplates || []).filter((template) => canUserAccessTemplate(template, currentUser)))
+      : mergedBaseTemplates;
+
+    const allowedTemplates = sourceTemplates.filter(isAllowedSystemTemplateEntry);
+    const dedupedBySystemKey = new Map();
+    allowedTemplates.forEach((template) => {
+      const key = getAllowedSystemTemplateKey(template);
+      if (!key) return;
+      const current = dedupedBySystemKey.get(key);
+      if (!current) {
+        dedupedBySystemKey.set(key, template);
+        return;
+      }
+
+      const currentCols = Array.isArray(current?.columns) ? current.columns.length : 0;
+      const nextCols = Array.isArray(template?.columns) ? template.columns.length : 0;
+      if (nextCols > currentCols) {
+        dedupedBySystemKey.set(key, template);
+      }
+    });
+    return Array.from(dedupedBySystemKey.values());
   }, [currentUser, hiddenBaseTemplateIds, officialSystemTemplates, state.boardTemplates, state.controlBoards]);
 
   const customTemplateIds = useMemo(
