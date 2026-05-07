@@ -862,7 +862,13 @@ function App() { // NOSONAR
   const [hiddenBaseTemplateIds, setHiddenBaseTemplateIds] = useState(() => {
     try {
       const parsed = JSON.parse(localStorage.getItem(HIDDEN_BASE_TEMPLATES_KEY) || "[]");
-      return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+      if (!Array.isArray(parsed)) return [];
+      const protectedSystemTemplateIds = new Set([
+        "actividades-limpieza",
+        "revision-tarimas",
+        "devoluciones-reacondicionado",
+      ]);
+      return parsed.filter((id) => id && !protectedSystemTemplateIds.has(String(id).trim()));
     } catch {
       return [];
     }
@@ -3911,6 +3917,20 @@ function App() { // NOSONAR
       },
       columns: [],
     },
+    {
+      id: "devoluciones-reacondicionado",
+      name: "Devoluciones / Reacondicionado por tarima",
+      category: "Revisión",
+      description: "Plantilla oficial para flujo de escaneo continuo por tarima.",
+      aliases: ["devoluciones / reacondicionado", "devoluciones y reacondicionado", "reacondicionado por tarima"],
+      settings: {
+        showWorkflow: true,
+        showMetrics: true,
+        showAssignee: true,
+        showDates: true,
+      },
+      columns: [],
+    },
   ]), []);
 
   const officialSystemTemplates = useMemo(
@@ -4014,7 +4034,13 @@ function App() { // NOSONAR
     return availableBoardTemplates.filter((template) => {
       const category = getBoardTemplateCategory(template);
       const matchesCategory = templateCategoryFilter === "Todas" || category === templateCategoryFilter;
-      const matchesSearch = !term || String(template.name || "").toLowerCase().includes(term);
+      const searchableParts = [
+        String(template.name || ""),
+        String(template.category || ""),
+        String(template.description || ""),
+        ...(Array.isArray(template.aliases) ? template.aliases : []),
+      ];
+      const matchesSearch = !term || searchableParts.some((entry) => String(entry || "").toLowerCase().includes(term));
       return matchesCategory && matchesSearch;
     });
   }, [availableBoardTemplates, templateCategoryFilter, templateSearch]);
