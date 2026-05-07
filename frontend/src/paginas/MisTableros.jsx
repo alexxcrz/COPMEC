@@ -295,6 +295,19 @@ export default function MisTableros({ contexto }) {
     pushAppToast,
   } = contexto;
 
+  const [localNowTick, setLocalNowTick] = useState(() => Date.now());
+  const realtimeNow = Math.max(
+    localNowTick,
+    Number.isFinite(Number(now)) ? Number(now) : 0,
+  );
+
+  useEffect(() => {
+    const timer = globalThis.setInterval(() => {
+      setLocalNowTick(Date.now());
+    }, 1000);
+    return () => globalThis.clearInterval(timer);
+  }, []);
+
   function normalizeTimeInput24h(value, strict = false) {
     const raw = String(value || "").trim();
     if (!raw) return "";
@@ -1430,7 +1443,7 @@ export default function MisTableros({ contexto }) {
 
                             if (column.id === "status") {
                               const persistedPauseLogs = Array.isArray(row.pauseLogs) ? row.pauseLogs : [];
-                              const totalPauseSeconds = getRowPauseSeconds(row, now);
+                              const totalPauseSeconds = getRowPauseSeconds(row, realtimeNow);
                               const pauseCount = persistedPauseLogs.length + (row.status === STATUS_PAUSED && row.pauseStartedAt && !persistedPauseLogs.some((entry) => !entry?.resumedAt) ? 1 : 0);
                               const pauseReasonLabel = String(
                                 row.lastPauseReason
@@ -1460,7 +1473,7 @@ export default function MisTableros({ contexto }) {
                             }
 
                             if (column.id === "time") {
-                              const effectiveNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : now;
+                              const effectiveNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : realtimeNow;
                               const computedSecs = getElapsedSeconds(row, effectiveNow, pauseState);
                               if (isLeadPrincipal) {
                                 const editKey = `${row.id}-time`;
@@ -1502,7 +1515,7 @@ export default function MisTableros({ contexto }) {
                             }
 
                             if (column.id === "totalTime") {
-                              const effectiveNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : now;
+                              const effectiveNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : realtimeNow;
                               const prodSecs = getElapsedSeconds(row, effectiveNow, pauseState);
                               const computedTotalSecs = row.status === STATUS_PAUSED
                                 ? Math.max(0, prodSecs + getRowPauseSeconds(row, effectiveNow))
@@ -1537,7 +1550,7 @@ export default function MisTableros({ contexto }) {
                             }
 
                             if (column.id === "efficiency") {
-                              const effectiveNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : now;
+                              const effectiveNow = row.status === STATUS_FINISHED && row.endTime ? new Date(row.endTime).getTime() : realtimeNow;
                               const prodSecs = getElapsedSeconds(row, effectiveNow, pauseState);
                               const computedTotalSecs = row.status === STATUS_PAUSED
                                 ? Math.max(0, prodSecs + getRowPauseSeconds(row, effectiveNow))
@@ -2119,14 +2132,14 @@ export default function MisTableros({ contexto }) {
                 {pauseDetailsLogs.map((entry, index) => {
                   const effectiveNow = pauseDetailsRow?.status === STATUS_FINISHED && pauseDetailsRow?.endTime
                     ? new Date(pauseDetailsRow.endTime).getTime()
-                    : now;
+                    : realtimeNow;
                   const liveProductionSeconds = getElapsedSeconds(pauseDetailsRow, effectiveNow, pauseState);
                   const startLabel = entry?.pausedAt ? formatTime(entry.pausedAt) : "--";
                   const endLabel = entry?.resumedAt ? formatTime(entry.resumedAt) : "En curso";
                   const durationSeconds = entry?.resumedAt
                     ? Math.max(0, Number(entry?.pauseDurationSeconds || 0))
                     : entry?.pausedAt
-                      ? Math.max(0, getOperationalElapsedSeconds(entry.pausedAt, now, pauseState, pauseDetailsRow?.cleaningSite))
+                      ? Math.max(0, getOperationalElapsedSeconds(entry.pausedAt, realtimeNow, pauseState, pauseDetailsRow?.cleaningSite))
                       : 0;
                   const durationEditKey = `${pauseDetailsRow.id}:${entry?.id || index}`;
                   const durationEditValue = pauseDurationEdits[durationEditKey] ?? formatDurationClock(durationSeconds);
@@ -2192,7 +2205,7 @@ export default function MisTableros({ contexto }) {
                             });
                             const totalPauseSeconds = nextPauseLogs.reduce((sum, logEntry) => sum + Math.max(0, Number(logEntry?.pauseDurationSeconds || 0)), 0);
                             const livePauseSecondsForRow = pauseDetailsRow?.status === STATUS_PAUSED && pauseDetailsRow?.pauseStartedAt
-                              ? Math.max(0, getLivePauseOverflowSeconds(pauseDetailsRow, now, pauseState))
+                              ? Math.max(0, getLivePauseOverflowSeconds(pauseDetailsRow, realtimeNow, pauseState))
                               : 0;
                             updateBoardRowTimeOverride(selectedCustomBoard.id, pauseDetailsRow.id, {
                               pauseLogs: nextPauseLogs,
