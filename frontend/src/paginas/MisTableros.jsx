@@ -11,6 +11,7 @@ import {
   formatInventoryLookupLabel,
   formatBoardRowAssigneeLabel,
   getLivePauseOverflowSeconds,
+  getOperationalDateParts,
   getBoardRowResponsibleIds,
   getOperationalElapsedSeconds,
   normalizeAreaOption,
@@ -450,8 +451,8 @@ export default function MisTableros({ contexto }) {
   const [selectedWeekdayFilter, setSelectedWeekdayFilter] = useState("auto");
   const [histViewNave, setHistViewNave] = useState("");
   const [currentWeekdayOffset, setCurrentWeekdayOffset] = useState(() => {
-    const today = new Date();
-    const jsDay = today.getDay();
+    const today = getOperationalDateParts(Date.now(), normalizeSystemOperationalSettings(state?.system?.operational).timeZone);
+    const jsDay = today.jsDay;
     return jsDay === 0 ? 6 : jsDay - 1;
   });
   const [columnResizing, setColumnResizing] = useState({ isResizing: false, columnToken: null, startX: 0, startWidth: 0 });
@@ -501,6 +502,7 @@ export default function MisTableros({ contexto }) {
   const boardColumns = boardView ? getOrderedBoardColumns(boardView, isBoardOwner) : [];
   const systemOperationalSettings = normalizeSystemOperationalSettings(state?.system?.operational);
   const systemPauseControl = systemOperationalSettings.pauseControl;
+  const operationalTimeZone = systemOperationalSettings.timeZone || "America/Mexico_City";
   // Resolve area-specific work hours if the board has ownerArea with a configured area pause
   const boardOwnerAreaKey = normalizeAreaOption(boardView?.settings?.ownerArea || "");
   const areaPauseControls = systemPauseControl?.areaPauseControls || {};
@@ -516,12 +518,12 @@ export default function MisTableros({ contexto }) {
   // forceGlobalPause (tiempo extra / manual lead override) always takes precedence.
   const areaSchedulePauseEnabled = areaHasOwnSchedule
     ? (() => {
-        const now = new Date();
+        const operationalNow = getOperationalDateParts(Date.now(), operationalTimeZone);
         const wh = areaSpecificConfig.workHours;
         const startTotal = Number(wh?.startHour ?? 0) * 60 + Number(wh?.startMinute ?? 0);
         const endTotal = Number(wh?.endHour ?? 24) * 60 + Number(wh?.endMinute ?? 0);
         if (startTotal === endTotal) return true;
-        const nowTotal = now.getHours() * 60 + now.getMinutes();
+        const nowTotal = operationalNow.hours * 60 + operationalNow.minutes;
         return !(nowTotal >= startTotal && nowTotal < endTotal);
       })()
     : false;
@@ -617,12 +619,8 @@ export default function MisTableros({ contexto }) {
     return scopedUsers;
   }, [boardView, state, visibleUsers]);
   const targetOperationalDateKey = (() => {
-    const nowDate = new Date();
     if (selectedWeekdayFilter === "auto") {
-      const year = nowDate.getFullYear();
-      const month = String(nowDate.getMonth() + 1).padStart(2, "0");
-      const day = String(nowDate.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
+      return getOperationalDateParts(Date.now(), operationalTimeZone).isoDate;
     }
     const parsedWeekStart = parseBoardWeekKey(effectiveWeekKey);
     if (!parsedWeekStart) return "";
@@ -635,13 +633,13 @@ export default function MisTableros({ contexto }) {
 
   useEffect(() => {
     const timer = globalThis.setInterval(() => {
-      const now = new Date();
-      const jsDay = now.getDay();
+      const operationalNow = getOperationalDateParts(Date.now(), operationalTimeZone);
+      const jsDay = operationalNow.jsDay;
       const nextOffset = jsDay === 0 ? 6 : jsDay - 1;
       setCurrentWeekdayOffset((current) => (current === nextOffset ? current : nextOffset));
     }, 60000);
     return () => globalThis.clearInterval(timer);
-  }, []);
+  }, [operationalTimeZone]);
 
   useEffect(() => {
     if (!openAssigneeMenuRowId) return undefined;

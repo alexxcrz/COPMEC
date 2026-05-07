@@ -3663,6 +3663,68 @@ export function getLivePauseOverflowSeconds(activity, now, pauseState) {
   return Math.max(0, pausedElapsedSeconds - authorizedPauseSeconds);
 }
 
+export function getOperationalDateParts(now = Date.now(), timeZone = "America/Mexico_City") {
+  const resolvedDate = now instanceof Date ? new Date(now.getTime()) : new Date(now);
+  const fallbackDate = Number.isFinite(resolvedDate.getTime()) ? resolvedDate : new Date();
+  const resolvedTimeZone = String(timeZone || "").trim() || "America/Mexico_City";
+
+  try {
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: resolvedTimeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    });
+    const values = formatter.formatToParts(fallbackDate).reduce((accumulator, entry) => {
+      if (entry.type !== "literal") {
+        accumulator[entry.type] = entry.value;
+      }
+      return accumulator;
+    }, {});
+    const weekdayMap = {
+      Sun: 0,
+      Mon: 1,
+      Tue: 2,
+      Wed: 3,
+      Thu: 4,
+      Fri: 5,
+      Sat: 6,
+    };
+    const year = Number(values.year);
+    const month = Number(values.month);
+    const day = Number(values.day);
+    const hours = Number(values.hour);
+    const minutes = Number(values.minute);
+
+    return {
+      year: Number.isFinite(year) ? year : fallbackDate.getFullYear(),
+      month: Number.isFinite(month) ? month : fallbackDate.getMonth() + 1,
+      day: Number.isFinite(day) ? day : fallbackDate.getDate(),
+      hours: Number.isFinite(hours) ? hours : fallbackDate.getHours(),
+      minutes: Number.isFinite(minutes) ? minutes : fallbackDate.getMinutes(),
+      jsDay: weekdayMap[values.weekday] ?? fallbackDate.getDay(),
+      isoDate: `${values.year || fallbackDate.getFullYear()}-${values.month || String(fallbackDate.getMonth() + 1).padStart(2, "0")}-${values.day || String(fallbackDate.getDate()).padStart(2, "0")}`,
+    };
+  } catch {
+    const year = fallbackDate.getFullYear();
+    const month = fallbackDate.getMonth() + 1;
+    const day = fallbackDate.getDate();
+    return {
+      year,
+      month,
+      day,
+      hours: fallbackDate.getHours(),
+      minutes: fallbackDate.getMinutes(),
+      jsDay: fallbackDate.getDay(),
+      isoDate: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+    };
+  }
+}
+
 const SYSTEM_OPERATIONAL_NAVE_KEYS = ["C1", "C2", "C3", "P"];
 
 function normalizeWeekdayOffsetsList(value) {
