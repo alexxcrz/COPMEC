@@ -3554,12 +3554,13 @@ export function getEffectiveOperationalNow(now, pauseState, areaKey = "") {
     return effectiveNow;
   }
 
-  const accumulatedSeconds = Math.max(0, Number(pauseState?.globalPauseAccumulatedSeconds || 0));
-  let totalPausedMs = accumulatedSeconds * 1000;
+  let totalPausedMs = 0;
   if (pauseState?.globalPauseEnabled && pauseState?.globalPauseActivatedAt) {
     const pausedAt = new Date(pauseState.globalPauseActivatedAt).getTime();
     if (Number.isFinite(pausedAt)) {
-      totalPausedMs += Math.max(0, effectiveNow - pausedAt);
+      // Freeze only while the global pause is active; historical accumulated pause
+      // must not shift newly started timers.
+      totalPausedMs = Math.max(0, effectiveNow - pausedAt);
     }
   }
   if (totalPausedMs > 0) {
