@@ -6516,6 +6516,22 @@ function App() { // NOSONAR
     changeBoardRowStatus(boardId, rowId, STATUS_RUNNING, { skipStartConfirm: true });
   }
 
+  function applyOptimisticBoardRowStatus(boardId, rowId, updater) {
+    setState((current) => ({
+      ...current,
+      controlBoards: (current.controlBoards || []).map((controlBoard) => {
+        if (controlBoard.id !== boardId) return controlBoard;
+        return {
+          ...controlBoard,
+          rows: (controlBoard.rows || []).map((boardRow) => {
+            if (boardRow.id !== rowId) return boardRow;
+            return updater(boardRow, controlBoard);
+          }),
+        };
+      }),
+    }));
+  }
+
   function executeBoardRowStatusChange(boardId, rowId, status) {
     const board = (state.controlBoards || []).find((item) => item.id === boardId);
     const row = board?.rows?.find((item) => item.id === rowId);
@@ -6554,6 +6570,63 @@ function App() { // NOSONAR
     }
 
     setBoardRuntimeFeedback({ tone: "", message: "" });
+    const nowIso = new Date().toISOString();
+    const previousRowSnapshot = JSON.parse(JSON.stringify(row));
+
+    applyOptimisticBoardRowStatus(boardId, rowId, (currentRow) => {
+      const optimisticValues = {
+        ...(currentRow.values || {}),
+        ...autoTimeValues,
+      };
+      const currentElapsedSeconds = getElapsedSeconds(currentRow, Date.now(), operationalPauseState);
+
+      if (status === STATUS_RUNNING) {
+        return {
+          ...currentRow,
+          status,
+          values: optimisticValues,
+          startTime: currentRow.startTime || nowIso,
+          endTime: currentRow.status === STATUS_FINISHED ? null : currentRow.endTime,
+          lastResumedAt: nowIso,
+          pauseStartedAt: null,
+          pauseAffectsTimer: false,
+          pauseAuthorizedSeconds: 0,
+          accumulatedSeconds: currentRow.status === STATUS_PAUSED ? currentElapsedSeconds : Math.max(0, Number(currentRow.accumulatedSeconds || 0)),
+        };
+      }
+
+      if (status === STATUS_PAUSED) {
+        return {
+          ...currentRow,
+          status,
+          values: optimisticValues,
+          accumulatedSeconds: currentElapsedSeconds,
+          lastResumedAt: null,
+          pauseStartedAt: nowIso,
+        };
+      }
+
+      if (status === STATUS_FINISHED) {
+        return {
+          ...currentRow,
+          status,
+          values: optimisticValues,
+          accumulatedSeconds: currentElapsedSeconds,
+          endTime: nowIso,
+          lastResumedAt: null,
+          pauseStartedAt: null,
+          pauseAffectsTimer: false,
+          pauseAuthorizedSeconds: 0,
+        };
+      }
+
+      return {
+        ...currentRow,
+        status,
+        values: optimisticValues,
+      };
+    });
+
     requestJson(`/warehouse/boards/${boardId}/rows/${rowId}`, {
       method: "PATCH",
       body: JSON.stringify({
@@ -6563,6 +6636,7 @@ function App() { // NOSONAR
     }).then((remoteState) => {
       applyRemoteWarehouseState(remoteState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
     }).catch((error) => {
+      applyOptimisticBoardRowStatus(boardId, rowId, () => previousRowSnapshot);
       setBoardRuntimeFeedback({ tone: "danger", message: error?.message || "No se pudo cambiar el estado de la fila." });
     });
   }
