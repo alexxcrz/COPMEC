@@ -1400,7 +1400,7 @@ function normalizeState(state, previousState = null) {
     auditLog: Array.isArray(state.auditLog) ? state.auditLog : [],
     boardTemplates: Array.isArray(state.boardTemplates)
       ? state.boardTemplates
-        .filter((template) => isAllowedSystemBoardTemplateEntry(template))
+        .filter((template) => isAllowedPersistedBoardTemplateEntry(template))
         .map((template) => ({
           ...template,
           category: template.category || "Personalizada",
@@ -3134,7 +3134,8 @@ const ALLOWED_SYSTEM_BOARD_TEMPLATE_NAMES = new Set([
   normalizeKey("Devoluciones y reacondicionado"),
 ]);
 
-function isAllowedSystemBoardTemplateEntry(entry) {
+function isAllowedPersistedBoardTemplateEntry(entry) {
+  if (entry?.isCustom) return true;
   const rawId = normalizeKey(entry?.id || entry?.settings?.systemBoardTemplateId || "");
   if (rawId && ALLOWED_SYSTEM_BOARD_TEMPLATE_IDS.has(rawId)) return true;
   const normalizedName = normalizeKey(entry?.name || "");
@@ -4819,7 +4820,7 @@ export function deleteWarehouseTemplate(auth, templateId) {
   if (!template) return { ok: false, reason: "template_not_found" };
   if (isProtectedSystemBoard(template)) return { ok: false, reason: "system_template" };
   if (!template.isCustom) return { ok: false, reason: "forbidden" };
-  if (!canUserDoWarehouseAction(currentUser, "deleteTemplate", currentState.permissions) || !canManageWarehouseTemplate(currentUser, template)) {
+  if (!canManageWarehouseTemplate(currentUser, template)) {
     return { ok: false, reason: "forbidden" };
   }
 

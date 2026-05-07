@@ -3954,7 +3954,7 @@ function App() { // NOSONAR
       .filter((template) => allowedSystemTemplateIds.has(String(template.id || "").trim()))
       .concat(extraSystemBoardTemplates)
       .filter((template) => allowedSystemTemplateIds.has(String(template.id || "").trim())),
-    [extraSystemBoardTemplates],
+    [allowedSystemTemplateIds, extraSystemBoardTemplates],
   );
 
   const officialBoardTemplatesById = useMemo(
@@ -3962,7 +3962,7 @@ function App() { // NOSONAR
     [officialSystemTemplates],
   );
 
-  function isAllowedSystemTemplateEntry(entry) {
+  function isAllowedFixedTemplateEntry(entry) {
     const protectedTemplate = resolveProtectedSystemTemplate(entry);
     if (protectedTemplate) {
       return allowedSystemTemplateIds.has(String(protectedTemplate.id || "").trim());
@@ -3973,6 +3973,10 @@ function App() { // NOSONAR
 
     const normalizedName = normalizeKey(entry?.name || "");
     return Boolean(normalizedName) && allowedSystemTemplateNames.has(normalizedName);
+  }
+
+  function isCustomTemplateEntry(entry) {
+    return Boolean(entry?.isCustom);
   }
 
   function getAllowedSystemTemplateKey(entry) {
@@ -4004,15 +4008,16 @@ function App() { // NOSONAR
     boardDerivedSystemTemplates.forEach((template) => {
       mergedBaseTemplateMap.set(template.id, template);
     });
-    const mergedBaseTemplates = Array.from(mergedBaseTemplateMap.values()).filter(isAllowedSystemTemplateEntry);
+    const mergedBaseTemplates = Array.from(mergedBaseTemplateMap.values()).filter(isAllowedFixedTemplateEntry);
 
     const sourceTemplates = currentUser
       ? mergedBaseTemplates.concat((state.boardTemplates || []).filter((template) => canUserAccessTemplate(template, currentUser)))
       : mergedBaseTemplates;
 
-    const allowedTemplates = sourceTemplates.filter(isAllowedSystemTemplateEntry);
+    const fixedTemplates = sourceTemplates.filter((template) => !isCustomTemplateEntry(template)).filter(isAllowedFixedTemplateEntry);
+    const customTemplates = sourceTemplates.filter((template) => isCustomTemplateEntry(template));
     const dedupedBySystemKey = new Map();
-    allowedTemplates.forEach((template) => {
+    fixedTemplates.forEach((template) => {
       const key = getAllowedSystemTemplateKey(template);
       if (!key) return;
       const current = dedupedBySystemKey.get(key);
@@ -4027,7 +4032,7 @@ function App() { // NOSONAR
         dedupedBySystemKey.set(key, template);
       }
     });
-    return Array.from(dedupedBySystemKey.values());
+    return Array.from(dedupedBySystemKey.values()).concat(customTemplates);
   }, [currentUser, hiddenBaseTemplateIds, officialSystemTemplates, state.boardTemplates, state.controlBoards]);
 
   const customTemplateIds = useMemo(
@@ -4060,7 +4065,10 @@ function App() { // NOSONAR
   }
 
   function canDeleteBoardTemplateEntry(entry) {
-    return !isProtectedSystemBoard(entry);
+    if (!entry || isProtectedSystemBoard(entry) || !entry.isCustom) return false;
+    if (!currentUser) return false;
+    if (normalizeRole(currentUser.role) === ROLE_LEAD) return true;
+    return String(entry.createdById || "").trim() === String(currentUser.id || "").trim();
   }
 
   const allowedNavItems = useMemo(
@@ -5522,20 +5530,20 @@ function App() { // NOSONAR
   }
 
   function openDeleteBoardTemplateModal(template) {
-    if (!template || !actionPermissions.deleteTemplate) return;
+    if (!template) return;
     if (!canDeleteBoardTemplateEntry(template)) {
-      setControlBoardFeedback(`La plantilla ${template.name || "seleccionada"} es original del sistema y no se puede eliminar.`);
+      setControlBoardFeedback(`Solo el creador de la plantilla o un Lead puede eliminar ${template.name || "esta plantilla"}.`);
       return;
     }
     setTemplateDeleteModal({ open: true, id: template.id, name: template.name || "Plantilla" });
   }
 
   async function confirmDeleteBoardTemplate() {
-    if (!templateDeleteModal.id || !actionPermissions.deleteTemplate) return;
+    if (!templateDeleteModal.id) return;
 
     const templateToDelete = availableBoardTemplates.find((template) => template.id === templateDeleteModal.id) || null;
     if (templateToDelete && !canDeleteBoardTemplateEntry(templateToDelete)) {
-      setControlBoardFeedback(`La plantilla ${templateDeleteModal.name} es original del sistema y no se puede eliminar.`);
+      setControlBoardFeedback(`Solo el creador de la plantilla o un Lead puede eliminar ${templateDeleteModal.name}.`);
       setTemplateDeleteModal({ open: false, id: null, name: "" });
       return;
     }
@@ -8670,7 +8678,7 @@ function App() { // NOSONAR
         filteredBoardTemplates={filteredBoardTemplates}
         onPreviewTemplate={previewBoardTemplate}
         onApplyTemplate={applyBoardTemplate}
-        onDeleteTemplate={actionPermissions.deleteTemplate ? openDeleteBoardTemplateModal : null}
+        onDeleteTemplate={openDeleteBoardTemplateModal}
         canDeleteTemplate={canDeleteBoardTemplateEntry}
         selectedPreviewTemplate={selectedPreviewTemplate}
         onClearTemplatePreview={() => setTemplatePreviewId(null)}

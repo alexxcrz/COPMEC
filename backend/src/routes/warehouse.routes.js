@@ -270,7 +270,7 @@ warehouseRouter.patch("/templates/:templateId", requireWarehouseAction("editTemp
   res.json({ ok: true, data: { state: result.state, templateId: result.templateId, templateName: result.templateName } });
 });
 
-warehouseRouter.delete("/templates/:templateId", requireWarehouseAction("deleteTemplate"), (req, res) => {
+warehouseRouter.delete("/templates/:templateId", requireAuth, (req, res) => {
   const result = deleteWarehouseTemplate(req.auth, req.params.templateId);
   if (!result.ok) {
     const status = result.reason === "auth_required"
