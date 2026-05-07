@@ -14,7 +14,7 @@ export function NumberCell({ value, onCommit }) {
   if (!editing) {
     return (
       <button type="button" className="number-inline-button" onClick={() => setEditing(true)}>
-        {value === "" || value === null || value === undefined ? "0" : value}
+        {value === "" || value === null || value === undefined ? "" : value}
       </button>
     );
   }

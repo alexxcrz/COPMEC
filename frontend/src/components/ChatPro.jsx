@@ -8931,7 +8931,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                             title={emoji}
                                           >
                                             {twUrl
-                                              ? <img src={twUrl} alt={emoji} className="cpep-twemoji" loading="lazy" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='inline'; }} />
+                                              ? <img src={twUrl} alt={emoji} className="cpep-twemoji" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='inline'; }} />
                                               : null}
                                             <span style={{display: twUrl ? 'none' : 'inline'}}>{emoji}</span>
                                           </button>
@@ -9197,7 +9197,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                       (() => {
                                         const u = getTwemojiUrl(cat.icono);
                                         return u
-                                          ? <img src={u} alt={cat.icono} className="cpep-twemoji" style={{width:14,height:14}} loading="lazy" />
+                                          ? <img src={u} alt={cat.icono} className="cpep-twemoji" style={{width:14,height:14}} />
                                           : <span className="cpep-pill-icon">{cat.icono}</span>;
                                       })()
                                     )}
@@ -9241,7 +9241,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                       : (() => {
                                           const url = getTwemojiUrl(emoji);
                                           return url
-                                            ? <img src={url} alt={emoji} className="cpep-twemoji" loading="lazy" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='inline'; }} />
+                                            ? <img src={url} alt={emoji} className="cpep-twemoji" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='inline'; }} />
                                             : null;
                                         })()
                                     }
@@ -10103,7 +10103,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                     title={emoji}
                   >
                     {twUrl
-                      ? <img src={twUrl} alt={emoji} className="cpep-twemoji" loading="lazy" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='inline'; }} />
+                      ? <img src={twUrl} alt={emoji} className="cpep-twemoji" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='inline'; }} />
                       : null}
                     <span style={{display: twUrl ? 'none' : 'inline'}}>{emoji}</span>
                   </button>
@@ -10179,7 +10179,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                           : (() => {
                               const url = getTwemojiUrl(emoji);
                               return url
-                                ? <img src={url} alt={emoji} className="cpep-twemoji" loading="lazy" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='inline'; }} />
+                                ? <img src={url} alt={emoji} className="cpep-twemoji" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='inline'; }} />
                                 : null;
                             })()
                         }

@@ -481,6 +481,30 @@
   margin: 0;
 }
 
+.biblioteca-rename-modal {
+  max-width: 460px;
+}
+
+.biblioteca-rename-modal .modal-form-grid {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.biblioteca-rename-modal .app-modal-field {
+  width: 100%;
+}
+
+.biblioteca-rename-modal .app-modal-field > input {
+  width: 100%;
+  text-align: left;
+}
+
+.biblioteca-rename-helper {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #8a94a0;
+  text-align: right;
+}
+
 /* ── Carga masiva ── */
 .biblioteca-bulk-list {
   display: flex;

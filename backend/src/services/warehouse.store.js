@@ -101,6 +101,7 @@ const ACTION_PERMISSIONS = {
   previewBoardPdf:         [ROLE_LEAD, ROLE_SR, ROLE_SSR],
   exportBoardPdf:          [ROLE_LEAD, ROLE_SR, ROLE_SSR],
   uploadBiblioteca:        [ROLE_LEAD, ROLE_SR],
+  editBibliotecaName:      [ROLE_LEAD, ROLE_SR],
   deleteBiblioteca:        [ROLE_LEAD, ROLE_SR],
   createIncidencia:        [ROLE_LEAD, ROLE_SR, ROLE_SSR],
   editIncidencia:          [ROLE_LEAD, ROLE_SR],
@@ -2714,7 +2715,10 @@ export function resetWarehouseUserPassword(auth, userId, nextPassword) {
 
 function getBoardFieldDefaultValue(field, currentUserId) {
   if (field?.defaultValue !== undefined && field?.defaultValue !== null && String(field.defaultValue).trim() !== "") {
-    if (field.type === "number") return Number(field.defaultValue || 0);
+    if (["number", "currency", "percentage", "rating", "progress", "counter"].includes(field.type)) {
+      const parsed = Number(field.defaultValue);
+      return Number.isFinite(parsed) && parsed !== 0 ? parsed : "";
+    }
     if (field.type === "boolean") return String(field.defaultValue).toLowerCase() === "si" ? "Si" : field.defaultValue;
     return field.defaultValue;
   }
@@ -2723,9 +2727,9 @@ function getBoardFieldDefaultValue(field, currentUserId) {
   if (field?.type === "user") return "";
   if (field?.type === "boolean") return "No";
   if (field?.type === "date") return new Date().toISOString().slice(0, 10);
-  if (field?.type === "rating") return 0;
-  if (field?.type === "progress") return 0;
-  if (field?.type === "counter") return 0;
+  if (field?.type === "rating") return "";
+  if (field?.type === "progress") return "";
+  if (field?.type === "counter") return "";
   if (field?.type === "tags") return "";
   return "";
 }
@@ -3412,7 +3416,34 @@ export function updateWarehouseInventoryItem(auth, itemId, payload) {
     return { ok: false, reason: "forbidden" };
   }
 
-  const item = mergeInventoryItemTransferTargets(currentItem, sanitizeInventoryItemDraft(payload, itemId));
+  const draftItem = sanitizeInventoryItemDraft(payload, itemId);
+
+  // Merge lot history so prior entries are never lost on a simple PATCH.
+  const incomingLotesCaducidades = String(draftItem.customFields?.lotesCaducidades || "").trim();
+  const incomingLot = String(draftItem.customFields?.lote || "").trim();
+  const incomingExpiry = String(draftItem.customFields?.caducidad || "").trim();
+  const incomingEtiqueta = String(draftItem.customFields?.etiqueta || "").trim();
+  const existingLotHistory = parseWarehouseInventoryLotHistory(currentItem?.customFields?.lotesCaducidades);
+  const incomingLotHistory = parseWarehouseInventoryLotHistory(incomingLotesCaducidades);
+  const legacyLotEntry = getWarehouseLegacyLotHistoryEntry(currentItem);
+  const directLotEntry = incomingLot && incomingExpiry
+    ? [{ lot: incomingLot, expiry: incomingExpiry, etiqueta: incomingEtiqueta, updatedAt: new Date().toISOString() }]
+    : [];
+  const mergedLotHistory = mergeWarehouseInventoryLotHistoryEntries(
+    directLotEntry,
+    incomingLotHistory,
+    existingLotHistory,
+    legacyLotEntry ? [legacyLotEntry] : [],
+  ).slice(0, 300);
+
+  if (mergedLotHistory.length) {
+    draftItem.customFields = {
+      ...draftItem.customFields,
+      lotesCaducidades: JSON.stringify(mergedLotHistory),
+    };
+  }
+
+  const item = mergeInventoryItemTransferTargets(currentItem, draftItem);
   if (!item.code || !item.name || Number.isNaN(item.piecesPerBox) || Number.isNaN(item.boxesPerPallet)) {
     return { ok: false, reason: "invalid_payload" };
   }
@@ -3457,12 +3488,30 @@ export function updateWarehouseInventoryLotHistory(auth, itemId, payload = {}) {
   const etiqueta = String(incomingCustomFields.etiqueta ?? payload?.etiqueta ?? "").trim();
   const lotesCaducidades = String(incomingCustomFields.lotesCaducidades ?? payload?.lotesCaducidades ?? "").trim();
 
+  const existingHistory = parseWarehouseInventoryLotHistory(currentItem?.customFields?.lotesCaducidades);
+  const incomingHistory = parseWarehouseInventoryLotHistory(lotesCaducidades);
+  const legacyEntry = getWarehouseLegacyLotHistoryEntry(currentItem);
+  const directEntry = lot && expiry
+    ? [{ lot, expiry, etiqueta, updatedAt: new Date().toISOString() }]
+    : [];
+  const nextHistory = mergeWarehouseInventoryLotHistoryEntries(
+    directEntry,
+    incomingHistory,
+    existingHistory,
+    legacyEntry ? [legacyEntry] : [],
+  ).slice(0, 300);
+
+  const latestEntry = nextHistory[0] || null;
+  const nextLot = lot || latestEntry?.lot || "";
+  const nextExpiry = expiry || latestEntry?.expiry || "";
+  const nextEtiqueta = etiqueta || latestEntry?.etiqueta || latestEntry?.label || "";
+
   const nextCustomFields = {
     ...(currentItem.customFields || {}),
-    ...(lot ? { lote: lot } : {}),
-    ...(expiry ? { caducidad: expiry } : {}),
-    ...(etiqueta ? { etiqueta } : {}),
-    ...(lotesCaducidades ? { lotesCaducidades } : {}),
+    ...(nextLot ? { lote: nextLot } : {}),
+    ...(nextExpiry ? { caducidad: nextExpiry } : {}),
+    ...(nextEtiqueta ? { etiqueta: nextEtiqueta } : {}),
+    ...(nextHistory.length ? { lotesCaducidades: JSON.stringify(nextHistory) } : {}),
   };
 
   const nextItem = normalizeInventoryItemRecord({
@@ -6044,6 +6093,22 @@ export function updateBibliotecaFileCover(fileId, coverData) {
   const idx = files.findIndex((f) => f.id === fileId);
   if (idx === -1) return { ok: false, message: "Archivo no encontrado." };
   const updated = { ...files[idx], ...coverData };
+  const nextFiles = [...files.slice(0, idx), updated, ...files.slice(idx + 1)];
+  replaceWarehouseState({ ...currentState, bibliotecaFiles: nextFiles });
+  return { ok: true, file: updated };
+}
+
+export function updateBibliotecaFileName(fileId, originalName) {
+  const nextOriginalName = String(originalName || "").replaceAll(/\s+/g, " ").trim();
+  if (!nextOriginalName) return { ok: false, reason: "invalid_name", message: "Nombre de archivo inválido." };
+  if (nextOriginalName.length > 220) return { ok: false, reason: "name_too_long", message: "El nombre no puede exceder 220 caracteres." };
+
+  const currentState = getRawWarehouseState();
+  const files = currentState.bibliotecaFiles || [];
+  const idx = files.findIndex((f) => f.id === fileId);
+  if (idx === -1) return { ok: false, reason: "file_not_found", message: "Archivo no encontrado." };
+
+  const updated = { ...files[idx], originalName: nextOriginalName };
   const nextFiles = [...files.slice(0, idx), updated, ...files.slice(idx + 1)];
   replaceWarehouseState({ ...currentState, bibliotecaFiles: nextFiles });
   return { ok: true, file: updated };

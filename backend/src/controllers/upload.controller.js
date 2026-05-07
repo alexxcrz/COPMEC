@@ -12,6 +12,25 @@ if (!fs.existsSync(uploadsDirectory)) {
   fs.mkdirSync(uploadsDirectory, { recursive: true });
 }
 
+function decodeUploadedOriginalName(originalName) {
+  const rawName = String(originalName || "").trim();
+  if (!rawName) return "archivo";
+  try {
+    const decoded = Buffer.from(rawName, "latin1").toString("utf8");
+    return decoded.includes("\uFFFD") ? rawName : decoded;
+  } catch {
+    return rawName;
+  }
+}
+
+function sanitizeStorageFileName(fileName) {
+  const normalized = String(fileName || "")
+    .replaceAll(/[\\/]/g, " ")
+    .replaceAll(/[\u0000-\u001f\u007f]/g, "")
+    .trim();
+  return normalized || "archivo";
+}
+
 export async function uploadFileController(req, res, next) {
   try {
     if (!req.file) {
@@ -21,7 +40,8 @@ export async function uploadFileController(req, res, next) {
       });
     }
 
-    const safeName = req.file.originalname.replaceAll(/[^a-zA-Z0-9._-]/g, "_");
+    const originalName = decodeUploadedOriginalName(req.file.originalname);
+    const safeName = sanitizeStorageFileName(originalName);
     const uniqueName = `${Date.now()}_${safeName}`;
     const filePath = path.join(uploadsDirectory, uniqueName);
     fs.writeFileSync(filePath, req.file.buffer);
@@ -33,11 +53,11 @@ export async function uploadFileController(req, res, next) {
       filePublicId: uniqueName,
       fileMimeType: req.file.mimetype,
       bytes: req.file.size,
-      originalName: req.file.originalname,
+      originalName,
     };
 
     auditSecurityEvent("file_uploaded", req, {
-      originalName: req.file.originalname,
+      originalName,
       mimeType: req.file.mimetype,
       bytes: req.file.size,
       fileUrl: uploadPayload.fileUrl,

@@ -6,6 +6,7 @@ import {
   deleteBibliotecaFileController,
   uploadBibliotecaCoverController,
   deleteBibliotecaCoverController,
+  renameBibliotecaFileNameController,
 } from "../controllers/biblioteca.controller.js";
 import { requireAuth, requireWarehouseAction } from "../middleware/auth.middleware.js";
 import { upload } from "../middleware/upload.middleware.js";
@@ -38,6 +39,12 @@ bibliotecaRouter.delete(
   "/:fileId/cover",
   requireWarehouseAction("uploadBiblioteca"),
   deleteBibliotecaCoverController,
+);
+
+bibliotecaRouter.patch(
+  "/:fileId/name",
+  requireWarehouseAction("editBibliotecaName"),
+  renameBibliotecaFileNameController,
 );
 
 // Solo usuarios con permiso deleteBiblioteca pueden eliminar

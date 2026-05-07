@@ -1732,7 +1732,35 @@ export default function MisTableros({ contexto }) {
                             const fieldEditKey = `${row.id}-${field.id}`;
                             const hasDraft = Object.prototype.hasOwnProperty.call(fieldEditDrafts, fieldEditKey);
                             const inputValue = hasDraft ? fieldEditDrafts[fieldEditKey] : (row.values?.[field.id] || "");
-                            return <td key={field.id} style={columnStyle}><input value={inputValue} onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))} onBlur={() => commitBoardFieldDraft(selectedCustomBoard.id, row, field, fieldEditKey)} onKeyDown={(event) => { if (event.key !== "Enter") return; event.preventDefault(); commitBoardFieldDraft(selectedCustomBoard.id, row, field, fieldEditKey); }} placeholder={field.placeholder || "Escribe una nota"} style={controlStyle} title={field.helpText || field.label} disabled={!rowFieldEditable} /></td>;
+                            return (
+                              <td key={field.id} style={columnStyle}>
+                                <textarea
+                                  rows={2}
+                                  value={inputValue}
+                                  onChange={(event) => setFieldEditDrafts((prev) => ({ ...prev, [fieldEditKey]: event.target.value }))}
+                                  onBlur={() => commitBoardFieldDraft(selectedCustomBoard.id, row, field, fieldEditKey)}
+                                  onKeyDown={(event) => {
+                                    if (event.key === "Escape") {
+                                      event.preventDefault();
+                                      setFieldEditDrafts((prev) => {
+                                        const next = { ...prev };
+                                        delete next[fieldEditKey];
+                                        return next;
+                                      });
+                                      return;
+                                    }
+                                    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+                                      event.preventDefault();
+                                      commitBoardFieldDraft(selectedCustomBoard.id, row, field, fieldEditKey);
+                                    }
+                                  }}
+                                  placeholder={field.placeholder || "Escribe una nota"}
+                                  style={{ ...controlStyle, resize: "vertical", minHeight: "4.5rem", textAlign: "left" }}
+                                  title={field.helpText || field.label}
+                                  disabled={!rowFieldEditable}
+                                />
+                              </td>
+                            );
                           }
 
                           if (field.type === "date") {

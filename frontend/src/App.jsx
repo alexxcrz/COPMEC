@@ -7701,6 +7701,7 @@ function App() { // NOSONAR
         throw error;
       }
     },
+    inventorySystemColumnSuggestions,
     duplicateInventoryItem: async (itemId) => {
       try {
         const result = await requestJson(`/warehouse/inventory/${itemId}/duplicate`, { method: "POST" });
@@ -8024,7 +8025,7 @@ function App() { // NOSONAR
         {page === PAGE_PROCESS_AUDITS ? <AuditoriasProcesos contexto={paginasContexto} /> : null}
         {page === PAGE_INVENTORY ? <GestionInventario contexto={paginasContexto} /> : null}
         {page === PAGE_USERS ? <GestionUsuarios contexto={paginasContexto} /> : null}
-        {page === PAGE_BIBLIOTECA ? <BibliotecaPage currentUser={currentUser} canUpload={actionPermissions.uploadBiblioteca} canDelete={actionPermissions.deleteBiblioteca} /> : null}
+        {page === PAGE_BIBLIOTECA ? <BibliotecaPage currentUser={currentUser} canUpload={actionPermissions.uploadBiblioteca} canRenameName={actionPermissions.editBibliotecaName} canDelete={actionPermissions.deleteBiblioteca} /> : null}
         {page === PAGE_INCIDENCIAS ? <GestionIncidencias contexto={paginasContexto} /> : null}
         {page === PAGE_SYSTEM_SETTINGS ? <ConfiguracionSistema contexto={paginasContexto} /> : null}
         {page === PAGE_ARCHIVERO ? <Archivero currentUser={currentUser} onUpdateCopmecFiles={updateArchiveroFiles} /> : null}
@@ -8054,13 +8055,12 @@ function App() { // NOSONAR
                 </label>
               ) : null}
               {pauseState.error ? <p className="validation-text">{pauseState.error}</p> : null}
-              <p className="modal-footnote">Selecciona un motivo configurado o usa "Otro (especificar)" para capturar uno personalizado.</p>
             </>
           )}
         </div>
       </Modal>
 
-      <Modal open={boardPauseState.open} title="Pausar fila" confirmLabel={boardPauseState.completed ? (boardPauseState.continueReady ? "Continuar" : "Espera un momento...") : "Confirmar pausa"} cancelLabel="Cancelar" hideCancel={boardPauseState.completed} confirmDisabled={boardPauseState.completed && !boardPauseState.continueReady} onClose={() => { if (boardPauseContinueTimerRef.current) clearTimeout(boardPauseContinueTimerRef.current); setBoardPauseState({ open: false, boardId: null, rowId: null, reason: "", customReason: "", error: "", completed: false, continueReady: false, authorizedPauseSeconds: 0, pauseStartedAtMs: 0 }); }} onConfirm={handleConfirmBoardPause}>
+      <Modal open={boardPauseState.open} title="Pausar fila" confirmLabel={boardPauseState.completed ? (boardPauseState.continueReady ? "Continuar" : "Espera un momento...") : "Confirmar pausa"} cancelLabel="Cancelar" hideCancel={boardPauseState.completed} confirmDisabled={boardPauseState.completed && !boardPauseState.continueReady} onClose={() => { if (boardPauseContinueTimerRef.current) clearTimeout(boardPauseContinueTimerRef.current); setBoardPauseState({ open: false, boardId: null, rowId: null, reason: "", customReason: "", error: "", completed: false, continueReady: false, authorizedPauseSeconds: 0, pauseStartedAtMs: 0 }); }} onConfirm={handleConfirmBoardPause} className="board-pause-reason-modal">
         <div className="modal-form-grid">
           {boardPauseState.completed ? (
             <>
@@ -8098,7 +8098,6 @@ function App() { // NOSONAR
                 </label>
               ) : null}
               {boardPauseState.error ? <p className="validation-text">{boardPauseState.error}</p> : null}
-              <p className="modal-footnote">Selecciona un motivo configurado o usa "Otro (especificar)" para capturar uno personalizado.</p>
             </>
           )}
         </div>

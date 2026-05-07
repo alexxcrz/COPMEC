@@ -1,4 +1,75 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+
+function InventoryLotBadges({ item, columnKey }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+  const rootRef = useRef(null);
+
+  let history = [];
+  try {
+    const raw = String(item?.customFields?.lotesCaducidades || "[]");
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) history = parsed;
+  } catch { /* ignore */ }
+
+  const currentVal = String(item?.customFields?.[columnKey] || "").trim();
+  const allValues = Array.from(
+    new Set([
+      ...history.map((e) => String(columnKey === "lote" ? (e?.lot || "") : (e?.expiry || "")).trim()).filter(Boolean),
+      ...(currentVal ? [currentVal] : []),
+    ]),
+  );
+
+  const displayValue = currentVal || (allValues[0] || "-");
+  const hasHistory = allValues.length > 0;
+
+  function handleToggle() {
+    if (!hasHistory || !rootRef.current) return;
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const rect = rootRef.current.getBoundingClientRect();
+    setPos({ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width, 140) });
+    setOpen(true);
+  }
+
+  return (
+    <span
+      ref={rootRef}
+      style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", cursor: hasHistory ? "pointer" : "default", userSelect: "none" }}
+      onClick={handleToggle}
+    >
+      <span style={{ fontWeight: 600, fontSize: "0.82rem" }}>{displayValue}</span>
+      {allValues.length > 1 ? (
+        <span style={{ color: "#5c6f74", fontSize: "0.65rem", lineHeight: 1 }}>{open ? "▲" : "▼"}</span>
+      ) : null}
+      {open && pos ? createPortal(
+        <>
+          <div style={{ position: "fixed", inset: 0, zIndex: 9100 }} onClick={() => setOpen(false)} />
+          <div style={{
+            position: "fixed", top: pos.top, left: pos.left, minWidth: pos.width,
+            zIndex: 9200, background: "#fff", border: "1px solid rgba(162,170,181,0.28)",
+            borderRadius: "0.7rem", boxShadow: "0 12px 24px rgba(3,33,33,0.12)",
+            padding: "0.32rem", display: "flex", flexDirection: "column", gap: "0.2rem",
+            maxHeight: "12rem", overflowY: "auto",
+          }}>
+            {allValues.map((val) => (
+              <span key={val} style={{
+                display: "block", padding: "0.3rem 0.5rem", borderRadius: "0.5rem",
+                fontSize: "0.78rem", fontWeight: val === displayValue ? 700 : 500,
+                background: val === displayValue ? "rgba(22,163,74,0.08)" : "#f9fbfb",
+                color: "#244040",
+              }}>{val}</span>
+            ))}
+          </div>
+        </>,
+        document.body,
+      ) : null}
+    </span>
+  );
+}
 
 export default function GestionInventario({ contexto }) {
   const {
@@ -56,6 +127,7 @@ export default function GestionInventario({ contexto }) {
     inventoryColumns,
     createInventoryColumn,
     deleteInventoryColumn,
+    inventorySystemColumnSuggestions,
   } = contexto;
 
   const [newColumnLabel, setNewColumnLabel] = useState("");
@@ -398,7 +470,14 @@ export default function GestionInventario({ contexto }) {
                       {showControlColumn ? (
                         <td>{renderInventoryControlCell(item)}</td>
                       ) : null}
-                      {currentInventoryColumns.map((column) => <td key={`${item.id}-${column.id}`}>{item.customFields?.[column.key] || "-"}</td>)}
+                      {currentInventoryColumns.map((column) => (
+                        <td key={`${item.id}-${column.id}`}>
+                          {(column.isSystem && (column.key === "lote" || column.key === "caducidad"))
+                            ? <InventoryLotBadges item={item} columnKey={column.key} />
+                            : (item.customFields?.[column.key] || "-")
+                          }
+                        </td>
+                      ))}
                       <td>
                         <div className="row-actions compact">
                           {!isBaseInventoryTab ? <button type="button" className="icon-button" title="Surtir" onClick={() => openInventoryRestockModal(item)} disabled={!currentInventoryManagePermission}><Plus size={15} /></button> : null}

@@ -660,6 +660,7 @@ export const ACTION_DEFINITIONS = [
   { id: "exportBoardPdf",          label: "Exportar tablero a PDF",                   category: "Mis tableros",        defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
   { id: "editHistoryRecords",      label: "Editar registros desde Historial",         category: "Historial",           defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "uploadBiblioteca",        label: "Subir archivos a Biblioteca",              category: "Biblioteca",          defaultRoles: [ROLE_LEAD, ROLE_SR] },
+  { id: "editBibliotecaName",      label: "Editar nombre de archivos de Biblioteca",  category: "Biblioteca",          defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "deleteBiblioteca",        label: "Eliminar archivos de Biblioteca",          category: "Biblioteca",          defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "createIncidencia",        label: "Registrar incidencias",                    category: "Incidencias",         defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
   { id: "editIncidencia",          label: "Editar incidencias",                       category: "Incidencias",         defaultRoles: [ROLE_LEAD, ROLE_SR] },
@@ -693,7 +694,7 @@ export const PAGE_ACTION_GROUPS = {
   [PAGE_PROCESS_AUDITS]: ["viewProcessAudits", "manageProcessAudits", "manageProcessAuditTemplates"],
   [PAGE_INVENTORY]: ["viewBaseInventory", "manageInventory", "deleteInventory", "importInventory", "viewCleaningInventory", "manageCleaningInventory", "deleteCleaningInventory", "importCleaningInventory", "viewOrderInventory", "manageOrderInventory", "deleteOrderInventory", "importOrderInventory"],
   [PAGE_USERS]: ["createUsers", "editUsers", "deleteUsers", "resetPasswords", "managePermissions", "useCopmecAI"],
-  [PAGE_BIBLIOTECA]: ["uploadBiblioteca", "deleteBiblioteca"],
+  [PAGE_BIBLIOTECA]: ["uploadBiblioteca", "editBibliotecaName", "deleteBiblioteca"],
   [PAGE_INCIDENCIAS]: ["createIncidencia", "editIncidencia", "deleteIncidencia"],
   [PAGE_SYSTEM_SETTINGS]: ["manageSystemSettings"],
 };

@@ -8,6 +8,7 @@ import {
   addBibliotecaNotification,
   deleteBibliotecaFile,
   updateBibliotecaFileCover,
+  updateBibliotecaFileName,
 } from "../services/warehouse.store.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -17,6 +18,25 @@ const bibliotecaDirectory = path.join(dataDirectory, "biblioteca");
 
 if (!fs.existsSync(bibliotecaDirectory)) {
   fs.mkdirSync(bibliotecaDirectory, { recursive: true });
+}
+
+function decodeUploadedOriginalName(originalName) {
+  const rawName = String(originalName || "").trim();
+  if (!rawName) return "archivo";
+  try {
+    const decoded = Buffer.from(rawName, "latin1").toString("utf8");
+    return decoded.includes("\uFFFD") ? rawName : decoded;
+  } catch {
+    return rawName;
+  }
+}
+
+function sanitizeStorageFileName(fileName) {
+  const normalized = String(fileName || "")
+    .replaceAll(/[\\/]/g, " ")
+    .replaceAll(/[\u0000-\u001f\u007f]/g, "")
+    .trim();
+  return normalized || "archivo";
 }
 
 export async function getBibliotecaController(req, res, next) {
@@ -38,7 +58,8 @@ export async function uploadBibliotecaFileController(req, res, next) {
     const shouldNotify = notifyPlayers === "true" || notifyPlayers === true;
     const validPriority = ["alta", "media", "baja"].includes(priority) ? priority : "baja";
 
-    const safeName = req.file.originalname.replaceAll(/[^a-zA-Z0-9._-]/g, "_");
+    const originalName = decodeUploadedOriginalName(req.file.originalname);
+    const safeName = sanitizeStorageFileName(originalName);
     const uniqueName = `${Date.now()}_${safeName}`;
     const filePath = path.join(bibliotecaDirectory, uniqueName);
 
@@ -50,7 +71,7 @@ export async function uploadBibliotecaFileController(req, res, next) {
       priority: validPriority,
       uploadedById: req.auth.userId,
       uploadedByName: req.auth.user?.name || "Sistema",
-      originalName: req.file.originalname,
+      originalName,
       fileName: uniqueName,
       fileMimeType: req.file.mimetype,
       bytes: req.file.size,
@@ -59,7 +80,7 @@ export async function uploadBibliotecaFileController(req, res, next) {
     if (shouldNotify) {
       addBibliotecaNotification({
         fileId: entry.id,
-        originalName: req.file.originalname,
+        originalName,
         area: entry.area,
         priority: validPriority,
         authorName: req.auth.user?.name || "Sistema",
@@ -68,7 +89,7 @@ export async function uploadBibliotecaFileController(req, res, next) {
 
     auditSecurityEvent("biblioteca_file_uploaded", req, {
       fileId: entry.id,
-      originalName: req.file.originalname,
+      originalName,
       area,
     });
 
@@ -89,10 +110,8 @@ export async function serveBibliotecaFileController(req, res, next) {
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ ok: false, message: "Archivo no encontrado." });
     }
-    // Cache covers and images for 7 days; documents for 1 day
-    const isImage = /\.(jpe?g|png|webp|gif)$/i.test(fileName);
-    const maxAge = isImage ? 60 * 60 * 24 * 7 : 60 * 60 * 24;
-    res.setHeader("Cache-Control", `private, max-age=${maxAge}, stale-while-revalidate=3600`);
+    // File names are immutable (timestamped), so aggressive cache is safe and faster.
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
     res.sendFile(filePath);
   } catch (error) {
     return next(error);
@@ -143,6 +162,31 @@ export async function deleteBibliotecaCoverController(req, res, next) {
     }
 
     const result = updateBibliotecaFileCover(fileId, { coverFileName: null, fileThumbUrl: null });
+    return res.json({ ok: true, data: result.file });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function renameBibliotecaFileNameController(req, res, next) {
+  try {
+    const { fileId } = req.params;
+    const originalName = String(req.body?.originalName || "").replaceAll(/\s+/g, " ").trim();
+    if (!originalName) {
+      return res.status(400).json({ ok: false, message: "Nombre de archivo requerido." });
+    }
+
+    const result = updateBibliotecaFileName(fileId, originalName);
+    if (!result.ok) {
+      const status = result.reason === "file_not_found" ? 404 : 400;
+      return res.status(status).json({ ok: false, message: result.message || "No se pudo actualizar el nombre." });
+    }
+
+    auditSecurityEvent("biblioteca_file_renamed", req, {
+      fileId,
+      originalName,
+    });
+
     return res.json({ ok: true, data: result.file });
   } catch (error) {
     return next(error);

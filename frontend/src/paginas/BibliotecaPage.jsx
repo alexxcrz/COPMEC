@@ -61,7 +61,7 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-export default function BibliotecaPage({ _currentUser, canUpload, canDelete }) {
+export default function BibliotecaPage({ _currentUser, canUpload, canRenameName, canDelete }) {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -75,6 +75,10 @@ export default function BibliotecaPage({ _currentUser, canUpload, canDelete }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
+  const [renameTarget, setRenameTarget] = useState(null);
+  const [renameDraft, setRenameDraft] = useState("");
+  const [renameError, setRenameError] = useState("");
+  const [renaming, setRenaming] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
   const [previewBlobUrl, setPreviewBlobUrl] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -181,6 +185,23 @@ export default function BibliotecaPage({ _currentUser, canUpload, canDelete }) {
     return f?.fileThumbUrl || null;
   }
 
+  useEffect(() => {
+    const previewUrls = filtered
+      .map((file) => {
+        if (isImage(file.fileMimeType)) return file.fileThumbUrl || getFileUrl(file);
+        return getCoverUrl(file);
+      })
+      .filter(Boolean)
+      .slice(0, 48);
+
+    previewUrls.forEach((url) => {
+      const img = new Image();
+      img.decoding = "sync";
+      img.fetchPriority = "high";
+      img.src = url;
+    });
+  }, [filtered]);
+
   async function handleCoverFileChange(event) {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -278,6 +299,47 @@ export default function BibliotecaPage({ _currentUser, canUpload, canDelete }) {
       setFiles((prev) => prev.filter((f) => f.id !== deleteId));
     } finally {
       setDeleteId(null);
+    }
+  }
+
+  function openRenameModal(file) {
+    setRenameTarget(file);
+    setRenameDraft(String(file?.originalName || ""));
+    setRenameError("");
+  }
+
+  async function handleRenameFileName() {
+    if (!renameTarget?.id) return;
+    const nextName = String(renameDraft || "").replaceAll(/\s+/g, " ").trim();
+    if (!nextName) {
+      setRenameError("Escribe un nombre válido.");
+      return;
+    }
+    if (nextName.length > 220) {
+      setRenameError("El nombre no puede exceder 220 caracteres.");
+      return;
+    }
+
+    setRenaming(true);
+    setRenameError("");
+    try {
+      const res = await fetch(`${API_BASE}/biblioteca/${renameTarget.id}/name`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ originalName: nextName }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.message || "No se pudo actualizar el nombre.");
+
+      setFiles((prev) => prev.map((file) => (file.id === renameTarget.id ? json.data : file)));
+      setPreviewFile((current) => (current?.id === renameTarget.id ? json.data : current));
+      setRenameTarget(null);
+      setRenameDraft("");
+    } catch (err) {
+      setRenameError(err.message || "No se pudo actualizar el nombre.");
+    } finally {
+      setRenaming(false);
     }
   }
 
@@ -427,9 +489,9 @@ export default function BibliotecaPage({ _currentUser, canUpload, canDelete }) {
                         title="Ver archivo"
                       >
                         {isImage(f.fileMimeType) ? (
-                          <img src={f.fileThumbUrl || getFileUrl(f)} alt={f.originalName} className="biblioteca-thumb" loading="lazy" decoding="async" />
+                          <img src={f.fileThumbUrl || getFileUrl(f)} alt={f.originalName} className="biblioteca-thumb" loading="eager" decoding="sync" fetchPriority="high" />
                         ) : coverUrl ? (
-                          <img src={coverUrl} alt={`Portada de ${f.originalName}`} className="biblioteca-thumb biblioteca-thumb-cover" loading="lazy" decoding="async" />
+                          <img src={coverUrl} alt={`Portada de ${f.originalName}`} className="biblioteca-thumb biblioteca-thumb-cover" loading="eager" decoding="sync" fetchPriority="high" />
                         ) : (
                           <div className="biblioteca-file-icon">
                             <FileText size={28} />
@@ -468,6 +530,16 @@ export default function BibliotecaPage({ _currentUser, canUpload, canDelete }) {
                             onClick={() => handleDeleteCover(f.id)}
                           >
                             <X size={13} />
+                          </button>
+                        ) : null}
+                        {canRenameName ? (
+                          <button
+                            type="button"
+                            className="icon-button"
+                            onClick={() => openRenameModal(f)}
+                            title="Editar nombre"
+                          >
+                            <span style={{ fontSize: "0.85rem", lineHeight: 1 }}>✎</span>
                           </button>
                         ) : null}
                         {canDelete ? (
@@ -689,6 +761,40 @@ export default function BibliotecaPage({ _currentUser, canUpload, canDelete }) {
       </Modal>
 
       {/* Delete confirm */}
+      <Modal
+        open={Boolean(renameTarget)}
+        title="Editar nombre"
+        confirmLabel={renaming ? "Guardando..." : "Guardar"}
+        onConfirm={handleRenameFileName}
+        confirmDisabled={renaming}
+        onClose={() => {
+          if (renaming) return;
+          setRenameTarget(null);
+          setRenameDraft("");
+          setRenameError("");
+        }}
+        className="biblioteca-rename-modal"
+      >
+        <div className="modal-form-grid" style={{ gridTemplateColumns: "1fr" }}>
+          <label className="app-modal-field">
+            <span>Nombre visible del archivo</span>
+            <input
+              type="text"
+              value={renameDraft}
+              onChange={(event) => {
+                setRenameDraft(event.target.value);
+                if (renameError) setRenameError("");
+              }}
+              maxLength={220}
+              placeholder="Ej. ICH GUIA Q9 GESTIÓN DE RIESGO"
+              autoFocus
+            />
+          </label>
+          <p className="biblioteca-rename-helper">{renameDraft.length}/220</p>
+          {renameError ? <p className="biblioteca-upload-error">{renameError}</p> : null}
+        </div>
+      </Modal>
+
       <Modal
         open={Boolean(deleteId)}
         title="Eliminar archivo"

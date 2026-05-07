@@ -2650,7 +2650,11 @@ export function getTemplateFieldDetail(field) {
 }
 
 export function isBoardFieldValueFilled(value, fieldType) {
-  if (["number", "currency", "percentage", "rating", "progress", "counter"].includes(fieldType)) return value !== "" && value !== null && value !== undefined && Number.isFinite(Number(value));
+  if (["number", "currency", "percentage", "rating", "progress", "counter"].includes(fieldType)) {
+    if (value === "" || value === null || value === undefined) return false;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed !== 0;
+  }
   if (fieldType === "boolean") return value === "Si" || value === "No";
   if (fieldType === "formula") return value !== null && value !== undefined;
   if (fieldType === "multiSelectDetail") return normalizeBoardMultiSelectDetailValue(value).length > 0;
@@ -2712,7 +2716,10 @@ export function mapColumnToFieldDraft(column, columns = []) {
 
 export function getBoardFieldDefaultValue(field, currentUserId) {
   if (field.defaultValue !== undefined && field.defaultValue !== null && String(field.defaultValue).trim() !== "") {
-    if (["number", "currency", "percentage"].includes(field.type)) return Number(field.defaultValue || 0);
+    if (["number", "currency", "percentage", "rating", "progress", "counter"].includes(field.type)) {
+      const parsed = Number(field.defaultValue);
+      return Number.isFinite(parsed) && parsed !== 0 ? parsed : "";
+    }
     if (field.type === "boolean") return String(field.defaultValue).toLowerCase() === "si" ? "Si" : field.defaultValue;
     return field.defaultValue;
   }
@@ -2722,6 +2729,7 @@ export function getBoardFieldDefaultValue(field, currentUserId) {
   if (field.type === "boolean") return "No";
   if (field.type === "date") return new Date().toISOString().slice(0, 10);
   if (field.type === "time") return "08:00";
+  if (["rating", "progress", "counter"].includes(field.type)) return "";
   return "";
 }
 

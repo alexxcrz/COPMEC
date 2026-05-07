@@ -101,14 +101,22 @@ export function BoardEditableInventoryPropertyInput({ value, suggestions, disabl
       if (!rect) return;
 
       const estimatedHeight = Math.min(240, Math.max(56, filteredSuggestions.length * 36 + 18));
-      const viewportSpaceBelow = globalThis.innerHeight - rect.bottom;
-      const shouldOpenAbove = viewportSpaceBelow < estimatedHeight && rect.top > estimatedHeight;
+      const spaceBelow = Math.max(0, globalThis.innerHeight - rect.bottom - 8);
+      const spaceAbove = Math.max(0, rect.top - 8);
+      // Only open above if there is very little space below AND more space above.
+      const shouldOpenAbove = spaceBelow < 64 && spaceAbove > spaceBelow;
+      const cappedHeight = shouldOpenAbove
+        ? Math.min(estimatedHeight, spaceAbove)
+        : Math.min(estimatedHeight, Math.max(64, spaceBelow));
 
       setDropdownStyle({
         position: "fixed",
         left: rect.left,
         width: rect.width,
-        top: shouldOpenAbove ? Math.max(12, rect.top - estimatedHeight - 6) : rect.bottom + 6,
+        top: shouldOpenAbove
+          ? Math.max(8, rect.top - cappedHeight - 6)
+          : rect.bottom + 6,
+        maxDropdownHeight: `${cappedHeight}px`,
       });
     }
 
@@ -183,11 +191,11 @@ export function BoardEditableInventoryPropertyInput({ value, suggestions, disabl
         <div
           style={{
             ...dropdownStyle,
-            zIndex: 60,
+            zIndex: 9200,
             display: "grid",
             gridTemplateColumns: "minmax(0, 1fr)",
             gap: "0.22rem",
-            maxHeight: "7.6rem",
+            maxHeight: dropdownStyle.maxDropdownHeight || "7.6rem",
             overflowY: "auto",
             padding: "0.32rem",
             border: "1px solid rgba(162,170,181,0.28)",

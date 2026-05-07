@@ -6912,6 +6912,29 @@ tbody tr:hover {
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
+.board-pause-reason-modal .modal-form-grid {
+  justify-items: center;
+}
+
+.board-pause-reason-modal .app-modal-field {
+  width: 100%;
+  max-width: 240px;
+  justify-self: center;
+}
+
+.board-pause-reason-modal .app-modal-field > span,
+.board-pause-reason-modal .modal-footnote,
+.board-pause-reason-modal .validation-text {
+  text-align: center;
+}
+
+.board-pause-reason-modal .app-modal-field > input,
+.board-pause-reason-modal .app-modal-field > select {
+  width: 100% !important;
+  max-width: 240px;
+  margin-inline: auto;
+}
+
 .modal-form-grid > p,
 .modal-form-grid > div:not(.app-modal-field):not(.user-status-switch-field),
 .modal-form-grid > section,
@@ -11879,6 +11902,25 @@ body {
   grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
 }
 
+.sicfla-modal.biblioteca-rename-modal {
+  width: min(100%, 760px);
+}
+
+.sicfla-modal.biblioteca-rename-modal .modal-form-grid {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.sicfla-modal.biblioteca-rename-modal .app-modal-field {
+  width: 100%;
+  grid-column: 1 / -1;
+}
+
+.sicfla-modal.biblioteca-rename-modal .app-modal-field > input {
+  width: 100% !important;
+  display: block;
+  text-align: left;
+}
+
 .app-modal-field,
 .field-inline,
 .builder-grid label,
@@ -11903,6 +11945,35 @@ body {
   min-height: 2.18rem;
   font-size: 0.84rem;
   padding-inline: 0.58rem;
+}
+
+.sicfla-modal.board-pause-reason-modal .modal-form-grid {
+  grid-template-columns: minmax(0, 1fr) !important;
+  justify-items: center !important;
+}
+
+.sicfla-modal.board-pause-reason-modal {
+  width: min(100%, 420px) !important;
+}
+
+.sicfla-modal.board-pause-reason-modal .app-modal-field {
+  width: 100% !important;
+  max-width: 180px !important;
+  grid-column: 1 / -1 !important;
+  justify-self: center !important;
+}
+
+.sicfla-modal.board-pause-reason-modal .app-modal-field > input,
+.sicfla-modal.board-pause-reason-modal .app-modal-field > select {
+  width: 100% !important;
+  max-width: 180px !important;
+  margin-inline: auto !important;
+}
+
+.sicfla-modal.board-pause-reason-modal .app-modal-field > span,
+.sicfla-modal.board-pause-reason-modal .modal-footnote,
+.sicfla-modal.board-pause-reason-modal .validation-text {
+  text-align: center !important;
 }
 
 @media (max-width: 1024px) {
