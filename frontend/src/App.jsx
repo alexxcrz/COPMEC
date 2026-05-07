@@ -4067,7 +4067,6 @@ function App() { // NOSONAR
   function canDeleteBoardTemplateEntry(entry) {
     if (!entry || isProtectedSystemBoard(entry) || !entry.isCustom) return false;
     if (!currentUser) return false;
-    if (normalizeRole(currentUser.role) === ROLE_LEAD) return true;
     return String(entry.createdById || "").trim() === String(currentUser.id || "").trim();
   }
 
@@ -5531,10 +5530,7 @@ function App() { // NOSONAR
 
   function openDeleteBoardTemplateModal(template) {
     if (!template) return;
-    if (!canDeleteBoardTemplateEntry(template)) {
-      setControlBoardFeedback(`Solo el creador de la plantilla o un Lead puede eliminar ${template.name || "esta plantilla"}.`);
-      return;
-    }
+    if (!canDeleteBoardTemplateEntry(template)) return;
     setTemplateDeleteModal({ open: true, id: template.id, name: template.name || "Plantilla" });
   }
 
@@ -5543,7 +5539,6 @@ function App() { // NOSONAR
 
     const templateToDelete = availableBoardTemplates.find((template) => template.id === templateDeleteModal.id) || null;
     if (templateToDelete && !canDeleteBoardTemplateEntry(templateToDelete)) {
-      setControlBoardFeedback(`Solo el creador de la plantilla o un Lead puede eliminar ${templateDeleteModal.name}.`);
       setTemplateDeleteModal({ open: false, id: null, name: "" });
       return;
     }
