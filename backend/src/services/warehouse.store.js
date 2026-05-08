@@ -5971,6 +5971,9 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
       if (String(nextRow.status || "") === "En curso") {
         nextRow.lastResumedAt = nowIso;
       }
+      if (String(nextRow.status || "") === "Pausado") {
+        nextRow.pauseStartedAt = nowIso;
+      }
     }
     if (hasOwn(patch, "totalElapsedSecondsOverride")) {
       const totalOverride = Number(patch.totalElapsedSecondsOverride);

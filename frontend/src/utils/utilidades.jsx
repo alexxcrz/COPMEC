@@ -2653,7 +2653,7 @@ export function isBoardFieldValueFilled(value, fieldType) {
   if (["number", "currency", "percentage", "rating", "progress", "counter"].includes(fieldType)) {
     if (value === "" || value === null || value === undefined) return false;
     const parsed = Number(value);
-    return Number.isFinite(parsed) && parsed !== 0;
+    return Number.isFinite(parsed);
   }
   if (fieldType === "boolean") return value === "Si" || value === "No";
   if (fieldType === "formula") return value !== null && value !== undefined;
