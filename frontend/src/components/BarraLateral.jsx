@@ -3,6 +3,7 @@
 // InventoryActivityConsumptionEditor: editor de consumos por actividad.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { useEffect, useRef, useState } from "react";
 import { PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import { CopmecBrand } from "./ComponentesDashboard";
 import logoIA from "../assets/logo-ia.jpeg";
@@ -34,6 +35,50 @@ function openPageInAnotherContext(pageId, target = "tab") {
 }
 
 export function Sidebar({ currentUser, page, onPageChange, isOpen, isCollapsed, onClose, onOpenProfile, onToggleCollapsed, allowedNavItems, canUseAI, onOpenAI }) {
+  const contextMenuRef = useRef(null);
+  const [contextMenu, setContextMenu] = useState({
+    open: false,
+    x: 0,
+    y: 0,
+    item: null,
+  });
+
+  function closeContextMenu() {
+    setContextMenu((current) => (current.open ? { ...current, open: false, item: null } : current));
+  }
+
+  function handleOpenContextMenu(event, item) {
+    event.preventDefault();
+    const viewportWidth = Number(globalThis.innerWidth || 0);
+    const viewportHeight = Number(globalThis.innerHeight || 0);
+    const menuWidth = 236;
+    const menuHeight = 154;
+    const x = Math.max(8, Math.min(event.clientX, Math.max(8, viewportWidth - menuWidth - 8)));
+    const y = Math.max(8, Math.min(event.clientY, Math.max(8, viewportHeight - menuHeight - 8)));
+    setContextMenu({ open: true, x, y, item });
+  }
+
+  useEffect(() => {
+    if (!contextMenu.open) return undefined;
+
+    function handlePointerDown(event) {
+      if (contextMenuRef.current?.contains(event.target)) return;
+      closeContextMenu();
+    }
+
+    function handleEscape(event) {
+      if (event.key === "Escape") closeContextMenu();
+    }
+
+    globalThis.addEventListener("pointerdown", handlePointerDown);
+    globalThis.addEventListener("keydown", handleEscape);
+
+    return () => {
+      globalThis.removeEventListener("pointerdown", handlePointerDown);
+      globalThis.removeEventListener("keydown", handleEscape);
+    };
+  }, [contextMenu.open]);
+
   return (
     <aside className={`sidebar-shell ${isOpen ? "open" : ""} ${isCollapsed && !isOpen ? "collapsed" : ""}`}>
       <div className="sidebar-mobile-actions">
@@ -66,52 +111,72 @@ export function Sidebar({ currentUser, page, onPageChange, isOpen, isCollapsed, 
               );
             }
             elements.push(
-              <div key={item.id} className={`nav-item-shell ${page === item.id ? "active" : ""}`}>
-                <button
-                  type="button"
-                  className={`nav-item ${page === item.id ? "active" : ""}`}
-                  title={item.label}
-                  aria-label={item.label}
-                  onClick={() => {
-                    onPageChange(item.id);
-                    onClose?.();
-                  }}
-                >
-                  <Icon size={18} />
-                  <span>{item.label}</span>
-                </button>
-                <div className="nav-item-shortcuts" aria-label={`Acciones rápidas de ${item.label}`}>
-                  <button
-                    type="button"
-                    className="nav-item-shortcut"
-                    title={`Abrir ${item.label} en otra pestaña`}
-                    aria-label={`Abrir ${item.label} en otra pestaña`}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      openPageInAnotherContext(item.id, "tab");
-                    }}
-                  >
-                    Pestaña
-                  </button>
-                  <button
-                    type="button"
-                    className="nav-item-shortcut"
-                    title={`Abrir ${item.label} en otra ventana`}
-                    aria-label={`Abrir ${item.label} en otra ventana`}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      openPageInAnotherContext(item.id, "window");
-                    }}
-                  >
-                    Ventana
-                  </button>
-                </div>
-              </div>,
+              <button
+                key={item.id}
+                type="button"
+                className={`nav-item ${page === item.id ? "active" : ""}`}
+                title={item.label}
+                aria-label={item.label}
+                onClick={() => {
+                  closeContextMenu();
+                  onPageChange(item.id);
+                  onClose?.();
+                }}
+                onContextMenu={(event) => handleOpenContextMenu(event, item)}
+              >
+                <Icon size={18} />
+                <span>{item.label}</span>
+              </button>,
             );
           });
           return elements;
         })()}
       </nav>
+
+      {contextMenu.open && contextMenu.item ? (
+        <div
+          ref={contextMenuRef}
+          className="sidebar-context-menu"
+          style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
+          role="menu"
+          aria-label={`Opciones de ${contextMenu.item.label}`}
+        >
+          <button
+            type="button"
+            className="sidebar-context-menu-item"
+            role="menuitem"
+            onClick={() => {
+              onPageChange(contextMenu.item.id);
+              onClose?.();
+              closeContextMenu();
+            }}
+          >
+            Abrir aquí
+          </button>
+          <button
+            type="button"
+            className="sidebar-context-menu-item"
+            role="menuitem"
+            onClick={() => {
+              openPageInAnotherContext(contextMenu.item.id, "tab");
+              closeContextMenu();
+            }}
+          >
+            Abrir en otra pestaña
+          </button>
+          <button
+            type="button"
+            className="sidebar-context-menu-item"
+            role="menuitem"
+            onClick={() => {
+              openPageInAnotherContext(contextMenu.item.id, "window");
+              closeContextMenu();
+            }}
+          >
+            Abrir en otra ventana
+          </button>
+        </div>
+      ) : null}
 
       {canUseAI && (
         <button
