@@ -3109,6 +3109,18 @@ function shouldApplyGlobalPauseToArea(pauseControl, areaKey = "") {
   return areaConfig.includeInGlobalPause !== false;
 }
 
+function resolvePauseControlWorkHoursForArea(pauseControl, areaKey = "") {
+  const normalizedArea = normalizeAreaOption(splitAreaAndSubArea(areaKey).area || areaKey);
+  if (!normalizedArea) {
+    return normalizeWorkHoursWithMinutes(pauseControl?.workHours || EMPTY_OBJECT);
+  }
+  const areaConfig = pauseControl?.areaPauseControls?.[normalizedArea];
+  if (areaConfig?.enabled && areaConfig?.workHours) {
+    return normalizeWorkHoursWithMinutes(areaConfig.workHours || EMPTY_OBJECT);
+  }
+  return normalizeWorkHoursWithMinutes(pauseControl?.workHours || EMPTY_OBJECT);
+}
+
 function getEffectiveOperationalNowMs(nowIso, pauseControl, areaKey = "") {
   let effectiveNow = new Date(nowIso).getTime();
   if (!Number.isFinite(effectiveNow)) {
@@ -3186,7 +3198,16 @@ function getOperationalElapsedSeconds(startIso, nowIso, pauseControl, cleaningSi
   const startMs = parseOperationalTimestamp(startIso, nowIso);
   if (!Number.isFinite(startMs)) return 0;
   const effectiveNow = getEffectiveOperationalNowMs(nowIso, pauseControl, cleaningSite);
-  return Math.max(0, Math.floor((effectiveNow - startMs) / 1000));
+  if (!shouldApplyGlobalPauseToArea(pauseControl, cleaningSite)) {
+    return Math.max(0, Math.floor((effectiveNow - startMs) / 1000));
+  }
+
+  const workHours = resolvePauseControlWorkHoursForArea(pauseControl, cleaningSite);
+  const startHour = Math.min(23, Math.max(0, Math.round(Number(workHours.startHour ?? 0))));
+  const startMinute = Math.min(59, Math.max(0, Math.round(Number(workHours.startMinute ?? 0))));
+  const endHour = Math.min(24, Math.max(0, Math.round(Number(workHours.endHour ?? 24))));
+  const endMinute = Math.min(59, Math.max(0, Math.round(Number(workHours.endMinute ?? 0))));
+  return Math.max(0, calcWorkSeconds(startMs, effectiveNow, startHour, endHour, startMinute, endMinute));
 }
 
 function updateElapsedForFinish(row, nowIso, pauseControl, cleaningSite = null) {
