@@ -1617,6 +1617,7 @@ function normalizeState(state, previousState = null) {
       ? state.processAudits.map((audit) => normalizeProcessAuditRecord(audit, audit?.id || null))
       : [],
     transport: normalizeTransportState(state.transport),
+    documentacion: normalizeDocumentacionState(state.documentacion),
     incidencias: Array.isArray(state.incidencias) ? state.incidencias : [],
     incidenciaNotifications: Array.isArray(state.incidenciaNotifications) ? state.incidenciaNotifications : [],
   };
@@ -1782,6 +1783,195 @@ export function updateWarehouseTransportRecord(auth, recordId, payload = {}) {
   };
 
   return { ok: true, state: replaceWarehouseState(nextState), recordId: targetId };
+}
+
+// ─── Documentación ───────────────────────────────────────────────────────────
+
+function normalizeDocumentacionEvidence(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const url = String(raw?.url || "").trim();
+  if (!url) return null;
+  return {
+    url,
+    thumbnailUrl: String(raw?.thumbnailUrl || url).trim(),
+    name: String(raw?.name || "").trim(),
+    type: String(raw?.type || "image").trim(),
+  };
+}
+
+function normalizeDocumentacionRecord(record = EMPTY_OBJECT, fallbackId = null) {
+  return {
+    id: fallbackId || String(record?.id || "").trim() || makeId("doc"),
+    ubicacion: String(record?.ubicacion || "").trim(),
+    area: String(record?.area || "").trim(),
+    dirigidoA: String(record?.dirigidoA || "").trim(),
+    notas: String(record?.notas || "").trim(),
+    document: normalizeDocumentacionEvidence(record?.document),
+    evidence: normalizeDocumentacionEvidence(record?.evidence),
+    dateKey: String(record?.dateKey || "").trim(),
+    createdById: String(record?.createdById || "").trim(),
+    createdByName: String(record?.createdByName || "").trim(),
+    createdAt: String(record?.createdAt || "").trim() || new Date().toISOString(),
+    updatedAt: String(record?.updatedAt || "").trim() || new Date().toISOString(),
+  };
+}
+
+function normalizeDocumentacionState(rawDoc = EMPTY_OBJECT) {
+  const records = Array.isArray(rawDoc?.records)
+    ? rawDoc.records.map((r) => normalizeDocumentacionRecord(r, r?.id || null))
+    : [];
+  const customAreas = Array.isArray(rawDoc?.customAreas)
+    ? rawDoc.customAreas.map((a) => String(a || "").trim()).filter(Boolean)
+    : [];
+  return { records, customAreas };
+}
+
+export function getDocumentacionState() {
+  const state = getRawWarehouseState();
+  return normalizeDocumentacionState(state?.documentacion);
+}
+
+export function createDocumentacionRecord(auth, payload = {}) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const ubicacion = String(payload?.ubicacion || "").trim();
+  if (!["SONATA", "CEDIS"].includes(ubicacion)) return { ok: false, reason: "invalid_ubicacion" };
+
+  const area = String(payload?.area || "").trim();
+  if (!area) return { ok: false, reason: "area_required" };
+
+  const dirigidoA = String(payload?.dirigidoA || "").trim();
+  if (!dirigidoA) return { ok: false, reason: "dirigidoA_required" };
+
+  const document = normalizeDocumentacionEvidence(payload?.document);
+  if (!document) return { ok: false, reason: "document_required" };
+
+  const evidence = normalizeDocumentacionEvidence(payload?.evidence);
+
+  const currentState = getRawWarehouseState();
+  const docState = normalizeDocumentacionState(currentState.documentacion);
+  const nowIso = new Date().toISOString();
+  const todayKey = getOperationalDateKey(new Date());
+
+  const record = {
+    id: makeId("doc"),
+    ubicacion,
+    area,
+    dirigidoA,
+    notas: String(payload?.notas || "").trim(),
+    document,
+    evidence,
+    dateKey: todayKey,
+    createdById: currentUser.id,
+    createdByName: currentUser.name,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  };
+
+  const nextState = {
+    ...currentState,
+    documentacion: {
+      ...docState,
+      records: [record, ...docState.records],
+    },
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState), recordId: record.id };
+}
+
+export function updateDocumentacionRecord(auth, recordId, payload = {}) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const targetId = String(recordId || "").trim();
+  if (!targetId) return { ok: false, reason: "record_not_found" };
+
+  const currentState = getRawWarehouseState();
+  const docState = normalizeDocumentacionState(currentState.documentacion);
+  const index = docState.records.findIndex((r) => r.id === targetId);
+  if (index === -1) return { ok: false, reason: "record_not_found" };
+
+  const sourceRecord = docState.records[index];
+  const ubicacion = String(payload?.ubicacion ?? sourceRecord.ubicacion).trim();
+  if (!["SONATA", "CEDIS"].includes(ubicacion)) return { ok: false, reason: "invalid_ubicacion" };
+
+  const area = String(payload?.area ?? sourceRecord.area).trim();
+  if (!area) return { ok: false, reason: "area_required" };
+
+  const dirigidoA = String(payload?.dirigidoA ?? sourceRecord.dirigidoA).trim();
+  if (!dirigidoA) return { ok: false, reason: "dirigidoA_required" };
+
+  const document = normalizeDocumentacionEvidence(payload?.document ?? sourceRecord.document);
+  if (!document) return { ok: false, reason: "document_required" };
+
+  const evidence = normalizeDocumentacionEvidence(payload?.evidence ?? sourceRecord.evidence);
+
+  const nowIso = new Date().toISOString();
+  const nextRecord = {
+    ...sourceRecord,
+    ubicacion,
+    area,
+    dirigidoA,
+    notas: String(payload?.notas ?? sourceRecord.notas).trim(),
+    document,
+    evidence,
+    updatedAt: nowIso,
+  };
+
+  const nextState = {
+    ...currentState,
+    documentacion: {
+      ...docState,
+      records: docState.records.map((r, i) => (i === index ? nextRecord : r)),
+    },
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState), recordId: targetId };
+}
+
+export function addDocumentacionArea(auth, areaName) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const name = String(areaName || "").trim();
+  if (!name) return { ok: false, reason: "name_required" };
+
+  const currentState = getRawWarehouseState();
+  const docState = normalizeDocumentacionState(currentState.documentacion);
+
+  if (docState.customAreas.some((a) => a.toLowerCase() === name.toLowerCase())) {
+    return { ok: false, reason: "already_exists" };
+  }
+
+  const nextState = {
+    ...currentState,
+    documentacion: {
+      ...docState,
+      customAreas: [...docState.customAreas, name],
+    },
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState) };
+}
+
+export function deleteDocumentacionArea(auth, areaName) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const name = String(areaName || "").trim();
+  const currentState = getRawWarehouseState();
+  const docState = normalizeDocumentacionState(currentState.documentacion);
+
+  const nextState = {
+    ...currentState,
+    documentacion: {
+      ...docState,
+      customAreas: docState.customAreas.filter((a) => a.toLowerCase() !== name.toLowerCase()),
+    },
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState) };
 }
 
 // ─── Incidencias ─────────────────────────────────────────────────────────────

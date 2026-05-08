@@ -6300,6 +6300,43 @@ function App() { // NOSONAR
     return result;
   }
 
+  async function createDocumentacionRecord(payload = {}) {
+    const result = await requestJson("/warehouse/documentacion/records", {
+      method: "POST",
+      body: JSON.stringify(payload || {}),
+    });
+    applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+    return result;
+  }
+
+  async function updateDocumentacionRecord(recordId, payload = {}) {
+    const normalizedRecordId = String(recordId || "").trim();
+    if (!normalizedRecordId) return;
+    const result = await requestJson(`/warehouse/documentacion/records/${normalizedRecordId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload || {}),
+    });
+    applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+    return result;
+  }
+
+  async function addDocumentacionArea(name) {
+    const result = await requestJson("/warehouse/documentacion/areas", {
+      method: "POST",
+      body: JSON.stringify({ name: String(name || "").trim() }),
+    });
+    applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+    return result;
+  }
+
+  async function deleteDocumentacionArea(name) {
+    const result = await requestJson(`/warehouse/documentacion/areas/${encodeURIComponent(name)}`, {
+      method: "DELETE",
+    });
+    applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+    return result;
+  }
+
   async function handleInventoryImport(event) {
     if (!currentInventoryImportPermission) return;
     const file = event.target.files?.[0];
@@ -7742,6 +7779,11 @@ function App() { // NOSONAR
     createTransportRecord,
     updateTransportRecord,
     canManageTransport: Boolean(actionPermissions.manageTransport),
+    documentacionState: state.documentacion || { records: [], customAreas: [] },
+    createDocumentacionRecord,
+    updateDocumentacionRecord,
+    addDocumentacionArea,
+    deleteDocumentacionArea,
     currentInventorySupplyableCount: currentInventorySupplyableItems.length,
     inventoryCleaningSite,
     inventorySearch,

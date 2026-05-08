@@ -69,6 +69,10 @@ import {
   addProcessAuditEvidence,
   removeProcessAuditEvidence,
   restoreWarehouseStateForDemo,
+  createDocumentacionRecord,
+  updateDocumentacionRecord,
+  addDocumentacionArea,
+  deleteDocumentacionArea,
 } from "../services/warehouse.store.js";
 
 export const warehouseRouter = Router();
@@ -401,6 +405,55 @@ warehouseRouter.patch("/transport/records/:recordId", requireAuth, (req, res) =>
     revision: result.state?.revision,
   });
   res.json({ ok: true, data: { state: result.state, recordId: result.recordId } });
+});
+
+// ─── Documentación ───────────────────────────────────────────────────────────
+warehouseRouter.post("/documentacion/records", requireAuth, (req, res) => {
+  const result = createDocumentacionRecord(req.auth, req.body || {});
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "forbidden" ? 403 : 400;
+    const messages = {
+      document_required: "Debes adjuntar el documento para guardar el registro.",
+      area_required: "El área es obligatoria.",
+      dirigidoA_required: "El campo 'Dirigido a' es obligatorio.",
+      invalid_ubicacion: "La ubicación no es válida.",
+    };
+    res.status(status).json({ ok: false, message: messages[result.reason] || "No fue posible guardar el registro de documentación." });
+    return;
+  }
+  auditSecurityEvent("documentacion_record_created", req, { recordId: result.recordId });
+  res.status(201).json({ ok: true, data: { state: result.state, recordId: result.recordId } });
+});
+
+warehouseRouter.patch("/documentacion/records/:recordId", requireAuth, (req, res) => {
+  const result = updateDocumentacionRecord(req.auth, req.params.recordId, req.body || {});
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "record_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
+    res.status(status).json({ ok: false, message: "No fue posible actualizar el registro de documentación." });
+    return;
+  }
+  auditSecurityEvent("documentacion_record_updated", req, { recordId: result.recordId });
+  res.json({ ok: true, data: { state: result.state, recordId: result.recordId } });
+});
+
+warehouseRouter.post("/documentacion/areas", requireAuth, (req, res) => {
+  const result = addDocumentacionArea(req.auth, req.body?.name || "");
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : 400;
+    const message = result.reason === "already_exists" ? "Esa área ya existe." : "No fue posible agregar el área.";
+    res.status(status).json({ ok: false, message });
+    return;
+  }
+  res.status(201).json({ ok: true, data: { state: result.state } });
+});
+
+warehouseRouter.delete("/documentacion/areas/:name", requireAuth, (req, res) => {
+  const result = deleteDocumentacionArea(req.auth, decodeURIComponent(req.params.name || ""));
+  if (!result.ok) {
+    res.status(result.reason === "auth_required" ? 401 : 400).json({ ok: false, message: "No fue posible eliminar el área." });
+    return;
+  }
+  res.json({ ok: true, data: { state: result.state } });
 });
 
 warehouseRouter.delete("/inventory/:itemId", requireAuth, (req, res) => {
