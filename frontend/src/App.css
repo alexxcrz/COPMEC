@@ -5182,6 +5182,11 @@ tbody tr:hover {
   background: #eef8f4;
 }
 
+.permission-switch-row.permission-switch-row-toned {
+  border-left: 4px solid var(--permission-accent, rgba(21, 53, 45, 0.45));
+  background: var(--permission-soft, #f8fbfa);
+}
+
 .permission-switch-row > div {
   align-self: center;
 }
@@ -7887,6 +7892,178 @@ tbody tr:hover {
   color: #6e7886;
   font-size: 0.9rem;
   border-bottom: 1px solid #d9e3df;
+}
+
+.transport-view-tabs {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.transport-view-tab {
+  border: 1px solid rgba(3, 33, 33, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  color: #33524f;
+  border-radius: 999px;
+  padding: 0.62rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.transport-view-tab.is-active {
+  background: #032121;
+  color: #ffffff;
+  border-color: #032121;
+  box-shadow: 0 12px 24px rgba(3, 33, 33, 0.16);
+}
+
+.transport-evidence-thumb {
+  width: 78px;
+  height: 78px;
+  padding: 0;
+  border: 1px solid rgba(3, 33, 33, 0.12);
+  border-radius: 1rem;
+  overflow: hidden;
+  background: #f4f8f7;
+  cursor: pointer;
+}
+
+.transport-evidence-thumb img,
+.transport-evidence-thumb video,
+.transport-upload-preview img,
+.transport-upload-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.transport-evidence-thumb-video,
+.transport-upload-preview {
+  position: relative;
+}
+
+.transport-evidence-thumb-video span {
+  position: absolute;
+  right: 0.35rem;
+  bottom: 0.35rem;
+  background: rgba(3, 33, 33, 0.8);
+  color: #fff;
+  font-size: 0.68rem;
+  border-radius: 999px;
+  padding: 0.15rem 0.4rem;
+}
+
+.transport-evidence-file-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 0.8rem;
+  background: rgba(3, 33, 33, 0.06);
+  color: #032121;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.transport-upload-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.sicfla-modal.transport-record-modal {
+  width: min(100%, 760px);
+}
+
+.transport-record-modal .modal-form-grid.transport-record-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.transport-record-modal .app-modal-field > input,
+.transport-record-modal .app-modal-field > select,
+.transport-record-modal .app-modal-field > textarea,
+.transport-readonly-field {
+  min-height: 2.35rem;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.82rem;
+}
+
+.transport-record-modal .app-modal-field > textarea {
+  min-height: 96px;
+}
+
+.transport-field-span-2 {
+  grid-column: span 2;
+}
+
+.transport-field-full {
+  grid-column: 1 / -1;
+}
+
+.transport-readonly-field {
+  border: 1px solid #d9e3df;
+  border-radius: 1rem;
+  background: #f6faf8;
+  color: #15352d;
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+}
+
+.transport-upload-preview {
+  width: 88px;
+  height: 88px;
+  padding: 0;
+  border: 1px solid rgba(3, 33, 33, 0.14);
+  border-radius: 1rem;
+  overflow: hidden;
+  background: #f4f8f7;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.transport-upload-actions .icon-button {
+  min-height: 2.1rem;
+}
+
+.transport-upload-preview span {
+  padding: 0.75rem;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  color: #33524f;
+  text-align: center;
+}
+
+.transport-evidence-viewer-modal {
+  max-width: min(92vw, 980px);
+}
+
+.transport-evidence-viewer-body {
+  display: grid;
+  place-items: center;
+}
+
+.transport-evidence-viewer-media {
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: 1.2rem;
+  background: #eff6f4;
+}
+
+@media (max-width: 720px) {
+  .transport-record-modal .modal-form-grid.transport-record-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .transport-field-span-2,
+  .transport-field-full {
+    grid-column: auto;
+  }
 }
 .inventory-code-badge {
   display: inline-flex;

@@ -1,0 +1,1047 @@
+{
+  "revision": 1,
+  "system": {
+    "masterBootstrapEnabled": true,
+    "masterUsername": "Maestro",
+    "operational": {
+      "timeZone": "America/Mexico_City",
+      "naveWeekSchedules": {},
+      "pauseControl": {
+        "globalPauseEnabled": false,
+        "forceGlobalPause": false,
+        "reasons": [
+          {
+            "id": "material",
+            "label": "Falta de material",
+            "enabled": true,
+            "affectsTimer": false,
+            "authorizedMinutes": 10,
+            "dailyUsageLimit": 0
+          },
+          {
+            "id": "operativa",
+            "label": "Detención operativa",
+            "enabled": true,
+            "affectsTimer": true,
+            "authorizedMinutes": 0,
+            "dailyUsageLimit": 0
+          },
+          {
+            "id": "calidad",
+            "label": "Ajuste de calidad",
+            "enabled": true,
+            "affectsTimer": false,
+            "authorizedMinutes": 5,
+            "dailyUsageLimit": 0
+          }
+        ],
+        "workHours": {
+          "startHour": 0,
+          "startMinute": 0,
+          "endHour": 24,
+          "endMinute": 0
+        },
+        "workWeek": {
+          "mon": {
+            "enabled": true,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          },
+          "tue": {
+            "enabled": true,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          },
+          "wed": {
+            "enabled": true,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          },
+          "thu": {
+            "enabled": true,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          },
+          "fri": {
+            "enabled": true,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          },
+          "sat": {
+            "enabled": true,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          },
+          "sun": {
+            "enabled": false,
+            "workHours": {
+              "startHour": 0,
+              "startMinute": 0,
+              "endHour": 24,
+              "endMinute": 0
+            }
+          }
+        },
+        "areaPauseControls": {},
+        "globalPauseActivatedAt": null,
+        "globalPauseAutoDisabledUntil": null,
+        "globalPauseAccumulatedSeconds": 0
+      }
+    }
+  },
+  "currentUserId": null,
+  "users": [],
+  "weeks": [
+    {
+      "id": "week-active",
+      "name": "Semana 04 may 2026 - 10 may 2026",
+      "startDate": "2026-05-04T06:00:00.000Z",
+      "endDate": "2026-05-10T06:00:00.000Z",
+      "isActive": true
+    },
+    {
+      "id": "week-prev",
+      "name": "Semana 27 abr 2026 - 03 may 2026",
+      "startDate": "2026-04-27T06:00:00.000Z",
+      "endDate": "2026-05-03T06:00:00.000Z",
+      "isActive": false
+    },
+    {
+      "id": "week-old",
+      "name": "Semana 20 abr 2026 - 26 abr 2026",
+      "startDate": "2026-04-20T06:00:00.000Z",
+      "endDate": "2026-04-26T06:00:00.000Z",
+      "isActive": false
+    }
+  ],
+  "catalog": [
+    {
+      "id": "cat-piso",
+      "name": "Piso producción",
+      "timeLimitMinutes": 50,
+      "isMandatory": true,
+      "isDeleted": false,
+      "frequency": "daily",
+      "category": "Limpieza"
+    },
+    {
+      "id": "cat-banos",
+      "name": "Lavado de baños",
+      "timeLimitMinutes": 40,
+      "isMandatory": true,
+      "isDeleted": false,
+      "frequency": "daily",
+      "category": "Limpieza"
+    },
+    {
+      "id": "cat-inspeccion",
+      "name": "Inspección nave",
+      "timeLimitMinutes": 75,
+      "isMandatory": true,
+      "isDeleted": false,
+      "frequency": "threeTimesWeek",
+      "category": "Seguridad"
+    },
+    {
+      "id": "cat-oficinas",
+      "name": "Limpieza oficinas",
+      "timeLimitMinutes": 50,
+      "isMandatory": true,
+      "isDeleted": false,
+      "frequency": "weekdays",
+      "category": "Limpieza"
+    },
+    {
+      "id": "cat-comedor",
+      "name": "Comedor",
+      "timeLimitMinutes": 50,
+      "isMandatory": true,
+      "isDeleted": false,
+      "frequency": "daily",
+      "category": "Servicios"
+    },
+    {
+      "id": "cat-vidrios",
+      "name": "Limpieza vidrios",
+      "timeLimitMinutes": 50,
+      "isMandatory": false,
+      "isDeleted": false,
+      "frequency": "twiceWeek",
+      "category": "Limpieza"
+    },
+    {
+      "id": "cat-rampas",
+      "name": "Revisión de rampas",
+      "timeLimitMinutes": 35,
+      "isMandatory": false,
+      "isDeleted": false,
+      "frequency": "weekly",
+      "category": "Seguridad"
+    }
+  ],
+  "inventoryItems": [
+    {
+      "id": "inv-1",
+      "code": "ALM-001",
+      "name": "Tarima estándar",
+      "presentation": "Tarima",
+      "piecesPerBox": 1,
+      "boxesPerPallet": 1,
+      "domain": "base",
+      "stockUnits": 36,
+      "minStockUnits": 10,
+      "storageLocation": "Almacén central",
+      "cleaningSite": "",
+      "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
+      "activityCatalogIds": [],
+      "activityConsumptions": [],
+      "consumptionPerStart": 0,
+      "customFields": {}
+    },
+    {
+      "id": "inv-2",
+      "code": "ALM-002",
+      "name": "Caja master",
+      "presentation": "Paquete",
+      "piecesPerBox": 20,
+      "boxesPerPallet": 48,
+      "domain": "base",
+      "stockUnits": 240,
+      "minStockUnits": 80,
+      "storageLocation": "Racks A-2",
+      "cleaningSite": "",
+      "unitLabel": "pzas",
+      "stockTrackingMode": "",
+      "transferTargets": [],
+      "activityCatalogIds": [],
+      "activityConsumptions": [],
+      "consumptionPerStart": 0,
+      "customFields": {}
+    },
+    {
+      "id": "inv-3",
+      "code": "ALM-003",
+      "name": "Playo transparente",
+      "presentation": "Rollo",
+      "piecesPerBox": 6,
+      "boxesPerPallet": 40,
+      "domain": "base",
+      "stockUnits": 120,
+      "minStockUnits": 36,
+      "storageLocation": "Racks B-1",
+      "cleaningSite": "",
+      "unitLabel": "rollos",
+      "stockTrackingMode": "",
+      "transferTargets": [],
+      "activityCatalogIds": [],
+      "activityConsumptions": [],
+      "consumptionPerStart": 0,
+      "customFields": {}
+    },
+    {
+      "id": "inv-4",
+      "code": "LIMP-001",
+      "name": "Detergente neutro multiusos",
+      "presentation": "Bidón 20 L · dilución 1:40",
+      "piecesPerBox": 0,
+      "boxesPerPallet": 0,
+      "domain": "cleaning",
+      "stockUnits": 12,
+      "minStockUnits": 4,
+      "storageLocation": "Cuarto de limpieza · anaquel 1",
+      "cleaningSite": "C3",
+      "unitLabel": "bidones",
+      "stockTrackingMode": "",
+      "transferTargets": [],
+      "activityCatalogIds": [
+        "cat-piso",
+        "cat-oficinas"
+      ],
+      "activityConsumptions": [
+        {
+          "catalogActivityId": "cat-piso",
+          "quantity": 1
+        },
+        {
+          "catalogActivityId": "cat-oficinas",
+          "quantity": 1
+        }
+      ],
+      "consumptionPerStart": 0,
+      "customFields": {}
+    },
+    {
+      "id": "inv-5",
+      "code": "LIMP-002",
+      "name": "Papel higiénico jumbo",
+      "presentation": "Rollo jumbo 400 m",
+      "piecesPerBox": 0,
+      "boxesPerPallet": 0,
+      "domain": "cleaning",
+      "stockUnits": 96,
+      "minStockUnits": 24,
+      "storageLocation": "Cuarto de limpieza · rack baños",
+      "cleaningSite": "C3",
+      "unitLabel": "rollos",
+      "stockTrackingMode": "",
+      "transferTargets": [],
+      "activityCatalogIds": [
+        "cat-banos"
+      ],
+      "activityConsumptions": [
+        {
+          "catalogActivityId": "cat-banos",
+          "quantity": 2
+        }
+      ],
+      "consumptionPerStart": 0,
+      "customFields": {}
+    },
+    {
+      "id": "inv-6",
+      "code": "PED-001",
+      "name": "Esquinero de cartón 2 x 2 x 48",
+      "presentation": "",
+      "piecesPerBox": 0,
+      "boxesPerPallet": 0,
+      "domain": "orders",
+      "stockUnits": 150,
+      "minStockUnits": 70,
+      "storageLocation": "Nave 1 · rack empaque",
+      "cleaningSite": "",
+      "unitLabel": "pzas",
+      "stockTrackingMode": "source",
+      "transferTargets": [],
+      "activityCatalogIds": [],
+      "activityConsumptions": [],
+      "consumptionPerStart": 0,
+      "customFields": {}
+    },
+    {
+      "id": "inv-7",
+      "code": "PED-002",
+      "name": "Etiqueta térmica 4 x 6",
+      "presentation": "",
+      "piecesPerBox": 0,
+      "boxesPerPallet": 0,
+      "domain": "orders",
+      "stockUnits": 28,
+      "minStockUnits": 10,
+      "storageLocation": "Mesa de surtido · gaveta 2",
+      "cleaningSite": "",
+      "unitLabel": "rollos",
+      "stockTrackingMode": "source",
+      "transferTargets": [],
+      "activityCatalogIds": [],
+      "activityConsumptions": [],
+      "consumptionPerStart": 0,
+      "customFields": {}
+    }
+  ],
+  "inventoryColumns": [
+    {
+      "id": "invcol-base-lote",
+      "domain": "base",
+      "label": "Lote",
+      "key": "lote",
+      "createdAt": "1970-01-01T00:00:00.000Z",
+      "isSystem": true
+    },
+    {
+      "id": "invcol-base-caducidad",
+      "domain": "base",
+      "label": "Caducidad",
+      "key": "caducidad",
+      "createdAt": "1970-01-01T00:00:00.000Z",
+      "isSystem": true
+    }
+  ],
+  "inventoryMovements": [],
+  "activities": [],
+  "pauseLogs": [],
+  "controlRows": [],
+  "boardTemplates": [],
+  "boardWeeklyCycle": {
+    "activeWeekKey": "2026-05-04",
+    "activeWeekStartDate": "2026-05-04T06:00:00.000Z",
+    "activeWeekEndDate": "2026-05-09T06:00:00.000Z",
+    "updatedAt": "2026-05-07T23:42:25.732Z"
+  },
+  "boardWeekHistory": [],
+  "permissions": {
+    "pages": {
+      "index": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)",
+          "Junior (Jr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "customBoards": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)",
+          "Junior (Jr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "admin": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "dashboard": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "history": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "processAudits": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "inventory": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "transport": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)",
+          "Junior (Jr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "users": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "biblioteca": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)",
+          "Junior (Jr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "incidencias": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "systemSettings": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      }
+    },
+    "actions": {
+      "createWeek": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "deleteWeek": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "createCatalog": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "editCatalog": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "deleteCatalog": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "manageWeeks": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "managePermissions": {
+        "roles": [
+          "Lead"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "createUsers": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "editUsers": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "deleteUsers": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "resetPasswords": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "manageInventory": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "deleteInventory": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "importInventory": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "viewBaseInventory": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)",
+          "Junior (Jr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "manageCleaningInventory": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "deleteCleaningInventory": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "importCleaningInventory": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "viewCleaningInventory": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)",
+          "Junior (Jr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "manageOrderInventory": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "deleteOrderInventory": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "importOrderInventory": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "viewOrderInventory": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)",
+          "Junior (Jr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "viewTransportRetail": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)",
+          "Junior (Jr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "manageTransportRetail": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)",
+          "Junior (Jr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "viewTransportPedidos": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)",
+          "Junior (Jr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "manageTransportPedidos": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)",
+          "Junior (Jr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "viewTransportInventario": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)",
+          "Junior (Jr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "manageTransportInventario": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)",
+          "Junior (Jr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "createBoard": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "editBoard": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "deleteBoard": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "saveTemplate": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "editTemplate": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "deleteTemplate": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "createBoardFromTemplate": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "createBoardRow": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)",
+          "Junior (Jr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "editFinishedBoardRow": {
+        "roles": [
+          "Lead"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "boardWorkflow": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)",
+          "Junior (Jr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "duplicateBoard": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "duplicateBoardWithRows": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "exportBoardExcel": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "previewBoardPdf": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "exportBoardPdf": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "uploadBiblioteca": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "editBibliotecaName": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "deleteBiblioteca": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "createIncidencia": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "editIncidencia": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "deleteIncidencia": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "viewProcessAudits": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)",
+          "Junior (Jr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "manageProcessAudits": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)",
+          "Semi-Senior (Ssr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "manageProcessAuditTemplates": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "manageSystemSettings": {
+        "roles": [
+          "Lead",
+          "Senior (Sr)"
+        ],
+        "userIds": [],
+        "departments": []
+      },
+      "useCopmecAI": {
+        "roles": [
+          "Lead"
+        ],
+        "userIds": [],
+        "departments": []
+      }
+    }
+  },
+  "auditLog": [],
+  "controlBoards": [],
+  "processAuditTemplates": [],
+  "processAudits": [],
+  "transport": {
+    "config": [
+      {
+        "id": "foraneas",
+        "groupId": "retail",
+        "groupLabel": "Area retail",
+        "label": "Entregas foraneas",
+        "destinations": [
+          "SUPER NATURISTA",
+          "LA COMER",
+          "SANBORNS",
+          "GOMAFA (COSTCO)",
+          "SAN PABLO",
+          "H.E.B.",
+          "CUBBO",
+          "WALMART",
+          "MELI"
+        ]
+      },
+      {
+        "id": "locales",
+        "groupId": "retail",
+        "groupLabel": "Area retail",
+        "label": "Entregas locales",
+        "destinations": [
+          "COPPEL",
+          "MEDINA",
+          "FARMACIAS DEL AHORRO",
+          "EL CARMEN"
+        ]
+      },
+      {
+        "id": "pedidos",
+        "groupId": "pedidos",
+        "groupLabel": "Area de pedidos",
+        "label": "Area de pedidos",
+        "destinations": [
+          "DHL",
+          "FEDEX",
+          "ESTAFETA",
+          "MERCADO LIBRE",
+          "UPS",
+          "IMILE",
+          "MIEMBROS",
+          "OTROS"
+        ]
+      },
+      {
+        "id": "inventarioTraslados",
+        "groupId": "inventario",
+        "groupLabel": "Inventario",
+        "label": "Inventario - traslados entre naves",
+        "destinations": [
+          "CEDIS",
+          "NAVE 1 (16 DE SEPTIEMBRE)",
+          "NAVE GUADALUPE"
+        ]
+      }
+    ],
+    "activeDateKey": "2026-05-07",
+    "activeRecords": [],
+    "historyRecords": []
+  },
+  "updatedAt": "2026-05-07T23:42:25.733Z"
+}

@@ -1032,10 +1032,20 @@ export default function MisTableros({ contexto }) {
     ? effectivePauseDetailsRow.pauseLogs
     : [];
 
+  const getCountedPauseSeconds = (entry) => {
+    const explicitCountedSeconds = Number(entry?.countedPauseDurationSeconds);
+    if (Number.isFinite(explicitCountedSeconds)) {
+      return Math.max(0, explicitCountedSeconds);
+    }
+    const fullPauseSeconds = Math.max(0, Number(entry?.pauseDurationSeconds || 0));
+    const authorizedSeconds = Math.max(0, Number(entry?.pauseAuthorizedSeconds || 0));
+    return Math.max(0, fullPauseSeconds - authorizedSeconds);
+  };
+
   const getRowPauseSeconds = (rowRecord, referenceNow) => {
     if (!rowRecord) return 0;
     const persistedPauseLogs = Array.isArray(rowRecord.pauseLogs) ? rowRecord.pauseLogs : [];
-    const persistedPauseSeconds = persistedPauseLogs.reduce((sum, entry) => sum + Math.max(0, Number(entry?.pauseDurationSeconds || 0)), 0);
+    const persistedPauseSeconds = persistedPauseLogs.reduce((sum, entry) => sum + getCountedPauseSeconds(entry), 0);
     const livePauseSeconds = rowRecord.status === STATUS_PAUSED && rowRecord.pauseStartedAt
       ? Math.max(0, getLivePauseOverflowSeconds(rowRecord, referenceNow, pauseState))
       : 0;
@@ -2169,6 +2179,15 @@ export default function MisTableros({ contexto }) {
                     : entry?.pausedAt
                       ? Math.max(0, getOperationalElapsedSeconds(entry.pausedAt, realtimeNow, pauseState, pauseDetailsRow?.cleaningSite))
                       : 0;
+                  const countedDurationSeconds = entry?.resumedAt
+                    ? getCountedPauseSeconds(entry)
+                    : entry?.pausedAt
+                      ? Math.max(0, getLivePauseOverflowSeconds({
+                          ...pauseDetailsRow,
+                          pauseStartedAt: entry.pausedAt,
+                          pauseAuthorizedSeconds: Math.max(0, Number(entry?.pauseAuthorizedSeconds || pauseDetailsRow?.pauseAuthorizedSeconds || 0)),
+                        }, realtimeNow, pauseState))
+                      : 0;
                   const durationEditKey = `${pauseDetailsRow.id}:${entry?.id || index}`;
                   const durationEditValue = pauseDurationEdits[durationEditKey] ?? formatDurationClock(durationSeconds);
                   const canEditPauseDuration = Boolean(canManageDashboardState) && Boolean(entry?.resumedAt);
@@ -2202,9 +2221,10 @@ export default function MisTableros({ contexto }) {
                                   ...logEntry,
                                   resumedAt: logEntry?.pausedAt ? addSecondsToIso(logEntry.pausedAt, nextSeconds) : logEntry?.resumedAt,
                                   pauseDurationSeconds: nextSeconds,
+                                  countedPauseDurationSeconds: Math.max(0, nextSeconds - Math.max(0, Number(logEntry?.pauseAuthorizedSeconds || 0))),
                                 };
                               });
-                              const totalPauseSeconds = nextPauseLogs.reduce((sum, logEntry) => sum + Math.max(0, Number(logEntry?.pauseDurationSeconds || 0)), 0);
+                              const totalPauseSeconds = nextPauseLogs.reduce((sum, logEntry) => sum + getCountedPauseSeconds(logEntry), 0);
                               updateBoardRowTimeOverride(selectedCustomBoard.id, pauseDetailsRow.id, {
                                 pauseLogs: nextPauseLogs,
                                 totalElapsedSecondsOverride: liveProductionSeconds + totalPauseSeconds,
@@ -2217,7 +2237,7 @@ export default function MisTableros({ contexto }) {
                           />
                         </label>
                       ) : (
-                        <span style={{ fontSize: "0.76rem" }}>Duración: {formatDurationClock(durationSeconds)}</span>
+                        <span style={{ fontSize: "0.76rem" }}>Duración contable: {formatDurationClock(countedDurationSeconds)}</span>
                       )}
                       {entry?.reason && !/ajuste\s+manual\s+de\s+contadores/i.test(String(entry.reason)) ? <span style={{ fontSize: "0.74rem", color: "#4b6b66" }}>Motivo: {entry.reason}</span> : null}
                       {canDeletePauseEntry ? (
@@ -2231,7 +2251,7 @@ export default function MisTableros({ contexto }) {
                               const targetKey = entry?.id || `${index}`;
                               return currentKey !== targetKey;
                             });
-                            const totalPauseSeconds = nextPauseLogs.reduce((sum, logEntry) => sum + Math.max(0, Number(logEntry?.pauseDurationSeconds || 0)), 0);
+                            const totalPauseSeconds = nextPauseLogs.reduce((sum, logEntry) => sum + getCountedPauseSeconds(logEntry), 0);
                             const livePauseSecondsForRow = pauseDetailsRow?.status === STATUS_PAUSED && pauseDetailsRow?.pauseStartedAt
                               ? Math.max(0, getLivePauseOverflowSeconds(pauseDetailsRow, realtimeNow, pauseState))
                               : 0;

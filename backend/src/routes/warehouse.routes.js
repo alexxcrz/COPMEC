@@ -26,6 +26,7 @@ import {
   resetWarehouseDashboardData,
   duplicateWarehouseBoard,
   getWarehouseState,
+  getRawWarehouseState,
   importWarehouseInventoryItems,
   patchWarehouseBoardRow,
   replaceWarehouseState,
@@ -36,6 +37,8 @@ import {
   updateWarehouseCatalogItem,
   updateWarehouseInventoryItem,
   updateWarehouseInventoryLotHistory,
+  createWarehouseTransportRecord,
+  updateWarehouseTransportRecord,
   updateWarehousePermissionOverride,
   updateWarehousePermissionsModel,
   updateWarehouseSelfProfile,
@@ -90,7 +93,21 @@ warehouseRouter.get("/analytics/operational", requireAuth, (req, res) => {
 });
 
 warehouseRouter.put("/state", requireWarehouseStateWriteAccess, (req, res) => {
-  const nextState = replaceWarehouseState(req.body || {});
+  const incomingState = req.body || {};
+  const currentState = getRawWarehouseState();
+  const currentUsers = Array.isArray(currentState?.users) ? currentState.users : [];
+  const nextUsers = Array.isArray(incomingState?.users) ? incomingState.users : null;
+
+  if (currentUsers.length > 0 && Array.isArray(nextUsers) && nextUsers.length === 0) {
+    auditSecurityEvent("warehouse_state_replace_rejected", req, {
+      reason: "empty_users_payload",
+      currentUsers: currentUsers.length,
+    });
+    res.status(409).json({ ok: false, message: "Se rechazó un reemplazo total que vaciaba los usuarios del sistema." });
+    return;
+  }
+
+  const nextState = replaceWarehouseState(incomingState);
   auditSecurityEvent("warehouse_state_replaced", req, {
     revision: nextState?.revision,
     users: Array.isArray(nextState?.users) ? nextState.users.length : 0,
@@ -338,6 +355,52 @@ warehouseRouter.patch("/inventory/:itemId/lot-history", requireAuth, (req, res) 
     revision: result.state?.revision,
   });
   res.json({ ok: true, data: { state: result.state, itemId: result.itemId, itemCode: result.itemCode } });
+});
+
+warehouseRouter.post("/transport/records", requireAuth, (req, res) => {
+  const result = createWarehouseTransportRecord(req.auth, req.body || {});
+  if (!result.ok) {
+    const status = result.reason === "auth_required"
+      ? 401
+      : result.reason === "forbidden"
+        ? 403
+        : 400;
+    const message = result.reason === "evidence_required"
+      ? "Debes adjuntar una evidencia para guardar el envio."
+      : "No fue posible guardar el registro de transporte.";
+    res.status(status).json({ ok: false, message });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_transport_record_created", req, {
+    recordId: result.recordId,
+    revision: result.state?.revision,
+  });
+  res.status(201).json({ ok: true, data: { state: result.state, recordId: result.recordId } });
+});
+
+warehouseRouter.patch("/transport/records/:recordId", requireAuth, (req, res) => {
+  const result = updateWarehouseTransportRecord(req.auth, req.params.recordId, req.body || {});
+  if (!result.ok) {
+    const status = result.reason === "auth_required"
+      ? 401
+      : result.reason === "record_not_found"
+        ? 404
+        : result.reason === "forbidden"
+          ? 403
+          : 400;
+    const message = result.reason === "evidence_required"
+      ? "Debes adjuntar una evidencia para guardar el envio."
+      : "No fue posible actualizar el registro de transporte.";
+    res.status(status).json({ ok: false, message });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_transport_record_updated", req, {
+    recordId: result.recordId,
+    revision: result.state?.revision,
+  });
+  res.json({ ok: true, data: { state: result.state, recordId: result.recordId } });
 });
 
 warehouseRouter.delete("/inventory/:itemId", requireAuth, (req, res) => {

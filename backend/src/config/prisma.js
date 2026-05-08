@@ -21,14 +21,19 @@ function buildPoolConfig(url) {
       console.log(`[prisma] URL contiene socket host=${hostParam} — delegando a variables PG* del entorno`);
       return {};
     }
-    console.log(`[prisma] Conectando TCP → host=${u.hostname}:${u.port || 5432}`);
+    const host = u.hostname;
+    const isLocalHost = host === "localhost" || host === "127.0.0.1";
+    const sslMode = String(process.env.PGSSLMODE || "").trim().toLowerCase();
+    const useSsl = !isLocalHost && sslMode !== "disable";
+
+    console.log(`[prisma] Conectando TCP → host=${host}:${u.port || 5432} ssl=${useSsl ? "on" : "off"}`);
     return {
-      host: u.hostname,
+      host,
       port: parseInt(u.port || "5432", 10),
       database: u.pathname.replace(/^\//, ""),
       user: decodeURIComponent(u.username),
       password: decodeURIComponent(u.password),
-      ssl: { rejectUnauthorized: false },
+      ssl: useSsl ? { rejectUnauthorized: false } : false,
     };
   } catch {
     // Formato libpq (key=value) u otro — dejar que pg lo resuelva con env vars

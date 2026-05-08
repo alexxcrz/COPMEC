@@ -55,6 +55,7 @@ const PAGE_PERMISSIONS = {
   history: [ROLE_LEAD, ROLE_SR],
   processAudits: [ROLE_LEAD, ROLE_SR, ROLE_SSR],
   inventory: [ROLE_LEAD, ROLE_SR],
+  transport: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
   users: [ROLE_LEAD, ROLE_SR, ROLE_SSR],
   biblioteca: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
   incidencias: [ROLE_LEAD, ROLE_SR, ROLE_SSR],
@@ -85,6 +86,12 @@ const ACTION_PERMISSIONS = {
   deleteOrderInventory:    [ROLE_LEAD, ROLE_SR],
   importOrderInventory:    [ROLE_LEAD, ROLE_SR],
   viewOrderInventory:      [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  viewTransportRetail:     [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  manageTransportRetail:   [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  viewTransportPedidos:    [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  manageTransportPedidos:  [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  viewTransportInventario: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  manageTransportInventario: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
   createBoard:             [ROLE_LEAD, ROLE_SR],
   editBoard:               [ROLE_LEAD, ROLE_SR],
   deleteBoard:             [ROLE_LEAD, ROLE_SR],
@@ -112,6 +119,65 @@ const ACTION_PERMISSIONS = {
   manageSystemSettings:    [ROLE_LEAD, ROLE_SR],
   useCopmecAI:             [ROLE_LEAD],
 };
+
+const TRANSPORT_AREA_CONFIG = Object.freeze([
+  {
+    id: "foraneas",
+    groupId: "retail",
+    groupLabel: "Area retail",
+    label: "Entregas foraneas",
+    destinations: Object.freeze([
+      "SUPER NATURISTA",
+      "LA COMER",
+      "SANBORNS",
+      "GOMAFA (COSTCO)",
+      "SAN PABLO",
+      "H.E.B.",
+      "CUBBO",
+      "WALMART",
+      "MELI",
+    ]),
+  },
+  {
+    id: "locales",
+    groupId: "retail",
+    groupLabel: "Area retail",
+    label: "Entregas locales",
+    destinations: Object.freeze([
+      "COPPEL",
+      "MEDINA",
+      "FARMACIAS DEL AHORRO",
+      "EL CARMEN",
+    ]),
+  },
+  {
+    id: "pedidos",
+    groupId: "pedidos",
+    groupLabel: "Area de pedidos",
+    label: "Area de pedidos",
+    destinations: Object.freeze([
+      "DHL",
+      "FEDEX",
+      "ESTAFETA",
+      "MERCADO LIBRE",
+      "UPS",
+      "IMILE",
+      "MIEMBROS",
+      "OTROS",
+    ]),
+  },
+  {
+    id: "inventarioTraslados",
+    groupId: "inventario",
+    groupLabel: "Inventario",
+    label: "Inventario - traslados entre naves",
+    destinations: Object.freeze([
+      "CEDIS",
+      "NAVE 1 (16 DE SEPTIEMBRE)",
+      "NAVE GUADALUPE",
+    ]),
+  },
+]);
 
 function normalizeRole(role) {
   const value = String(role || "").toLowerCase();
@@ -1345,6 +1411,113 @@ function normalizeBoardPermissions(permissions, basePermissions, board = null) {
   };
 }
 
+function getOperationalDateKey(referenceDate = new Date()) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: resolveOperationalTimeZone(OPERATIONAL_TIMEZONE),
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(referenceDate);
+    const year = String(parts.find((part) => part.type === "year")?.value || "").trim();
+    const month = String(parts.find((part) => part.type === "month")?.value || "").trim();
+    const day = String(parts.find((part) => part.type === "day")?.value || "").trim();
+    if (year && month && day) {
+      return `${year}-${month}-${day}`;
+    }
+  } catch {
+    // Fallback below.
+  }
+  return formatLocalDateKey(referenceDate);
+}
+
+function getTransportAreaConfig() {
+  return TRANSPORT_AREA_CONFIG.map((entry) => ({
+    id: entry.id,
+    groupId: entry.groupId,
+    groupLabel: entry.groupLabel,
+    label: entry.label,
+    destinations: [...entry.destinations],
+  }));
+}
+
+function normalizeTransportEvidence(evidence = EMPTY_OBJECT) {
+  const url = String(evidence?.url || "").trim();
+  if (!url) return null;
+  return {
+    url,
+    thumbnailUrl: String(evidence?.thumbnailUrl || url).trim(),
+    name: String(evidence?.name || "evidencia").trim() || "evidencia",
+    type: String(evidence?.type || "image").trim() || "image",
+  };
+}
+
+function normalizeTransportRecord(record = EMPTY_OBJECT, fallbackId = null) {
+  const boxes = Math.max(0, Number(record?.boxes || 0));
+  const pieces = Math.max(0, Number(record?.pieces || 0));
+  return {
+    id: fallbackId || String(record?.id || "").trim() || makeId("trn"),
+    areaId: String(record?.areaId || "").trim(),
+    destination: String(record?.destination || "").trim(),
+    boxes: Number.isFinite(boxes) ? boxes : 0,
+    pieces: Number.isFinite(pieces) ? pieces : 0,
+    notes: String(record?.notes || "").trim(),
+    evidence: normalizeTransportEvidence(record?.evidence),
+    dateKey: String(record?.dateKey || "").trim(),
+    createdById: String(record?.createdById || "").trim(),
+    createdByName: String(record?.createdByName || "").trim(),
+    createdAt: String(record?.createdAt || "").trim() || new Date().toISOString(),
+    updatedAt: String(record?.updatedAt || "").trim() || new Date().toISOString(),
+    archivedAt: String(record?.archivedAt || "").trim() || "",
+  };
+}
+
+function normalizeTransportState(rawTransport = EMPTY_OBJECT) {
+  const todayKey = getOperationalDateKey(new Date());
+  const activeDateKey = String(rawTransport?.activeDateKey || "").trim() || todayKey;
+  const activeRecords = Array.isArray(rawTransport?.activeRecords)
+    ? rawTransport.activeRecords.map((record) => normalizeTransportRecord(record, record?.id || null))
+    : [];
+  const historyRecords = Array.isArray(rawTransport?.historyRecords)
+    ? rawTransport.historyRecords.map((record) => normalizeTransportRecord(record, record?.id || null))
+    : [];
+  return {
+    config: getTransportAreaConfig(),
+    activeDateKey,
+    activeRecords,
+    historyRecords,
+  };
+}
+
+function applyAutomatedTransportDailyCut(state) {
+  const currentTransport = normalizeTransportState(state?.transport);
+  const todayKey = getOperationalDateKey(new Date());
+  if (currentTransport.activeDateKey === todayKey) {
+    return { state, changed: false };
+  }
+
+  const nowIso = new Date().toISOString();
+  const movedRecords = currentTransport.activeRecords.map((record) => ({
+    ...record,
+    dateKey: String(record?.dateKey || currentTransport.activeDateKey || todayKey).trim() || todayKey,
+    archivedAt: nowIso,
+    updatedAt: nowIso,
+  }));
+
+  return {
+    changed: true,
+    state: {
+      ...state,
+      transport: {
+        ...currentTransport,
+        activeDateKey: todayKey,
+        activeRecords: [],
+        historyRecords: [...movedRecords, ...currentTransport.historyRecords].slice(0, 5000),
+      },
+    },
+  };
+}
+
 function normalizeState(state, previousState = null) {
   const fallbackUsers = buildSampleState().users;
   const users = Array.isArray(state.users) && state.users.length ? state.users : fallbackUsers;
@@ -1442,9 +1615,172 @@ function normalizeState(state, previousState = null) {
     processAudits: Array.isArray(state.processAudits)
       ? state.processAudits.map((audit) => normalizeProcessAuditRecord(audit, audit?.id || null))
       : [],
+    transport: normalizeTransportState(state.transport),
     incidencias: Array.isArray(state.incidencias) ? state.incidencias : [],
     incidenciaNotifications: Array.isArray(state.incidenciaNotifications) ? state.incidenciaNotifications : [],
   };
+}
+
+function resolveTransportArea(stateTransport, areaId) {
+  const normalizedAreaId = String(areaId || "").trim();
+  return (stateTransport?.config || []).find((entry) => entry.id === normalizedAreaId) || null;
+}
+
+function getTransportActionIdsByArea(areaId = "") {
+  const normalizedAreaId = String(areaId || "").trim();
+  if (normalizedAreaId === "foraneas" || normalizedAreaId === "locales") {
+    return { viewActionId: "viewTransportRetail", manageActionId: "manageTransportRetail" };
+  }
+  if (normalizedAreaId === "pedidos") {
+    return { viewActionId: "viewTransportPedidos", manageActionId: "manageTransportPedidos" };
+  }
+  if (normalizedAreaId === "inventarioTraslados") {
+    return { viewActionId: "viewTransportInventario", manageActionId: "manageTransportInventario" };
+  }
+  return { viewActionId: "", manageActionId: "" };
+}
+
+function sanitizeTransportRecordDraft(payload = EMPTY_OBJECT, stateTransport = EMPTY_OBJECT) {
+  const areaId = String(payload?.areaId || "").trim();
+  const area = resolveTransportArea(stateTransport, areaId);
+  if (!area) return { ok: false, reason: "invalid_area" };
+
+  const destination = String(payload?.destination || "").trim();
+  if (!destination || !area.destinations.includes(destination)) {
+    return { ok: false, reason: "invalid_destination" };
+  }
+
+  const boxes = Math.max(0, Number(payload?.boxes || 0));
+  const pieces = Math.max(0, Number(payload?.pieces || 0));
+  if ((!Number.isFinite(boxes) || boxes < 0) || (!Number.isFinite(pieces) || pieces < 0) || (boxes === 0 && pieces === 0)) {
+    return { ok: false, reason: "invalid_payload" };
+  }
+
+  const evidence = normalizeTransportEvidence(payload?.evidence);
+  if (!evidence) {
+    return { ok: false, reason: "evidence_required" };
+  }
+
+  return {
+    ok: true,
+    draft: {
+      areaId,
+      destination,
+      boxes,
+      pieces,
+      notes: String(payload?.notes || "").trim(),
+      evidence,
+    },
+  };
+}
+
+export function createWarehouseTransportRecord(auth, payload = {}) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const baseState = getRawWarehouseState();
+  const actionIds = getTransportActionIdsByArea(payload?.areaId);
+  if (!actionIds.manageActionId || !canUserDoWarehouseAction(currentUser, actionIds.manageActionId, baseState.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const dailyCutResult = applyAutomatedTransportDailyCut(baseState);
+  const currentState = dailyCutResult.changed ? dailyCutResult.state : baseState;
+  const transport = normalizeTransportState(currentState.transport);
+
+  const sanitized = sanitizeTransportRecordDraft(payload, transport);
+  if (!sanitized.ok) return sanitized;
+
+  const nowIso = new Date().toISOString();
+  const record = {
+    id: makeId("trn"),
+    ...sanitized.draft,
+    dateKey: transport.activeDateKey,
+    createdById: currentUser.id,
+    createdByName: currentUser.name,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+    archivedAt: "",
+  };
+
+  const nextState = {
+    ...currentState,
+    transport: {
+      ...transport,
+      activeRecords: [record, ...(transport.activeRecords || [])],
+    },
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState), recordId: record.id };
+}
+
+export function updateWarehouseTransportRecord(auth, recordId, payload = {}) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const baseState = getRawWarehouseState();
+  const dailyCutResult = applyAutomatedTransportDailyCut(baseState);
+  const currentState = dailyCutResult.changed ? dailyCutResult.state : baseState;
+  const transport = normalizeTransportState(currentState.transport);
+  const targetId = String(recordId || "").trim();
+  if (!targetId) return { ok: false, reason: "record_not_found" };
+
+  const activeIndex = (transport.activeRecords || []).findIndex((entry) => entry.id === targetId);
+  const historyIndex = activeIndex === -1
+    ? (transport.historyRecords || []).findIndex((entry) => entry.id === targetId)
+    : -1;
+
+  if (activeIndex === -1 && historyIndex === -1) {
+    return { ok: false, reason: "record_not_found" };
+  }
+
+  const sourceRecord = activeIndex >= 0
+    ? transport.activeRecords[activeIndex]
+    : transport.historyRecords[historyIndex];
+
+  const sourceActionIds = getTransportActionIdsByArea(sourceRecord?.areaId);
+  if (!sourceActionIds.manageActionId || !canUserDoWarehouseAction(currentUser, sourceActionIds.manageActionId, baseState.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const mergedDraft = {
+    areaId: payload.areaId ?? sourceRecord.areaId,
+    destination: payload.destination ?? sourceRecord.destination,
+    boxes: payload.boxes ?? sourceRecord.boxes,
+    pieces: payload.pieces ?? sourceRecord.pieces,
+    notes: payload.notes ?? sourceRecord.notes,
+    evidence: payload.evidence ?? sourceRecord.evidence,
+  };
+
+  const sanitized = sanitizeTransportRecordDraft(mergedDraft, transport);
+  if (!sanitized.ok) return sanitized;
+
+  const targetActionIds = getTransportActionIdsByArea(sanitized.draft.areaId);
+  if (!targetActionIds.manageActionId || !canUserDoWarehouseAction(currentUser, targetActionIds.manageActionId, baseState.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const nowIso = new Date().toISOString();
+  const nextRecord = {
+    ...sourceRecord,
+    ...sanitized.draft,
+    updatedAt: nowIso,
+  };
+
+  const nextState = {
+    ...currentState,
+    transport: {
+      ...transport,
+      activeRecords: activeIndex >= 0
+        ? transport.activeRecords.map((entry, index) => (index === activeIndex ? nextRecord : entry))
+        : transport.activeRecords,
+      historyRecords: historyIndex >= 0
+        ? transport.historyRecords.map((entry, index) => (index === historyIndex ? nextRecord : entry))
+        : transport.historyRecords,
+    },
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState), recordId: targetId };
 }
 
 // ─── Incidencias ─────────────────────────────────────────────────────────────
@@ -1766,6 +2102,7 @@ function buildSampleState() {
     controlBoards: [],
     processAuditTemplates: [],
     processAudits: [],
+    transport: normalizeTransportState(null),
     updatedAt: new Date().toISOString(),
   };
 }
@@ -2121,10 +2458,11 @@ export function getRawWarehouseState() {
   const { state: boardState, changed: boardChanged } = applyAutomatedBoardWeeklyCut(currentState);
   const { state: dailyRowsState, changed: dailyRowsChanged } = applyAutomatedBoardDailyRows(boardState);
   const { state: automatedPauseState, changed: pauseChanged } = applyAutomatedGlobalPauseState(dailyRowsState);
-  if (!boardChanged && !dailyRowsChanged && !pauseChanged) return currentState;
+  const { state: transportState, changed: transportChanged } = applyAutomatedTransportDailyCut(automatedPauseState);
+  if (!boardChanged && !dailyRowsChanged && !pauseChanged && !transportChanged) return currentState;
 
   const persistedState = normalizeState({
-    ...automatedPauseState,
+    ...transportState,
     revision: Number(currentState.revision || 0) + 1,
     updatedAt: new Date().toISOString(),
   }, currentState);
@@ -2807,6 +3145,19 @@ function updateElapsedForFinish(row, nowIso, pauseControl, cleaningSite = null) 
   return Math.max(0, accumulated + getOperationalElapsedSeconds(baselineTimestamp, nowIso, pauseControl, site));
 }
 
+function getPauseLogAuthorizedSeconds(entry) {
+  return Math.max(0, Number(entry?.pauseAuthorizedSeconds || 0));
+}
+
+function getPauseLogCountedSeconds(entry) {
+  const rawCountedSeconds = Number(entry?.countedPauseDurationSeconds);
+  if (Number.isFinite(rawCountedSeconds)) {
+    return Math.max(0, rawCountedSeconds);
+  }
+  const fullPauseSeconds = Math.max(0, Number(entry?.pauseDurationSeconds || 0));
+  return Math.max(0, fullPauseSeconds - getPauseLogAuthorizedSeconds(entry));
+}
+
 function findBoardAndRow(currentState, boardId, rowId = null) {
   const boardIndex = (currentState.controlBoards || []).findIndex((board) => board.id === boardId);
   if (boardIndex === -1) return { boardIndex: -1, rowIndex: -1, board: null, row: null };
@@ -3023,6 +3374,8 @@ function createBoardRowRecord(fields, responsibleId, partial = {}) {
           pausedAt: entry?.pausedAt || null,
           resumedAt: entry?.resumedAt || null,
           pauseDurationSeconds: Math.max(0, Number(entry?.pauseDurationSeconds || 0)),
+          pauseAuthorizedSeconds: getPauseLogAuthorizedSeconds(entry),
+          countedPauseDurationSeconds: getPauseLogCountedSeconds(entry),
         }))
       : [],
     createdAt: createdAtIso,
@@ -5404,11 +5757,15 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
       if (index !== latestOpenIndex || !entry || !entry.pausedAt) return entry;
       const pausedTime = new Date(entry.pausedAt).getTime();
       if (!Number.isFinite(pausedTime)) return entry;
+      const fullPauseSeconds = Math.max(0, getOperationalElapsedSeconds(entry.pausedAt, resumeIso, pauseControl, sourceRow?.cleaningSite));
+      const pauseAuthorizedSeconds = Math.max(0, Number(entry?.pauseAuthorizedSeconds ?? sourceRow?.pauseAuthorizedSeconds ?? 0));
       return {
         ...entry,
         reason: String(entry.reason || fallbackReason || "").trim(),
         resumedAt: resumeIso,
-        pauseDurationSeconds: Math.max(0, getOperationalElapsedSeconds(entry.pausedAt, resumeIso, pauseControl, sourceRow?.cleaningSite)),
+        pauseDurationSeconds: fullPauseSeconds,
+        pauseAuthorizedSeconds,
+        countedPauseDurationSeconds: Math.max(0, fullPauseSeconds - pauseAuthorizedSeconds),
       };
     });
   };
@@ -5479,6 +5836,8 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
         pausedAt: nowIso,
         resumedAt: null,
         pauseDurationSeconds: 0,
+        pauseAuthorizedSeconds: nextRow.pauseAuthorizedSeconds,
+        countedPauseDurationSeconds: 0,
       });
     } else if (patch.status === "Terminado") {
       (board.fields || []).forEach((field) => {
@@ -5553,10 +5912,12 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
             pausedAt: entry?.pausedAt || null,
             resumedAt: entry?.resumedAt || null,
             pauseDurationSeconds: Math.max(0, Number(entry?.pauseDurationSeconds || 0)),
+            pauseAuthorizedSeconds: getPauseLogAuthorizedSeconds(entry),
+            countedPauseDurationSeconds: getPauseLogCountedSeconds(entry),
           }))
         : [];
       if (!hasOwn(patch, "totalElapsedSecondsOverride")) {
-        const totalPauseSeconds = nextRow.pauseLogs.reduce((sum, entry) => sum + Math.max(0, Number(entry?.pauseDurationSeconds || 0)), 0);
+        const totalPauseSeconds = nextRow.pauseLogs.reduce((sum, entry) => sum + getPauseLogCountedSeconds(entry), 0);
         nextRow.totalElapsedSecondsOverride = Math.max(0, Number(nextRow.accumulatedSeconds || 0)) + totalPauseSeconds;
       }
     }

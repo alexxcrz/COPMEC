@@ -40,6 +40,7 @@ import {
 import { Modal } from "./components/Modal";
 import { BoardBuilderModal, BoardComponentStudioModal } from "./components/ModalesConstructorTableros";
 import GestionInventario from "./paginas/GestionInventario";
+import GestionTransporte from "./paginas/GestionTransporte";
 import GestionIncidencias from "./paginas/GestionIncidencias";
 import GestionUsuarios from "./paginas/GestionUsuarios";
 import HistorialSemanas from "./paginas/HistorialSemanas";
@@ -130,6 +131,7 @@ import {
   PAGE_BOARD, PAGE_CUSTOM_BOARDS, PAGE_ADMIN, PAGE_DASHBOARD, PAGE_HISTORY, PAGE_PROCESS_AUDITS,
 
   PAGE_INVENTORY, PAGE_USERS, PAGE_BIBLIOTECA, PAGE_INCIDENCIAS, PAGE_NOT_FOUND,
+  PAGE_TRANSPORT,
   PAGE_SYSTEM_SETTINGS, PAGE_ARCHIVERO,
 
   PAGE_ROUTE_SLUGS, PAGE_ROUTE_ALIASES, EMPTY_LOGIN_DIRECTORY,
@@ -1881,8 +1883,16 @@ function App() { // NOSONAR
         pausedAt: entry?.pausedAt || null,
         resumedAt: entry?.resumedAt || null,
         pauseDurationSeconds: Math.max(0, Number(entry?.pauseDurationSeconds || 0)),
+        pauseAuthorizedSeconds: Math.max(0, Number(entry?.pauseAuthorizedSeconds || 0)),
+        countedPauseDurationSeconds: (() => {
+          const explicitCounted = Number(entry?.countedPauseDurationSeconds);
+          if (Number.isFinite(explicitCounted)) return Math.max(0, explicitCounted);
+          const fullPauseSeconds = Math.max(0, Number(entry?.pauseDurationSeconds || 0));
+          const authorizedSeconds = Math.max(0, Number(entry?.pauseAuthorizedSeconds || 0));
+          return Math.max(0, fullPauseSeconds - authorizedSeconds);
+        })(),
       }));
-      const totalSeconds = normalizedLogs.reduce((sum, entry) => sum + entry.pauseDurationSeconds, 0);
+      const totalSeconds = normalizedLogs.reduce((sum, entry) => sum + entry.countedPauseDurationSeconds, 0);
       return {
         count: normalizedLogs.length,
         totalSeconds,
@@ -1903,6 +1913,14 @@ function App() { // NOSONAR
             pausedAt,
             resumedAt,
             pauseDurationSeconds: Math.max(0, Number(entry?.pauseDurationSeconds || 0)),
+            pauseAuthorizedSeconds: Math.max(0, Number(entry?.pauseAuthorizedSeconds || 0)),
+            countedPauseDurationSeconds: (() => {
+              const explicitCounted = Number(entry?.countedPauseDurationSeconds);
+              if (Number.isFinite(explicitCounted)) return Math.max(0, explicitCounted);
+              const fullPauseSeconds = Math.max(0, Number(entry?.pauseDurationSeconds || 0));
+              const authorizedSeconds = Math.max(0, Number(entry?.pauseAuthorizedSeconds || 0));
+              return Math.max(0, fullPauseSeconds - authorizedSeconds);
+            })(),
           };
         }
         if (resumedAt) {
@@ -1911,6 +1929,14 @@ function App() { // NOSONAR
             pausedAt,
             resumedAt,
             pauseDurationSeconds: Math.max(0, Number(entry?.pauseDurationSeconds || 0)),
+            pauseAuthorizedSeconds: Math.max(0, Number(entry?.pauseAuthorizedSeconds || 0)),
+            countedPauseDurationSeconds: (() => {
+              const explicitCounted = Number(entry?.countedPauseDurationSeconds);
+              if (Number.isFinite(explicitCounted)) return Math.max(0, explicitCounted);
+              const fullPauseSeconds = Math.max(0, Number(entry?.pauseDurationSeconds || 0));
+              const authorizedSeconds = Math.max(0, Number(entry?.pauseAuthorizedSeconds || 0));
+              return Math.max(0, fullPauseSeconds - authorizedSeconds);
+            })(),
           };
         }
         return {
@@ -1918,6 +1944,12 @@ function App() { // NOSONAR
           pausedAt,
           resumedAt: null,
           pauseDurationSeconds: Math.max(0, getOperationalElapsedSeconds(pausedAt, now, operationalPauseState, row?.cleaningSite)),
+          pauseAuthorizedSeconds: Math.max(0, Number(entry?.pauseAuthorizedSeconds || row?.pauseAuthorizedSeconds || 0)),
+          countedPauseDurationSeconds: Math.max(0, getLivePauseOverflowSeconds({
+            ...row,
+            pauseStartedAt: pausedAt,
+            pauseAuthorizedSeconds: Math.max(0, Number(entry?.pauseAuthorizedSeconds || row?.pauseAuthorizedSeconds || 0)),
+          }, now, operationalPauseState)),
         };
       });
 
@@ -1927,6 +1959,8 @@ function App() { // NOSONAR
           pausedAt: row.pauseStartedAt,
           resumedAt: null,
           pauseDurationSeconds: Math.max(0, getOperationalElapsedSeconds(row.pauseStartedAt, now, operationalPauseState, row?.cleaningSite)),
+          pauseAuthorizedSeconds: Math.max(0, Number(row?.pauseAuthorizedSeconds || 0)),
+          countedPauseDurationSeconds: Math.max(0, getLivePauseOverflowSeconds(row, now, operationalPauseState)),
         });
       }
 
@@ -2521,6 +2555,9 @@ function App() { // NOSONAR
 
     function scoreReceivedCandidate(normalizedLabel) {
       let score = 0;
+      if (normalizedLabel.includes("total de piezas recibidas")) score += 30;
+      if (normalizedLabel.includes("total piezas recibidas")) score += 28;
+      if (normalizedLabel.includes("total pz recibidas")) score += 26;
       if (normalizedLabel.includes("recib")) score += 6;
       if (normalizedLabel.includes("entrada") || normalizedLabel.includes("ingreso")) score += 5;
       if (normalizedLabel.includes("esperad")) score += 4;
@@ -2539,6 +2576,9 @@ function App() { // NOSONAR
 
     function scoreAptasCandidate(normalizedLabel) {
       let score = 0;
+      if (normalizedLabel.includes("total pz en buen estado")) score += 30;
+      if (normalizedLabel.includes("total piezas en buen estado")) score += 28;
+      if (normalizedLabel.includes("piezas en buen estado")) score += 24;
       if (normalizedLabel.includes("buen estado")) score += 8;
       if (normalizedLabel.includes("apta") || normalizedLabel.includes("buenas")) score += 7;
       if (normalizedLabel.includes("liberad") || normalizedLabel.includes("ok")) score += 5;
@@ -5301,6 +5341,48 @@ function App() { // NOSONAR
     return ACTION_DEFINITIONS.filter((item) => (PAGE_ACTION_GROUPS[pageId] || []).includes(item.id));
   }
 
+  function getPermissionSectionTone(pageId, actionId = "") {
+    const normalizedActionId = String(actionId || "").trim();
+    if (pageId === PAGE_INVENTORY) {
+      if (normalizedActionId.includes("BaseInventory") || normalizedActionId.includes("manageInventory") || normalizedActionId.includes("deleteInventory") || normalizedActionId.includes("importInventory")) {
+        return { accent: "#0f766e", soft: "rgba(15, 118, 110, 0.1)" };
+      }
+      if (normalizedActionId.includes("CleaningInventory")) {
+        return { accent: "#2563eb", soft: "rgba(37, 99, 235, 0.1)" };
+      }
+      if (normalizedActionId.includes("OrderInventory")) {
+        return { accent: "#b45309", soft: "rgba(180, 83, 9, 0.1)" };
+      }
+      return { accent: "#0f766e", soft: "rgba(15, 118, 110, 0.1)" };
+    }
+
+    if (pageId === PAGE_TRANSPORT) {
+      if (normalizedActionId.includes("Retail")) {
+        return { accent: "#7c3aed", soft: "rgba(124, 58, 237, 0.1)" };
+      }
+      if (normalizedActionId.includes("Pedidos")) {
+        return { accent: "#be123c", soft: "rgba(190, 18, 60, 0.1)" };
+      }
+      if (normalizedActionId.includes("Inventario")) {
+        return { accent: "#0e7490", soft: "rgba(14, 116, 144, 0.1)" };
+      }
+      return { accent: "#7c3aed", soft: "rgba(124, 58, 237, 0.1)" };
+    }
+
+    const pageToneMap = {
+      [PAGE_BOARD]: { accent: "#166534", soft: "rgba(22, 101, 52, 0.1)" },
+      [PAGE_CUSTOM_BOARDS]: { accent: "#047857", soft: "rgba(4, 120, 87, 0.1)" },
+      [PAGE_HISTORY]: { accent: "#1d4ed8", soft: "rgba(29, 78, 216, 0.1)" },
+      [PAGE_PROCESS_AUDITS]: { accent: "#6d28d9", soft: "rgba(109, 40, 217, 0.1)" },
+      [PAGE_BIBLIOTECA]: { accent: "#0f766e", soft: "rgba(15, 118, 110, 0.1)" },
+      [PAGE_INCIDENCIAS]: { accent: "#b91c1c", soft: "rgba(185, 28, 28, 0.1)" },
+      [PAGE_USERS]: { accent: "#374151", soft: "rgba(55, 65, 81, 0.1)" },
+      [PAGE_SYSTEM_SETTINGS]: { accent: "#9a3412", soft: "rgba(154, 52, 18, 0.1)" },
+    };
+
+    return pageToneMap[pageId] || { accent: "#4b5563", soft: "rgba(75, 85, 99, 0.08)" };
+  }
+
   async function updatePermissionEntry(scope, key, field, value) {
     if (!actionPermissions.managePermissions) return;
     const nextPermissions = {
@@ -6176,6 +6258,44 @@ function App() { // NOSONAR
       ...inventoryTransferConfirmModal.pendingPayload,
       remainingUnits,
     }, "Transferencia registrada y saldo destino actualizado.");
+  }
+
+  async function createTransportRecord(payload = {}) {
+    const areaId = String(payload?.areaId || "").trim();
+    const manageActionId = areaId === "foraneas" || areaId === "locales"
+      ? "manageTransportRetail"
+      : areaId === "pedidos"
+        ? "manageTransportPedidos"
+        : areaId === "inventarioTraslados"
+          ? "manageTransportInventario"
+          : "";
+    if (!manageActionId || !actionPermissions[manageActionId]) return;
+    const result = await requestJson("/warehouse/transport/records", {
+      method: "POST",
+      body: JSON.stringify(payload || {}),
+    });
+    applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+    return result;
+  }
+
+  async function updateTransportRecord(recordId, payload = {}) {
+    const areaId = String(payload?.areaId || "").trim();
+    const manageActionId = areaId === "foraneas" || areaId === "locales"
+      ? "manageTransportRetail"
+      : areaId === "pedidos"
+        ? "manageTransportPedidos"
+        : areaId === "inventarioTraslados"
+          ? "manageTransportInventario"
+          : "";
+    if (!manageActionId || !actionPermissions[manageActionId]) return;
+    const normalizedRecordId = String(recordId || "").trim();
+    if (!normalizedRecordId) return;
+    const result = await requestJson(`/warehouse/transport/records/${normalizedRecordId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload || {}),
+    });
+    applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+    return result;
   }
 
   async function handleInventoryImport(event) {
@@ -7616,6 +7736,10 @@ function App() { // NOSONAR
     inventoryLinkedCleaningRows,
     inventoryMovementSavedDestinations,
     inventoryMovementSavedLocations,
+    transportState: state.transport || { config: [], activeDateKey: "", activeRecords: [], historyRecords: [] },
+    createTransportRecord,
+    updateTransportRecord,
+    canManageTransport: Boolean(actionPermissions.manageTransport),
     currentInventorySupplyableCount: currentInventorySupplyableItems.length,
     inventoryCleaningSite,
     inventorySearch,
@@ -8024,6 +8148,7 @@ function App() { // NOSONAR
         {page === PAGE_HISTORY ? <HistorialSemanas contexto={paginasContexto} /> : null}
         {page === PAGE_PROCESS_AUDITS ? <AuditoriasProcesos contexto={paginasContexto} /> : null}
         {page === PAGE_INVENTORY ? <GestionInventario contexto={paginasContexto} /> : null}
+        {page === PAGE_TRANSPORT ? <GestionTransporte contexto={paginasContexto} /> : null}
         {page === PAGE_USERS ? <GestionUsuarios contexto={paginasContexto} /> : null}
         {page === PAGE_BIBLIOTECA ? <BibliotecaPage currentUser={currentUser} canUpload={actionPermissions.uploadBiblioteca} canRenameName={actionPermissions.editBibliotecaName} canDelete={actionPermissions.deleteBiblioteca} /> : null}
         {page === PAGE_INCIDENCIAS ? <GestionIncidencias contexto={paginasContexto} /> : null}
@@ -8499,6 +8624,7 @@ function App() { // NOSONAR
                 {permissionPages.map((item) => {
                   const isOpen = userModal.permissionPageId === item.id;
                   const pageActions = getPagePermissionActions(item.id);
+                  const pageTone = getPermissionSectionTone(item.id, "");
                   return (
                     <article key={item.id} className={`permission-accordion-card ${isOpen ? "open" : ""}`}>
                       <button type="button" className="permission-accordion-toggle" onClick={() => toggleUserModalPermissionSection(item.id)}>
@@ -8511,7 +8637,10 @@ function App() { // NOSONAR
 
                       {isOpen ? (
                         <div className="permission-accordion-body user-modal-permission-body">
-                          <div className="permission-switch-row permission-switch-row-primary">
+                          <div
+                            className="permission-switch-row permission-switch-row-primary permission-switch-row-toned"
+                            style={{ "--permission-accent": pageTone.accent, "--permission-soft": pageTone.soft }}
+                          >
                             <div>
                               <strong>Ver pestaña</strong>
                               <span>Permite entrar a {item.label}.</span>
@@ -8524,7 +8653,14 @@ function App() { // NOSONAR
                           {pageActions.length ? (
                             <div className="permission-switch-list">
                               {pageActions.map((action) => (
-                                <div key={action.id} className="permission-switch-row">
+                                <div
+                                  key={action.id}
+                                  className="permission-switch-row permission-switch-row-toned"
+                                  style={{
+                                    "--permission-accent": getPermissionSectionTone(item.id, action.id).accent,
+                                    "--permission-soft": getPermissionSectionTone(item.id, action.id).soft,
+                                  }}
+                                >
                                   <div>
                                     <strong>{action.label}</strong>
                                     <span>{action.category}</span>

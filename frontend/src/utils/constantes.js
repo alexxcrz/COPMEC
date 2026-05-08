@@ -1,6 +1,6 @@
 import {
   BarChart3, LayoutDashboard, ClipboardList, CalendarDays, Package,
-  Users, PieChart, BookOpen, OctagonAlert, ClipboardCheck, Archive,
+  Users, PieChart, BookOpen, OctagonAlert, ClipboardCheck, Archive, Truck,
 } from "lucide-react";
 
 export const STORAGE_KEY = "sicfla.almacen.state.v1";
@@ -25,6 +25,7 @@ export const PAGE_DASHBOARD = "dashboard";
 export const PAGE_HISTORY = "history";
 export const PAGE_PROCESS_AUDITS = "processAudits";
 export const PAGE_INVENTORY = "inventory";
+export const PAGE_TRANSPORT = "transport";
 export const PAGE_USERS = "users";
 export const PAGE_BIBLIOTECA = "biblioteca";
 export const PAGE_INCIDENCIAS = "incidencias";
@@ -40,6 +41,7 @@ export const PAGE_ROUTE_SLUGS = {
   [PAGE_HISTORY]: "historial",
   [PAGE_PROCESS_AUDITS]: "auditorias-procesos",
   [PAGE_INVENTORY]: "inventario",
+  [PAGE_TRANSPORT]: "transporte",
   [PAGE_USERS]: "administrador",
   [PAGE_BIBLIOTECA]: "biblioteca",
   [PAGE_INCIDENCIAS]: "incidencias",
@@ -63,6 +65,8 @@ export const PAGE_ROUTE_ALIASES = {
   [PAGE_PROCESS_AUDITS]: PAGE_PROCESS_AUDITS,
   inventario: PAGE_INVENTORY,
   [PAGE_INVENTORY]: PAGE_INVENTORY,
+  transporte: PAGE_TRANSPORT,
+  [PAGE_TRANSPORT]: PAGE_TRANSPORT,
   administrador: PAGE_USERS,
   [PAGE_USERS]: PAGE_USERS,
   biblioteca: PAGE_BIBLIOTECA,
@@ -611,6 +615,7 @@ export const NAV_ITEMS = [
   { id: PAGE_HISTORY,        label: "Historial",           icon: CalendarDays,    group: "Producción", roles: [ROLE_LEAD, ROLE_SR] },
   { id: PAGE_PROCESS_AUDITS, label: "Auditorías",          icon: ClipboardCheck,  group: "Producción", roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
   { id: PAGE_INVENTORY,      label: "Inventario",          icon: Package,         group: "Producción", roles: [ROLE_LEAD, ROLE_SR] },
+  { id: PAGE_TRANSPORT,      label: "Transporte",          icon: Truck,           group: "Producción", roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
   { id: PAGE_BIBLIOTECA,     label: "Biblioteca",          icon: BookOpen,        group: "Recursos",   roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
   { id: PAGE_INCIDENCIAS,    label: "Incidencias",         icon: OctagonAlert,    group: "Recursos",   roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR] },
   { id: PAGE_ARCHIVERO,      label: "Archivero",           icon: Archive,         group: "Recursos",   roles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
@@ -642,6 +647,12 @@ export const ACTION_DEFINITIONS = [
   { id: "deleteOrderInventory",    label: "Eliminar insumos para pedidos",            category: "Inventario",          defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "importOrderInventory",    label: "Importar insumos para pedidos",            category: "Inventario",          defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "viewOrderInventory",      label: "Ver pestaña Insumos para pedidos",         category: "Inventario",          defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
+  { id: "viewTransportRetail",      label: "Ver pestaña Retail (foráneas/locales)",    category: "Transporte",          defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
+  { id: "manageTransportRetail",    label: "Registrar y editar envíos en Retail",       category: "Transporte",          defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
+  { id: "viewTransportPedidos",     label: "Ver pestaña Área de pedidos",               category: "Transporte",          defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
+  { id: "manageTransportPedidos",   label: "Registrar y editar envíos en Pedidos",      category: "Transporte",          defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
+  { id: "viewTransportInventario",  label: "Ver pestaña Inventario traslados",          category: "Transporte",          defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
+  { id: "manageTransportInventario",label: "Registrar y editar envíos en Inventario",   category: "Transporte",          defaultRoles: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR] },
   { id: "createBoard",             label: "Crear nuevos tableros",                    category: "Creador de tableros", defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "editBoard",               label: "Editar tableros existentes",               category: "Creador de tableros", defaultRoles: [ROLE_LEAD, ROLE_SR] },
   { id: "deleteBoard",             label: "Eliminar tableros",                        category: "Tableros creados",    defaultRoles: [ROLE_LEAD, ROLE_SR] },
@@ -693,6 +704,14 @@ export const PAGE_ACTION_GROUPS = {
   [PAGE_HISTORY]: ["editHistoryRecords"],
   [PAGE_PROCESS_AUDITS]: ["viewProcessAudits", "manageProcessAudits", "manageProcessAuditTemplates"],
   [PAGE_INVENTORY]: ["viewBaseInventory", "manageInventory", "deleteInventory", "importInventory", "viewCleaningInventory", "manageCleaningInventory", "deleteCleaningInventory", "importCleaningInventory", "viewOrderInventory", "manageOrderInventory", "deleteOrderInventory", "importOrderInventory"],
+  [PAGE_TRANSPORT]: [
+    "viewTransportRetail",
+    "manageTransportRetail",
+    "viewTransportPedidos",
+    "manageTransportPedidos",
+    "viewTransportInventario",
+    "manageTransportInventario",
+  ],
   [PAGE_USERS]: ["createUsers", "editUsers", "deleteUsers", "resetPasswords", "managePermissions", "useCopmecAI"],
   [PAGE_BIBLIOTECA]: ["uploadBiblioteca", "editBibliotecaName", "deleteBiblioteca"],
   [PAGE_INCIDENCIAS]: ["createIncidencia", "editIncidencia", "deleteIncidencia"],
@@ -726,7 +745,7 @@ export const RESPONSIBLE_VISUALS = {
   default: { accent: "#60a5fa", soft: "#3b82f6", badge: "#4f8adf" },
 };
 
-export const ALL_PAGES = [PAGE_DASHBOARD, PAGE_CUSTOM_BOARDS, PAGE_BOARD, PAGE_HISTORY, PAGE_PROCESS_AUDITS, PAGE_INVENTORY, PAGE_USERS, PAGE_BIBLIOTECA, PAGE_INCIDENCIAS, PAGE_SYSTEM_SETTINGS];
+export const ALL_PAGES = [PAGE_DASHBOARD, PAGE_CUSTOM_BOARDS, PAGE_BOARD, PAGE_HISTORY, PAGE_PROCESS_AUDITS, PAGE_INVENTORY, PAGE_TRANSPORT, PAGE_USERS, PAGE_BIBLIOTECA, PAGE_INCIDENCIAS, PAGE_SYSTEM_SETTINGS];
 export const ALL_ACTION_IDS = ACTION_DEFINITIONS.map((item) => item.id);
 
 export const ROLE_PERMISSION_MATRIX = {

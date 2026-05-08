@@ -63,7 +63,7 @@ function getDashboardDatePopoverStyle(triggerElement) {
   };
 }
 
-import { formatMinutesToHourMinute } from "../utils/utilidades";
+import { formatMinutesToHourMinute, normalizeBoardMultiSelectDetailValue } from "../utils/utilidades";
 
 function DashboardDateRangePicker({ startDate, endDate, onChange }) {
   const pickerRef = useRef(null);
@@ -277,6 +277,7 @@ export default function PanelIndicadores({ contexto }) {
   const [trendChartType, setTrendChartType] = useState("bar");
   const [peopleChartType, setPeopleChartType] = useState("bar");
   const [areaChartType, setAreaChartType] = useState("bar");
+  const [mermaChartType, setMermaChartType] = useState("bar");
   const [catalogTypeChartType, setCatalogTypeChartType] = useState("bar");
   const [catalogFreqChartType, setCatalogFreqChartType] = useState("bar");
   const [distributionChartType, setDistributionChartType] = useState("pie");
@@ -440,7 +441,8 @@ export default function PanelIndicadores({ contexto }) {
   }, [activeAreaLabel, areaScopedDynamicMetrics]);
 
   const areaPriorityKpiCards = useMemo(() => {
-    return areaPriorityMetricRows.map((item) => ({
+    return areaPriorityMetricRows.map((item, index) => ({
+      cardKey: String(item.key || `${item.area}-${item.boardName}-${item.fieldLabel}-${index}`),
       title: item.fieldLabel,
       value: `${formatMetricNumber(item.average, 2)}${item.unit ? ` ${item.unit}` : ""}`,
       subtitle: `${item.area} · ${item.boardName} · ${item.count} muestra(s)`,
@@ -614,8 +616,38 @@ export default function PanelIndicadores({ contexto }) {
     }) || null;
   }
 
+  function findRecordFieldByKeywords(record, keywords = []) {
+    if (!record || !Array.isArray(keywords) || !keywords.length) return null;
+    const normalizedKeywords = keywords.map((keyword) => String(keyword || "").toLowerCase()).filter(Boolean);
+
+    const sourceFields = Array.isArray(record.sourceFields) ? record.sourceFields : [];
+    const fromSourceFields = sourceFields.find((field) => {
+      const haystack = [field?.label, field?.name, field?.key, field?.id]
+        .map((value) => String(value || "").toLowerCase())
+        .join(" ");
+      return normalizedKeywords.some((keyword) => haystack.includes(keyword));
+    });
+    if (fromSourceFields) {
+      return {
+        key: String(fromSourceFields.id || fromSourceFields.key || fromSourceFields.name || fromSourceFields.label || "").trim(),
+        id: String(fromSourceFields.id || fromSourceFields.key || "").trim(),
+        name: String(fromSourceFields.name || fromSourceFields.label || "").trim(),
+        label: String(fromSourceFields.label || fromSourceFields.name || fromSourceFields.id || "").trim(),
+        type: fromSourceFields.type || "text",
+      };
+    }
+
+    const rowValues = record?.rowValues && typeof record.rowValues === "object" ? record.rowValues : {};
+    const rowKey = Object.keys(rowValues).find((key) => {
+      const lc = String(key || "").toLowerCase();
+      return normalizedKeywords.some((keyword) => lc.includes(keyword));
+    });
+    if (!rowKey) return null;
+    return { key: rowKey, id: rowKey, name: rowKey, label: rowKey, type: "text" };
+  }
+
   function resolveLeaderboardNumericField(record, keywords = []) {
-    const field = findLeaderboardFieldByKeywords(keywords);
+    const field = findRecordFieldByKeywords(record, keywords) || findLeaderboardFieldByKeywords(keywords);
     if (!field) return null;
     const raw = resolveBoardRecordFieldValue(record, field);
     const parsed = Number(String(raw || "").replace(/,/g, "."));
@@ -623,7 +655,7 @@ export default function PanelIndicadores({ contexto }) {
   }
 
   function resolveLeaderboardMermaMotive(record) {
-    const field = findLeaderboardFieldByKeywords(["causal", "motivo", "causa", "razon"]);
+    const field = findRecordFieldByKeywords(record, ["causal", "motivo", "causa", "razon"]) || findLeaderboardFieldByKeywords(["causal", "motivo", "causa", "razon"]);
     if (!field) return "Sin motivo especificado";
     const raw = resolveBoardRecordFieldValue(record, field);
     const text = String(raw || "").trim();
@@ -632,39 +664,95 @@ export default function PanelIndicadores({ contexto }) {
     return compact || text;
   }
 
+  function resolveLeaderboardMermaPieces(record) {
+    return Math.max(
+      0,
+      resolveLeaderboardNumericField(record, ["piezas merma", "merma piezas", "piezas de merma", "rechazo", "defect", "dano", "danado"]) || 0,
+    );
+  }
+
+  function parseCausalesFromRecord(record) {
+    const field = findRecordFieldByKeywords(record, ["causal"]) || findLeaderboardFieldByKeywords(["causal"]);
+    if (!field) return [];
+    const raw = resolveBoardRecordFieldValue(record, field);
+    const normalized = normalizeBoardMultiSelectDetailValue(raw);
+    if (normalized.length) {
+      return normalized.map((item) => ({
+        motivo: String(item.label || item.option || "").trim(),
+        piezas: Number(String(item.detail || "").replace(/,/g, ".")),
+      })).filter((item) => item.motivo);
+    }
+
+    const text = String(raw || "").trim();
+    if (!text) return [];
+    return text
+      .split("|")
+      .map((part) => String(part || "").trim())
+      .filter(Boolean)
+      .map((part) => {
+        const [motivoRaw, detailRaw = ""] = part.split(":");
+        return {
+          motivo: String(motivoRaw || "").trim(),
+          piezas: Number(String(detailRaw || "").replace(/,/g, ".")),
+        };
+      })
+      .filter((item) => item.motivo);
+  }
+
   // ── Merma analysis ──────────────────────────────────────────────────────────
   const mermaAnalysisRows = useMemo(() => {
-    const source = leaderboardBoardFilterSafe === "all"
-      ? scopedInventoryProductTimeRows
-      : scopedLeaderboardBoardRecords.map((rec) => {
-          const mermaVal = resolveLeaderboardNumericField(rec, ["merma", "rechazo", "defect", "dano", "danado"]) || 0;
-          const missingPiecesVal = resolveLeaderboardNumericField(rec, ["piezas falt", "faltante", "diferencia", "faltan"]) || 0;
-          const missingBoxesVal = resolveLeaderboardNumericField(rec, ["cajas falt", "caja falt", "faltante cajas"]) || 0;
-          return {
-            product: rec.responsibleName,
-            totalMermaPieces: Math.max(0, mermaVal),
-            totalMissingPieces: Math.max(0, missingPiecesVal),
-            totalMissingBoxes: Math.max(0, missingBoxesVal),
-            mermaMotive: resolveLeaderboardMermaMotive(rec),
-            boardName: rec.boardName,
-          };
-        });
-
     const map = new Map();
-    source.forEach((item) => {
-      const motivo = String(item?.mermaMotive || "Sin motivo especificado").trim() || "Sin motivo especificado";
-      if (!map.has(motivo)) map.set(motivo, { motivo, count: 0, totalPiezas: 0 });
-      const entry = map.get(motivo);
-      entry.count += 1;
-      entry.totalPiezas += Number(item.totalMermaPieces || 0) + Number(item.totalMissingPieces || 0);
-      entry.totalCajas = Number(entry.totalCajas || 0) + Number(item.totalMissingBoxes || 0);
+    scopedLeaderboardBoardRecords.forEach((record) => {
+      const totalMermaPieces = resolveLeaderboardMermaPieces(record);
+      const totalMissingPieces = Math.max(0, resolveLeaderboardNumericField(record, ["piezas falt", "faltante", "diferencia", "faltan"]) || 0);
+      const causales = parseCausalesFromRecord(record);
+
+      // Exclude rows with no causales and no merma/faltantes values.
+      if (!causales.length && totalMermaPieces <= 0 && totalMissingPieces <= 0) {
+        return;
+      }
+
+      if (!causales.length) {
+        const motivo = "Sin motivo especificado";
+        if (!map.has(motivo)) map.set(motivo, { motivo, count: 0, totalPiezas: 0, totalPiezasFaltantes: 0 });
+        const entry = map.get(motivo);
+        entry.count += 1;
+        entry.totalPiezas += totalMermaPieces;
+        entry.totalPiezasFaltantes += totalMissingPieces;
+        return;
+      }
+
+      const withPieces = causales
+        .map((item) => ({ ...item, piezas: Number.isFinite(item.piezas) && item.piezas > 0 ? item.piezas : 0 }))
+        .filter((item) => item.motivo);
+      const explicitPieces = withPieces.reduce((sum, item) => sum + item.piezas, 0);
+      const withoutPieces = withPieces.filter((item) => item.piezas <= 0);
+      const remainingPieces = Math.max(0, totalMermaPieces - explicitPieces);
+      const distributed = withoutPieces.length > 0
+        ? (explicitPieces > 0 ? remainingPieces / withoutPieces.length : (totalMermaPieces > 0 ? totalMermaPieces / withoutPieces.length : 0))
+        : 0;
+
+      withPieces.forEach((item) => {
+        const motivo = String(item.motivo || "Sin motivo especificado").trim() || "Sin motivo especificado";
+        if (!map.has(motivo)) map.set(motivo, { motivo, count: 0, totalPiezas: 0, totalPiezasFaltantes: 0 });
+        const entry = map.get(motivo);
+        entry.count += 1;
+        entry.totalPiezas += item.piezas > 0 ? item.piezas : distributed;
+      });
+
+      const distributedMissingPieces = withPieces.length > 0 ? totalMissingPieces / withPieces.length : 0;
+      withPieces.forEach((item) => {
+        const motivo = String(item.motivo || "Sin motivo especificado").trim() || "Sin motivo especificado";
+        const entry = map.get(motivo);
+        entry.totalPiezasFaltantes += distributedMissingPieces;
+      });
     });
 
     return Array.from(map.values())
       .filter((row) => row.totalPiezas > 0 || row.count > 0)
         .sort((a, b) => b.totalPiezas - a.totalPiezas || b.count - a.count);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leaderboardBoardFilterSafe, leaderboardDynamicBoardFields, scopedInventoryProductTimeRows, scopedLeaderboardBoardRecords]);
+  }, [leaderboardDynamicBoardFields, scopedLeaderboardBoardRecords]);
 
   // ── Template export/import ────────────────────────────────────────────────
   function exportLeaderboardTemplate() {
@@ -1468,7 +1556,7 @@ export default function PanelIndicadores({ contexto }) {
           <div className="dashboard-kpi-grid dashboard-kpi-grid-executive">
             {areaPriorityKpiCards.map((item) => (
               <DashboardKpiCard
-                key={`${item.title}-${item.subtitle}`}
+                key={item.cardKey}
                 title={item.title}
                 value={item.value}
                 valueMeta={item.valueMeta}
@@ -2104,17 +2192,57 @@ export default function PanelIndicadores({ contexto }) {
             <p className="dashboard-panel-subtitle">
               Motivos de merma con mayor frecuencia y piezas faltantes acumuladas. Aplica el filtro de tablero arriba para ver motivos específicos.
             </p>
-            <DashboardColumnChart
-              rows={mermaAnalysisRows.slice(0, 10).map((row) => ({
-                key: row.motivo,
-                label: row.motivo.length > 28 ? `${row.motivo.slice(0, 27)}…` : row.motivo,
-                value: row.totalPiezas,
-                valueLabel: `${formatMetricNumber(row.totalPiezas, 0)} pzas`,
-                tooltip: `${row.motivo}: ${formatMetricNumber(row.totalPiezas, 0)} piezas de merma · ${row.count} registro(s)`,
-                color: "linear-gradient(180deg, #b91c1c 0%, #f87171 100%)",
-              }))}
-              emptyLabel="No hay datos de merma con motivo registrado."
-            />
+            <div className="dashboard-chart-toggle" style={{ marginBottom: "0.7rem" }}>
+              <button
+                type="button"
+                className={`dashboard-chart-toggle-btn${mermaChartType === "bar" ? " active" : ""}`}
+                onClick={() => setMermaChartType("bar")}
+                title="Gráfico de barras"
+                aria-pressed={mermaChartType === "bar"}
+              >
+                <BarChart3 size={13} />
+                <span>Barras</span>
+              </button>
+              <button
+                type="button"
+                className={`dashboard-chart-toggle-btn${mermaChartType === "line" ? " active" : ""}`}
+                onClick={() => setMermaChartType("line")}
+                title="Gráfico de líneas"
+                aria-pressed={mermaChartType === "line"}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
+                <span>Líneas</span>
+              </button>
+            </div>
+            {mermaChartType === "bar" ? (
+              <DashboardColumnChart
+                rows={mermaAnalysisRows.slice(0, 10).map((row) => ({
+                  key: row.motivo,
+                  label: row.motivo.length > 28 ? `${row.motivo.slice(0, 27)}…` : row.motivo,
+                  value: row.totalPiezas,
+                  valueLabel: `${formatMetricNumber(row.totalPiezas, 0)} pzas`,
+                  tooltip: `${row.motivo}: ${formatMetricNumber(row.totalPiezas, 0)} piezas de merma · ${row.count} registro(s)`,
+                  color: "linear-gradient(180deg, #b91c1c 0%, #f87171 100%)",
+                }))}
+                emptyLabel="No hay datos de merma con motivo registrado."
+              />
+            ) : (
+              <DashboardLineChart
+                series={[
+                  {
+                    key: "mermaPorCausa",
+                    label: "Piezas merma por causa",
+                    color: "#b91c1c",
+                    valueSuffix: " pzas",
+                    data: mermaAnalysisRows.slice(0, 10).map((row) => ({
+                      label: row.motivo.length > 18 ? `${row.motivo.slice(0, 17)}…` : row.motivo,
+                      y: Number(row.totalPiezas || 0),
+                    })),
+                  },
+                ]}
+                emptyLabel="No hay datos para la línea de merma por causa."
+              />
+            )}
             <div className="dashboard-table-wrap">
               <table className="dashboard-table-clean">
                 <thead>
@@ -2122,7 +2250,7 @@ export default function PanelIndicadores({ contexto }) {
                     <th>Motivo de merma</th>
                     <th>Registros</th>
                     <th>Piezas de merma</th>
-                    <th>Cajas faltantes</th>
+                    <th>Piezas faltantes</th>
                     <th>Piezas/registro</th>
                   </tr>
                 </thead>
@@ -2132,7 +2260,7 @@ export default function PanelIndicadores({ contexto }) {
                       <td>{row.motivo}</td>
                       <td>{row.count}</td>
                       <td>{formatMetricNumber(row.totalPiezas, 0)}</td>
-                      <td>{formatMetricNumber(row.totalCajas || 0, 0)}</td>
+                      <td>{formatMetricNumber(row.totalPiezasFaltantes || 0, 0)}</td>
                       <td>{formatMetricNumber(row.count ? row.totalPiezas / row.count : 0, 2)}</td>
                     </tr>
                   ))}
