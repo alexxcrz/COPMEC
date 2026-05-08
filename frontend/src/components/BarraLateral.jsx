@@ -6,6 +6,7 @@
 import { PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import { CopmecBrand } from "./ComponentesDashboard";
 import logoIA from "../assets/logo-ia.jpeg";
+import { PAGE_ROUTE_SLUGS } from "../utils/constantes";
 
 const DEFAULT_JOB_TITLE_BY_ROLE = {
   "Lead":              "Líder de Operaciones",
@@ -16,6 +17,20 @@ const DEFAULT_JOB_TITLE_BY_ROLE = {
 
 function getUserJobTitle(user) {
   return String(user?.jobTitle || DEFAULT_JOB_TITLE_BY_ROLE[user?.role] || "").trim();
+}
+
+function getPageHref(pageId) {
+  const slug = PAGE_ROUTE_SLUGS?.[pageId];
+  return slug ? `/${slug}` : "/";
+}
+
+function openPageInAnotherContext(pageId, target = "tab") {
+  const href = getPageHref(pageId);
+  if (target === "window") {
+    globalThis.open(href, "_blank", "noopener,noreferrer,width=1280,height=900");
+    return;
+  }
+  globalThis.open(href, "_blank", "noopener,noreferrer");
 }
 
 export function Sidebar({ currentUser, page, onPageChange, isOpen, isCollapsed, onClose, onOpenProfile, onToggleCollapsed, allowedNavItems, canUseAI, onOpenAI }) {
@@ -51,13 +66,47 @@ export function Sidebar({ currentUser, page, onPageChange, isOpen, isCollapsed, 
               );
             }
             elements.push(
-              <button key={item.id} type="button" className={`nav-item ${page === item.id ? "active" : ""}`} title={item.label} aria-label={item.label} onClick={() => {
-                onPageChange(item.id);
-                onClose?.();
-              }}>
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </button>,
+              <div key={item.id} className={`nav-item-shell ${page === item.id ? "active" : ""}`}>
+                <button
+                  type="button"
+                  className={`nav-item ${page === item.id ? "active" : ""}`}
+                  title={item.label}
+                  aria-label={item.label}
+                  onClick={() => {
+                    onPageChange(item.id);
+                    onClose?.();
+                  }}
+                >
+                  <Icon size={18} />
+                  <span>{item.label}</span>
+                </button>
+                <div className="nav-item-shortcuts" aria-label={`Acciones rápidas de ${item.label}`}>
+                  <button
+                    type="button"
+                    className="nav-item-shortcut"
+                    title={`Abrir ${item.label} en otra pestaña`}
+                    aria-label={`Abrir ${item.label} en otra pestaña`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openPageInAnotherContext(item.id, "tab");
+                    }}
+                  >
+                    Pestaña
+                  </button>
+                  <button
+                    type="button"
+                    className="nav-item-shortcut"
+                    title={`Abrir ${item.label} en otra ventana`}
+                    aria-label={`Abrir ${item.label} en otra ventana`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openPageInAnotherContext(item.id, "window");
+                    }}
+                  >
+                    Ventana
+                  </button>
+                </div>
+              </div>,
             );
           });
           return elements;

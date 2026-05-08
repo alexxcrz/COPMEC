@@ -479,7 +479,14 @@ html {
   transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
+.nav-item-shell {
+  display: flex;
+  align-items: center;
+  gap: 0.38rem;
+}
+
 .nav-item {
+  flex: 1;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.05);
   color: #eff7f3;
@@ -506,6 +513,36 @@ html {
   background: rgba(229, 248, 239, 0.18);
   border-color: rgba(255, 255, 255, 0.25);
   transform: translateX(2px);
+}
+
+.nav-item-shortcuts {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.nav-item-shortcut {
+  border: 1px solid rgba(171, 216, 200, 0.24);
+  background: rgba(19, 61, 51, 0.38);
+  color: rgba(239, 247, 243, 0.95);
+  min-height: 2.05rem;
+  border-radius: 0.72rem;
+  padding: 0.32rem 0.44rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.nav-item-shortcut:hover {
+  background: rgba(229, 248, 239, 0.2);
+  border-color: rgba(229, 248, 239, 0.35);
+}
+
+.nav-item-shortcut:focus-visible {
+  outline: 2px solid rgba(229, 248, 239, 0.55);
+  outline-offset: 1px;
 }
 
 .sidebar-close-button,
