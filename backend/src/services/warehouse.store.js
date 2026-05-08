@@ -6,6 +6,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { publicLoginDirectoryEnabled } from "../config/env.js";
 import { INTERNAL_STORAGE_ONLY, isInternalStorageUrl } from "../config/storage.js";
 import { hashPassword, isStrongPassword, isTemporaryPassword, verifyPassword } from "../utils/passwords.js";
+import { sendIncidenciaAssignedEmail } from "./email-notifications.service.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1860,6 +1861,20 @@ export function createIncidencia(auth, payload = {}) {
     };
     const prevNotifs = nextState.incidenciaNotifications || [];
     nextState = { ...nextState, incidenciaNotifications: [...prevNotifs, notif].slice(-200) };
+
+    const assignedUser = (nextState.users || []).find((user) => String(user?.id || "") === item.assignedToId);
+    const assignedEmail = String(assignedUser?.email || assignedUser?.username || "").trim();
+    if (assignedEmail && assignedEmail.includes("@")) {
+      sendIncidenciaAssignedEmail({
+        to: assignedEmail,
+        incidenciaTitle: item.title,
+        incidenciaPriority: item.priority,
+        assignedByName: currentUser.name,
+        assignedToName: item.assignedToName || assignedUser?.name || assignedUser?.username || "usuario",
+      }).catch((err) => {
+        console.warn("[Email] No se pudo enviar correo de incidencia asignada:", err?.message || err);
+      });
+    }
   }
 
   return { ok: true, state: replaceWarehouseState(nextState), itemId: item.id };
@@ -1917,6 +1932,20 @@ export function updateIncidencia(auth, itemId, payload = {}) {
     };
     const prevNotifs = finalState.incidenciaNotifications || [];
     finalState = { ...finalState, incidenciaNotifications: [...prevNotifs, notif].slice(-200) };
+
+    const assignedUser = (finalState.users || []).find((user) => String(user?.id || "") === updated.assignedToId);
+    const assignedEmail = String(assignedUser?.email || assignedUser?.username || "").trim();
+    if (assignedEmail && assignedEmail.includes("@")) {
+      sendIncidenciaAssignedEmail({
+        to: assignedEmail,
+        incidenciaTitle: updated.title,
+        incidenciaPriority: updated.priority,
+        assignedByName: currentUser.name,
+        assignedToName: updated.assignedToName || assignedUser?.name || assignedUser?.username || "usuario",
+      }).catch((err) => {
+        console.warn("[Email] No se pudo enviar correo de incidencia asignada:", err?.message || err);
+      });
+    }
   }
 
   return { ok: true, state: replaceWarehouseState(finalState), itemId };
