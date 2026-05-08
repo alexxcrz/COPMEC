@@ -474,6 +474,8 @@ import {
 
   getElapsedSeconds,
 
+  getLivePauseOverflowSeconds,
+
   getOperationalElapsedSeconds,
 
   getNormalizedFormulaTerms,

@@ -3101,11 +3101,35 @@ function getBoardFieldDefaultValue(field, currentUserId) {
   return "";
 }
 
-function getEffectiveOperationalNowMs(nowIso, pauseControl) {
+function shouldApplyGlobalPauseToArea(pauseControl, areaKey = "") {
+  const normalizedArea = normalizeAreaOption(splitAreaAndSubArea(areaKey).area || areaKey);
+  if (!normalizedArea) return true;
+  const areaConfig = pauseControl?.areaPauseControls?.[normalizedArea];
+  if (!areaConfig || typeof areaConfig !== "object") return true;
+  return areaConfig.includeInGlobalPause !== false;
+}
+
+function getEffectiveOperationalNowMs(nowIso, pauseControl, areaKey = "") {
   let effectiveNow = new Date(nowIso).getTime();
   if (!Number.isFinite(effectiveNow)) {
     effectiveNow = Date.now();
   }
+
+  if (!pauseControl?.globalPauseEnabled) {
+    return effectiveNow;
+  }
+
+  if (!shouldApplyGlobalPauseToArea(pauseControl, areaKey)) {
+    return effectiveNow;
+  }
+
+  const activatedAtMs = pauseControl?.globalPauseActivatedAt
+    ? new Date(pauseControl.globalPauseActivatedAt).getTime()
+    : NaN;
+  if (Number.isFinite(activatedAtMs)) {
+    return Math.max(0, Math.min(effectiveNow, activatedAtMs));
+  }
+
   return effectiveNow;
 }
 
@@ -3161,7 +3185,7 @@ function getOperationalElapsedSeconds(startIso, nowIso, pauseControl, cleaningSi
   if (!startIso) return 0;
   const startMs = parseOperationalTimestamp(startIso, nowIso);
   if (!Number.isFinite(startMs)) return 0;
-  const effectiveNow = getEffectiveOperationalNowMs(nowIso, pauseControl);
+  const effectiveNow = getEffectiveOperationalNowMs(nowIso, pauseControl, cleaningSite);
   return Math.max(0, Math.floor((effectiveNow - startMs) / 1000));
 }
 
