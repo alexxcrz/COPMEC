@@ -3,3 +3,6 @@ node_modules
 .env
 
 /generated/prisma
+
+# Sensitive VAPID keys — use VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY env vars in production
+data/vapid-keys.json
