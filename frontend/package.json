@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.2.2",
+    "@vitejs/plugin-react": "^6.0.1",
     "copmec": "file:..",
     "exceljs": "^4.4.0",
     "jspdf": "^4.2.1",
@@ -18,9 +20,7 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "socket.io-client": "^4.8.3",
-    "vite": "^8.0.1",
-    "@vitejs/plugin-react": "^6.0.1",
-    "@tailwindcss/vite": "^4.2.2"
+    "vite": "^8.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

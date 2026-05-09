@@ -57,12 +57,20 @@ function AppToastStack({ toasts, onDismiss, onPin }) {
   );
 }
 
-function AppNotificationCenter({ unreadNotifications, readNotifications, unreadCount, activeTab, isOpen, onToggle, onTabChange, onDeleteAllRead, onMarkAllRead, onDeleteNotification, onOpenNotification }) {
+function AppNotificationCenter({ unreadNotifications, readNotifications, unreadCount, attentionTick, activeTab, isOpen, onToggle, onTabChange, onDeleteAllRead, onMarkAllRead, onDeleteNotification, onOpenNotification }) {
   const visibleNotifications = activeTab === "read" ? readNotifications : unreadNotifications;
+  const [isAttentionActive, setIsAttentionActive] = useState(false);
+
+  useEffect(() => {
+    if (!attentionTick) return undefined;
+    setIsAttentionActive(true);
+    const timer = globalThis.setTimeout(() => setIsAttentionActive(false), 1450);
+    return () => globalThis.clearTimeout(timer);
+  }, [attentionTick]);
 
   return (
     <div className={`app-notification-center${isOpen ? " open" : ""}`}>
-      <button type="button" className={`app-notification-trigger ${unreadCount ? "has-unread" : ""}`.trim()} onClick={onToggle} aria-label="Abrir alertas" aria-expanded={isOpen}>
+      <button type="button" className={`app-notification-trigger ${unreadCount ? "has-unread" : ""} ${isAttentionActive ? "is-attention" : ""}`.trim()} onClick={onToggle} aria-label="Abrir alertas" aria-expanded={isOpen}>
         <Bell size={18} />
         {unreadCount ? <span className="app-notification-badge">{Math.min(unreadCount, 99)}</span> : null}
       </button>

@@ -500,6 +500,7 @@ import { InventoryLookupInput } from "./components/BuscadorInventario.jsx";
 import { io } from "socket.io-client";
 import ChatPro from "./components/ChatPro.jsx";
 import { AlertModalProvider } from "./components/AlertModal.jsx";
+import { initNotificationService, showTransportNotification, showTransportNotificationForNewRecord, showTransportNotificationForAssignment, showTransportNotificationForStatusUpdate } from "./services/notification.service.js";
 
 
 
@@ -898,6 +899,7 @@ function App() { // NOSONAR
   const [notificationDeletedState, setNotificationDeletedState] = useState(() => readNotificationDeletedState());
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
   const [notificationPanelTab, setNotificationPanelTab] = useState("unread");
+  const [notificationAttentionTick, setNotificationAttentionTick] = useState(0);
   const [selectedPermissionUserId, setSelectedPermissionUserId] = useState("");
   const [deleteInventoryId, setDeleteInventoryId] = useState(null);
   const [deleteBoardId, setDeleteBoardId] = useState(null);
@@ -970,6 +972,8 @@ function App() { // NOSONAR
   const skipNextSyncRef = useRef(false);
   const contentShellRef = useRef(null);
   const notificationCenterRef = useRef(null);
+  const prevUnreadNotificationsCountRef = useRef(0);
+  const unreadNotificationSyncReadyRef = useRef(false);
   const inventoryFileInputRef = useRef(null);
   const boardExcelFileInputRef = useRef(null);
   const permissionFileInputRef = useRef(null);
@@ -1114,6 +1118,24 @@ function App() { // NOSONAR
     globalThis.setTimeout(() => {
       dismissAppToast(nextToastId);
     }, durationMs);
+  }
+
+  function pushNotificationToInbox(notification) {
+    if (!sessionUserId || !notification?.id) return;
+    setNotificationInboxState((current) => {
+      const currentInbox = Array.isArray(current[sessionUserId]) ? current[sessionUserId] : [];
+      const mergedById = new Map(currentInbox.map((entry) => [entry.id, entry]));
+      mergedById.set(notification.id, {
+        ...mergedById.get(notification.id),
+        ...notification,
+      });
+      return {
+        ...current,
+        [sessionUserId]: Array.from(mergedById.values())
+          .toSorted((left, right) => getComparableDateMs(right.timestamp) - getComparableDateMs(left.timestamp))
+          .slice(0, 400),
+      };
+    });
   }
 
   function markNotificationIdsAsRead(notificationIds = []) {
@@ -1557,6 +1579,349 @@ function App() { // NOSONAR
   // socketConnectCount cambia cada vez que el socket se reconecta, lo que
   // obliga a re-registrar el listener en la nueva instancia del socket.
   }, [sessionUserId, socketConnectCount]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Notificaciones de Transporte en tiempo real ──────────────────────────────
+  // Escucha eventos de Socket.IO para crear/actualizar/asignar rutas y muestra notificaciones
+  useEffect(() => {
+    if (!sessionUserId || sessionUserId === BOOTSTRAP_MASTER_ID) return;
+    const socket = socketRef.current;
+    if (!socket) return;
+
+    // Inicializar servicio de notificaciones (solicitar permisos)
+    initNotificationService();
+
+    let ignoreResponse = false;
+    const sessionUser = Array.isArray(state?.users)
+      ? state.users.find((user) => user.id === sessionUserId) || null
+      : null;
+    const sessionPermissions = normalizePermissions(state?.permissions);
+    const isTransportOperator = Boolean(
+      canDoAction(sessionUser, "viewTransportRetail", sessionPermissions)
+      || canDoAction(sessionUser, "manageTransportRetail", sessionPermissions)
+      || canDoAction(sessionUser, "viewTransportPedidos", sessionPermissions)
+      || canDoAction(sessionUser, "manageTransportPedidos", sessionPermissions)
+      || canDoAction(sessionUser, "viewTransportInventario", sessionPermissions)
+      || canDoAction(sessionUser, "manageTransportInventario", sessionPermissions)
+    );
+    const shouldReceiveOperationalNotification = (record) => {
+      const creatorId = String(record?.createdById || "").trim();
+      return isTransportOperator || (creatorId && creatorId === sessionUserId);
+    };
+
+    const handleTransportRecordCreated = async (data) => {
+      if (ignoreResponse) return;
+      // Mostrar notificación de nuevo envío
+      if (data?.record && shouldReceiveOperationalNotification(data.record)) {
+        showTransportNotificationForNewRecord(data.record, { playAlert: isTransportOperator });
+        pushNotificationToInbox({
+          id: `transport-created-${data.record.id}-${data.ts || Date.now()}`,
+          title: "Nuevo envío registrado",
+          message: `${data.record.destination || "Destino"} · ${data.record.boxes || 0} cajas · ${data.record.pieces || 0} piezas`,
+          meta: `Capturado por: ${data.record.createdByName || "Sin nombre"}`,
+          tone: "warning",
+          timestamp: new Date(data.ts || Date.now()).toISOString(),
+          targetPage: PAGE_TRANSPORT,
+        });
+      }
+      // Actualizar estado del transporte
+      try {
+        const remoteState = await requestJson("/warehouse/state");
+        if (!ignoreResponse) {
+          applyRemoteStatePreservingBoardDrafts(remoteState);
+        }
+      } catch (_) { /* ignorar */ }
+    };
+
+    const handleTransportRouteAssigned = async (data) => {
+      if (ignoreResponse) return;
+      // Mostrar notificación de asignación
+      if (data?.record && data?.driver && shouldReceiveOperationalNotification(data.record)) {
+        showTransportNotificationForAssignment(data.record, data.driver?.name || "Conductor", { playAlert: false });
+        pushNotificationToInbox({
+          id: `transport-assigned-${data.record.id}-${data.ts || Date.now()}`,
+          title: "Ruta asignada",
+          message: `${data.record.destination || "Destino"} fue asignado a ${data.driver?.name || "Conductor"}.`,
+          meta: `Estado: ${data.record.status || "Asignado"}`,
+          tone: "success",
+          timestamp: new Date(data.ts || Date.now()).toISOString(),
+          targetPage: PAGE_TRANSPORT,
+        });
+      }
+      // Actualizar estado
+      try {
+        const remoteState = await requestJson("/warehouse/state");
+        if (!ignoreResponse) {
+          applyRemoteStatePreservingBoardDrafts(remoteState);
+        }
+      } catch (_) { /* ignorar */ }
+    };
+
+    const handleTransportStatusUpdated = async (data) => {
+      if (ignoreResponse) return;
+      // Mostrar notificación de cambio de estado
+      if (data?.record && shouldReceiveOperationalNotification(data.record)) {
+        showTransportNotificationForStatusUpdate(data.record, data.record?.status, { playAlert: false });
+        pushNotificationToInbox({
+          id: `transport-status-${data.record.id}-${data.ts || Date.now()}`,
+          title: "Estado de ruta actualizado",
+          message: `${data.record.destination || "Destino"} ahora está en "${data.record.status || "Pendiente"}".`,
+          meta: `Actualizado por flujo de transporte`,
+          tone: data.record.status === "Entregado" ? "success" : "warning",
+          timestamp: new Date(data.ts || Date.now()).toISOString(),
+          targetPage: PAGE_TRANSPORT,
+        });
+      }
+      // Actualizar estado
+      try {
+        const remoteState = await requestJson("/warehouse/state");
+        if (!ignoreResponse) {
+          applyRemoteStatePreservingBoardDrafts(remoteState);
+        }
+      } catch (_) { /* ignorar */ }
+    };
+
+    const handleTransportRecordPostponed = async (data) => {
+      if (ignoreResponse) return;
+      if (data?.record && shouldReceiveOperationalNotification(data.record)) {
+        showTransportNotification("🗓️ Envío pospuesto", {
+          body: `${data.record.destination || "Destino"} reprogramado para ${formatDateTime(data.record.postponedUntil || data.record.updatedAt)}`,
+          tag: `transport-postponed-${data.record.id || Date.now()}`,
+          playAlert: false,
+        });
+        pushNotificationToInbox({
+          id: `transport-postponed-${data.record.id}-${data.ts || Date.now()}`,
+          title: "Envío pospuesto",
+          message: `${data.record.destination || "Destino"} reprogramado para ${formatDateTime(data.record.postponedUntil || data.record.updatedAt)}`,
+          meta: `Recordar: ${Number(data.record.postponedReminderMinutes || 0)} min antes`,
+          tone: "warning",
+          timestamp: new Date(data.ts || Date.now()).toISOString(),
+          targetPage: PAGE_TRANSPORT,
+        });
+      }
+      try {
+        const remoteState = await requestJson("/warehouse/state");
+        if (!ignoreResponse) {
+          applyRemoteStatePreservingBoardDrafts(remoteState);
+        }
+      } catch (_) { /* ignorar */ }
+    };
+
+    const handleTransportRecordDeleted = async () => {
+      if (ignoreResponse) return;
+      try {
+        const remoteState = await requestJson("/warehouse/state");
+        if (!ignoreResponse) {
+          applyRemoteStatePreservingBoardDrafts(remoteState);
+        }
+      } catch (_) { /* ignorar */ }
+    };
+
+    const handleDocumentacionRecordCreated = async (data) => {
+      if (ignoreResponse) return;
+      if (data?.record && shouldReceiveOperationalNotification(data.record)) {
+        showTransportNotification("📄 Nuevo registro de documentación", {
+          body: `${data.record.area || "Área"} · Dirigido a: ${data.record.dirigidoA || "-"}`,
+          tag: `documentacion-record-${data.record.id || Date.now()}`,
+          playAlert: false,
+        });
+        pushNotificationToInbox({
+          id: `documentacion-created-${data.record.id}-${data.ts || Date.now()}`,
+          title: "Nuevo registro en Documentación",
+          message: `${data.record.area || "Área"} · ${data.record.dirigidoA || "Sin destinatario"}`,
+          meta: `Capturado por: ${data.record.createdByName || "Sin nombre"}`,
+          tone: "warning",
+          timestamp: new Date(data.ts || Date.now()).toISOString(),
+          targetPage: PAGE_TRANSPORT,
+        });
+      }
+      try {
+        const remoteState = await requestJson("/warehouse/state");
+        if (!ignoreResponse) {
+          applyRemoteStatePreservingBoardDrafts(remoteState);
+        }
+      } catch (_) { /* ignorar */ }
+    };
+
+    const handleDocumentacionRecordUpdated = async (data) => {
+      if (ignoreResponse) return;
+      if (data?.record && shouldReceiveOperationalNotification(data.record)) {
+        showTransportNotification("📝 Registro de documentación actualizado", {
+          body: `${data.record.area || "Área"} · Dirigido a: ${data.record.dirigidoA || "-"}`,
+          tag: `documentacion-record-updated-${data.record.id || Date.now()}`,
+          playAlert: false,
+        });
+        pushNotificationToInbox({
+          id: `documentacion-updated-${data.record.id}-${data.ts || Date.now()}`,
+          title: "Documentación actualizada",
+          message: `${data.record.area || "Área"} · ${data.record.dirigidoA || "Sin destinatario"}`,
+          meta: `Actualizado: ${formatDateTime(data.record.updatedAt || new Date().toISOString())}`,
+          tone: "success",
+          timestamp: new Date(data.ts || Date.now()).toISOString(),
+          targetPage: PAGE_TRANSPORT,
+        });
+      }
+      try {
+        const remoteState = await requestJson("/warehouse/state");
+        if (!ignoreResponse) {
+          applyRemoteStatePreservingBoardDrafts(remoteState);
+        }
+      } catch (_) { /* ignorar */ }
+    };
+
+    const handleDocumentacionRouteAssigned = async (data) => {
+      if (ignoreResponse) return;
+      if (data?.record && data?.driver && shouldReceiveOperationalNotification(data.record)) {
+        showTransportNotification("📄 Ruta de documentación asignada", {
+          body: `${data.record.area || "Área"} fue asignada a ${data.driver?.name || "Conductor"}.`,
+          tag: `documentacion-route-assigned-${data.record.id || Date.now()}`,
+          playAlert: false,
+        });
+        pushNotificationToInbox({
+          id: `documentacion-assigned-${data.record.id}-${data.ts || Date.now()}`,
+          title: "Ruta de documentación asignada",
+          message: `${data.record.area || "Área"} asignada a ${data.driver?.name || "Conductor"}.`,
+          meta: `Estado: ${data.record.status || "Asignado"}`,
+          tone: "success",
+          timestamp: new Date(data.ts || Date.now()).toISOString(),
+          targetPage: PAGE_TRANSPORT,
+        });
+      }
+      try {
+        const remoteState = await requestJson("/warehouse/state");
+        if (!ignoreResponse) {
+          applyRemoteStatePreservingBoardDrafts(remoteState);
+        }
+      } catch (_) { /* ignorar */ }
+    };
+
+    const handleDocumentacionStatusUpdated = async (data) => {
+      if (ignoreResponse) return;
+      if (data?.record && shouldReceiveOperationalNotification(data.record)) {
+        showTransportNotification("🧾 Estado de documentación actualizado", {
+          body: `${data.record.area || "Área"} ahora está en "${data.record.status || "Pendiente"}".`,
+          tag: `documentacion-status-updated-${data.record.id || Date.now()}`,
+          playAlert: false,
+        });
+        pushNotificationToInbox({
+          id: `documentacion-status-${data.record.id}-${data.ts || Date.now()}`,
+          title: "Estado de documentación actualizado",
+          message: `${data.record.area || "Área"} ahora está en "${data.record.status || "Pendiente"}".`,
+          meta: `Actualizado por flujo operativo`,
+          tone: data.record.status === "Entregado" ? "success" : "warning",
+          timestamp: new Date(data.ts || Date.now()).toISOString(),
+          targetPage: PAGE_TRANSPORT,
+        });
+      }
+      try {
+        const remoteState = await requestJson("/warehouse/state");
+        if (!ignoreResponse) {
+          applyRemoteStatePreservingBoardDrafts(remoteState);
+        }
+      } catch (_) { /* ignorar */ }
+    };
+
+    socket.on("transport_record_created", handleTransportRecordCreated);
+    socket.on("transport_route_assigned", handleTransportRouteAssigned);
+    socket.on("transport_record_postponed", handleTransportRecordPostponed);
+    socket.on("transport_record_deleted", handleTransportRecordDeleted);
+    socket.on("transport_status_updated", handleTransportStatusUpdated);
+    socket.on("documentacion_record_created", handleDocumentacionRecordCreated);
+    socket.on("documentacion_record_updated", handleDocumentacionRecordUpdated);
+    socket.on("documentacion_route_assigned", handleDocumentacionRouteAssigned);
+    socket.on("documentacion_status_updated", handleDocumentacionStatusUpdated);
+
+    return () => {
+      ignoreResponse = true;
+      socket.off("transport_record_created", handleTransportRecordCreated);
+      socket.off("transport_route_assigned", handleTransportRouteAssigned);
+      socket.off("transport_record_postponed", handleTransportRecordPostponed);
+      socket.off("transport_record_deleted", handleTransportRecordDeleted);
+      socket.off("transport_status_updated", handleTransportStatusUpdated);
+      socket.off("documentacion_record_created", handleDocumentacionRecordCreated);
+      socket.off("documentacion_record_updated", handleDocumentacionRecordUpdated);
+      socket.off("documentacion_route_assigned", handleDocumentacionRouteAssigned);
+      socket.off("documentacion_status_updated", handleDocumentacionStatusUpdated);
+    };
+  }, [sessionUserId, socketConnectCount, state?.permissions, state?.users]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!sessionUserId || sessionUserId === BOOTSTRAP_MASTER_ID) return;
+
+    const sessionUser = Array.isArray(state?.users)
+      ? state.users.find((user) => user.id === sessionUserId) || null
+      : null;
+    const sessionPermissions = normalizePermissions(state?.permissions);
+    const isTransportOperator = Boolean(
+      canDoAction(sessionUser, "viewTransportRetail", sessionPermissions)
+      || canDoAction(sessionUser, "manageTransportRetail", sessionPermissions)
+      || canDoAction(sessionUser, "viewTransportPedidos", sessionPermissions)
+      || canDoAction(sessionUser, "manageTransportPedidos", sessionPermissions)
+      || canDoAction(sessionUser, "viewTransportInventario", sessionPermissions)
+      || canDoAction(sessionUser, "manageTransportInventario", sessionPermissions)
+    );
+    if (!isTransportOperator) return;
+
+    const reminderStorageKey = `transport-postpone-reminders-${sessionUserId}`;
+    const loadSent = () => {
+      try {
+        const raw = localStorage.getItem(reminderStorageKey);
+        const parsed = raw ? JSON.parse(raw) : {};
+        return parsed && typeof parsed === "object" ? parsed : {};
+      } catch {
+        return {};
+      }
+    };
+    const saveSent = (payload) => {
+      try {
+        localStorage.setItem(reminderStorageKey, JSON.stringify(payload));
+      } catch {
+        // ignore localStorage quota errors
+      }
+    };
+
+    const tick = () => {
+      const now = Date.now();
+      const sentMap = loadSent();
+      const records = Array.isArray(state?.transport?.activeRecords) ? state.transport.activeRecords : [];
+      let hasChanges = false;
+
+      records
+        .filter((record) => String(record?.status || "").trim() === "Pospuesto")
+        .forEach((record) => {
+          const remindAt = new Date(record?.postponedRemindAt || record?.postponedUntil || 0).getTime();
+          if (!Number.isFinite(remindAt) || remindAt > now) return;
+
+          const reminderKey = `${record.id}:${record.postponedRemindAt || record.postponedUntil || ""}`;
+          if (sentMap[reminderKey]) return;
+
+          showTransportNotification("⏰ Recordatorio de envío pospuesto", {
+            body: `${record.destination || "Destino"} programado para ${formatDateTime(record.postponedUntil || record.updatedAt)}`,
+            tag: `transport-postpone-reminder-${record.id || Date.now()}`,
+            playAlert: false,
+          });
+          pushNotificationToInbox({
+            id: `transport-postpone-reminder-${record.id}-${Date.now()}`,
+            title: "Recordatorio de envío pospuesto",
+            message: `${record.destination || "Destino"} ya está cerca de su hora programada.`,
+            meta: `Programado: ${formatDateTime(record.postponedUntil || record.updatedAt)}`,
+            tone: "warning",
+            timestamp: new Date().toISOString(),
+            targetPage: PAGE_TRANSPORT,
+          });
+
+          sentMap[reminderKey] = new Date().toISOString();
+          hasChanges = true;
+        });
+
+      if (hasChanges) saveSent(sentMap);
+    };
+
+    tick();
+    const timer = window.setInterval(tick, 30000);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [formatDateTime, sessionUserId, state?.permissions, state?.users, state?.transport?.activeRecords]);
 
   // ── Sincronización al volver a la pestaña (visibilitychange) ─────────────────
   useEffect(() => {
@@ -3883,6 +4248,26 @@ function App() { // NOSONAR
     [appNotifications],
   );
 
+  useEffect(() => {
+    if (!sessionUserId) {
+      unreadNotificationSyncReadyRef.current = false;
+      prevUnreadNotificationsCountRef.current = 0;
+      return;
+    }
+
+    if (!unreadNotificationSyncReadyRef.current) {
+      unreadNotificationSyncReadyRef.current = true;
+      prevUnreadNotificationsCountRef.current = unreadNotificationsCount;
+      return;
+    }
+
+    if (unreadNotificationsCount > prevUnreadNotificationsCountRef.current) {
+      setNotificationAttentionTick((current) => current + 1);
+    }
+
+    prevUnreadNotificationsCountRef.current = unreadNotificationsCount;
+  }, [unreadNotificationsCount, sessionUserId]);
+
   const visibleControlBoards = useMemo(() => {
     if (!currentUser) return [];
     const canViewHistoricalBoardScopes = canDoAction(currentUser, "viewHistoricalBoardScopes", normalizedPermissions);
@@ -5343,6 +5728,40 @@ function App() { // NOSONAR
     return ACTION_DEFINITIONS.filter((item) => (PAGE_ACTION_GROUPS[pageId] || []).includes(item.id));
   }
 
+  function getPermissionActionGroups(pageId, actions = []) {
+    if (pageId !== PAGE_TRANSPORT) {
+      return [{ id: `${pageId}-default`, label: "Acciones disponibles", accent: getPermissionSectionTone(pageId, "").accent, actions }];
+    }
+
+    const groups = [
+      {
+        id: "transport-areas",
+        label: "Áreas operativas",
+        accent: "#7c3aed",
+        actions: actions.filter((action) => (
+          action.id.includes("Retail")
+          || action.id.includes("Pedidos")
+          || action.id.includes("Inventario")
+        )),
+      },
+      {
+        id: "transport-ops",
+        label: "Solo transporte",
+        accent: "#0f766e",
+        actions: actions.filter((action) => (
+          action.id.includes("Documentacion")
+          || action.id.includes("Assignments")
+          || action.id.includes("Postponed")
+          || action.id.includes("MyRoutes")
+          || action.id.includes("Consolidated")
+          || action.id === "deleteTransportRecord"
+        )),
+      },
+    ].filter((group) => group.actions.length > 0);
+
+    return groups.length ? groups : [{ id: "transport-default", label: "Acciones disponibles", accent: "#7c3aed", actions }];
+  }
+
   function getPermissionSectionTone(pageId, actionId = "") {
     const normalizedActionId = String(actionId || "").trim();
     if (pageId === PAGE_INVENTORY) {
@@ -5368,7 +5787,25 @@ function App() { // NOSONAR
       if (normalizedActionId.includes("Inventario")) {
         return { accent: "#0e7490", soft: "rgba(14, 116, 144, 0.1)" };
       }
-      return { accent: "#7c3aed", soft: "rgba(124, 58, 237, 0.1)" };
+      if (normalizedActionId.includes("Documentacion")) {
+        return { accent: "#6d28d9", soft: "rgba(109, 40, 217, 0.1)" };
+      }
+      if (normalizedActionId.includes("Assignments")) {
+        return { accent: "#2563eb", soft: "rgba(37, 99, 235, 0.1)" };
+      }
+      if (normalizedActionId.includes("Postponed")) {
+        return { accent: "#b45309", soft: "rgba(180, 83, 9, 0.1)" };
+      }
+      if (normalizedActionId.includes("MyRoutes")) {
+        return { accent: "#15803d", soft: "rgba(21, 128, 61, 0.1)" };
+      }
+      if (normalizedActionId.includes("Consolidated")) {
+        return { accent: "#0f766e", soft: "rgba(15, 118, 110, 0.1)" };
+      }
+      if (normalizedActionId === "deleteTransportRecord") {
+        return { accent: "#b91c1c", soft: "rgba(185, 28, 28, 0.1)" };
+      }
+      return { accent: "#475569", soft: "rgba(71, 85, 105, 0.1)" };
     }
 
     const pageToneMap = {
@@ -7776,6 +8213,7 @@ function App() { // NOSONAR
     inventoryMovementSavedDestinations,
     inventoryMovementSavedLocations,
     transportState: state.transport || { config: [], activeDateKey: "", activeRecords: [], historyRecords: [] },
+    users: Array.isArray(state.users) ? state.users : [],
     createTransportRecord,
     updateTransportRecord,
     canManageTransport: Boolean(actionPermissions.manageTransport),
@@ -8168,6 +8606,7 @@ function App() { // NOSONAR
                 unreadNotifications={unreadNotifications}
                 readNotifications={readNotifications}
                 unreadCount={unreadNotificationsCount}
+                attentionTick={notificationAttentionTick}
                 activeTab={notificationPanelTab}
                 isOpen={notificationPanelOpen}
                 onToggle={handleToggleNotificationPanel}
@@ -8668,6 +9107,7 @@ function App() { // NOSONAR
                 {permissionPages.map((item) => {
                   const isOpen = userModal.permissionPageId === item.id;
                   const pageActions = getPagePermissionActions(item.id);
+                  const permissionGroups = getPermissionActionGroups(item.id, pageActions);
                   const pageTone = getPermissionSectionTone(item.id, "");
                   return (
                     <article key={item.id} className={`permission-accordion-card ${isOpen ? "open" : ""}`}>
@@ -8695,24 +9135,34 @@ function App() { // NOSONAR
                           </div>
 
                           {pageActions.length ? (
-                            <div className="permission-switch-list">
-                              {pageActions.map((action) => (
-                                <div
-                                  key={action.id}
-                                  className="permission-switch-row permission-switch-row-toned"
-                                  style={{
-                                    "--permission-accent": getPermissionSectionTone(item.id, action.id).accent,
-                                    "--permission-soft": getPermissionSectionTone(item.id, action.id).soft,
-                                  }}
-                                >
-                                  <div>
-                                    <strong>{action.label}</strong>
-                                    <span>{action.category}</span>
+                            <div className="permission-group-stack">
+                              {permissionGroups.map((group) => (
+                                <section key={group.id} className="permission-group-block">
+                                  <div className="permission-group-head" style={{ "--permission-group-accent": group.accent }}>
+                                    <strong>{group.label}</strong>
+                                    <span>{group.actions.length} permiso(s)</span>
                                   </div>
-                                  <button type="button" className={`switch-button ${userModal.permissionOverrides.actions?.[action.id] ? "on" : ""}`} onClick={() => toggleUserModalPermission("actions", action.id)} aria-pressed={userModal.permissionOverrides.actions?.[action.id]}>
-                                    <span className="switch-thumb" />
-                                  </button>
-                                </div>
+                                  <div className="permission-switch-list">
+                                    {group.actions.map((action) => (
+                                      <div
+                                        key={action.id}
+                                        className="permission-switch-row permission-switch-row-toned"
+                                        style={{
+                                          "--permission-accent": getPermissionSectionTone(item.id, action.id).accent,
+                                          "--permission-soft": getPermissionSectionTone(item.id, action.id).soft,
+                                        }}
+                                      >
+                                        <div>
+                                          <strong>{action.label}</strong>
+                                          <span>{action.category}</span>
+                                        </div>
+                                        <button type="button" className={`switch-button ${userModal.permissionOverrides.actions?.[action.id] ? "on" : ""}`} onClick={() => toggleUserModalPermission("actions", action.id)} aria-pressed={userModal.permissionOverrides.actions?.[action.id]}>
+                                          <span className="switch-thumb" />
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </section>
                               ))}
                             </div>
                           ) : null}

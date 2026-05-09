@@ -39,6 +39,13 @@ import {
   updateWarehouseInventoryLotHistory,
   createWarehouseTransportRecord,
   updateWarehouseTransportRecord,
+  deleteWarehouseTransportRecord,
+  postponeTransportRecord,
+  reactivatePostponedTransportRecord,
+  assignTransportRoute,
+  updateTransportRecordStatus,
+  getTransportRecordsByDriver,
+  getPendingTransportRecords,
   updateWarehousePermissionOverride,
   updateWarehousePermissionsModel,
   updateWarehouseSelfProfile,
@@ -71,9 +78,12 @@ import {
   restoreWarehouseStateForDemo,
   createDocumentacionRecord,
   updateDocumentacionRecord,
+  assignDocumentacionRoute,
+  updateDocumentacionRecordStatus,
   addDocumentacionArea,
   deleteDocumentacionArea,
 } from "../services/warehouse.store.js";
+import { getIO } from "../config/socket.js";
 
 export const warehouseRouter = Router();
 
@@ -376,6 +386,23 @@ warehouseRouter.post("/transport/records", requireAuth, (req, res) => {
     return;
   }
 
+  // Emitir notificación a todos los usuarios conectados para actualizar estado
+  try {
+    const currentState = getWarehouseState();
+    const transport = currentState?.transport || {};
+    const newRecord = (transport?.activeRecords || []).find((r) => r.id === result.recordId);
+    const io = getIO();
+    io.emit("transport_record_created", {
+      recordId: result.recordId,
+      record: newRecord,
+      createdByName: newRecord?.createdByName,
+      areaId: newRecord?.areaId,
+      ts: Date.now(),
+    });
+  } catch (socketErr) {
+    console.debug("[transport_create] socket emit error:", socketErr?.message);
+  }
+
   auditSecurityEvent("warehouse_transport_record_created", req, {
     recordId: result.recordId,
     revision: result.state?.revision,
@@ -407,6 +434,209 @@ warehouseRouter.patch("/transport/records/:recordId", requireAuth, (req, res) =>
   res.json({ ok: true, data: { state: result.state, recordId: result.recordId } });
 });
 
+warehouseRouter.delete("/transport/records/:recordId", requireAuth, (req, res) => {
+  const result = deleteWarehouseTransportRecord(req.auth, req.params.recordId);
+  if (!result.ok) {
+    const status = result.reason === "auth_required"
+      ? 401
+      : result.reason === "record_not_found"
+        ? 404
+        : result.reason === "forbidden"
+          ? 403
+          : 400;
+    res.status(status).json({ ok: false, message: "No fue posible eliminar el registro de transporte." });
+    return;
+  }
+
+  try {
+    const io = getIO();
+    io.emit("transport_record_deleted", {
+      recordId: result.recordId,
+      record: result.record,
+      ts: Date.now(),
+    });
+  } catch (socketErr) {
+    console.debug("[transport_delete] socket emit error:", socketErr?.message);
+  }
+
+  auditSecurityEvent("warehouse_transport_record_deleted", req, {
+    recordId: result.recordId,
+    revision: result.state?.revision,
+  });
+  res.json({ ok: true, data: { state: result.state, recordId: result.recordId } });
+});
+
+warehouseRouter.post("/transport/records/:recordId/assign", requireAuth, (req, res) => {
+  const result = assignTransportRoute(req.auth, req.params.recordId, req.body?.driverId || "");
+  if (!result.ok) {
+    const status = result.reason === "auth_required"
+      ? 401
+      : result.reason === "record_not_found" || result.reason === "invalid_driver"
+        ? 404
+        : result.reason === "forbidden"
+          ? 403
+          : 400;
+    res.status(status).json({ ok: false, message: "No fue posible asignar la ruta al conductor." });
+    return;
+  }
+
+  // Emitir notificación en tiempo real a través de Socket.io
+  try {
+    const io = getIO();
+    io.emit("transport_route_assigned", {
+      recordId: result.recordId,
+      record: result.record,
+      driver: result.driver,
+      ts: Date.now(),
+    });
+  } catch (socketErr) {
+    console.debug("[transport_assign] socket emit error:", socketErr?.message);
+  }
+
+  auditSecurityEvent("warehouse_transport_route_assigned", req, {
+    recordId: result.recordId,
+    driverId: result.driver?.id,
+    driverName: result.driver?.name,
+  });
+  res.json({ ok: true, data: { recordId: result.recordId, record: result.record } });
+});
+
+warehouseRouter.post("/transport/records/:recordId/postpone", requireAuth, (req, res) => {
+  const result = postponeTransportRecord(req.auth, req.params.recordId, req.body || {});
+  if (!result.ok) {
+    const status = result.reason === "auth_required"
+      ? 401
+      : result.reason === "record_not_found"
+        ? 404
+        : result.reason === "forbidden"
+          ? 403
+          : 400;
+    const message = result.reason === "invalid_postponed_until" || result.reason === "postponed_until_in_past"
+      ? "Debes indicar una fecha y hora futura para posponer el envío."
+      : result.reason === "invalid_reminder"
+        ? "El tiempo de anticipación para recordar no es válido."
+        : "No fue posible posponer el envío.";
+    res.status(status).json({ ok: false, message });
+    return;
+  }
+
+  try {
+    const io = getIO();
+    io.emit("transport_record_postponed", {
+      recordId: result.recordId,
+      record: result.record,
+      ts: Date.now(),
+    });
+  } catch (socketErr) {
+    console.debug("[transport_postpone] socket emit error:", socketErr?.message);
+  }
+
+  auditSecurityEvent("warehouse_transport_record_postponed", req, {
+    recordId: result.recordId,
+    postponedUntil: result.record?.postponedUntil,
+    remindAt: result.record?.postponedRemindAt,
+  });
+  res.json({ ok: true, data: { recordId: result.recordId, record: result.record } });
+});
+
+warehouseRouter.post("/transport/records/:recordId/reactivate", requireAuth, (req, res) => {
+  const result = reactivatePostponedTransportRecord(req.auth, req.params.recordId);
+  if (!result.ok) {
+    const status = result.reason === "auth_required"
+      ? 401
+      : result.reason === "record_not_found"
+        ? 404
+        : result.reason === "forbidden"
+          ? 403
+          : 400;
+    res.status(status).json({ ok: false, message: "No fue posible reactivar el envío pospuesto." });
+    return;
+  }
+
+  try {
+    const io = getIO();
+    io.emit("transport_status_updated", {
+      recordId: result.recordId,
+      record: result.record,
+      ts: Date.now(),
+    });
+  } catch (socketErr) {
+    console.debug("[transport_reactivate] socket emit error:", socketErr?.message);
+  }
+
+  auditSecurityEvent("warehouse_transport_record_reactivated", req, {
+    recordId: result.recordId,
+    status: result.record?.status,
+  });
+  res.json({ ok: true, data: { recordId: result.recordId, record: result.record } });
+});
+
+warehouseRouter.patch("/transport/records/:recordId/status", requireAuth, (req, res) => {
+  const result = updateTransportRecordStatus(
+    req.auth,
+    req.params.recordId,
+    req.body?.status || "",
+    {
+      ...(req.body?.deliveryEvidence || {}),
+      reason: req.body?.reason || "",
+    }
+  );
+  if (!result.ok) {
+    const status = result.reason === "auth_required"
+      ? 401
+      : result.reason === "record_not_found"
+        ? 404
+        : result.reason === "forbidden" || result.reason === "invalid_status"
+          ? 403
+          : 400;
+    const message = result.reason === "reason_required"
+      ? "Debes indicar el motivo para marcar la ruta en retorno."
+      : "No fue posible actualizar el estado de la ruta.";
+    res.status(status).json({ ok: false, message });
+    return;
+  }
+
+  // Emitir actualización en tiempo real
+  try {
+    const io = getIO();
+    io.emit("transport_status_updated", {
+      recordId: result.recordId,
+      record: result.record,
+      ts: Date.now(),
+    });
+  } catch (socketErr) {
+    console.debug("[transport_status] socket emit error:", socketErr?.message);
+  }
+
+  auditSecurityEvent("warehouse_transport_status_updated", req, {
+    recordId: result.recordId,
+    newStatus: result.record?.status,
+  });
+  res.json({ ok: true, data: { recordId: result.recordId, record: result.record } });
+});
+
+warehouseRouter.get("/transport/routes/assigned/:driverId", requireAuth, (req, res) => {
+  const result = getTransportRecordsByDriver(req.auth, req.params.driverId);
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : 400;
+    res.status(status).json({ ok: false, message: "No fue posible obtener las rutas asignadas." });
+    return;
+  }
+
+  res.json({ ok: true, data: { records: result.records } });
+});
+
+warehouseRouter.get("/transport/records/pending", requireAuth, (req, res) => {
+  const result = getPendingTransportRecords(req.auth);
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : 400;
+    res.status(status).json({ ok: false, message: "No fue posible obtener los envíos pendientes." });
+    return;
+  }
+
+  res.json({ ok: true, data: { records: result.records } });
+});
+
 // ─── Documentación ───────────────────────────────────────────────────────────
 warehouseRouter.post("/documentacion/records", requireAuth, (req, res) => {
   const result = createDocumentacionRecord(req.auth, req.body || {});
@@ -421,6 +651,20 @@ warehouseRouter.post("/documentacion/records", requireAuth, (req, res) => {
     res.status(status).json({ ok: false, message: messages[result.reason] || "No fue posible guardar el registro de documentación." });
     return;
   }
+
+  try {
+    const io = getIO();
+    const docRecords = Array.isArray(result.state?.documentacion?.records) ? result.state.documentacion.records : [];
+    const newRecord = docRecords.find((entry) => entry.id === result.recordId) || null;
+    io.emit("documentacion_record_created", {
+      recordId: result.recordId,
+      record: newRecord,
+      ts: Date.now(),
+    });
+  } catch (socketErr) {
+    console.debug("[documentacion_create] socket emit error:", socketErr?.message);
+  }
+
   auditSecurityEvent("documentacion_record_created", req, { recordId: result.recordId });
   res.status(201).json({ ok: true, data: { state: result.state, recordId: result.recordId } });
 });
@@ -432,8 +676,93 @@ warehouseRouter.patch("/documentacion/records/:recordId", requireAuth, (req, res
     res.status(status).json({ ok: false, message: "No fue posible actualizar el registro de documentación." });
     return;
   }
+
+  try {
+    const io = getIO();
+    const docRecords = Array.isArray(result.state?.documentacion?.records) ? result.state.documentacion.records : [];
+    const updatedRecord = docRecords.find((entry) => entry.id === result.recordId) || null;
+    io.emit("documentacion_record_updated", {
+      recordId: result.recordId,
+      record: updatedRecord,
+      ts: Date.now(),
+    });
+  } catch (socketErr) {
+    console.debug("[documentacion_update] socket emit error:", socketErr?.message);
+  }
+
   auditSecurityEvent("documentacion_record_updated", req, { recordId: result.recordId });
   res.json({ ok: true, data: { state: result.state, recordId: result.recordId } });
+});
+
+warehouseRouter.post("/documentacion/records/:recordId/assign", requireAuth, (req, res) => {
+  const result = assignDocumentacionRoute(req.auth, req.params.recordId, req.body?.driverId || "");
+  if (!result.ok) {
+    const status = result.reason === "auth_required"
+      ? 401
+      : result.reason === "record_not_found" || result.reason === "invalid_driver"
+        ? 404
+        : result.reason === "forbidden"
+          ? 403
+          : 400;
+    res.status(status).json({ ok: false, message: "No fue posible asignar la ruta de documentación." });
+    return;
+  }
+
+  try {
+    const io = getIO();
+    io.emit("documentacion_route_assigned", {
+      recordId: result.recordId,
+      record: result.record,
+      driver: result.driver,
+      ts: Date.now(),
+    });
+  } catch (socketErr) {
+    console.debug("[documentacion_assign] socket emit error:", socketErr?.message);
+  }
+
+  auditSecurityEvent("documentacion_route_assigned", req, {
+    recordId: result.recordId,
+    driverId: result.driver?.id,
+    driverName: result.driver?.name,
+  });
+  res.json({ ok: true, data: { recordId: result.recordId, record: result.record } });
+});
+
+warehouseRouter.patch("/documentacion/records/:recordId/status", requireAuth, (req, res) => {
+  const result = updateDocumentacionRecordStatus(req.auth, req.params.recordId, req.body?.status || "", {
+    reason: req.body?.reason || "",
+  });
+  if (!result.ok) {
+    const status = result.reason === "auth_required"
+      ? 401
+      : result.reason === "record_not_found"
+        ? 404
+        : result.reason === "forbidden" || result.reason === "invalid_status"
+          ? 403
+          : 400;
+    const message = result.reason === "reason_required"
+      ? "Debes indicar el motivo para marcar la ruta en retorno."
+      : "No fue posible actualizar el estado de documentación.";
+    res.status(status).json({ ok: false, message });
+    return;
+  }
+
+  try {
+    const io = getIO();
+    io.emit("documentacion_status_updated", {
+      recordId: result.recordId,
+      record: result.record,
+      ts: Date.now(),
+    });
+  } catch (socketErr) {
+    console.debug("[documentacion_status] socket emit error:", socketErr?.message);
+  }
+
+  auditSecurityEvent("documentacion_status_updated", req, {
+    recordId: result.recordId,
+    newStatus: result.record?.status,
+  });
+  res.json({ ok: true, data: { recordId: result.recordId, record: result.record } });
 });
 
 warehouseRouter.post("/documentacion/areas", requireAuth, (req, res) => {

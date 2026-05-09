@@ -93,6 +93,15 @@ const ACTION_PERMISSIONS = {
   manageTransportPedidos:  [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
   viewTransportInventario: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
   manageTransportInventario: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  viewTransportDocumentacion: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  manageTransportDocumentacion: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  viewTransportAssignments: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  manageTransportAssignments: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  viewTransportPostponed: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  manageTransportPostponed: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  viewTransportMyRoutes: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  viewTransportConsolidated: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  deleteTransportRecord: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
   createBoard:             [ROLE_LEAD, ROLE_SR],
   editBoard:               [ROLE_LEAD, ROLE_SR],
   deleteBoard:             [ROLE_LEAD, ROLE_SR],
@@ -1456,6 +1465,9 @@ function normalizeTransportEvidence(evidence = EMPTY_OBJECT) {
 function normalizeTransportRecord(record = EMPTY_OBJECT, fallbackId = null) {
   const boxes = Math.max(0, Number(record?.boxes || 0));
   const pieces = Math.max(0, Number(record?.pieces || 0));
+  const validStatuses = ["Pendiente", "Pospuesto", "Asignado", "En camino", "Retorno", "Entregado", "Devuelto", "Cancelado"];
+  const status = String(record?.status || "Pendiente").trim();
+  
   return {
     id: fallbackId || String(record?.id || "").trim() || makeId("trn"),
     areaId: String(record?.areaId || "").trim(),
@@ -1464,6 +1476,21 @@ function normalizeTransportRecord(record = EMPTY_OBJECT, fallbackId = null) {
     pieces: Number.isFinite(pieces) ? pieces : 0,
     notes: String(record?.notes || "").trim(),
     evidence: normalizeTransportEvidence(record?.evidence),
+    status: validStatuses.includes(status) ? status : "Pendiente",
+    assignedTo: String(record?.assignedTo || "").trim() || null,
+    assignedToName: String(record?.assignedToName || "").trim() || null,
+    assignedByName: String(record?.assignedByName || "").trim() || null,
+    assignedAt: String(record?.assignedAt || "").trim() || null,
+    deliveredAt: String(record?.deliveredAt || "").trim() || null,
+    returnReason: String(record?.returnReason || "").trim() || null,
+    canceledReason: String(record?.canceledReason || "").trim() || null,
+    postponedUntil: String(record?.postponedUntil || "").trim() || null,
+    postponedReminderMinutes: Number.isFinite(Number(record?.postponedReminderMinutes)) ? Math.max(0, Number(record?.postponedReminderMinutes)) : 60,
+    postponedRemindAt: String(record?.postponedRemindAt || "").trim() || null,
+    postponedAt: String(record?.postponedAt || "").trim() || null,
+    postponedById: String(record?.postponedById || "").trim() || null,
+    postponedByName: String(record?.postponedByName || "").trim() || null,
+    deliveryEvidence: normalizeTransportEvidence(record?.deliveryEvidence),
     dateKey: String(record?.dateKey || "").trim(),
     createdById: String(record?.createdById || "").trim(),
     createdByName: String(record?.createdByName || "").trim(),
@@ -1498,7 +1525,14 @@ function applyAutomatedTransportDailyCut(state) {
   }
 
   const nowIso = new Date().toISOString();
-  const movedRecords = currentTransport.activeRecords.map((record) => ({
+  const postponedCarryForward = currentTransport.activeRecords.filter(
+    (record) => String(record?.status || "").trim() === "Pospuesto"
+  );
+  const recordsToArchive = currentTransport.activeRecords.filter(
+    (record) => String(record?.status || "").trim() !== "Pospuesto"
+  );
+
+  const movedRecords = recordsToArchive.map((record) => ({
     ...record,
     dateKey: String(record?.dateKey || currentTransport.activeDateKey || todayKey).trim() || todayKey,
     archivedAt: nowIso,
@@ -1512,7 +1546,7 @@ function applyAutomatedTransportDailyCut(state) {
       transport: {
         ...currentTransport,
         activeDateKey: todayKey,
-        activeRecords: [],
+        activeRecords: postponedCarryForward,
         historyRecords: [...movedRecords, ...currentTransport.historyRecords].slice(0, 5000),
       },
     },
@@ -1697,6 +1731,18 @@ export function createWarehouseTransportRecord(auth, payload = {}) {
   const record = {
     id: makeId("trn"),
     ...sanitized.draft,
+    status: "Pendiente",
+    assignedTo: null,
+    assignedToName: null,
+    assignedByName: null,
+    assignedAt: null,
+    deliveredAt: null,
+    postponedUntil: null,
+    postponedReminderMinutes: 60,
+    postponedRemindAt: null,
+    postponedAt: null,
+    postponedById: null,
+    postponedByName: null,
     dateKey: transport.activeDateKey,
     createdById: currentUser.id,
     createdByName: currentUser.name,
@@ -1785,6 +1831,231 @@ export function updateWarehouseTransportRecord(auth, recordId, payload = {}) {
   return { ok: true, state: replaceWarehouseState(nextState), recordId: targetId };
 }
 
+export function deleteWarehouseTransportRecord(auth, recordId) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const baseState = getRawWarehouseState();
+  const dailyCutResult = applyAutomatedTransportDailyCut(baseState);
+  const currentState = dailyCutResult.changed ? dailyCutResult.state : baseState;
+  const transport = normalizeTransportState(currentState.transport);
+  const targetId = String(recordId || "").trim();
+  if (!targetId) return { ok: false, reason: "record_not_found" };
+
+  const activeIndex = (transport.activeRecords || []).findIndex((entry) => entry.id === targetId);
+  const historyIndex = activeIndex === -1
+    ? (transport.historyRecords || []).findIndex((entry) => entry.id === targetId)
+    : -1;
+
+  if (activeIndex === -1 && historyIndex === -1) {
+    return { ok: false, reason: "record_not_found" };
+  }
+
+  const sourceRecord = activeIndex >= 0
+    ? transport.activeRecords[activeIndex]
+    : transport.historyRecords[historyIndex];
+  const sourceActionIds = getTransportActionIdsByArea(sourceRecord?.areaId);
+  const canDelete = canUserDoWarehouseAction(currentUser, "deleteTransportRecord", baseState.permissions)
+    || (sourceActionIds.manageActionId && canUserDoWarehouseAction(currentUser, sourceActionIds.manageActionId, baseState.permissions));
+  if (!canDelete) return { ok: false, reason: "forbidden" };
+
+  const nextState = {
+    ...currentState,
+    transport: {
+      ...transport,
+      activeRecords: activeIndex >= 0
+        ? transport.activeRecords.filter((entry) => entry.id !== targetId)
+        : transport.activeRecords,
+      historyRecords: historyIndex >= 0
+        ? transport.historyRecords.filter((entry) => entry.id !== targetId)
+        : transport.historyRecords,
+    },
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState), recordId: targetId, record: sourceRecord };
+}
+
+export function assignTransportRoute(auth, recordId, driverId = "") {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const baseState = getRawWarehouseState();
+  const dailyCutResult = applyAutomatedTransportDailyCut(baseState);
+  const currentState = dailyCutResult.changed ? dailyCutResult.state : baseState;
+  const transport = normalizeTransportState(currentState.transport);
+  const targetId = String(recordId || "").trim();
+  const targetDriverId = String(driverId || "").trim();
+
+  if (!targetId) return { ok: false, reason: "record_not_found" };
+  if (!targetDriverId) return { ok: false, reason: "invalid_driver" };
+
+  const activeIndex = (transport.activeRecords || []).findIndex((entry) => entry.id === targetId);
+  if (activeIndex === -1) return { ok: false, reason: "record_not_found" };
+
+  const sourceRecord = transport.activeRecords[activeIndex];
+  const sourceActionIds = getTransportActionIdsByArea(sourceRecord?.areaId);
+  if (!sourceActionIds.manageActionId || !canUserDoWarehouseAction(currentUser, sourceActionIds.manageActionId, baseState.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  // Verificar que el driver existe y está activo
+  const driver = findWarehouseUserById(targetDriverId);
+  if (!driver?.isActive) return { ok: false, reason: "invalid_driver" };
+
+  const nowIso = new Date().toISOString();
+  const nextRecord = {
+    ...sourceRecord,
+    status: "Asignado",
+    assignedTo: driver.id,
+    assignedToName: driver.name,
+    assignedByName: currentUser.name,
+    assignedAt: nowIso,
+    updatedAt: nowIso,
+  };
+
+  const nextState = {
+    ...currentState,
+    transport: {
+      ...transport,
+      activeRecords: transport.activeRecords.map((entry, index) => (index === activeIndex ? nextRecord : entry)),
+    },
+  };
+
+  replaceWarehouseState(nextState);
+
+  return { ok: true, recordId: targetId, record: nextRecord, driver };
+}
+
+export function updateTransportRecordStatus(auth, recordId, newStatus = "", deliveryEvidence = null) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const baseState = getRawWarehouseState();
+  const dailyCutResult = applyAutomatedTransportDailyCut(baseState);
+  const currentState = dailyCutResult.changed ? dailyCutResult.state : baseState;
+  const transport = normalizeTransportState(currentState.transport);
+  const targetId = String(recordId || "").trim();
+  const statusValue = String(newStatus || "").trim();
+  const reasonValue = String(deliveryEvidence?.reason || "").trim();
+  const validStatuses = ["Pendiente", "Pospuesto", "Asignado", "En camino", "Retorno", "Entregado", "Devuelto", "Cancelado"];
+  const terminalStatuses = new Set(["Entregado", "Devuelto", "Cancelado"]);
+
+  if (!targetId) return { ok: false, reason: "record_not_found" };
+  if (!validStatuses.includes(statusValue)) return { ok: false, reason: "invalid_status" };
+  if (statusValue === "Retorno" && !reasonValue) return { ok: false, reason: "reason_required" };
+
+  const activeIndex = (transport.activeRecords || []).findIndex((entry) => entry.id === targetId);
+  if (activeIndex === -1) return { ok: false, reason: "record_not_found" };
+
+  const sourceRecord = transport.activeRecords[activeIndex];
+
+  // Solo el driver asignado puede cambiar status (o manager del área)
+  const sourceActionIds = getTransportActionIdsByArea(sourceRecord?.areaId);
+  const isDriver = sourceRecord.assignedTo === currentUser.id;
+  const isManager = sourceActionIds.manageActionId && canUserDoWarehouseAction(currentUser, sourceActionIds.manageActionId, baseState.permissions);
+
+  if (!isDriver && !isManager) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const nowIso = new Date().toISOString();
+  const nextRecord = {
+    ...sourceRecord,
+    status: statusValue,
+    updatedAt: nowIso,
+  };
+
+  if (statusValue === "Asignado" && !nextRecord.assignedTo) {
+    nextRecord.assignedTo = currentUser.id;
+    nextRecord.assignedToName = currentUser.name;
+    nextRecord.assignedAt = nextRecord.assignedAt || nowIso;
+  }
+
+  if (statusValue === "Entregado") {
+    nextRecord.deliveredAt = nowIso;
+    if (deliveryEvidence) {
+      nextRecord.deliveryEvidence = normalizeTransportEvidence(deliveryEvidence);
+    }
+  }
+
+  if (statusValue === "Retorno") {
+    nextRecord.returnReason = reasonValue;
+  }
+
+  if (statusValue === "Cancelado") {
+    nextRecord.canceledReason = reasonValue || "Cancelado desde Mis rutas";
+  }
+
+  if (statusValue !== "Pospuesto") {
+    nextRecord.postponedUntil = null;
+    nextRecord.postponedRemindAt = null;
+  }
+
+  const nextActiveRecords = transport.activeRecords.filter((_, index) => index !== activeIndex);
+  const nextHistoryRecords = terminalStatuses.has(statusValue)
+    ? [
+      {
+        ...nextRecord,
+        archivedAt: nowIso,
+      },
+      ...(transport.historyRecords || []),
+    ]
+    : (transport.historyRecords || []);
+
+  const nextState = {
+    ...currentState,
+    transport: {
+      ...transport,
+      activeRecords: terminalStatuses.has(statusValue)
+        ? nextActiveRecords
+        : transport.activeRecords.map((entry, index) => (index === activeIndex ? nextRecord : entry)),
+      historyRecords: nextHistoryRecords,
+    },
+  };
+
+  replaceWarehouseState(nextState);
+
+  return { ok: true, recordId: targetId, record: nextRecord };
+}
+
+export function getTransportRecordsByDriver(auth, driverId = "") {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const targetDriverId = String(driverId || "").trim();
+  if (!targetDriverId) return { ok: false, reason: "invalid_driver" };
+
+  const state = getRawWarehouseState();
+  const transport = normalizeTransportState(state.transport);
+
+  // Filtrar solo registros asignados al driver
+  const terminalStatuses = new Set(["Entregado", "Devuelto", "Cancelado"]);
+  const assignedRecords = (transport.activeRecords || []).filter(
+    (record) => record.assignedTo === targetDriverId && !terminalStatuses.has(String(record.status || ""))
+  );
+
+  return {
+    ok: true,
+    records: assignedRecords.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
+  };
+}
+
+export function getPendingTransportRecords(auth) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const state = getRawWarehouseState();
+  const transport = normalizeTransportState(state.transport);
+
+  // Filtrar solo registros Pendiente (sin asignar)
+  const pendingRecords = (transport.activeRecords || []).filter((record) => record.status === "Pendiente");
+
+  return {
+    ok: true,
+    records: pendingRecords.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
+  };
+}
+
 // ─── Documentación ───────────────────────────────────────────────────────────
 
 function normalizeDocumentacionEvidence(raw) {
@@ -1800,6 +2071,8 @@ function normalizeDocumentacionEvidence(raw) {
 }
 
 function normalizeDocumentacionRecord(record = EMPTY_OBJECT, fallbackId = null) {
+  const validStatuses = ["Pendiente", "Asignado", "En camino", "Retorno", "Entregado", "Devuelto", "Cancelado"];
+  const status = String(record?.status || "Pendiente").trim();
   return {
     id: fallbackId || String(record?.id || "").trim() || makeId("doc"),
     ubicacion: String(record?.ubicacion || "").trim(),
@@ -1808,6 +2081,14 @@ function normalizeDocumentacionRecord(record = EMPTY_OBJECT, fallbackId = null) 
     notas: String(record?.notas || "").trim(),
     document: normalizeDocumentacionEvidence(record?.document),
     evidence: normalizeDocumentacionEvidence(record?.evidence),
+    status: validStatuses.includes(status) ? status : "Pendiente",
+    assignedTo: String(record?.assignedTo || "").trim() || null,
+    assignedToName: String(record?.assignedToName || "").trim() || null,
+    assignedByName: String(record?.assignedByName || "").trim() || null,
+    assignedAt: String(record?.assignedAt || "").trim() || null,
+    deliveredAt: String(record?.deliveredAt || "").trim() || null,
+    returnReason: String(record?.returnReason || "").trim() || null,
+    canceledReason: String(record?.canceledReason || "").trim() || null,
     dateKey: String(record?.dateKey || "").trim(),
     createdById: String(record?.createdById || "").trim(),
     createdByName: String(record?.createdByName || "").trim(),
@@ -1844,10 +2125,8 @@ export function createDocumentacionRecord(auth, payload = {}) {
   const dirigidoA = String(payload?.dirigidoA || "").trim();
   if (!dirigidoA) return { ok: false, reason: "dirigidoA_required" };
 
-  const document = normalizeDocumentacionEvidence(payload?.document);
-  if (!document) return { ok: false, reason: "document_required" };
-
   const evidence = normalizeDocumentacionEvidence(payload?.evidence);
+  if (!evidence) return { ok: false, reason: "evidence_required" };
 
   const currentState = getRawWarehouseState();
   const docState = normalizeDocumentacionState(currentState.documentacion);
@@ -1860,8 +2139,14 @@ export function createDocumentacionRecord(auth, payload = {}) {
     area,
     dirigidoA,
     notas: String(payload?.notas || "").trim(),
-    document,
+    document: null,
     evidence,
+    status: "Pendiente",
+    assignedTo: null,
+    assignedToName: null,
+    assignedByName: null,
+    assignedAt: null,
+    deliveredAt: null,
     dateKey: todayKey,
     createdById: currentUser.id,
     createdByName: currentUser.name,
@@ -1902,10 +2187,8 @@ export function updateDocumentacionRecord(auth, recordId, payload = {}) {
   const dirigidoA = String(payload?.dirigidoA ?? sourceRecord.dirigidoA).trim();
   if (!dirigidoA) return { ok: false, reason: "dirigidoA_required" };
 
-  const document = normalizeDocumentacionEvidence(payload?.document ?? sourceRecord.document);
-  if (!document) return { ok: false, reason: "document_required" };
-
   const evidence = normalizeDocumentacionEvidence(payload?.evidence ?? sourceRecord.evidence);
+  if (!evidence) return { ok: false, reason: "evidence_required" };
 
   const nowIso = new Date().toISOString();
   const nextRecord = {
@@ -1914,8 +2197,14 @@ export function updateDocumentacionRecord(auth, recordId, payload = {}) {
     area,
     dirigidoA,
     notas: String(payload?.notas ?? sourceRecord.notas).trim(),
-    document,
+    document: null,
     evidence,
+    status: sourceRecord.status || "Pendiente",
+    assignedTo: sourceRecord.assignedTo || null,
+    assignedToName: sourceRecord.assignedToName || null,
+    assignedByName: sourceRecord.assignedByName || null,
+    assignedAt: sourceRecord.assignedAt || null,
+    deliveredAt: sourceRecord.deliveredAt || null,
     updatedAt: nowIso,
   };
 
@@ -1928,6 +2217,109 @@ export function updateDocumentacionRecord(auth, recordId, payload = {}) {
   };
 
   return { ok: true, state: replaceWarehouseState(nextState), recordId: targetId };
+}
+
+export function assignDocumentacionRoute(auth, recordId, driverId = "") {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const targetId = String(recordId || "").trim();
+  const targetDriverId = String(driverId || "").trim();
+  if (!targetId) return { ok: false, reason: "record_not_found" };
+  if (!targetDriverId) return { ok: false, reason: "invalid_driver" };
+
+  const currentState = getRawWarehouseState();
+  const docState = normalizeDocumentacionState(currentState.documentacion);
+  const index = docState.records.findIndex((entry) => entry.id === targetId);
+  if (index === -1) return { ok: false, reason: "record_not_found" };
+
+  const driver = findWarehouseUserById(targetDriverId);
+  if (!driver?.isActive) return { ok: false, reason: "invalid_driver" };
+
+  const sourceRecord = docState.records[index];
+  const nowIso = new Date().toISOString();
+  const nextRecord = {
+    ...sourceRecord,
+    status: "Asignado",
+    assignedTo: driver.id,
+    assignedToName: driver.name,
+    assignedByName: currentUser.name,
+    assignedAt: nowIso,
+    updatedAt: nowIso,
+  };
+
+  const nextState = {
+    ...currentState,
+    documentacion: {
+      ...docState,
+      records: docState.records.map((entry, entryIndex) => (entryIndex === index ? nextRecord : entry)),
+    },
+  };
+
+  replaceWarehouseState(nextState);
+  return { ok: true, recordId: targetId, record: nextRecord, driver };
+}
+
+export function updateDocumentacionRecordStatus(auth, recordId, newStatus = "", statusMeta = null) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const targetId = String(recordId || "").trim();
+  const statusValue = String(newStatus || "").trim();
+  const validStatuses = ["Pendiente", "Asignado", "En camino", "Retorno", "Entregado", "Devuelto", "Cancelado"];
+  const reasonValue = String(statusMeta?.reason || "").trim();
+
+  if (!targetId) return { ok: false, reason: "record_not_found" };
+  if (!validStatuses.includes(statusValue)) return { ok: false, reason: "invalid_status" };
+  if (statusValue === "Retorno" && !reasonValue) return { ok: false, reason: "reason_required" };
+
+  const currentState = getRawWarehouseState();
+  const docState = normalizeDocumentacionState(currentState.documentacion);
+  const index = docState.records.findIndex((entry) => entry.id === targetId);
+  if (index === -1) return { ok: false, reason: "record_not_found" };
+
+  const sourceRecord = docState.records[index];
+  const isDriver = sourceRecord.assignedTo === currentUser.id;
+  const isCreator = sourceRecord.createdById === currentUser.id;
+  if (!isDriver && !isCreator) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const nowIso = new Date().toISOString();
+  const nextRecord = {
+    ...sourceRecord,
+    status: statusValue,
+    updatedAt: nowIso,
+  };
+
+  if (statusValue === "Asignado" && !nextRecord.assignedTo) {
+    nextRecord.assignedTo = currentUser.id;
+    nextRecord.assignedToName = currentUser.name;
+    nextRecord.assignedAt = nextRecord.assignedAt || nowIso;
+  }
+
+  if (statusValue === "Entregado") {
+    nextRecord.deliveredAt = nowIso;
+  }
+
+  if (statusValue === "Retorno") {
+    nextRecord.returnReason = reasonValue;
+  }
+
+  if (statusValue === "Cancelado") {
+    nextRecord.canceledReason = reasonValue || "Cancelado desde Mis rutas";
+  }
+
+  const nextState = {
+    ...currentState,
+    documentacion: {
+      ...docState,
+      records: docState.records.map((entry, entryIndex) => (entryIndex === index ? nextRecord : entry)),
+    },
+  };
+
+  replaceWarehouseState(nextState);
+  return { ok: true, recordId: targetId, record: nextRecord };
 }
 
 export function addDocumentacionArea(auth, areaName) {
@@ -6815,4 +7207,111 @@ export function deleteCustomRole(roleId) {
   const currentState = getRawWarehouseState();
   const roles = (currentState.customRoles || []).filter((r) => r.id !== roleId);
   replaceWarehouseState({ ...currentState, customRoles: roles });
+}
+
+export function postponeTransportRecord(auth, recordId, payload = {}) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const targetId = String(recordId || "").trim();
+  if (!targetId) return { ok: false, reason: "record_not_found" };
+
+  const postponeAtRaw = String(payload?.postponedUntil || payload?.postponeAt || "").trim();
+  const postponeAtDate = postponeAtRaw ? new Date(postponeAtRaw) : null;
+  if (!postponeAtDate || Number.isNaN(postponeAtDate.getTime())) {
+    return { ok: false, reason: "invalid_postponed_until" };
+  }
+  if (postponeAtDate.getTime() <= Date.now()) {
+    return { ok: false, reason: "postponed_until_in_past" };
+  }
+
+  const remindMinutesRaw = Number(payload?.remindBeforeMinutes ?? 60);
+  if (!Number.isFinite(remindMinutesRaw)) return { ok: false, reason: "invalid_reminder" };
+  const remindBeforeMinutes = Math.max(0, Math.min(10080, Math.floor(remindMinutesRaw)));
+
+  const baseState = getRawWarehouseState();
+  const dailyCutResult = applyAutomatedTransportDailyCut(baseState);
+  const currentState = dailyCutResult.changed ? dailyCutResult.state : baseState;
+  const transport = normalizeTransportState(currentState.transport);
+
+  const activeIndex = (transport.activeRecords || []).findIndex((entry) => entry.id === targetId);
+  if (activeIndex === -1) return { ok: false, reason: "record_not_found" };
+
+  const sourceRecord = transport.activeRecords[activeIndex];
+  const sourceActionIds = getTransportActionIdsByArea(sourceRecord?.areaId);
+  if (!sourceActionIds.manageActionId || !canUserDoWarehouseAction(currentUser, sourceActionIds.manageActionId, baseState.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const nowIso = new Date().toISOString();
+  const postponedUntilIso = postponeAtDate.toISOString();
+  const remindAtIso = new Date(postponeAtDate.getTime() - (remindBeforeMinutes * 60 * 1000)).toISOString();
+  const nextRecord = {
+    ...sourceRecord,
+    status: "Pospuesto",
+    assignedTo: null,
+    assignedToName: null,
+    assignedByName: null,
+    assignedAt: null,
+    postponedUntil: postponedUntilIso,
+    postponedReminderMinutes: remindBeforeMinutes,
+    postponedRemindAt: remindAtIso,
+    postponedAt: nowIso,
+    postponedById: currentUser.id,
+    postponedByName: currentUser.name,
+    updatedAt: nowIso,
+  };
+
+  const nextState = {
+    ...currentState,
+    transport: {
+      ...transport,
+      activeRecords: transport.activeRecords.map((entry, index) => (index === activeIndex ? nextRecord : entry)),
+    },
+  };
+
+  replaceWarehouseState(nextState);
+  return { ok: true, recordId: targetId, record: nextRecord };
+}
+
+export function reactivatePostponedTransportRecord(auth, recordId) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const targetId = String(recordId || "").trim();
+  if (!targetId) return { ok: false, reason: "record_not_found" };
+
+  const baseState = getRawWarehouseState();
+  const dailyCutResult = applyAutomatedTransportDailyCut(baseState);
+  const currentState = dailyCutResult.changed ? dailyCutResult.state : baseState;
+  const transport = normalizeTransportState(currentState.transport);
+
+  const activeIndex = (transport.activeRecords || []).findIndex((entry) => entry.id === targetId);
+  if (activeIndex === -1) return { ok: false, reason: "record_not_found" };
+
+  const sourceRecord = transport.activeRecords[activeIndex];
+  const sourceActionIds = getTransportActionIdsByArea(sourceRecord?.areaId);
+  if (!sourceActionIds.manageActionId || !canUserDoWarehouseAction(currentUser, sourceActionIds.manageActionId, baseState.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const nowIso = new Date().toISOString();
+  const nextRecord = {
+    ...sourceRecord,
+    status: "Pendiente",
+    postponedUntil: null,
+    postponedRemindAt: null,
+    updatedAt: nowIso,
+  };
+
+  const nextState = {
+    ...currentState,
+    transport: {
+      ...transport,
+      activeRecords: transport.activeRecords.map((entry, index) => (index === activeIndex ? nextRecord : entry)),
+    },
+  };
+
+  replaceWarehouseState(nextState);
+  return { ok: true, recordId: targetId, record: nextRecord };
 }
