@@ -717,12 +717,11 @@ export function TransportMyRoutesTab({ transportState, documentacionState, curre
           justifyContent: "center",
           zIndex: 1000,
         }} onClick={() => setReasonState({ open: false, routeType: "", recordId: "", destination: "", nextStatus: "", reason: "" })}>
-          <div style={{
+          <div className="transport-reason-modal" style={{
             background: "#fff",
             padding: "1.5rem",
-            borderRadius: "0.5rem",
-            minWidth: "400px",
-            maxWidth: "90%",
+            borderRadius: "1rem",
+            width: "min(92vw, 420px)",
             boxShadow: "0 10px 40px rgba(0,0,0,0.2)",
           }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ marginTop: 0 }}>

@@ -242,7 +242,7 @@ export default function GestionUsuarios({ contexto }) {
                           key={user.id}
                           type="button"
                           className="surface-card"
-                          style={{ flex: "1 1 180px", minWidth: "160px", maxWidth: "220px", cursor: "pointer", textAlign: "left", padding: "0.75rem", display: "flex", flexDirection: "column", gap: "0.35rem", border: "1px solid transparent" }}
+                          style={{ flex: "1 1 180px", minWidth: "min(100%, 160px)", maxWidth: "min(100%, 220px)", cursor: "pointer", textAlign: "left", padding: "0.75rem", display: "flex", flexDirection: "column", gap: "0.35rem", border: "1px solid transparent" }}
                           onClick={() => setViewingPlayer(user)}
                         >
                           <span className="avatar-circle" style={{ alignSelf: "flex-start" }}>{user.name.charAt(0).toUpperCase()}</span>
@@ -264,7 +264,7 @@ export default function GestionUsuarios({ contexto }) {
               {!creatorGroups.length ? <p className="subtle-line">No hay creadores visibles en esta vista.</p> : null}
 
               {creatorGroups.length ? (
-                <article className="surface-card" style={{ minWidth: "320px", flex: "1 1 100%" }}>
+                <article className="surface-card" style={{ minWidth: "min(100%, 320px)", flex: "1 1 100%" }}>
                   <div className="card-header-row">
                     <div>
                       <h3>Subpestañas por creador</h3>
@@ -340,7 +340,7 @@ export default function GestionUsuarios({ contexto }) {
                             key={user.id}
                             type="button"
                             className="surface-card"
-                            style={{ flex: "1 1 180px", minWidth: "160px", maxWidth: "220px", cursor: "pointer", textAlign: "left", padding: "0.75rem", display: "flex", flexDirection: "column", gap: "0.35rem", border: "1px solid transparent" }}
+                            style={{ flex: "1 1 180px", minWidth: "min(100%, 160px)", maxWidth: "min(100%, 220px)", cursor: "pointer", textAlign: "left", padding: "0.75rem", display: "flex", flexDirection: "column", gap: "0.35rem", border: "1px solid transparent" }}
                             onClick={() => setViewingPlayer(user)}
                           >
                             <span className="avatar-circle" style={{ alignSelf: "flex-start" }}>{user.name.charAt(0).toUpperCase()}</span>

@@ -381,7 +381,7 @@ export default function AuditoriasProcesos({ contexto }) {
               </div>
               <div className="saved-board-list permissions-preset-list">
                 {(processAuditTemplates || []).map((template) => (
-                  <article key={template.id} className="surface-card" style={{ minWidth: "280px", flex: "1 1 280px" }}>
+                  <article key={template.id} className="surface-card" style={{ minWidth: "min(100%, 280px)", flex: "1 1 280px" }}>
                     <div className="card-header-row">
                       <div>
                         <strong>{template.area} · {template.process}</strong>
@@ -474,7 +474,7 @@ export default function AuditoriasProcesos({ contexto }) {
                 </div>
                 <div className="saved-board-list permissions-preset-list">
                   {(auditDraft.evidences || []).map((evidence) => (
-                    <article key={evidence.id} className="surface-card" style={{ minWidth: "240px", flex: "1 1 240px" }}>
+                    <article key={evidence.id} className="surface-card" style={{ minWidth: "min(100%, 240px)", flex: "1 1 240px" }}>
                       <div className="card-header-row">
                         <a href={evidence.url} target="_blank" rel="noreferrer">{evidence.name || "Evidencia"}</a>
                         <button type="button" className="icon-button danger" onClick={() => removeProcessAuditEvidence(auditDraft.id, evidence.id)} disabled={!canManageAudits}><Trash2 size={14} /></button>
@@ -499,7 +499,7 @@ export default function AuditoriasProcesos({ contexto }) {
           </div>
           <div className="saved-board-list permissions-preset-list">
             {sortedAudits.map((audit) => (
-              <article key={audit.id} className="surface-card" style={{ minWidth: "280px", flex: "1 1 320px" }}>
+              <article key={audit.id} className="surface-card" style={{ minWidth: "min(100%, 280px)", flex: "1 1 320px" }}>
                 <div className="card-header-row">
                   <div>
                     <strong>{audit.area} · {audit.process}</strong>
@@ -539,7 +539,7 @@ export default function AuditoriasProcesos({ contexto }) {
             {dashboardStats.byArea.map((row) => {
               const pct = dashboardStats.total > 0 ? Math.round((row.value / dashboardStats.total) * 100) : 0;
               return (
-                <article key={row.label} className="surface-card" style={{ minWidth: "260px", flex: "1 1 280px" }}>
+                <article key={row.label} className="surface-card" style={{ minWidth: "min(100%, 260px)", flex: "1 1 280px" }}>
                   <div className="card-header-row">
                     <strong>{row.label}</strong>
                     <span className="chip primary">{row.value}</span>

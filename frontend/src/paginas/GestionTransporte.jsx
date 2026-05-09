@@ -1559,9 +1559,9 @@ export default function GestionTransporte({ contexto }) {
   }
 
   return (
-    <section className="page-shell inventory-page-shell">
-      <section className="inventory-stack">
-        <article className="surface-card inventory-surface-card full-width">
+    <section className="page-shell inventory-page-shell transport-page-shell">
+      <section className="inventory-stack transport-page-stack">
+        <article className="surface-card inventory-surface-card full-width transport-responsive-card">
           <div className="card-header-row" style={{ alignItems: "center" }}>
             <div>
               <h3>Control de Transporte</h3>
@@ -1783,8 +1783,8 @@ export default function GestionTransporte({ contexto }) {
             <>
               <div className="card-header-row" style={{ marginBottom: "0.65rem", gap: "0.65rem", flexWrap: "wrap" }}>
                 <h3 style={{ margin: 0 }}>Consolidado general por área</h3>
-                <div style={{ display: "inline-flex", alignItems: "flex-end", gap: "0.55rem", flexWrap: "nowrap" }}>
-                  <label style={{ display: "inline-flex", flexDirection: "column", gap: "0.2rem", minWidth: "190px" }}>
+                <div className="transport-consolidated-controls">
+                  <label className="transport-consolidated-control-field">
                     <span style={{ fontSize: "0.8rem", color: "#315753" }}>Player</span>
                     <select value={selectedConsolidatedPlayerId} onChange={(e) => setSelectedConsolidatedPlayerId(e.target.value)}>
                       <option value="all">Todos los players</option>
@@ -1795,7 +1795,7 @@ export default function GestionTransporte({ contexto }) {
                     </select>
                   </label>
 
-                  <label className="dashboard-filter-field dashboard-filter-field-range" style={{ minWidth: "320px" }}>
+                  <label className="dashboard-filter-field dashboard-filter-field-range transport-consolidated-control-range">
                     <span>Calendario y vista</span>
                     <DashboardDateRangePicker
                       startDate={selectedPrincipalDateFrom}
@@ -2033,12 +2033,12 @@ export default function GestionTransporte({ contexto }) {
               {/* Filters + action */}
               <div className="card-header-row" style={{ marginBottom: "0.6rem", flexWrap: "wrap", gap: "0.5rem" }}>
                 <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
-                  <select value={docFilterUbicacion} onChange={(e) => setDocFilterUbicacion(e.target.value)} style={{ minWidth: "120px" }}>
+                  <select value={docFilterUbicacion} onChange={(e) => setDocFilterUbicacion(e.target.value)} style={{ minWidth: "min(100%, 120px)" }}>
                     <option value="ALL">Todas las ubicaciones</option>
                     <option value="SONATA">SONATA</option>
                     <option value="CEDIS">CEDIS</option>
                   </select>
-                  <select value={docFilterArea} onChange={(e) => setDocFilterArea(e.target.value)} style={{ minWidth: "120px" }}>
+                  <select value={docFilterArea} onChange={(e) => setDocFilterArea(e.target.value)} style={{ minWidth: "min(100%, 120px)" }}>
                     <option value="ALL">Todas las áreas</option>
                     {customAreas.map((a) => <option key={a} value={a}>{a}</option>)}
                   </select>

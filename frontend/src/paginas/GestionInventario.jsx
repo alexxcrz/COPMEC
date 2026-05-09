@@ -463,7 +463,7 @@ export default function GestionInventario({ contexto }) {
                         </div>
                       </td>
                       {showPresentationColumn ? <td>{item.presentation || (isCleaningInventoryTab ? "Sin formato capturado" : "Sin presentación")}</td> : null}
-                      <td style={isBaseInventoryTab ? undefined : { minWidth: "220px" }}>
+                      <td style={isBaseInventoryTab ? undefined : { minWidth: "min(100%, 220px)" }}>
                         {renderInventoryStockCell(item)}
                       </td>
                       <td>{renderInventoryLocationCell(item)}</td>
@@ -507,7 +507,7 @@ export default function GestionInventario({ contexto }) {
             </div>
             <div className="saved-board-list permissions-preset-list">
               {inventoryLinkedCleaningRows.map((item) => (
-                <article key={item.id} className="surface-card" style={{ minWidth: "320px", flex: "1 1 360px" }}>
+                <article key={item.id} className="surface-card" style={{ minWidth: "min(100%, 320px)", flex: "1 1 360px" }}>
                   <div className="card-header-row">
                     <div>
                       <h3>{item.name}</h3>
