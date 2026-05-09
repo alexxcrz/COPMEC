@@ -18,40 +18,6 @@ const TARIMA_STATUS_PENDING = "Pendiente";
 const TARIMA_STATUS_RUNNING = "En curso";
 const TARIMA_STATUS_PAUSED = "Pausado";
 const TARIMA_STATUS_FINISHED = "Terminado";
-const TARIMA_PAUSE_START_HOUR = (() => {
-  const raw = Number.parseInt(String(import.meta.env?.VITE_TARIMA_PAUSE_START_HOUR ?? "16"), 10);
-  if (!Number.isFinite(raw)) return 16;
-  return Math.min(23, Math.max(0, raw));
-})();
-const TARIMA_PAUSE_END_HOUR = (() => {
-  const raw = Number.parseInt(String(import.meta.env?.VITE_TARIMA_PAUSE_END_HOUR ?? "8"), 10);
-  if (!Number.isFinite(raw)) return 8;
-  return Math.min(23, Math.max(0, raw));
-})();
-const TARIMA_PAUSE_TIMEZONE = String(import.meta.env?.VITE_TARIMA_PAUSE_TIMEZONE || "America/Mexico_City").trim() || "America/Mexico_City";
-const TARIMA_PAUSE_WINDOW_LABEL = `${String(TARIMA_PAUSE_START_HOUR).padStart(2, "0")}:00-${String(TARIMA_PAUSE_END_HOUR).padStart(2, "0")}:00`;
-
-function getHourInTimeZone(dateValue, timeZone) {
-  try {
-    const hourPart = new Intl.DateTimeFormat("en-US", {
-      timeZone,
-      hour: "2-digit",
-      hour12: false,
-    }).formatToParts(dateValue).find((part) => part.type === "hour");
-    const hour = Number.parseInt(String(hourPart?.value || "0"), 10);
-    if (!Number.isFinite(hour)) return null;
-    return Math.min(23, Math.max(0, hour));
-  } catch {
-    return null;
-  }
-}
-
-function isWithinPauseWindow(hour, startHour, endHour) {
-  if (!Number.isFinite(hour)) return false;
-  if (startHour === endHour) return true;
-  if (startHour < endHour) return hour >= startHour && hour < endHour;
-  return hour >= startHour || hour < endHour;
-}
 
 function resolveTarimaWorkflowStatus(tarima) {
   if (!tarima) return TARIMA_STATUS_PENDING;
@@ -323,9 +289,6 @@ function ReturnsReconditionScannerInner({
   skipNextSyncRef,
   setSyncStatus,
   setBoardRuntimeFeedback,
-  manualGlobalPause = false,
-  globalForceActive = false,
-  operationalWorkHours = null,
   disabled,
 }) {
   // Estado para el orden de productos (drag & drop)
@@ -337,7 +300,6 @@ function ReturnsReconditionScannerInner({
   const expiryInputRef = useRef(null);
   const autoScanTimeoutRef = useRef(null);
   const modalAutoCommitRef = useRef(false);
-  const pauseCheckIntervalRef = useRef(null);
   
   const [scanValue, setScanValue] = useState("");
   const [activeTarima, setActiveTarima] = useState(null);
@@ -353,7 +315,6 @@ function ReturnsReconditionScannerInner({
   const [expandedClosedBoxes, setExpandedClosedBoxes] = useState(new Set());
   const [pdfContextMenu, setPdfContextMenu] = useState(null); // { x, y, onDownloadPdf, onDownloadCopmec }
   const [pendingItem, setPendingItem] = useState(null);
-  const [systemPaused, setSystemPaused] = useState(false);
   
   // Modales
   const [tarimaModalOpen, setTarimaModalOpen] = useState(false);
@@ -371,58 +332,12 @@ function ReturnsReconditionScannerInner({
   const previousWeekStorageKeyRef = useRef("");
   
   const [nowTick, setNowTick] = useState(() => Date.now());
-  const effectiveGlobalPause = Boolean(manualGlobalPause || (systemPaused && !globalForceActive));
   
   // Obtener caja activa
   const activeBox = useMemo(() => {
     if (!activeTarima || !activeBoxId) return null;
     return activeTarima.boxes?.find((b) => b.id === activeBoxId) || null;
   }, [activeTarima, activeBoxId]);
-
-  const operationalWorkWindowLabel = useMemo(() => {
-    const source = operationalWorkHours && typeof operationalWorkHours === "object" ? operationalWorkHours : null;
-    if (!source) return "";
-    const startHour = Math.min(23, Math.max(0, Number(source.startHour) || 0));
-    const startMinute = Math.min(59, Math.max(0, Number(source.startMinute) || 0));
-    const endHour = Math.min(24, Math.max(0, Number(source.endHour) || 24));
-    const endMinute = Math.min(59, Math.max(0, Number(source.endMinute) || 0));
-    return `${String(startHour).padStart(2, "0")}:${String(startMinute).padStart(2, "0")}-${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}`;
-  }, [operationalWorkHours]);
-
-  // Pausa automática por horario configurable
-  useEffect(() => {
-    const checkPause = () => {
-      const now = new Date();
-      const tzHour = getHourInTimeZone(now, TARIMA_PAUSE_TIMEZONE);
-      const localHour = now.getHours();
-      const effectiveHour = Number.isFinite(tzHour) ? tzHour : localHour;
-      const source = operationalWorkHours && typeof operationalWorkHours === "object" ? operationalWorkHours : null;
-      let shouldPause;
-      if (source) {
-        const startHour = Math.min(23, Math.max(0, Number(source.startHour) || 0));
-        const startMinute = Math.min(59, Math.max(0, Number(source.startMinute) || 0));
-        const endHour = Math.min(24, Math.max(0, Number(source.endHour) || 24));
-        const endMinute = Math.min(59, Math.max(0, Number(source.endMinute) || 0));
-        const startTotal = (startHour * 60) + startMinute;
-        const endTotal = (endHour * 60) + endMinute;
-        const nowTotal = (effectiveHour * 60) + (Number.isFinite(tzHour) ? Number(new Intl.DateTimeFormat("en-US", { timeZone: TARIMA_PAUSE_TIMEZONE, minute: "2-digit" }).format(now)) : now.getMinutes());
-        const isWithinWorkWindow = startTotal === endTotal
-          ? false
-          : startTotal < endTotal
-            ? nowTotal >= startTotal && nowTotal < endTotal
-            : nowTotal >= startTotal || nowTotal < endTotal;
-        shouldPause = !isWithinWorkWindow;
-      } else {
-        shouldPause = isWithinPauseWindow(effectiveHour, TARIMA_PAUSE_START_HOUR, TARIMA_PAUSE_END_HOUR);
-      }
-      setSystemPaused(shouldPause);
-    };
-    checkPause();
-    pauseCheckIntervalRef.current = setInterval(checkPause, 60000);
-    return () => {
-      if (pauseCheckIntervalRef.current) clearInterval(pauseCheckIntervalRef.current);
-    };
-  }, [operationalWorkHours]);
 
   // Toggle collapse/expand producto
   const toggleProductCollapsed = (productKey) => {
@@ -502,10 +417,10 @@ function ReturnsReconditionScannerInner({
   }, []);
 
   useEffect(() => {
-    if (!activeTarima?.startedAt || activeTarima?.stoppedAt || activeTarima?.pausedAt || effectiveGlobalPause || resolveTarimaWorkflowStatus(activeTarima) !== TARIMA_STATUS_RUNNING) return undefined;
+    if (!activeTarima?.startedAt || activeTarima?.stoppedAt || activeTarima?.pausedAt || resolveTarimaWorkflowStatus(activeTarima) !== TARIMA_STATUS_RUNNING) return undefined;
     const timer = globalThis.setInterval(() => setNowTick(Date.now()), 1000);
     return () => globalThis.clearInterval(timer);
-  }, [activeTarima, effectiveGlobalPause]);
+  }, [activeTarima]);
 
   useEffect(() => {
     if (!boardId || !activeWeekKey) return;
@@ -544,37 +459,6 @@ function ReturnsReconditionScannerInner({
 
     setBoardRuntimeFeedback({ tone: "success", message: "Se aplicó corte semanal. Flujo limpio para nueva semana." });
   }, [activeWeekKey, boardId, setBoardRuntimeFeedback]);
-
-  useEffect(() => {
-    if (!activeTarima) return;
-    if (resolveTarimaWorkflowStatus(activeTarima) !== TARIMA_STATUS_RUNNING) return;
-    if (activeTarima.pausedAt) return;
-
-    if (effectiveGlobalPause) {
-      if (activeTarima.globalPausedAt) return;
-      const nowIso = new Date().toISOString();
-      setActiveTarima((current) => {
-        if (!current || current.globalPausedAt || resolveTarimaWorkflowStatus(current) !== TARIMA_STATUS_RUNNING || current.pausedAt) return current;
-        return {
-          ...current,
-          globalPausedAt: nowIso,
-        };
-      });
-      return;
-    }
-
-    if (!activeTarima.globalPausedAt) return;
-    const nowIso = new Date().toISOString();
-    setActiveTarima((current) => {
-      if (!current || !current.globalPausedAt) return current;
-      const delta = Math.max(0, new Date(nowIso).getTime() - new Date(current.globalPausedAt).getTime());
-      return {
-        ...current,
-        globalPausedAt: null,
-        globalPausedAccumulatedMs: Number(current.globalPausedAccumulatedMs || 0) + delta,
-      };
-    });
-  }, [effectiveGlobalPause, activeTarima]);
 
   useEffect(() => {
     if (disabled) return;
@@ -647,19 +531,19 @@ function ReturnsReconditionScannerInner({
       || currentUser?.id === boardCreatorId
     )
   );
-  const canStartGlobalWorkflow = Boolean(
+  const canStartTarimaWorkflow = Boolean(
     canControlTarimaWorkflow
     && activeTarima
     && !disabled
     && (tarimaStatus === TARIMA_STATUS_PENDING || tarimaStatus === TARIMA_STATUS_PAUSED)
   );
-  const canPauseGlobalWorkflow = Boolean(
+  const canPauseTarimaWorkflow = Boolean(
     canControlTarimaWorkflow
     && activeTarima
     && !disabled
     && tarimaStatus === TARIMA_STATUS_RUNNING
   );
-  const canFinishGlobalWorkflow = Boolean(
+  const canFinishTarimaWorkflow = Boolean(
     canControlTarimaWorkflow
     && activeTarima
     && !disabled
@@ -676,21 +560,17 @@ function ReturnsReconditionScannerInner({
     ? (() => {
       const startedAtMs = new Date(activeTarima.startedAt).getTime();
       const pausedAccumulatedMs = Number(activeTarima.pausedAccumulatedMs || 0);
-      const globalPausedAccumulatedMs = Number(activeTarima.globalPausedAccumulatedMs || 0);
       if (activeTarima.pausedAt) {
         const pausedSnapshotMs = Number(activeTarima.pausedElapsedMs);
         if (Number.isFinite(pausedSnapshotMs) && pausedSnapshotMs >= 0) {
           return pausedSnapshotMs;
         }
-        return Math.max(0, new Date(activeTarima.pausedAt).getTime() - startedAtMs - pausedAccumulatedMs - globalPausedAccumulatedMs);
-      }
-      if (activeTarima.globalPausedAt) {
-        return Math.max(0, new Date(activeTarima.globalPausedAt).getTime() - startedAtMs - pausedAccumulatedMs - globalPausedAccumulatedMs);
+        return Math.max(0, new Date(activeTarima.pausedAt).getTime() - startedAtMs - pausedAccumulatedMs);
       }
       if (tarimaStatus === TARIMA_STATUS_FINISHED && activeTarima.stoppedAt) {
-        return Math.max(0, new Date(activeTarima.stoppedAt).getTime() - startedAtMs - pausedAccumulatedMs - globalPausedAccumulatedMs);
+        return Math.max(0, new Date(activeTarima.stoppedAt).getTime() - startedAtMs - pausedAccumulatedMs);
       }
-      return Math.max(0, nowTick - startedAtMs - pausedAccumulatedMs - globalPausedAccumulatedMs);
+      return Math.max(0, nowTick - startedAtMs - pausedAccumulatedMs);
     })()
     : 0;
   const tarimaWorkflowBlocked = tarimaStatus === TARIMA_STATUS_PAUSED || tarimaStatus === TARIMA_STATUS_FINISHED;
@@ -812,8 +692,6 @@ function ReturnsReconditionScannerInner({
         pausedAccumulatedMs: Number(parsed?.pausedAccumulatedMs || 0),
         pausedAt: parsed?.pausedAt || null,
         pausedElapsedMs: Number.isFinite(Number(parsed?.pausedElapsedMs)) ? Number(parsed?.pausedElapsedMs) : null,
-        globalPausedAccumulatedMs: Number(parsed?.globalPausedAccumulatedMs || 0),
-        globalPausedAt: parsed?.globalPausedAt || null,
       };
       setActiveTarima(normalizedTarima);
       if (normalizedTarima.boxes && normalizedTarima.boxes.length > 0) {
@@ -1032,8 +910,6 @@ function ReturnsReconditionScannerInner({
       pausedAccumulatedMs: 0,
       pausedAt: null,
       pausedElapsedMs: null,
-      globalPausedAccumulatedMs: 0,
-      globalPausedAt: null,
       recovered: true,
     };
 
@@ -2035,8 +1911,6 @@ function ReturnsReconditionScannerInner({
       pausedAccumulatedMs: 0,
       pausedAt: null,
       pausedElapsedMs: null,
-      globalPausedAccumulatedMs: 0,
-      globalPausedAt: null,
     };
     setCompletedBoxes([]);
     setExpandedClosedBoxes(new Set());
@@ -2107,14 +1981,7 @@ function ReturnsReconditionScannerInner({
   }
   
   function handleScanSubmit() {
-    if (disabled || effectiveGlobalPause) {
-      if (manualGlobalPause) {
-        setBoardRuntimeFeedback({ tone: "warning", message: "Pausa global activa. Solo Lead/creador puede quitarla." });
-      } else if (systemPaused) {
-        setBoardRuntimeFeedback({ tone: "warning", message: `Sistema pausado automáticamente por horario (${TARIMA_PAUSE_WINDOW_LABEL}, ${TARIMA_PAUSE_TIMEZONE}).` });
-      }
-      return;
-    }
+    if (disabled) return;
     
     const raw = String(scanValue || "").trim();
     if (!raw) return;
@@ -2373,7 +2240,7 @@ function ReturnsReconditionScannerInner({
         </div>
       )}
       {activeTarima && canControlTarimaWorkflow ? (
-        <div className="returns-scan-global-top">
+        <div className="returns-scan-workflow-top">
           <span className="chip primary">Tarima</span>
           <div className="row-actions compact board-workflow-actions" aria-label="Workflow tarima">
             <button
@@ -2382,7 +2249,7 @@ function ReturnsReconditionScannerInner({
               title="Iniciar/Reanudar"
               aria-label="Iniciar/Reanudar"
               onClick={startTarimaWorkflow}
-              disabled={!canStartGlobalWorkflow}
+              disabled={!canStartTarimaWorkflow}
             >
               <Play size={13} />
             </button>
@@ -2392,7 +2259,7 @@ function ReturnsReconditionScannerInner({
               title="Pausar"
               aria-label="Pausar"
               onClick={pauseTarimaWorkflow}
-              disabled={!canPauseGlobalWorkflow}
+              disabled={!canPauseTarimaWorkflow}
             >
               <PauseCircle size={13} />
             </button>
@@ -2402,7 +2269,7 @@ function ReturnsReconditionScannerInner({
               title="Finalizar"
               aria-label="Finalizar"
               onClick={() => { void finishActiveTarimaManually(); }}
-              disabled={!canFinishGlobalWorkflow}
+              disabled={!canFinishTarimaWorkflow}
             >
               <Square size={13} />
             </button>
@@ -2416,20 +2283,6 @@ function ReturnsReconditionScannerInner({
           <p>{displayedTarima ? `Flujo: ${displayedTarima.flowType === "reacondicionado" ? "Reacondicionado" : "Devolución"}` : "Escanea un código para crear tarima"}</p>
         </div>
         <div className="saved-board-list">
-          {manualGlobalPause ? (
-            <span className="chip" style={{ background: "#fee2e2", color: "#991b1b" }}>
-              ⏸ Pausa global activa
-            </span>
-          ) : null}
-          {!manualGlobalPause && systemPaused && (
-            <span
-              className="chip"
-              style={{ background: "#fee2e2", color: "#991b1b" }}
-              title={`Horario activo: ${operationalWorkWindowLabel || TARIMA_PAUSE_WINDOW_LABEL} · ${TARIMA_PAUSE_TIMEZONE}`}
-            >
-              ⏸ Pausa global por jornada
-            </span>
-          )}
           {displayedTarima && (
             <div className="returns-scan-head-meta">
               <div className="returns-scan-head-meta-row">
@@ -2463,8 +2316,8 @@ function ReturnsReconditionScannerInner({
               handleScanSubmit();
             }
           }}
-          placeholder={disabled ? "Vista histórica en solo lectura" : viewingClosedTarima ? "Vista de tarima cerrada (solo lectura)" : effectiveGlobalPause ? "Pausa global activa" : tarimaWorkflowBlocked ? "Workflow de tarima en pausa/finalizado" : "Escanea o escribe código (auto-registro)"}
-          disabled={disabled || viewingClosedTarima || effectiveGlobalPause || tarimaWorkflowBlocked || lotModalOpen || tarimaModalOpen || boxModalOpen}
+          placeholder={disabled ? "Vista histórica en solo lectura" : viewingClosedTarima ? "Vista de tarima cerrada (solo lectura)" : tarimaWorkflowBlocked ? "Workflow de tarima en pausa/finalizado" : "Escanea o escribe código (auto-registro)"}
+          disabled={disabled || viewingClosedTarima || tarimaWorkflowBlocked || lotModalOpen || tarimaModalOpen || boxModalOpen}
         />
       </div>
 
@@ -2554,7 +2407,7 @@ function ReturnsReconditionScannerInner({
                   title="Cerrar tarima"
                   aria-label="Cerrar tarima"
                   onClick={() => { void finishActiveTarimaManually(); }}
-                  disabled={!canFinishGlobalWorkflow}
+                  disabled={!canFinishTarimaWorkflow}
                 >
                   Cerrar tarima
                 </button>

@@ -58,10 +58,8 @@ function sameOrBefore(left, right) {
 }
 
 function parseJornadaFromState(state) {
-  const startHour = clampNonNegativeInteger(state?.system?.operational?.pauseControl?.workHours?.startHour);
-  const endHour = clampNonNegativeInteger(state?.system?.operational?.pauseControl?.workHours?.endHour);
-  const safeStart = Math.min(23, Math.max(0, startHour || 0));
-  const safeEnd = Math.min(24, Math.max(safeStart + 1, endHour || 24));
+  const safeStart = 0;
+  const safeEnd = 24;
   return {
     hora_inicio: `${String(safeStart).padStart(2, "0")}:00`,
     hora_fin: `${String(safeEnd).padStart(2, "0")}:00`,

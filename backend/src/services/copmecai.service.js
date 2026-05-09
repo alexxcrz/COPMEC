@@ -1076,10 +1076,6 @@ function handleDashboardFix(snap) {
   // Fix 6: Verificar configuración del sistema operativo
   const sysCfg = state.systemOperationalSettings || {};
   const sysFixed = {};
-  if (typeof sysCfg.globalPauseActive !== "boolean") {
-    sysFixed.globalPauseActive = false;
-    fixes.push(`✅ \`globalPauseActive\`: valor inválido corregido → \`false\``);
-  }
   if (typeof sysCfg.pauseRequiresAuth !== "boolean") {
     sysFixed.pauseRequiresAuth = false;
     fixes.push(`✅ \`pauseRequiresAuth\`: valor inválido corregido → \`false\``);

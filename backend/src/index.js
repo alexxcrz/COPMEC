@@ -39,7 +39,7 @@ subscribeWarehouseState(() => {
   }
 });
 
-// Periodic tick to evaluate automated global pause and other timed automations.
+// Periodic tick to evaluate timed operational automations.
 // Without this, automations only fire when a request arrives (e.g. if no clients are connected).
 setInterval(() => {
   try {

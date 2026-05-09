@@ -922,11 +922,6 @@ function App() { // NOSONAR
   const [securityEvents, setSecurityEvents] = useState([]);
   const [securityEventsStatus, setSecurityEventsStatus] = useState("idle");
   const operationalPauseState = useMemo(() => ({
-    globalPauseEnabled: Boolean(state?.system?.operational?.pauseControl?.globalPauseEnabled),
-    globalPauseActivatedAt: state?.system?.operational?.pauseControl?.globalPauseActivatedAt || null,
-    globalPauseAccumulatedSeconds: Math.max(0, Number(state?.system?.operational?.pauseControl?.globalPauseAccumulatedSeconds || 0)),
-    workHours: state?.system?.operational?.pauseControl?.workHours || { startHour: 0, endHour: 24 },
-    workWeek: state?.system?.operational?.pauseControl?.workWeek || EMPTY_OBJECT,
     areaPauseControls: state?.system?.operational?.pauseControl?.areaPauseControls || EMPTY_OBJECT,
   }), [state?.system?.operational]);
   const enabledPauseReasons = useMemo(() => {
@@ -8484,7 +8479,7 @@ function App() { // NOSONAR
     submitRoleModal,
     handleDeleteCustomRole,
     updateSystemOperationalSettings,
-    operationalWorkWeek: operationalPauseState.workWeek,
+    operationalWorkWeek: {},
     setRoleModalOpen,
     Users,
     canDeleteControlBoardEntry,

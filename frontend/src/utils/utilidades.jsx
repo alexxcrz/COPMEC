@@ -3541,14 +3541,6 @@ function calcWorkSeconds(fromMs, toMs, startHour, endHour, startMinute = 0, endM
   return total;
 }
 
-function shouldAreaUseGlobalPause(areaKey, pauseState) {
-  const normalizedArea = normalizeAreaOption(getAreaRoot(areaKey) || areaKey);
-  if (!normalizedArea) return true;
-  const areaConfig = pauseState?.areaPauseControls?.[normalizedArea];
-  if (!areaConfig || typeof areaConfig !== "object") return true;
-  return areaConfig.includeInGlobalPause !== false;
-}
-
 export function getEffectiveOperationalNow(now, pauseState, areaKey = "") {
   let effectiveNow = typeof now === "number" ? now : Number(now);
   if (!Number.isFinite(effectiveNow)) {
@@ -3558,22 +3550,6 @@ export function getEffectiveOperationalNow(now, pauseState, areaKey = "") {
     effectiveNow = Date.now();
   }
 
-  if (!shouldAreaUseGlobalPause(areaKey, pauseState)) {
-    return effectiveNow;
-  }
-
-  let totalPausedMs = 0;
-  if (pauseState?.globalPauseEnabled && pauseState?.globalPauseActivatedAt) {
-    const pausedAt = new Date(pauseState.globalPauseActivatedAt).getTime();
-    if (Number.isFinite(pausedAt)) {
-      // Freeze only while the global pause is active; historical accumulated pause
-      // must not shift newly started timers.
-      totalPausedMs = Math.max(0, effectiveNow - pausedAt);
-    }
-  }
-  if (totalPausedMs > 0) {
-    effectiveNow = Math.max(0, effectiveNow - totalPausedMs);
-  }
   return effectiveNow;
 }
 
@@ -3611,9 +3587,6 @@ export function getOperationalElapsedSeconds(startTime, now, pauseState, areaKey
   const effectiveNow = typeof now === "number" ? now : new Date(now).getTime();
   const resolvedNow = Number.isFinite(effectiveNow) ? effectiveNow : Date.now();
   const cappedNow = getEffectiveOperationalNow(resolvedNow, pauseState, areaKey);
-  if (!shouldAreaUseGlobalPause(areaKey, pauseState)) {
-    return Math.max(0, Math.floor((cappedNow - startMs) / 1000));
-  }
 
   const workHours = resolveWorkHoursForArea(pauseState, areaKey) || {};
   const startHour = Math.min(23, Math.max(0, Math.round(Number(workHours.startHour ?? 0))));
@@ -3625,12 +3598,13 @@ export function getOperationalElapsedSeconds(startTime, now, pauseState, areaKey
 }
 
 export function resolveWorkHoursForArea(pauseState, areaKey) {
-  if (!areaKey) return pauseState?.workHours;
+  const alwaysOpen = { startHour: 0, startMinute: 0, endHour: 24, endMinute: 0 };
+  if (!areaKey) return alwaysOpen;
   const areaConfig = pauseState?.areaPauseControls?.[areaKey];
   if (areaConfig?.enabled && areaConfig?.workHours) {
     return areaConfig.workHours;
   }
-  return pauseState?.workHours;
+  return alwaysOpen;
 }
 
 export function getElapsedSeconds(activity, now, pauseState) {
@@ -3811,34 +3785,6 @@ function normalizeWorkHoursWithMinutes(source, fallbackStartHour = 0, fallbackEn
   };
 }
 
-const PAUSE_WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
-const DEFAULT_GLOBAL_WORK_WEEK = {
-  mon: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
-  tue: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
-  wed: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
-  thu: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
-  fri: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
-  sat: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 12, endMinute: 0 } },
-  sun: { enabled: false, workHours: { startHour: 0, startMinute: 0, endHour: 24, endMinute: 0 } },
-};
-
-function normalizeWorkWeekSchedule(source, fallbackWorkHours) {
-  const weekSource = source && typeof source === "object" ? source : EMPTY_OBJECT;
-  return PAUSE_WEEKDAY_KEYS.reduce((accumulator, dayKey) => {
-    const dayDefault = DEFAULT_GLOBAL_WORK_WEEK[dayKey] || { enabled: true, workHours: normalizeWorkHoursWithMinutes(fallbackWorkHours, 0, 24) };
-    const daySource = weekSource[dayKey] && typeof weekSource[dayKey] === "object" ? weekSource[dayKey] : EMPTY_OBJECT;
-    const hasOwnEnabled = Object.prototype.hasOwnProperty.call(daySource, "enabled");
-    const mergedWorkHoursSource = daySource.workHours && typeof daySource.workHours === "object"
-      ? daySource.workHours
-      : daySource;
-    accumulator[dayKey] = {
-      enabled: hasOwnEnabled ? Boolean(daySource.enabled) : Boolean(dayDefault.enabled),
-      workHours: normalizeWorkHoursWithMinutes(mergedWorkHoursSource || dayDefault.workHours || fallbackWorkHours, 0, 24),
-    };
-    return accumulator;
-  }, {});
-}
-
 export function normalizeSystemOperationalSettings(value) {
   const source = value && typeof value === "object" ? value : EMPTY_OBJECT;
   const defaultReasons = [
@@ -3860,18 +3806,7 @@ export function normalizeSystemOperationalSettings(value) {
   return {
     naveWeekSchedules: normalizeSystemNaveWeekSchedules(source.naveWeekSchedules),
     pauseControl: {
-      globalPauseEnabled: Boolean(source.pauseControl?.globalPauseEnabled),
-      forceGlobalPause: Boolean(source.pauseControl?.forceGlobalPause),
-      globalPauseAutoDisabledUntil: (() => {
-        const raw = source.pauseControl?.globalPauseAutoDisabledUntil;
-        return (raw && !isNaN(Date.parse(raw))) ? String(raw) : null;
-      })(),
       reasons: normalizedReasons.length ? normalizedReasons : defaultReasons.map((entry) => normalizeSystemPauseReason(entry, entry)),
-      workHours: normalizeWorkHoursWithMinutes(source.pauseControl?.workHours, 0, 24),
-      workWeek: normalizeWorkWeekSchedule(
-        source.pauseControl?.workWeek,
-        normalizeWorkHoursWithMinutes(source.pauseControl?.workHours, 0, 24),
-      ),
       areaPauseControls: (() => {
         const areaSource = source.pauseControl?.areaPauseControls && typeof source.pauseControl.areaPauseControls === "object"
           ? source.pauseControl.areaPauseControls
@@ -3884,17 +3819,11 @@ export function normalizeSystemOperationalSettings(value) {
           const rawAreaSource = areaSource[key] || EMPTY_OBJECT;
           accumulator[normalizedArea] = {
             enabled: Boolean(rawAreaSource?.enabled ?? current.enabled),
-            includeInGlobalPause: rawAreaSource?.includeInGlobalPause !== false,
             workHours: normalizeWorkHoursWithMinutes(rawAreaSource?.workHours || current.workHours, 0, 24),
           };
           return accumulator;
         }, {});
       })(),
-      globalPauseActivatedAt: (() => { const raw = source.pauseControl?.globalPauseActivatedAt; return (raw && !isNaN(Date.parse(raw))) ? String(raw) : null; })(),
-        globalPauseAccumulatedSeconds: (() => {
-          const raw = Number(source.pauseControl?.globalPauseAccumulatedSeconds ?? 0);
-          return Number.isFinite(raw) ? Math.max(0, Math.floor(raw)) : 0;
-        })(),
     },
       timeZone: (() => {
         const raw = String(source.timeZone || "").trim();

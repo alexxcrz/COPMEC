@@ -1310,8 +1310,6 @@ warehouseRouter.post("/boards/:boardId/rows", (req, res) => {
       ? 401
       : result.reason === "board_not_found"
         ? 404
-        : result.reason === "global_pause_active"
-          ? 423
           : 403;
     res.status(status).json({ ok: false, message: "No fue posible crear la fila solicitada." });
     return;
@@ -1336,8 +1334,6 @@ warehouseRouter.patch("/boards/:boardId/rows/:rowId", (req, res) => {
           ? 429
         : result.reason === "pause_reason_blocked"
           ? 422
-        : result.reason === "global_pause_active"
-          ? 423
           : 403;
     const message = result.reason === "pause_daily_limit_reached"
       ? `Ya alcanzaste el máximo de pausas autorizadas para hoy (${Number(result.limit || 0)}).`

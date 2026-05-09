@@ -5219,19 +5219,6 @@ tbody tr:hover {
   gap: 1rem;
 }
 
-.board-global-pause-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-  margin: 0.2rem 0 0.55rem;
-  padding: 0.5rem 0.62rem;
-  border-radius: 0.9rem;
-  border: 1px solid rgba(3, 33, 33, 0.14);
-  background: linear-gradient(180deg, rgba(248, 252, 250, 0.96) 0%, rgba(241, 248, 245, 0.96) 100%);
-}
-
 .permissions-user-summary {
   display: grid;
   gap: 0.25rem;
@@ -6543,7 +6530,7 @@ tbody tr:hover {
   background: linear-gradient(180deg, rgba(249, 253, 251, 0.98) 0%, rgba(242, 249, 246, 0.98) 100%);
 }
 
-.returns-scan-global-top {
+.returns-scan-workflow-top {
   display: flex;
   align-items: center;
   justify-content: space-between;

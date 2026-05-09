@@ -416,7 +416,7 @@ function normalizeWorkHoursWithMinutes(source = {}) {
 }
 
 const PAUSE_WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
-const DEFAULT_GLOBAL_WORK_WEEK = {
+const DEFAULT_OPERATIONAL_WORK_WEEK = {
   mon: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
   tue: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
   wed: { enabled: true, workHours: { startHour: 8, startMinute: 0, endHour: 16, endMinute: 0 } },
@@ -429,7 +429,7 @@ const DEFAULT_GLOBAL_WORK_WEEK = {
 function normalizeWorkWeekSchedule(source, fallbackWorkHours = EMPTY_OBJECT) {
   const weekSource = source && typeof source === "object" ? source : EMPTY_OBJECT;
   return PAUSE_WEEKDAY_KEYS.reduce((accumulator, dayKey) => {
-    const dayDefault = DEFAULT_GLOBAL_WORK_WEEK[dayKey] || { enabled: true, workHours: normalizeWorkHoursWithMinutes(fallbackWorkHours) };
+    const dayDefault = DEFAULT_OPERATIONAL_WORK_WEEK[dayKey] || { enabled: true, workHours: normalizeWorkHoursWithMinutes(fallbackWorkHours) };
     const daySource = weekSource[dayKey] && typeof weekSource[dayKey] === "object" ? weekSource[dayKey] : EMPTY_OBJECT;
     const hasOwnEnabled = Object.prototype.hasOwnProperty.call(daySource, "enabled");
     const mergedWorkHoursSource = daySource.workHours && typeof daySource.workHours === "object"
@@ -447,7 +447,6 @@ function normalizeAreaPauseControl(value) {
   const source = value && typeof value === "object" ? value : EMPTY_OBJECT;
   return {
     enabled: Boolean(source.enabled),
-    includeInGlobalPause: source.includeInGlobalPause !== false,
     workHours: normalizeWorkHoursWithMinutes(source.workHours),
   };
 }
@@ -477,10 +476,6 @@ function normalizeSystemPauseControl(value) {
       return true;
     });
   
-  // Global work hours (with minute support)
-  const globalWorkHours = normalizeWorkHoursWithMinutes(source.workHours);
-  const globalWorkWeek = normalizeWorkWeekSchedule(source.workWeek, globalWorkHours);
-  
   const areaSource = source.areaPauseControls && typeof source.areaPauseControls === "object" ? source.areaPauseControls : {};
   const areaKeys = Object.keys(areaSource);
   const areaPauseControls = areaKeys.reduce((accumulator, areaKey) => {
@@ -493,34 +488,14 @@ function normalizeSystemPauseControl(value) {
       enabled: Object.hasOwn(rawAreaSource, "enabled")
         ? Boolean(rawAreaSource.enabled)
         : Boolean(mergedCurrent.enabled),
-      includeInGlobalPause: Object.hasOwn(rawAreaSource, "includeInGlobalPause")
-        ? rawAreaSource.includeInGlobalPause !== false
-        : mergedCurrent.includeInGlobalPause !== false,
       workHours: normalizeWorkHoursWithMinutes(normalizedIncoming.workHours || mergedCurrent.workHours || EMPTY_OBJECT),
     };
     return accumulator;
   }, {});
-  
-  const rawActivatedAt = source.globalPauseActivatedAt;
-  const globalPauseActivatedAt = (rawActivatedAt && !Number.isNaN(Date.parse(rawActivatedAt))) ? String(rawActivatedAt) : null;
-  const rawAutoDisabledUntil = source.globalPauseAutoDisabledUntil;
-  const globalPauseAutoDisabledUntil = (rawAutoDisabledUntil && !Number.isNaN(Date.parse(rawAutoDisabledUntil)))
-    ? String(rawAutoDisabledUntil)
-    : null;
-  const accumulatedSecondsRaw = Number(source.globalPauseAccumulatedSeconds ?? 0);
-  const globalPauseAccumulatedSeconds = Number.isFinite(accumulatedSecondsRaw)
-    ? Math.max(0, Math.floor(accumulatedSecondsRaw))
-    : 0;
+
   return {
-    globalPauseEnabled: Boolean(source.globalPauseEnabled),
-    forceGlobalPause: Boolean(source.forceGlobalPause),
     reasons: reasons.length ? reasons : fallbackReasons,
-    workHours: globalWorkHours,
-    workWeek: globalWorkWeek,
     areaPauseControls,
-    globalPauseActivatedAt,
-    globalPauseAutoDisabledUntil,
-    globalPauseAccumulatedSeconds,
   };
 }
 
@@ -586,78 +561,6 @@ function isWithinPauseControlWorkHours(nowMs, workHours, workWeek = EMPTY_OBJECT
 
   const nowTotal = (timeParts.hour * 60) + timeParts.minute;
   return nowTotal >= startTotal && nowTotal < endTotal;
-}
-
-function finalizeGlobalPauseAccumulation(pauseControl, nowMs = Date.now()) {
-  const normalizedPauseControl = normalizeSystemPauseControl(pauseControl);
-  const activatedAtMs = normalizedPauseControl.globalPauseActivatedAt
-    ? new Date(normalizedPauseControl.globalPauseActivatedAt).getTime()
-    : NaN;
-  if (!Number.isFinite(activatedAtMs)) {
-    return {
-      ...normalizedPauseControl,
-      globalPauseActivatedAt: null,
-    };
-  }
-
-  const elapsedSeconds = Math.max(0, Math.floor((nowMs - activatedAtMs) / 1000));
-  return {
-    ...normalizedPauseControl,
-    globalPauseActivatedAt: null,
-    globalPauseAccumulatedSeconds: Math.max(0, Number(normalizedPauseControl.globalPauseAccumulatedSeconds || 0) + elapsedSeconds),
-  };
-}
-
-function resolveAutomatedGlobalPauseControl(pauseControl, timeZone = OPERATIONAL_TIMEZONE) {
-  const normalizedPauseControl = normalizeSystemPauseControl(pauseControl);
-  const nowMs = Date.now();
-  const autoDisabledUntilMs = normalizedPauseControl.globalPauseAutoDisabledUntil
-    ? new Date(normalizedPauseControl.globalPauseAutoDisabledUntil).getTime()
-    : NaN;
-  const hasActiveTemporaryDisable = Number.isFinite(autoDisabledUntilMs) && autoDisabledUntilMs > nowMs;
-  const isWithinGlobalWindow = isWithinPauseControlWorkHours(nowMs, normalizedPauseControl.workHours, normalizedPauseControl.workWeek, timeZone);
-  const desiredGlobalPauseEnabled = normalizedPauseControl.forceGlobalPause
-    ? true
-    : hasActiveTemporaryDisable
-      ? false
-      : !isWithinGlobalWindow;
-
-  const nextPauseControl = {
-    ...normalizedPauseControl,
-    globalPauseEnabled: desiredGlobalPauseEnabled,
-    globalPauseAutoDisabledUntil: hasActiveTemporaryDisable ? normalizedPauseControl.globalPauseAutoDisabledUntil : null,
-  };
-
-  if (!normalizedPauseControl.globalPauseEnabled && desiredGlobalPauseEnabled) {
-    nextPauseControl.globalPauseActivatedAt = new Date(nowMs).toISOString();
-  } else if (normalizedPauseControl.globalPauseEnabled && !desiredGlobalPauseEnabled) {
-    return finalizeGlobalPauseAccumulation(nextPauseControl, nowMs);
-  }
-
-  return nextPauseControl;
-}
-
-function applyAutomatedGlobalPauseState(currentState) {
-  const currentOperational = normalizeSystemOperationalSettings(currentState?.system?.operational);
-  const nextPauseControl = resolveAutomatedGlobalPauseControl(currentOperational.pauseControl, currentOperational.timeZone);
-  const changed = JSON.stringify(nextPauseControl) !== JSON.stringify(currentOperational.pauseControl);
-  if (!changed) {
-    return { state: currentState, changed: false };
-  }
-
-  return {
-    changed: true,
-    state: {
-      ...currentState,
-      system: {
-        ...(currentState?.system || EMPTY_OBJECT),
-        operational: {
-          ...currentOperational,
-          pauseControl: nextPauseControl,
-        },
-      },
-    },
-  };
 }
 
 function normalizeSystemOperationalSettings(value) {
@@ -3068,9 +2971,8 @@ export function getRawWarehouseState() {
   const currentState = readStore();
   const { state: boardState, changed: boardChanged } = applyAutomatedBoardWeeklyCut(currentState);
   const { state: dailyRowsState, changed: dailyRowsChanged } = applyAutomatedBoardDailyRows(boardState);
-  const { state: automatedPauseState, changed: pauseChanged } = applyAutomatedGlobalPauseState(dailyRowsState);
-  const { state: transportState, changed: transportChanged } = applyAutomatedTransportDailyCut(automatedPauseState);
-  if (!boardChanged && !dailyRowsChanged && !pauseChanged && !transportChanged) return currentState;
+  const { state: transportState, changed: transportChanged } = applyAutomatedTransportDailyCut(dailyRowsState);
+  if (!boardChanged && !dailyRowsChanged && !transportChanged) return currentState;
 
   const persistedState = normalizeState({
     ...transportState,
@@ -3153,21 +3055,6 @@ export function updateWarehouseSystemOperationalSettings(auth, patch = {}) {
   const currentOperational = normalizeSystemOperationalSettings(current.system?.operational);
   const patchNormalized = patch && typeof patch === "object" ? patch : EMPTY_OBJECT;
   const merged = { ...currentOperational, ...patchNormalized };
-  // Track when global pause is toggled
-  if (merged.pauseControl && typeof merged.pauseControl === "object") {
-    const currentlyPaused = currentOperational.pauseControl?.globalPauseEnabled;
-    const nextPaused = Boolean(merged.pauseControl.globalPauseEnabled);
-    if (!currentlyPaused && nextPaused) {
-      merged.pauseControl = { ...merged.pauseControl, globalPauseActivatedAt: new Date().toISOString() };
-    } else if (currentlyPaused && !nextPaused) {
-      const finalizedCurrentPause = finalizeGlobalPauseAccumulation(currentOperational.pauseControl, Date.now());
-      merged.pauseControl = {
-        ...merged.pauseControl,
-        globalPauseActivatedAt: null,
-        globalPauseAccumulatedSeconds: finalizedCurrentPause.globalPauseAccumulatedSeconds,
-      };
-    }
-  }
   const nextOperational = normalizeSystemOperationalSettings(merged);
 
   const nextState = {
@@ -3683,45 +3570,23 @@ function getBoardFieldDefaultValue(field, currentUserId) {
   return "";
 }
 
-function shouldApplyGlobalPauseToArea(pauseControl, areaKey = "") {
-  const normalizedArea = normalizeAreaOption(splitAreaAndSubArea(areaKey).area || areaKey);
-  if (!normalizedArea) return true;
-  const areaConfig = pauseControl?.areaPauseControls?.[normalizedArea];
-  if (!areaConfig || typeof areaConfig !== "object") return true;
-  return areaConfig.includeInGlobalPause !== false;
-}
-
 function resolvePauseControlWorkHoursForArea(pauseControl, areaKey = "") {
   const normalizedArea = normalizeAreaOption(splitAreaAndSubArea(areaKey).area || areaKey);
+  const alwaysOpen = normalizeWorkHoursWithMinutes(EMPTY_OBJECT);
   if (!normalizedArea) {
-    return normalizeWorkHoursWithMinutes(pauseControl?.workHours || EMPTY_OBJECT);
+    return alwaysOpen;
   }
   const areaConfig = pauseControl?.areaPauseControls?.[normalizedArea];
   if (areaConfig?.enabled && areaConfig?.workHours) {
     return normalizeWorkHoursWithMinutes(areaConfig.workHours || EMPTY_OBJECT);
   }
-  return normalizeWorkHoursWithMinutes(pauseControl?.workHours || EMPTY_OBJECT);
+  return alwaysOpen;
 }
 
 function getEffectiveOperationalNowMs(nowIso, pauseControl, areaKey = "") {
   let effectiveNow = new Date(nowIso).getTime();
   if (!Number.isFinite(effectiveNow)) {
     effectiveNow = Date.now();
-  }
-
-  if (!pauseControl?.globalPauseEnabled) {
-    return effectiveNow;
-  }
-
-  if (!shouldApplyGlobalPauseToArea(pauseControl, areaKey)) {
-    return effectiveNow;
-  }
-
-  const activatedAtMs = pauseControl?.globalPauseActivatedAt
-    ? new Date(pauseControl.globalPauseActivatedAt).getTime()
-    : NaN;
-  if (Number.isFinite(activatedAtMs)) {
-    return Math.max(0, Math.min(effectiveNow, activatedAtMs));
   }
 
   return effectiveNow;
@@ -3780,9 +3645,6 @@ function getOperationalElapsedSeconds(startIso, nowIso, pauseControl, cleaningSi
   const startMs = parseOperationalTimestamp(startIso, nowIso);
   if (!Number.isFinite(startMs)) return 0;
   const effectiveNow = getEffectiveOperationalNowMs(nowIso, pauseControl, cleaningSite);
-  if (!shouldApplyGlobalPauseToArea(pauseControl, cleaningSite)) {
-    return Math.max(0, Math.floor((effectiveNow - startMs) / 1000));
-  }
 
   const workHours = resolvePauseControlWorkHoursForArea(pauseControl, cleaningSite);
   const startHour = Math.min(23, Math.max(0, Math.round(Number(workHours.startHour ?? 0))));
@@ -6390,14 +6252,15 @@ export function patchWarehouseBoardRow(auth, boardId, rowId, patch = {}) {
   };
   const computePausedOverflowSeconds = (sourceRow) => {
     if (!sourceRow || String(sourceRow.status || "") !== "Pausado") return 0;
+    if (!sourceRow.pauseStartedAt) return 0;
     const authorizedSeconds = Math.max(0, Number(sourceRow.pauseAuthorizedSeconds || 0));
-    if (!authorizedSeconds || !sourceRow.pauseStartedAt) return 0;
     const pausedElapsedSeconds = getOperationalElapsedSeconds(
       sourceRow.pauseStartedAt,
       nowIso,
       pauseControl,
       sourceRow.cleaningSite,
     );
+    if (!authorizedSeconds) return Math.max(0, pausedElapsedSeconds);
     return Math.max(0, pausedElapsedSeconds - authorizedSeconds);
   };
   const closeOpenPauseLog = (sourceLogs, sourceRow, resumeIso, fallbackReason = "") => {
