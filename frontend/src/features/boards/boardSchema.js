@@ -21,7 +21,7 @@ export const boardColumns = [
     options: [
       { value: "planning", label: "Planificacion", color: "#dbeafe", textColor: "#1e3a8a" },
       { value: "progress", label: "En progreso", color: "#fef3c7", textColor: "#92400e" },
-      { value: "done", label: "Completado", color: "#dcfce7", textColor: "#166534" },
+      { value: "done", label: "Completado", color: "#e8eff6", textColor: "#2d4f72" },
     ],
   },
   {

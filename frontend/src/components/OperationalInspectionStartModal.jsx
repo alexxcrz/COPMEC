@@ -346,7 +346,7 @@ export default function OperationalInspectionStartModal({
         </div>
 
         {resolvedTemplate.sections.map((section) => (
-          <article key={section.id} style={{ border: "1px solid rgba(3,33,33,0.14)", borderRadius: "0.9rem", padding: "0.7rem", display: "grid", gap: "0.6rem" }}>
+          <article key={section.id} style={{ border: "1px solid rgba(49, 77, 105, 0.14)", borderRadius: "0.9rem", padding: "0.7rem", display: "grid", gap: "0.6rem" }}>
             <strong>{section.title}</strong>
             <div style={{ display: "grid", gap: "0.45rem" }}>
               {section.checks.map((check) => {
@@ -355,11 +355,11 @@ export default function OperationalInspectionStartModal({
                 const photos = Array.isArray(current.photos) ? current.photos : [];
                 const saveKey = `${currentSiteKey}:${check.id}`;
                 return (
-                  <div key={check.id} style={{ border: "1px solid rgba(3,33,33,0.08)", borderRadius: "0.75rem", padding: "0.55rem", display: "grid", gap: "0.45rem" }}>
+                  <div key={check.id} style={{ border: "1px solid rgba(49, 77, 105, 0.08)", borderRadius: "0.75rem", padding: "0.55rem", display: "grid", gap: "0.45rem" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.6rem", flexWrap: "wrap" }}>
                       <span>{check.label}</span>
                       <div style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", fontWeight: 700 }}>
-                        <span style={{ color: isNoOk ? "#b91c1c" : "#166534" }}>{isNoOk ? "NO OK" : "OK"}</span>
+                        <span style={{ color: isNoOk ? "#b91c1c" : "#2d4f72" }}>{isNoOk ? "NO OK" : "OK"}</span>
                         <button
                           type="button"
                           aria-label={`Cambiar estado de ${check.label}`}
@@ -371,7 +371,7 @@ export default function OperationalInspectionStartModal({
                             width: "44px",
                             height: "24px",
                             borderRadius: "999px",
-                            background: isNoOk ? "#dc2626" : "#16a34a",
+                            background: isNoOk ? "#dc2626" : "#4f7da9",
                             transition: "all 0.2s ease",
                             border: "none",
                             padding: 0,
@@ -385,7 +385,7 @@ export default function OperationalInspectionStartModal({
                               width: "18px",
                               height: "18px",
                               borderRadius: "50%",
-                              background: "#fff",
+                              background: "#ffffff",
                               transition: "all 0.2s ease",
                             }}
                           />
@@ -471,7 +471,7 @@ export default function OperationalInspectionStartModal({
                                 href={photo.url}
                                 target="_blank"
                                 rel="noreferrer"
-                                style={{ display: "grid", gap: "0.2rem", border: "1px solid rgba(3,33,33,0.14)", borderRadius: "0.6rem", padding: "0.3rem", textDecoration: "none", color: "inherit" }}
+                                style={{ display: "grid", gap: "0.2rem", border: "1px solid rgba(49, 77, 105, 0.14)", borderRadius: "0.6rem", padding: "0.3rem", textDecoration: "none", color: "inherit" }}
                               >
                                 <img src={photo.thumbnailUrl || photo.url} alt={photo.name} style={{ width: "100%", height: "80px", objectFit: "cover", borderRadius: "0.45rem" }} />
                                 <small style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{photo.name}</small>

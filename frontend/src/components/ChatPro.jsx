@@ -57,11 +57,12 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     const method = String(opts?.method || "GET").toUpperCase();
     const fullUrl = url.startsWith('http') ? url : (API_BASE_URL + (url.startsWith('/') ? url : '/' + url));
     const isChatGet = method === "GET" && fullUrl.includes("/api/chat/");
+    const isUserProfileFetch = fullUrl.includes("/api/chat/usuario/") && fullUrl.includes("/perfil");
     const isCriticalChatSync =
       fullUrl.includes("/api/chat/calls/pending") ||
       fullUrl.includes("/api/chat/usuarios/estados") ||
       fullUrl.includes("/api/chat/calls/historial");
-    if (isChatGet && !isCriticalChatSync && Date.now() < rateLimitedUntilRef.current) {
+    if (isChatGet && !isCriticalChatSync && !isUserProfileFetch && Date.now() < rateLimitedUntilRef.current) {
       const err = new Error("Rate limit de chat activo");
       err.status = 429;
       err.isRateLimited = true;
@@ -732,7 +733,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
             if (!registration?.showNotification) {
               new Notification(title, {
                 body,
-                icon: "/logocopmec.png",
+                icon: "/android-chrome-192x192.png",
                 tag,
                 requireInteraction: true,
               });
@@ -741,8 +742,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
             return registration.showNotification(title, {
               body,
-              icon: "/logocopmec.png",
-              badge: "/logocopmec.png",
+              icon: "/android-chrome-192x192.png",
+              badge: "/android-chrome-192x192.png",
               tag,
               requireInteraction: true,
               actions: [
@@ -760,7 +761,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
           .catch(() => {
             new Notification(title, {
               body,
-              icon: "/logocopmec.png",
+              icon: "/android-chrome-192x192.png",
               tag,
               requireInteraction: true,
             });
@@ -770,7 +771,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
       new Notification(title, {
         body,
-        icon: "/logocopmec.png",
+        icon: "/android-chrome-192x192.png",
         tag,
         requireInteraction: true,
       });
@@ -781,30 +782,52 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
   const makeInitialsAvatar = (name) => {
     const safeName = (name && typeof name === 'string' ? name : '').trim();
-    const colors = ['#0f766e','#1d4ed8','#7c3aed','#b45309','#032121','#be185d','#0369a1','#166534'];
+    const colors = ['#355f88','#1d4ed8','#7c3aed','#b45309','#314d69','#be185d','#0369a1','#2d4f72'];
     let hash = 0;
     for (let i = 0; i < safeName.length; i++) hash = safeName.charCodeAt(i) + ((hash << 5) - hash);
     const bg = colors[Math.abs(hash) % colors.length];
     // Person silhouette icon
-    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 36 36'><rect width='36' height='36' rx='18' ry='18' fill='${bg}'/><circle cx='18' cy='14' r='5.5' fill='rgba(255,255,255,0.88)'/><path d='M6 34c0-6.6 5.4-12 12-12s12 5.4 12 12' fill='rgba(255,255,255,0.88)'/></svg>`;
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 36 36'><rect width='36' height='36' rx='18' ry='18' fill='${bg}'/><circle cx='18' cy='14' r='5.5' fill='rgba(255, 255, 255, 0.88)'/><path d='M6 34c0-6.6 5.4-12 12-12s12 5.4 12 12' fill='rgba(255, 255, 255, 0.88)'/></svg>`;
     return `data:image/svg+xml,${encodeURIComponent(svg)}`;
   };
 
   // Avatar fijo para Chat General (globo terráqueo)
   const makeGeneralAvatar = () => {
-    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 36 36'><rect width='36' height='36' rx='18' ry='18' fill='%23032121'/><circle cx='18' cy='18' r='9' stroke='rgba(255,255,255,0.9)' stroke-width='1.5' fill='none'/><line x1='9' y1='18' x2='27' y2='18' stroke='rgba(255,255,255,0.9)' stroke-width='1.5'/><path d='M18 9c-3 3-5 5.8-5 9s2 6 5 9' stroke='rgba(255,255,255,0.9)' stroke-width='1.5' fill='none'/><path d='M18 9c3 3 5 5.8 5 9s-2 6-5 9' stroke='rgba(255,255,255,0.9)' stroke-width='1.5' fill='none'/></svg>`;
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 36 36'><rect width='36' height='36' rx='18' ry='18' fill='%23032121'/><circle cx='18' cy='18' r='9' stroke='rgba(255, 255, 255, 0.9)' stroke-width='1.5' fill='none'/><line x1='9' y1='18' x2='27' y2='18' stroke='rgba(255, 255, 255, 0.9)' stroke-width='1.5'/><path d='M18 9c-3 3-5 5.8-5 9s2 6 5 9' stroke='rgba(255, 255, 255, 0.9)' stroke-width='1.5' fill='none'/><path d='M18 9c3 3 5 5.8 5 9s-2 6-5 9' stroke='rgba(255, 255, 255, 0.9)' stroke-width='1.5' fill='none'/></svg>`;
     return `data:image/svg+xml,${encodeURIComponent(svg)}`;
   };
 
   const getAvatarUrl = (usuarioObj) => {
     if (!usuarioObj) return makeInitialsAvatar('?');
-    
-    if (usuarioObj.photo) {
-      const serverUrl = SERVER_URL;
-      const cacheKey = usuarioObj.photoTimestamp || usuarioObj.id || Date.now();
-      if (usuarioObj.photo.startsWith('http')) return `${usuarioObj.photo}?t=${cacheKey}`;
-      if (usuarioObj.photo.startsWith('/uploads')) return `${serverUrl}${usuarioObj.photo}?t=${cacheKey}`;
-      return `${serverUrl}/uploads/perfiles/${usuarioObj.photo}?t=${cacheKey}`;
+
+    const serverUrl = SERVER_URL;
+    const cacheKey = usuarioObj.photoTimestamp || usuarioObj.id || "v1";
+    const rawAvatarValue = String(
+      usuarioObj.photoThumbnailUrl
+      || usuarioObj.photo
+      || usuarioObj.avatarUrl
+      || usuarioObj.avatar_url
+      || "",
+    ).trim();
+    const loweredAvatar = rawAvatarValue.toLowerCase();
+    const avatarValue = ["", "null", "undefined", "nan", "[object object]"]
+      .includes(loweredAvatar)
+      || rawAvatarValue.includes("\\fakepath\\")
+      ? ""
+      : rawAvatarValue;
+
+    if (avatarValue) {
+      const withCache = (url) => {
+        const separator = url.includes("?") ? "&" : "?";
+        return `${url}${separator}t=${cacheKey}`;
+      };
+
+      if (avatarValue.startsWith('data:image')) return avatarValue;
+      if (avatarValue.startsWith('blob:')) return avatarValue;
+      if (avatarValue.startsWith('http')) return withCache(avatarValue);
+      if (avatarValue.startsWith('//')) return withCache(`https:${avatarValue}`);
+      if (avatarValue.startsWith('/')) return withCache(`${serverUrl}${avatarValue}`);
+      return withCache(`${serverUrl}/uploads/perfiles/${avatarValue}`);
     }
 
     const displayName = usuarioObj.name || usuarioObj.nickname || usuarioObj.nombre || '';
@@ -813,14 +836,45 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
 
   const getColorForName = (nickname) => {
     if (!nickname || typeof nickname !== 'string') {
-      return "#666"; // Color por defecto si nickname es null/undefined
+      return "#666666"; // Color por defecto si nickname es null/undefined
     }
-    const colors = ["#0aa36c", "#007bff", "#9b59b6", "#e67e22", "#16a085"];
+    const colors = ["#275a86", "#007bff", "#9b59b6", "#e67e22", "#295e8d"];
     let hash = 0;
     for (let i = 0; i < nickname.length; i++) {
       hash = nickname.charCodeAt(i) + ((hash << 5) - hash);
     }
     return colors[Math.abs(hash) % colors.length];
+  };
+
+  const normalizeUserKey = (value) => String(value || "").trim().toLowerCase();
+
+  const buildProfileFallback = (nickname) => {
+    const targetKey = normalizeUserKey(nickname);
+    if (!targetKey) return null;
+    const source = [
+      ...(Array.isArray(usuariosCOPMEC) ? usuariosCOPMEC : []),
+      user,
+    ].find((entry) => {
+      const aliases = [entry?.name, entry?.nickname, entry?.email, entry?.id].map(normalizeUserKey);
+      return aliases.includes(targetKey);
+    });
+    if (!source && !nickname) return null;
+    return {
+      id: source?.id || null,
+      name: source?.name || nickname,
+      nickname: source?.nickname || source?.name || nickname,
+      photo: source?.photo || null,
+      photoThumbnailUrl: source?.photoThumbnailUrl || null,
+      puesto: source?.role || null,
+      cargo: source?.jobTitle || source?.cargo || null,
+      area: source?.area || null,
+      department: source?.department || null,
+      correo: source?.email || null,
+      telefono: source?.telefono || null,
+      telefono_visible: Boolean(source?.telefono_visible),
+      birthday: source?.birthday || null,
+      active: source?.isActive !== false,
+    };
   };
 
   // Cerrar menús al hacer clic fuera
@@ -1111,7 +1165,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                 if ("Notification" in window && Notification.permission === "granted") {
                   new Notification("📱 Mensaje de COPMEC", {
                     body: ultimoMensaje.mensaje || "Tienes un nuevo mensaje de COPMEC",
-                    icon: "/logocopmec.png",
+                    icon: "/android-chrome-192x192.png",
                     tag: "COPMEC-otp",
                     requireInteraction: false
                   });
@@ -1120,7 +1174,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                     if (permission === "granted") {
                       new Notification("📱 Mensaje de COPMEC", {
                         body: ultimoMensaje.mensaje || "Tienes un nuevo mensaje de COPMEC",
-                        icon: "/logocopmec.png",
+                        icon: "/android-chrome-192x192.png",
                         tag: "COPMEC-otp"
                       });
                     }
@@ -1675,7 +1729,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
         if ("Notification" in window && Notification.permission === "granted") {
           new Notification("📱 Mensaje de COPMEC", {
             body: mensaje.mensaje || "Tienes un nuevo mensaje de COPMEC",
-            icon: "/logocopmec.png",
+            icon: "/android-chrome-192x192.png",
             tag: "COPMEC-otp",
             requireInteraction: false
           });
@@ -1685,7 +1739,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
             if (permission === "granted") {
               new Notification("📱 Mensaje de COPMEC", {
                 body: mensaje.mensaje || "Tienes un nuevo mensaje de COPMEC",
-                icon: "/logocopmec.png",
+                icon: "/android-chrome-192x192.png",
                 tag: "COPMEC-otp"
               });
             }
@@ -2375,8 +2429,8 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
           await handleRestSignal(signal);
         }
       } catch (_err) {
-        if (import.meta.env.DEV && _err?.status === 404) {
-          // En desarrollo sin backend/proxy activo evita spam de 404 en consola.
+        if (import.meta.env.DEV && (_err?.status === 404 || _err?.status === 401)) {
+          // En desarrollo sin backend/proxy activo o sin sesión evita spam de 404/401 en consola.
           callSignalPollPausedUntilRef.current = Date.now() + (10 * 60 * 1000);
         }
         // silencio en dev sin backend
@@ -4587,7 +4641,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     const subtitulo = pathYQuery || link;
     
     // Intentar obtener favicon del sitio
-    const faviconUrl = `${url.origin}/logocopmec.png`;
+    const faviconUrl = `${url.origin}/android-chrome-192x192.png`;
     
     return {
       titulo,
@@ -4655,11 +4709,21 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
     setPerfilError(null);
     setPerfilCargando(true);
 
+    const fallbackPerfil = buildProfileFallback(nickname);
+    if (fallbackPerfil) {
+      setPerfilData(fallbackPerfil);
+    }
+
     try {
       const perfil = await authFetch(`${SERVER_URL}/api/chat/usuario/${encodeURIComponent(nickname)}/perfil`);
-      setPerfilData(perfil || null);
+      setPerfilData(perfil || fallbackPerfil || null);
     } catch (err) {
-      setPerfilError(err?.message || "Error cargando información del usuario");
+      if (Number(err?.status) === 429) {
+        // Mantener fallback visible y no ensuciar la UI con error transitorio.
+        setPerfilError(null);
+      } else {
+        setPerfilError(err?.message || "Error cargando información del usuario");
+      }
     } finally {
       setPerfilCargando(false);
     }
@@ -7339,11 +7403,14 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                 <div className="chat-profile-hero-card">
                                   <div className="chat-profile-hero-photo">
                                     <img
-                                      src={getAvatarUrl({
-                                        photo: perfilData?.photo,
-                                        id: perfilData?.id,
-                                      })}
+                                      src={getAvatarUrl(perfilData)}
                                       alt={perfilData?.name || "Usuario"}
+                                      onError={(event) => {
+                                        const fallback = makeInitialsAvatar(perfilData?.name || perfilData?.nickname || "?");
+                                        if (event.currentTarget.src !== fallback) {
+                                          event.currentTarget.src = fallback;
+                                        }
+                                      }}
                                     />
                                   </div>
                                   <div className="chat-profile-hero-data">
@@ -7754,7 +7821,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                           backdropFilter: "blur(8px)",
                                           border: "1px solid rgba(255, 255, 255, 0.1)",
                                           borderRadius: "4px",
-                                          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                                          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
                                           zIndex: 1000,
                                           padding: "2px"
                                         }}
@@ -7815,7 +7882,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                                   padding: "4px 8px",
                                                   background: "transparent",
                                                   border: "none",
-                                                  color: tieneRestriccionIndefinida ? "#22c55e" : "var(--chat-text)",
+                                                  color: tieneRestriccionIndefinida ? "#5f8fbe" : "var(--chat-text)",
                                                   cursor: "pointer",
                                                   borderRadius: "4px",
                                                   whiteSpace: "nowrap"
@@ -7867,13 +7934,13 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                                         padding: "4px 6px",
                                                         background: "transparent",
                                                         border: "none",
-                                                        color: "#22c55e",
+                                                        color: "#5f8fbe",
                                                         cursor: "pointer",
                                                         borderRadius: "3px",
                                                         lineHeight: "1.3",
                                                         whiteSpace: "nowrap"
                                                       }}
-                                                      onMouseEnter={(e) => e.target.style.background = "rgba(34, 197, 94, 0.1)"}
+                                                      onMouseEnter={(e) => e.target.style.background = "rgba(54, 120, 177, 0.1)"}
                                                       onMouseLeave={(e) => e.target.style.background = "transparent"}
                                                     >
                                                       ✅ Permitir mensaje
@@ -8899,9 +8966,9 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                       {fueLeido ? (
                                         /* Leído: 2 anillos + punto verde */
                                         <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                          <circle cx="10" cy="10" r="8.5" stroke="#22c55e" strokeWidth="1.8"/>
-                                          <circle cx="10" cy="10" r="5.5" stroke="#22c55e" strokeWidth="1.5"/>
-                                          <circle cx="10" cy="10" r="2.2" fill="#22c55e"/>
+                                          <circle cx="10" cy="10" r="8.5" stroke="#5f8fbe" strokeWidth="1.8"/>
+                                          <circle cx="10" cy="10" r="5.5" stroke="#5f8fbe" strokeWidth="1.5"/>
+                                          <circle cx="10" cy="10" r="2.2" fill="#5f8fbe"/>
                                         </svg>
                                       ) : fueEntregado ? (
                                         /* Entregado: 2 anillos blancos */
@@ -9024,7 +9091,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                 ? <>🎤 Nota de voz ({(archivoAdjunto.size/1024).toFixed(0)} KB)</>
                                 : archivoAdjunto.type?.startsWith('video/')
                                 ? <>🎥 Videomensaje ({(archivoAdjunto.size/1024).toFixed(0)} KB)</>
-                                : <>&#128206; {archivoAdjunto.name}</>}
+                                : <>&#1f4669; {archivoAdjunto.name}</>}
                             </span>
                             <button
                               className="btn-remover-archivo"
@@ -9192,7 +9259,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                                     onClick={() => setEmojiCategoriaActiva(key)}
                                   >
                                     {key === "personalizados" ? (
-                                      <img src="/logocopmec.png" alt="Custom" style={{width:14,height:14,borderRadius:3}} />
+                                      <img src="/android-chrome-192x192.png" alt="Custom" style={{width:14,height:14,borderRadius:3}} />
                                     ) : (
                                       (() => {
                                         const u = getTwemojiUrl(cat.icono);
@@ -9678,7 +9745,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                 controls
                 autoPlay
                 playsInline
-                style={{ background: '#000' }}
+                style={{ background: '#000000' }}
               />
             )}
 
@@ -10139,7 +10206,7 @@ export default function ChatPro({ socket, user, onClose, solicitudPending, onSol
                         onClick={() => setEmojiCategoriaActivaMenu(key)}
                       >
                         {key === "personalizados"
-                          ? <img src="/logocopmec.png" alt="Custom" style={{width:14,height:14,borderRadius:3}} />
+                          ? <img src="/android-chrome-192x192.png" alt="Custom" style={{width:14,height:14,borderRadius:3}} />
                           : (() => { const u = getTwemojiUrl(cat.icono); return u ? <img src={u} alt={cat.icono} style={{width:14,height:14}} /> : <span>{cat.icono}</span>; })()
                         }
                       </button>

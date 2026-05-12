@@ -64,6 +64,75 @@ const PAGE_PERMISSIONS = {
 };
 
 const ACTION_PERMISSIONS = {
+  exportDashboardData:      [ROLE_LEAD, ROLE_SR, ROLE_SSR],
+  manageDashboardState:     [ROLE_LEAD],
+  accessNavEsto:            [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  accessNavTransporte:      [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  accessNavLimpieza:        [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  accessNavRegulatorio:     [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  accessNavCalidad:         [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  accessNavInventario:      [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  accessNavRecepcion:       [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  accessNavOperaciones:     [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  accessNavMantenimiento:   [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  accessNavMayoreo:         [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  accessNavRetail:          [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  accessNavFullfilment:     [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  accessNavMejoraContinua:  [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  accessNavProduccion:      [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  accessNavRecursos:        [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  accessNavEquipo:          [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeEstoDashboard:       [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeEstoBoardBuilder:    [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeEstoMyBoards:        [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeEstoHistory:         [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeLimpiezaDashboard:   [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeLimpiezaBoardBuilder:[ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeLimpiezaMyBoards:    [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeLimpiezaHistory:     [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeRegulatorioDashboard:[ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeRegulatorioBoardBuilder:[ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeRegulatorioMyBoards: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeRegulatorioHistory:  [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeCalidadDashboard:    [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeCalidadBoardBuilder: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeCalidadMyBoards:     [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeCalidadHistory:      [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeInventarioDashboard: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeInventarioBoardBuilder:[ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeInventarioMyBoards:  [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeInventarioHistory:   [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeRecepcionDashboard:  [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeRecepcionBoardBuilder:[ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeRecepcionMyBoards:   [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeRecepcionHistory:    [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeOperacionesDashboard:[ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeOperacionesBoardBuilder:[ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeOperacionesMyBoards: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeOperacionesHistory:  [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeMantenimientoIncidencias:[ROLE_LEAD, ROLE_SR, ROLE_SSR],
+  scopeMantenimientoDashboard:[ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeMantenimientoBoardBuilder:[ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeMantenimientoMyBoards:[ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeMantenimientoHistory:[ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeMayoreoDashboard:    [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeMayoreoBoardBuilder: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeMayoreoMyBoards:     [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeMayoreoHistory:      [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeRetailDashboard:     [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeRetailBoardBuilder:  [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeRetailMyBoards:      [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeRetailHistory:       [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeFullfilmentDashboard:[ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeFullfilmentBoardBuilder:[ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeFullfilmentMyBoards: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeFullfilmentHistory:  [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeTransporteRegistrosEnvios:[ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeTransporteControl:   [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeTransporteIncidencias:[ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeTransporteConsolidados:[ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeTransporteDashboard: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  scopeTransporteLogistica: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
   createWeek:              [ROLE_LEAD, ROLE_SR],
   deleteWeek:              [ROLE_LEAD, ROLE_SR],
   createCatalog:           [ROLE_LEAD, ROLE_SR],
@@ -100,6 +169,8 @@ const ACTION_PERMISSIONS = {
   viewTransportPostponed: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
   manageTransportPostponed: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
   viewTransportMyRoutes: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  viewTransportLogistics: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
+  manageTransportLogistics: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
   viewTransportConsolidated: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
   deleteTransportRecord: [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR],
   createBoard:             [ROLE_LEAD, ROLE_SR],
@@ -129,6 +200,72 @@ const ACTION_PERMISSIONS = {
   manageSystemSettings:    [ROLE_LEAD, ROLE_SR],
   useCopmecAI:             [ROLE_LEAD],
 };
+
+const AREA_TAB_SCOPED_ACTION_CONFIG = [
+  ["scopeEstoDashboard", ["exportDashboardData", "manageDashboardState"]],
+  ["scopeEstoBoardBuilder", ["createCatalog", "editCatalog", "deleteCatalog", "createBoard", "editBoard", "saveTemplate", "editTemplate", "deleteTemplate", "duplicateBoard", "duplicateBoardWithRows", "deleteBoard", "deleteWeekActivity"]],
+  ["scopeEstoMyBoards", ["createBoardRow", "deleteBoardRow", "editFinishedBoardRow", "viewHistoricalBoardScopes", "boardWorkflow", "exportBoardExcel", "previewBoardPdf", "exportBoardPdf"]],
+  ["scopeEstoHistory", ["editHistoryRecords"]],
+  ["scopeLimpiezaDashboard", ["exportDashboardData", "manageDashboardState"]],
+  ["scopeLimpiezaBoardBuilder", ["createCatalog", "editCatalog", "deleteCatalog", "createBoard", "editBoard", "saveTemplate", "editTemplate", "deleteTemplate", "duplicateBoard", "duplicateBoardWithRows", "deleteBoard", "deleteWeekActivity"]],
+  ["scopeLimpiezaMyBoards", ["createBoardRow", "deleteBoardRow", "editFinishedBoardRow", "viewHistoricalBoardScopes", "boardWorkflow", "exportBoardExcel", "previewBoardPdf", "exportBoardPdf"]],
+  ["scopeLimpiezaHistory", ["editHistoryRecords"]],
+  ["scopeRegulatorioDashboard", ["exportDashboardData", "manageDashboardState"]],
+  ["scopeRegulatorioBoardBuilder", ["createCatalog", "editCatalog", "deleteCatalog", "createBoard", "editBoard", "saveTemplate", "editTemplate", "deleteTemplate", "duplicateBoard", "duplicateBoardWithRows", "deleteBoard", "deleteWeekActivity"]],
+  ["scopeRegulatorioMyBoards", ["createBoardRow", "deleteBoardRow", "editFinishedBoardRow", "viewHistoricalBoardScopes", "boardWorkflow", "exportBoardExcel", "previewBoardPdf", "exportBoardPdf"]],
+  ["scopeRegulatorioHistory", ["editHistoryRecords"]],
+  ["scopeCalidadDashboard", ["exportDashboardData", "manageDashboardState"]],
+  ["scopeCalidadBoardBuilder", ["createCatalog", "editCatalog", "deleteCatalog", "createBoard", "editBoard", "saveTemplate", "editTemplate", "deleteTemplate", "duplicateBoard", "duplicateBoardWithRows", "deleteBoard", "deleteWeekActivity"]],
+  ["scopeCalidadMyBoards", ["createBoardRow", "deleteBoardRow", "editFinishedBoardRow", "viewHistoricalBoardScopes", "boardWorkflow", "exportBoardExcel", "previewBoardPdf", "exportBoardPdf"]],
+  ["scopeCalidadHistory", ["editHistoryRecords"]],
+  ["scopeInventarioDashboard", ["exportDashboardData", "manageDashboardState"]],
+  ["scopeInventarioBoardBuilder", ["createCatalog", "editCatalog", "deleteCatalog", "createBoard", "editBoard", "saveTemplate", "editTemplate", "deleteTemplate", "duplicateBoard", "duplicateBoardWithRows", "deleteBoard", "deleteWeekActivity"]],
+  ["scopeInventarioMyBoards", ["createBoardRow", "deleteBoardRow", "editFinishedBoardRow", "viewHistoricalBoardScopes", "boardWorkflow", "exportBoardExcel", "previewBoardPdf", "exportBoardPdf"]],
+  ["scopeInventarioHistory", ["editHistoryRecords"]],
+  ["scopeRecepcionDashboard", ["exportDashboardData", "manageDashboardState"]],
+  ["scopeRecepcionBoardBuilder", ["createCatalog", "editCatalog", "deleteCatalog", "createBoard", "editBoard", "saveTemplate", "editTemplate", "deleteTemplate", "duplicateBoard", "duplicateBoardWithRows", "deleteBoard", "deleteWeekActivity"]],
+  ["scopeRecepcionMyBoards", ["createBoardRow", "deleteBoardRow", "editFinishedBoardRow", "viewHistoricalBoardScopes", "boardWorkflow", "exportBoardExcel", "previewBoardPdf", "exportBoardPdf"]],
+  ["scopeRecepcionHistory", ["editHistoryRecords"]],
+  ["scopeOperacionesDashboard", ["exportDashboardData", "manageDashboardState"]],
+  ["scopeOperacionesBoardBuilder", ["createCatalog", "editCatalog", "deleteCatalog", "createBoard", "editBoard", "saveTemplate", "editTemplate", "deleteTemplate", "duplicateBoard", "duplicateBoardWithRows", "deleteBoard", "deleteWeekActivity"]],
+  ["scopeOperacionesMyBoards", ["createBoardRow", "deleteBoardRow", "editFinishedBoardRow", "viewHistoricalBoardScopes", "boardWorkflow", "exportBoardExcel", "previewBoardPdf", "exportBoardPdf"]],
+  ["scopeOperacionesHistory", ["editHistoryRecords"]],
+  ["scopeMayoreoDashboard", ["exportDashboardData", "manageDashboardState"]],
+  ["scopeMayoreoBoardBuilder", ["createCatalog", "editCatalog", "deleteCatalog", "createBoard", "editBoard", "saveTemplate", "editTemplate", "deleteTemplate", "duplicateBoard", "duplicateBoardWithRows", "deleteBoard", "deleteWeekActivity"]],
+  ["scopeMayoreoMyBoards", ["createBoardRow", "deleteBoardRow", "editFinishedBoardRow", "viewHistoricalBoardScopes", "boardWorkflow", "exportBoardExcel", "previewBoardPdf", "exportBoardPdf"]],
+  ["scopeMayoreoHistory", ["editHistoryRecords"]],
+  ["scopeRetailDashboard", ["exportDashboardData", "manageDashboardState"]],
+  ["scopeRetailBoardBuilder", ["createCatalog", "editCatalog", "deleteCatalog", "createBoard", "editBoard", "saveTemplate", "editTemplate", "deleteTemplate", "duplicateBoard", "duplicateBoardWithRows", "deleteBoard", "deleteWeekActivity"]],
+  ["scopeRetailMyBoards", ["createBoardRow", "deleteBoardRow", "editFinishedBoardRow", "viewHistoricalBoardScopes", "boardWorkflow", "exportBoardExcel", "previewBoardPdf", "exportBoardPdf"]],
+  ["scopeRetailHistory", ["editHistoryRecords"]],
+  ["scopeFullfilmentDashboard", ["exportDashboardData", "manageDashboardState"]],
+  ["scopeFullfilmentBoardBuilder", ["createCatalog", "editCatalog", "deleteCatalog", "createBoard", "editBoard", "saveTemplate", "editTemplate", "deleteTemplate", "duplicateBoard", "duplicateBoardWithRows", "deleteBoard", "deleteWeekActivity"]],
+  ["scopeFullfilmentMyBoards", ["createBoardRow", "deleteBoardRow", "editFinishedBoardRow", "viewHistoricalBoardScopes", "boardWorkflow", "exportBoardExcel", "previewBoardPdf", "exportBoardPdf"]],
+  ["scopeFullfilmentHistory", ["editHistoryRecords"]],
+  ["scopeMantenimientoIncidencias", ["createIncidencia", "editIncidencia", "deleteIncidencia"]],
+  ["scopeMantenimientoDashboard", ["exportDashboardData", "manageDashboardState"]],
+  ["scopeMantenimientoBoardBuilder", ["createCatalog", "editCatalog", "deleteCatalog", "createBoard", "editBoard", "saveTemplate", "editTemplate", "deleteTemplate", "duplicateBoard", "duplicateBoardWithRows", "deleteBoard", "deleteWeekActivity"]],
+  ["scopeMantenimientoMyBoards", ["createBoardRow", "deleteBoardRow", "editFinishedBoardRow", "viewHistoricalBoardScopes", "boardWorkflow", "exportBoardExcel", "previewBoardPdf", "exportBoardPdf"]],
+  ["scopeMantenimientoHistory", ["editHistoryRecords"]],
+  ["scopeTransporteRegistrosEnvios", ["viewTransportRetail", "manageTransportRetail", "viewTransportPedidos", "manageTransportPedidos", "viewTransportInventario", "manageTransportInventario"]],
+  ["scopeTransporteControl", ["viewTransportDocumentacion", "manageTransportDocumentacion", "viewTransportAssignments", "manageTransportAssignments", "viewTransportPostponed", "manageTransportPostponed", "viewTransportMyRoutes"]],
+  ["scopeTransporteIncidencias", []],
+  ["scopeTransporteConsolidados", ["viewTransportConsolidated"]],
+  ["scopeTransporteDashboard", []],
+  ["scopeTransporteLogistica", ["viewTransportLogistics", "manageTransportLogistics"]],
+];
+
+const getScopedAreaActionPermissionId = (scopeId, baseActionId) => `${scopeId}__${baseActionId}`;
+
+Object.assign(
+  ACTION_PERMISSIONS,
+  Object.fromEntries(
+    AREA_TAB_SCOPED_ACTION_CONFIG.flatMap(([scopeId, baseActionIds]) => baseActionIds.map((baseActionId) => [
+      getScopedAreaActionPermissionId(scopeId, baseActionId),
+      [...(ACTION_PERMISSIONS[baseActionId] || [])],
+    ])),
+  ),
+);
 
 const TRANSPORT_AREA_CONFIG = Object.freeze([
   {
@@ -1365,6 +1502,153 @@ function normalizeTransportEvidence(evidence = EMPTY_OBJECT) {
   };
 }
 
+function normalizeTransportAddress(address = EMPTY_OBJECT) {
+  const customerName = String(address?.customerName || address?.name || "").trim();
+  const addressText = String(address?.address || address?.fullAddress || "").trim();
+  const destination = String(address?.destination || address?.routeLabel || customerName || "").trim();
+  if (!customerName && !addressText && !destination) return null;
+
+  const rawServiceType = String(address?.serviceType || "").trim().toLowerCase();
+  const serviceType = ["local", "foraneo", "paqueteria", "traslado", "otro"].includes(rawServiceType)
+    ? rawServiceType
+    : "otro";
+
+  return {
+    id: String(address?.id || "").trim() || makeId("taddr"),
+    customerName,
+    destination,
+    address: addressText,
+    contactName: String(address?.contactName || "").trim(),
+    phone: String(address?.phone || "").trim(),
+    areaId: String(address?.areaId || "").trim() || null,
+    serviceType,
+    routeLabel: String(address?.routeLabel || "").trim() || null,
+    notes: String(address?.notes || "").trim() || null,
+    createdById: String(address?.createdById || "").trim() || null,
+    createdByName: String(address?.createdByName || "").trim() || null,
+    createdAt: String(address?.createdAt || "").trim() || new Date().toISOString(),
+    updatedAt: String(address?.updatedAt || "").trim() || new Date().toISOString(),
+  };
+}
+
+function normalizeTransportExpense(expense = EMPTY_OBJECT) {
+  const amount = Number(expense?.amount);
+  const description = String(expense?.description || expense?.concept || "").trim();
+  const expenseType = String(expense?.expenseType || expense?.type || "").trim();
+  if (!description && !expenseType && !Number.isFinite(amount)) return null;
+
+  return {
+    id: String(expense?.id || "").trim() || makeId("texp"),
+    dateKey: String(expense?.dateKey || "").trim() || getOperationalDateKey(new Date()),
+    expenseType,
+    amount: Number.isFinite(amount) ? Math.max(0, amount) : 0,
+    description,
+    areaId: String(expense?.areaId || "").trim() || null,
+    routeLabel: String(expense?.routeLabel || "").trim() || null,
+    reference: String(expense?.reference || "").trim() || null,
+    createdById: String(expense?.createdById || "").trim() || null,
+    createdByName: String(expense?.createdByName || "").trim() || null,
+    createdAt: String(expense?.createdAt || "").trim() || new Date().toISOString(),
+    updatedAt: String(expense?.updatedAt || "").trim() || new Date().toISOString(),
+  };
+}
+
+function normalizeTransportUnit(unit = EMPTY_OBJECT) {
+  const unitName = String(unit?.unitName || unit?.name || "").trim();
+  const plate = String(unit?.plate || "").trim();
+  if (!unitName && !plate) return null;
+
+  return {
+    id: String(unit?.id || "").trim() || makeId("tunit"),
+    unitName,
+    unitCode: String(unit?.unitCode || "").trim() || null,
+    plate: plate || null,
+    model: String(unit?.model || "").trim() || null,
+    areaId: String(unit?.areaId || "").trim() || null,
+    notes: String(unit?.notes || "").trim() || null,
+    photo: normalizeTransportEvidence(unit?.photo),
+    createdById: String(unit?.createdById || "").trim() || null,
+    createdByName: String(unit?.createdByName || "").trim() || null,
+    createdAt: String(unit?.createdAt || "").trim() || new Date().toISOString(),
+    updatedAt: String(unit?.updatedAt || "").trim() || new Date().toISOString(),
+  };
+}
+
+function normalizeTransportChecklistItem(item = EMPTY_OBJECT) {
+  if (item && typeof item === "object" && !Array.isArray(item)) {
+    const rawStatus = String(item?.status || "").trim().toLowerCase();
+    const status = ["good", "bad", "na"].includes(rawStatus)
+      ? rawStatus
+      : (item?.ok === false ? "bad" : "good");
+    return {
+      status,
+      label: String(item?.label || "").trim() || null,
+      section: String(item?.section || "").trim() || null,
+      notes: String(item?.notes || "").trim() || null,
+      evidence: normalizeTransportEvidence(item?.evidence),
+    };
+  }
+
+  if (typeof item === "boolean") {
+    return {
+      status: item ? "good" : "bad",
+      label: null,
+      section: null,
+      notes: null,
+      evidence: null,
+    };
+  }
+
+  return {
+    status: "good",
+    label: null,
+    section: null,
+    notes: null,
+    evidence: null,
+  };
+}
+
+function normalizeTransportChecklist(checklist = EMPTY_OBJECT) {
+  if (!checklist || typeof checklist !== "object" || Array.isArray(checklist)) return null;
+
+  return Object.entries(checklist).reduce((acc, [rawKey, rawValue]) => {
+    const key = String(rawKey || "").trim();
+    if (!key) return acc;
+    acc[key] = normalizeTransportChecklistItem(rawValue);
+    return acc;
+  }, {});
+}
+
+function normalizeTransportUnitServiceLog(log = EMPTY_OBJECT) {
+  const unitId = String(log?.unitId || "").trim();
+  const serviceLabel = String(log?.serviceLabel || "").trim();
+  const hasChecklist = Boolean(log?.checklist && typeof log.checklist === "object");
+  if (!unitId || (!serviceLabel && !hasChecklist)) return null;
+
+  const kmBeforeRaw = Number(log?.kmBefore);
+  const kmAfterRaw = Number(log?.kmAfter);
+  const kmBefore = Number.isFinite(kmBeforeRaw) ? Math.max(0, kmBeforeRaw) : null;
+  const kmAfter = Number.isFinite(kmAfterRaw) ? Math.max(0, kmAfterRaw) : null;
+  const kmDelta = (kmBefore !== null && kmAfter !== null) ? Math.max(0, kmAfter - kmBefore) : null;
+
+  return {
+    id: String(log?.id || "").trim() || makeId("tunitlog"),
+    unitId,
+    dateKey: String(log?.dateKey || "").trim() || getOperationalDateKey(new Date()),
+    serviceLabel,
+    kmBefore,
+    kmAfter,
+    kmDelta,
+    notes: String(log?.notes || "").trim() || null,
+    evidence: normalizeTransportEvidence(log?.evidence),
+    checklist: hasChecklist ? normalizeTransportChecklist(log.checklist) : null,
+    createdById: String(log?.createdById || "").trim() || null,
+    createdByName: String(log?.createdByName || "").trim() || null,
+    createdAt: String(log?.createdAt || "").trim() || new Date().toISOString(),
+    updatedAt: String(log?.updatedAt || "").trim() || new Date().toISOString(),
+  };
+}
+
 function normalizeTransportRecord(record = EMPTY_OBJECT, fallbackId = null) {
   const boxes = Math.max(0, Number(record?.boxes || 0));
   const pieces = Math.max(0, Number(record?.pieces || 0));
@@ -1394,6 +1678,7 @@ function normalizeTransportRecord(record = EMPTY_OBJECT, fallbackId = null) {
     postponedById: String(record?.postponedById || "").trim() || null,
     postponedByName: String(record?.postponedByName || "").trim() || null,
     deliveryEvidence: normalizeTransportEvidence(record?.deliveryEvidence),
+    shipmentCode: String(record?.shipmentCode || "").trim() || null,
     dateKey: String(record?.dateKey || "").trim(),
     createdById: String(record?.createdById || "").trim(),
     createdByName: String(record?.createdByName || "").trim(),
@@ -1401,6 +1686,28 @@ function normalizeTransportRecord(record = EMPTY_OBJECT, fallbackId = null) {
     updatedAt: String(record?.updatedAt || "").trim() || new Date().toISOString(),
     archivedAt: String(record?.archivedAt || "").trim() || "",
   };
+}
+
+function resolveTransportShipmentPrefix(areaId = "") {
+  const normalizedAreaId = String(areaId || "").trim();
+  if (normalizedAreaId === "pedidos") return "PD";
+  if (normalizedAreaId === "foraneas" || normalizedAreaId === "locales") return "RT";
+  if (normalizedAreaId === "inventarioTraslados") return "IT";
+  return "RT";
+}
+
+function resolveNextShipmentCode(records = [], prefix = "RT") {
+  const normalizedPrefix = String(prefix || "RT").trim().toUpperCase();
+  const pattern = new RegExp(`^${normalizedPrefix}(\\d{7})$`);
+  const highest = (Array.isArray(records) ? records : []).reduce((maxValue, record) => {
+    const rawCode = String(record?.shipmentCode || "").trim().toUpperCase();
+    const match = rawCode.match(pattern);
+    if (!match) return maxValue;
+    const parsed = Number(match[1]);
+    if (!Number.isFinite(parsed)) return maxValue;
+    return Math.max(maxValue, parsed);
+  }, 0);
+  return `${normalizedPrefix}${String(highest + 1).padStart(7, "0")}`;
 }
 
 function normalizeTransportState(rawTransport = EMPTY_OBJECT) {
@@ -1412,11 +1719,28 @@ function normalizeTransportState(rawTransport = EMPTY_OBJECT) {
   const historyRecords = Array.isArray(rawTransport?.historyRecords)
     ? rawTransport.historyRecords.map((record) => normalizeTransportRecord(record, record?.id || null))
     : [];
+  const customerAddresses = Array.isArray(rawTransport?.customerAddresses)
+    ? rawTransport.customerAddresses.map((address) => normalizeTransportAddress(address)).filter(Boolean)
+    : [];
+  const transportExpenses = Array.isArray(rawTransport?.transportExpenses)
+    ? rawTransport.transportExpenses.map((expense) => normalizeTransportExpense(expense)).filter(Boolean)
+    : [];
+  const transportUnits = Array.isArray(rawTransport?.transportUnits)
+    ? rawTransport.transportUnits.map((unit) => normalizeTransportUnit(unit)).filter(Boolean)
+    : [];
+  const transportUnitServiceLogs = Array.isArray(rawTransport?.transportUnitServiceLogs)
+    ? rawTransport.transportUnitServiceLogs.map((log) => normalizeTransportUnitServiceLog(log)).filter(Boolean)
+    : [];
   return {
+    ...rawTransport,
     config: getTransportAreaConfig(),
     activeDateKey,
     activeRecords,
     historyRecords,
+    customerAddresses,
+    transportExpenses,
+    transportUnits,
+    transportUnitServiceLogs,
   };
 }
 
@@ -1585,7 +1909,19 @@ function sanitizeTransportRecordDraft(payload = EMPTY_OBJECT, stateTransport = E
   if (!area) return { ok: false, reason: "invalid_area" };
 
   const destination = String(payload?.destination || "").trim();
-  if (!destination || !area.destinations.includes(destination)) {
+  const builtInDestinationSet = new Set(
+    area.destinations
+      .map((item) => String(item || "").trim().toLowerCase())
+      .filter(Boolean),
+  );
+  const customDestinationSet = new Set(
+    (Array.isArray(stateTransport?.customerAddresses) ? stateTransport.customerAddresses : [])
+      .filter((entry) => String(entry?.areaId || "").trim() === areaId)
+      .map((entry) => String(entry?.destination || entry?.routeLabel || entry?.customerName || "").trim().toLowerCase())
+      .filter(Boolean),
+  );
+  const normalizedDestination = destination.toLowerCase();
+  if (!destination || (!builtInDestinationSet.has(normalizedDestination) && !customDestinationSet.has(normalizedDestination))) {
     return { ok: false, reason: "invalid_destination" };
   }
 
@@ -1631,9 +1967,15 @@ export function createWarehouseTransportRecord(auth, payload = {}) {
   if (!sanitized.ok) return sanitized;
 
   const nowIso = new Date().toISOString();
+  const transportShipmentPrefix = resolveTransportShipmentPrefix(sanitized.draft.areaId);
+  const nextShipmentCode = resolveNextShipmentCode([
+    ...(Array.isArray(transport.activeRecords) ? transport.activeRecords : []),
+    ...(Array.isArray(transport.historyRecords) ? transport.historyRecords : []),
+  ], transportShipmentPrefix);
   const record = {
     id: makeId("trn"),
     ...sanitized.draft,
+    shipmentCode: nextShipmentCode,
     status: "Pendiente",
     assignedTo: null,
     assignedToName: null,
@@ -1734,11 +2076,47 @@ export function updateWarehouseTransportRecord(auth, recordId, payload = {}) {
   return { ok: true, state: replaceWarehouseState(nextState), recordId: targetId };
 }
 
+export function updateWarehouseTransportLogistics(auth, payload = {}) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const currentState = getRawWarehouseState();
+  if (!canUserDoWarehouseAction(currentUser, "manageTransportLogistics", currentState.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const transport = normalizeTransportState(currentState.transport);
+  const nextTransport = {
+    ...transport,
+    customerAddresses: Array.isArray(payload?.customerAddresses)
+      ? payload.customerAddresses.map((address) => normalizeTransportAddress(address)).filter(Boolean)
+      : transport.customerAddresses,
+    transportExpenses: Array.isArray(payload?.transportExpenses)
+      ? payload.transportExpenses.map((expense) => normalizeTransportExpense(expense)).filter(Boolean)
+      : transport.transportExpenses,
+    transportUnits: Array.isArray(payload?.transportUnits)
+      ? payload.transportUnits.map((unit) => normalizeTransportUnit(unit)).filter(Boolean)
+      : transport.transportUnits,
+    transportUnitServiceLogs: Array.isArray(payload?.transportUnitServiceLogs)
+      ? payload.transportUnitServiceLogs.map((log) => normalizeTransportUnitServiceLog(log)).filter(Boolean)
+      : transport.transportUnitServiceLogs,
+  };
+
+  const nextState = {
+    ...currentState,
+    transport: nextTransport,
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState) };
+}
+
 export function deleteWarehouseTransportRecord(auth, recordId) {
   const currentUser = findWarehouseUserById(auth?.userId);
   if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
 
   const baseState = getRawWarehouseState();
+  if (normalizeRole(currentUser?.role) !== ROLE_LEAD) return { ok: false, reason: "forbidden" };
+
   const dailyCutResult = applyAutomatedTransportDailyCut(baseState);
   const currentState = dailyCutResult.changed ? dailyCutResult.state : baseState;
   const transport = normalizeTransportState(currentState.transport);
@@ -1793,9 +2171,14 @@ export function assignTransportRoute(auth, recordId, driverId = "") {
   if (!targetDriverId) return { ok: false, reason: "invalid_driver" };
 
   const activeIndex = (transport.activeRecords || []).findIndex((entry) => entry.id === targetId);
-  if (activeIndex === -1) return { ok: false, reason: "record_not_found" };
+  const historyIndex = activeIndex === -1
+    ? (transport.historyRecords || []).findIndex((entry) => entry.id === targetId)
+    : -1;
+  if (activeIndex === -1 && historyIndex === -1) return { ok: false, reason: "record_not_found" };
 
-  const sourceRecord = transport.activeRecords[activeIndex];
+  const sourceRecord = activeIndex >= 0
+    ? transport.activeRecords[activeIndex]
+    : transport.historyRecords[historyIndex];
   const sourceActionIds = getTransportActionIdsByArea(sourceRecord?.areaId);
   if (!sourceActionIds.manageActionId || !canUserDoWarehouseAction(currentUser, sourceActionIds.manageActionId, baseState.permissions)) {
     return { ok: false, reason: "forbidden" };
@@ -1820,7 +2203,12 @@ export function assignTransportRoute(auth, recordId, driverId = "") {
     ...currentState,
     transport: {
       ...transport,
-      activeRecords: transport.activeRecords.map((entry, index) => (index === activeIndex ? nextRecord : entry)),
+      activeRecords: activeIndex >= 0
+        ? transport.activeRecords.map((entry, index) => (index === activeIndex ? nextRecord : entry))
+        : [nextRecord, ...transport.activeRecords],
+      historyRecords: historyIndex >= 0
+        ? transport.historyRecords.filter((entry) => entry.id !== targetId)
+        : transport.historyRecords,
     },
   };
 
@@ -1992,6 +2380,7 @@ function normalizeDocumentacionRecord(record = EMPTY_OBJECT, fallbackId = null) 
     deliveredAt: String(record?.deliveredAt || "").trim() || null,
     returnReason: String(record?.returnReason || "").trim() || null,
     canceledReason: String(record?.canceledReason || "").trim() || null,
+    shipmentCode: String(record?.shipmentCode || "").trim() || null,
     dateKey: String(record?.dateKey || "").trim(),
     createdById: String(record?.createdById || "").trim(),
     createdByName: String(record?.createdByName || "").trim(),
@@ -2035,6 +2424,7 @@ export function createDocumentacionRecord(auth, payload = {}) {
   const docState = normalizeDocumentacionState(currentState.documentacion);
   const nowIso = new Date().toISOString();
   const todayKey = getOperationalDateKey(new Date());
+  const nextShipmentCode = resolveNextShipmentCode(docState.records || [], "DT");
 
   const record = {
     id: makeId("doc"),
@@ -2044,6 +2434,7 @@ export function createDocumentacionRecord(auth, payload = {}) {
     notas: String(payload?.notas || "").trim(),
     document: null,
     evidence,
+    shipmentCode: nextShipmentCode,
     status: "Pendiente",
     assignedTo: null,
     assignedToName: null,
@@ -3207,8 +3598,8 @@ function canManageUserRole(actorRole, targetRole) {
   const normalizedActorRole = normalizeRole(actorRole);
   const normalizedTargetRole = normalizeRole(targetRole);
   if (normalizedActorRole === ROLE_LEAD) return true;
-  if (normalizedActorRole === ROLE_SR) return [ROLE_SSR, ROLE_JR].includes(normalizedTargetRole);
-  if (normalizedActorRole === ROLE_SSR) return normalizedTargetRole === ROLE_JR;
+  if (normalizedActorRole === ROLE_SR) return [ROLE_SR, ROLE_SSR, ROLE_JR].includes(normalizedTargetRole);
+  if (normalizedActorRole === ROLE_SSR) return [ROLE_SSR, ROLE_JR].includes(normalizedTargetRole);
   return false;
 }
 
@@ -3220,6 +3611,8 @@ function canBypassSelfProfileEditLimit(user) {
 function sanitizeWarehouseUserDraft(payload = {}, fallbackManagerId = null) {
   const role = normalizeRole(payload.role);
   const area = String(payload.area ?? payload.department ?? "").trim();
+  const photo = String(payload.photo || "").trim();
+  const photoThumbnailUrl = String(payload.photoThumbnailUrl || payload.photoThumbnail || "").trim();
   return {
     id: payload.id || makeId("usr"),
     name: String(payload.name || "").trim(),
@@ -3234,6 +3627,8 @@ function sanitizeWarehouseUserDraft(payload = {}, fallbackManagerId = null) {
     selfIdentityEditCount: Math.max(0, Number(payload.selfIdentityEditCount ?? 0) || 0),
     mustChangePassword: Boolean(payload.mustChangePassword),
     temporaryPasswordIssuedAt: payload.temporaryPasswordIssuedAt || null,
+    photo,
+    photoThumbnailUrl,
     ...(String(payload.password || "").trim() ? { password: String(payload.password || "").trim() } : {}),
   };
 }
@@ -3245,20 +3640,33 @@ function buildEffectivePermissionSelection(user, permissionsModel) {
   };
 }
 
-function buildUserOverridesForDraft(user, requestedOverrides, permissionsModel) {
+function buildUserOverridesForDraft(user, requestedOverrides, permissionsModel, delegationSelection = null) {
   if (!supportsManagedPermissionOverrides(user.role)) {
     return null;
   }
 
   const baseSelection = buildEffectivePermissionSelection(user, permissionsModel);
+  const preservedSelection = delegationSelection || { pages: {}, actions: {} };
   const nextOverride = {
     pages: Object.fromEntries(Object.keys(PAGE_PERMISSIONS)
-      .map((pageId) => [pageId, requestedOverrides?.pages?.[pageId]])
-      .filter(([, value]) => typeof value === "boolean")
+      .map((pageId) => {
+        const requestedValue = requestedOverrides?.pages?.[pageId];
+        const fallbackValue = typeof preservedSelection.pages?.[pageId] === "boolean"
+          ? preservedSelection.pages[pageId]
+          : false;
+        const nextValue = typeof requestedValue === "boolean" ? requestedValue : fallbackValue;
+        return [pageId, nextValue];
+      })
       .filter(([pageId, value]) => value !== baseSelection.pages[pageId])),
     actions: Object.fromEntries(Object.keys(ACTION_PERMISSIONS)
-      .map((actionId) => [actionId, requestedOverrides?.actions?.[actionId]])
-      .filter(([, value]) => typeof value === "boolean")
+      .map((actionId) => {
+        const requestedValue = requestedOverrides?.actions?.[actionId];
+        const fallbackValue = typeof preservedSelection.actions?.[actionId] === "boolean"
+          ? preservedSelection.actions[actionId]
+          : false;
+        const nextValue = typeof requestedValue === "boolean" ? requestedValue : fallbackValue;
+        return [actionId, nextValue];
+      })
       .filter(([actionId, value]) => value !== baseSelection.actions[actionId])),
   };
 
@@ -3299,8 +3707,13 @@ export function createWarehouseUser(auth, payload = {}) {
     ...currentState.permissions,
     userOverrides: currentOverrides,
   });
-  const directOverride = canUserDoWarehouseAction(currentUser, "managePermissions", currentState.permissions)
-    ? buildUserOverridesForDraft(nextUser, payload.permissionOverrides, basePermissions)
+  const actorSelection = buildEffectivePermissionSelection(currentUser, basePermissions);
+  const allowedSelection = {
+    pages: Object.fromEntries(Object.keys(PAGE_PERMISSIONS).map((pageId) => [pageId, actorSelection.pages[pageId] ? payload.permissionOverrides?.pages?.[pageId] : false])),
+    actions: Object.fromEntries(Object.keys(ACTION_PERMISSIONS).map((actionId) => [actionId, actorSelection.actions[actionId] ? payload.permissionOverrides?.actions?.[actionId] : false])),
+  };
+  const directOverride = canUserDoWarehouseAction(currentUser, "createUsers", currentState.permissions)
+    ? buildUserOverridesForDraft(nextUser, allowedSelection, basePermissions)
     : null;
 
   const nextState = {
@@ -3342,8 +3755,20 @@ export function updateWarehouseUser(auth, userId, payload = {}) {
     ...currentState.permissions,
     userOverrides: remainingOverrides,
   });
-  const directOverride = canUserDoWarehouseAction(currentUser, "managePermissions", currentState.permissions)
-    ? buildUserOverridesForDraft(nextUser, payload.permissionOverrides, basePermissions)
+  const actorSelection = buildEffectivePermissionSelection(currentUser, normalizePermissions({
+    ...currentState.permissions,
+    userOverrides: currentOverrides,
+  }));
+  const currentTargetSelection = buildEffectivePermissionSelection(existingUser, normalizePermissions({
+    ...currentState.permissions,
+    userOverrides: currentOverrides,
+  }));
+  const allowedSelection = {
+    pages: Object.fromEntries(Object.keys(PAGE_PERMISSIONS).map((pageId) => [pageId, actorSelection.pages[pageId] ? payload.permissionOverrides?.pages?.[pageId] : currentTargetSelection.pages[pageId]])),
+    actions: Object.fromEntries(Object.keys(ACTION_PERMISSIONS).map((actionId) => [actionId, actorSelection.actions[actionId] ? payload.permissionOverrides?.actions?.[actionId] : currentTargetSelection.actions[actionId]])),
+  };
+  const directOverride = canUserDoWarehouseAction(currentUser, "editUsers", currentState.permissions)
+    ? buildUserOverridesForDraft(nextUser, allowedSelection, basePermissions, currentTargetSelection)
     : null;
 
   const nextState = {
@@ -3455,6 +3880,8 @@ export function updateWarehouseSelfProfile(auth, payload = {}) {
     telefono: String(payload.telefono || "").trim(),
     telefono_visible: Boolean(payload.telefono_visible),
     birthday: String(payload.birthday || "").trim(),
+    photo: String(payload.photo || "").trim(),
+    photoThumbnailUrl: String(payload.photoThumbnailUrl || payload.photoThumbnail || "").trim(),
     copmecHistoryFiles: normalizedCopmecHistoryFiles,
   };
   if (!trimmedPatch.name || !trimmedPatch.email || !trimmedPatch.area || !trimmedPatch.jobTitle) {
@@ -3486,6 +3913,36 @@ export function updateWarehouseSelfProfile(auth, payload = {}) {
           selfIdentityEditCount: profileFieldsChanged && !canBypassSelfProfileEditLimit(currentUser)
             ? Number(user.selfIdentityEditCount ?? 0) + 1
             : Number(user.selfIdentityEditCount ?? 0),
+        }
+      : user)),
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState), userId: currentUser.id };
+}
+
+export function updateUserUiPreferences(auth, uiPreferences = {}) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const theme = String(uiPreferences.theme || "").trim() || undefined;
+  const font = String(uiPreferences.font || "").trim() || undefined;
+  const fontSize = String(uiPreferences.fontSize || "").trim() || undefined;
+
+  const nextUiPreferences = {};
+  if (theme) nextUiPreferences.theme = theme;
+  if (font) nextUiPreferences.font = font;
+  if (fontSize) nextUiPreferences.fontSize = fontSize;
+
+  const currentState = getRawWarehouseState();
+  const nextState = {
+    ...currentState,
+    users: (currentState.users || []).map((user) => (user.id === currentUser.id
+      ? {
+          ...user,
+          uiPreferences: {
+            ...(user.uiPreferences || {}),
+            ...nextUiPreferences,
+          },
         }
       : user)),
   };

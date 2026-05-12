@@ -47,12 +47,13 @@ export default function AuditoriasProcesos({ contexto }) {
     addProcessAuditEvidence,
     removeProcessAuditEvidence,
     pushAppToast,
+    auditShortcutPreset,
   } = contexto;
 
   const canManageAudits = Boolean(actionPermissions?.manageProcessAudits);
   const canManageTemplates = Boolean(actionPermissions?.manageProcessAuditTemplates);
 
-  const [activeTab, setActiveTab] = useState("capture");
+  const [activeTab, setActiveTab] = useState("auditoria");
   const [templateDraft, setTemplateDraft] = useState(() => emptyTemplateDraft());
   const [newAuditArea, setNewAuditArea] = useState("");
   const [newAuditProcess, setNewAuditProcess] = useState("");
@@ -113,6 +114,24 @@ export default function AuditoriasProcesos({ contexto }) {
     setIsAuditDirty(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAudit?.id]);
+
+  useEffect(() => {
+    const requestedTab = String(auditShortcutPreset?.tab || "").trim();
+    if (!requestedTab) return;
+    if (["auditoria", "problemas", "propuestas", "seguimiento"].includes(requestedTab)) {
+      setActiveTab(requestedTab);
+    }
+  }, [auditShortcutPreset]);
+
+  useEffect(() => {
+    if (!auditShortcutPreset?.tab) return;
+    const timer = setTimeout(() => {
+      if (typeof contexto.setAuditShortcutPreset === "function") {
+        contexto.setAuditShortcutPreset(null);
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [auditShortcutPreset, contexto]);
 
   useEffect(() => {
     if (!auditDraft || !isAuditDirty || !canManageAudits) return undefined;
@@ -254,14 +273,25 @@ export default function AuditoriasProcesos({ contexto }) {
   return (
     <section className="page-grid">
       <article className="surface-card full-width table-card">
-        <div className="tab-strip">
-          <button type="button" className={activeTab === "capture" ? "tab active" : "tab"} onClick={() => setActiveTab("capture")}>Captura</button>
-          <button type="button" className={activeTab === "history" ? "tab active" : "tab"} onClick={() => setActiveTab("history")}>Historial</button>
-          <button type="button" className={activeTab === "dashboard" ? "tab active" : "tab"} onClick={() => setActiveTab("dashboard")}>Dashboard</button>
+        <div className="card-header-row">
+          <div>
+            <h3>
+              {activeTab === "auditoria" ? "Auditoría" : activeTab === "problemas" ? "Problemas" : activeTab === "propuestas" ? "Propuestas" : "Seguimiento"}
+            </h3>
+            <p>
+              {activeTab === "auditoria"
+                ? "Captura y edición de auditorías de proceso."
+                : activeTab === "problemas"
+                  ? "Hallazgos y problemas detectados en auditorías."
+                  : activeTab === "propuestas"
+                    ? "Propuestas de mejora y plantillas asociadas."
+                    : "Seguimiento y métricas consolidadas de auditorías."}
+            </p>
+          </div>
         </div>
       </article>
 
-      {activeTab === "capture" ? (
+      {activeTab === "auditoria" ? (
         <>
           <article className="surface-card table-card">
             <div className="card-header-row">
@@ -489,12 +519,12 @@ export default function AuditoriasProcesos({ contexto }) {
         </>
       ) : null}
 
-      {activeTab === "history" ? (
+      {activeTab === "problemas" ? (
         <article className="surface-card table-card full-width">
           <div className="card-header-row">
             <div>
-              <h3>Historial de auditorías</h3>
-              <p>Consulta auditorías realizadas y reabre cualquiera para revisar respuestas y evidencias.</p>
+              <h3>Problemas detectados</h3>
+              <p>Consulta auditorías realizadas y reabre cualquiera para revisar hallazgos, respuestas y evidencias.</p>
             </div>
           </div>
           <div className="saved-board-list permissions-preset-list">
@@ -511,7 +541,7 @@ export default function AuditoriasProcesos({ contexto }) {
                 <p className="subtle-line">Duración: {formatDuration(getAuditDurationSeconds(audit))}</p>
                 <p className="subtle-line">Preguntas: {(audit.questions || []).length} · Evidencias: {(audit.evidences || []).length}</p>
                 <div className="saved-board-list board-builder-launch-list">
-                  <button type="button" className="icon-button" onClick={() => { setSelectedAuditId(audit.id); setActiveTab("capture"); }}>Abrir</button>
+                  <button type="button" className="icon-button" onClick={() => { setSelectedAuditId(audit.id); setActiveTab("auditoria"); }}>Abrir</button>
                 </div>
               </article>
             ))}
@@ -520,11 +550,11 @@ export default function AuditoriasProcesos({ contexto }) {
         </article>
       ) : null}
 
-      {activeTab === "dashboard" ? (
+      {activeTab === "seguimiento" ? (
         <article className="surface-card table-card full-width">
           <div className="card-header-row">
             <div>
-              <h3>Dashboard de auditorías</h3>
+              <h3>Seguimiento</h3>
               <p>Métrica por auditoría y consolidado general de procesos auditados.</p>
             </div>
             <BarChart3 size={18} />

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import logoIA from "../assets/logo-ia.jpeg";
+import logoIA from "../assets/AXOIA.png";
 import { API_BASE_URL } from "../utils/constantes.js";
 
 // ─── Renderizador de markdown simple ─────────────────────────────────────────

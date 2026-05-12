@@ -23,6 +23,7 @@ export function getInitialRouteState() {
     selectedBoardId: params.get("board") || "",
     selectedWeekId: params.get("week") || "",
     selectedHistoryWeekId: params.get("history") || "",
+    area: String(params.get("area") || "all").trim() || "all",
   };
 }
 
@@ -873,6 +874,23 @@ export function buildPermissionsFromPreset(presetId) {
   if (presetId === "supervised") {
     permissions.pages[PAGE_USERS].roles = [ROLE_LEAD, ROLE_SR];
     permissions.pages[PAGE_INVENTORY].roles = [ROLE_LEAD, ROLE_SR];
+    permissions.actions.exportDashboardData.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR];
+    permissions.actions.manageDashboardState.roles = [ROLE_LEAD];
+    permissions.actions.accessNavEsto.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavTransporte.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavLimpieza.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavRegulatorio.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavCalidad.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavInventario.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavRecepcion.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavOperaciones.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavMayoreo.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavRetail.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavFullfilment.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavMejoraContinua.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavProduccion.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavRecursos.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavEquipo.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
 
     permissions.actions.createCatalog.roles = [ROLE_LEAD];
     permissions.actions.editCatalog.roles = [ROLE_LEAD];
@@ -912,9 +930,31 @@ export function buildPermissionsFromPreset(presetId) {
       permissions.actions[actionId].roles = [];
     });
 
+    Object.keys(permissions.actions).forEach((actionId) => {
+      if (actionId.startsWith("accessNav") || actionId.startsWith("scope")) {
+        permissions.actions[actionId].roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+      }
+    });
+
     permissions.actions.previewBoardPdf.roles = [ROLE_LEAD, ROLE_SR];
     permissions.actions.exportBoardExcel.roles = [ROLE_LEAD, ROLE_SR];
     permissions.actions.exportBoardPdf.roles = [ROLE_LEAD, ROLE_SR];
+    permissions.actions.exportDashboardData.roles = [ROLE_LEAD, ROLE_SR];
+    permissions.actions.accessNavEsto.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavTransporte.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavLimpieza.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavRegulatorio.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavCalidad.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavInventario.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavRecepcion.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavOperaciones.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavMayoreo.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavRetail.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavFullfilment.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavMejoraContinua.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavProduccion.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavRecursos.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
+    permissions.actions.accessNavEquipo.roles = [ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR];
     permissions.actions.managePermissions.roles = [ROLE_LEAD];
   }
 
@@ -1051,11 +1091,12 @@ export function buildLoginDirectoryFromState(state) {
   };
 }
 
-export function buildRouteQuery({ page, adminTab, selectedBoardId, selectedWeekId, selectedHistoryWeekId }) {
+export function buildRouteQuery({ page, adminTab, selectedBoardId, selectedWeekId, selectedHistoryWeekId, area }) {
   const params = new URLSearchParams();
   if (adminTab && adminTab !== DEFAULT_ADMIN_TAB && page === PAGE_ADMIN) params.set("tab", adminTab);
   if (selectedBoardId && page === PAGE_CUSTOM_BOARDS) params.set("board", selectedBoardId);
   if (selectedHistoryWeekId && page === PAGE_HISTORY) params.set("history", selectedHistoryWeekId);
+  if (area && area !== "all") params.set("area", area);
   return params.toString();
 }
 
@@ -3181,10 +3222,14 @@ export function normalizeRole(role) {
   return ROLE_JR;
 }
 
-// Cualquier usuario con permiso manageUsers puede crear/editar players con cualquier rol.
-// La restricción real la controla el permiso manageUsers en el panel de permisos.
-export function canCreateRole(_actorRole, _targetRole) {
-  return true;
+// Un usuario solo puede crear/editar players de su mismo nivel o por debajo.
+export function canCreateRole(actorRole, targetRole) {
+  const normalizedActorRole = normalizeRole(actorRole);
+  const normalizedTargetRole = normalizeRole(targetRole);
+  if (normalizedActorRole === ROLE_LEAD) return true;
+  if (normalizedActorRole === ROLE_SR) return [ROLE_SR, ROLE_SSR, ROLE_JR].includes(normalizedTargetRole);
+  if (normalizedActorRole === ROLE_SSR) return [ROLE_SSR, ROLE_JR].includes(normalizedTargetRole);
+  return false;
 }
 
 // Todos los roles pueden tener overrides individuales de permisos.

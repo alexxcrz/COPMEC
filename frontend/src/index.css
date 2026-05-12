@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  --sicfla-brand: #133d33;
-  --sicfla-brand-soft: #1b6a57;
-  --sicfla-bg: #edf4ef;
+  --sicfla-brand: #385878;
+  --sicfla-brand-soft: #6f8fa9;
+  --sicfla-bg: #edf2f7;
   --sicfla-card: #ffffff;
-  --sicfla-border: #cfe0d8;
-  --sicfla-text: #17332c;
-  --sicfla-muted: #678178;
+  --sicfla-border: #ced8e2;
+  --sicfla-text: #24384a;
+  --sicfla-muted: #647688;
 }
 
 * {
@@ -23,9 +23,9 @@ body {
   min-height: 100vh;
   font-family: "Segoe UI", "Trebuchet MS", sans-serif;
   background:
-    radial-gradient(circle at 10% 10%, rgba(117, 172, 146, 0.2) 0%, transparent 30%),
-    radial-gradient(circle at 95% 0%, rgba(255, 210, 168, 0.26) 0%, transparent 24%),
-    linear-gradient(180deg, #f7faf8 0%, #edf4ef 100%),
+    radial-gradient(circle at 10% 10%, rgba(111, 143, 169, 0.18) 0%, transparent 30%),
+    radial-gradient(circle at 95% 0%, rgba(196, 206, 217, 0.22) 0%, transparent 24%),
+    linear-gradient(180deg, #f5f7fa 0%, #edf2f7 100%),
     var(--sicfla-bg);
   color: var(--sicfla-text);
 }
@@ -59,9 +59,9 @@ input[type="number"]::-webkit-inner-spin-button {
   display: grid;
   place-items: center;
   background:
-    radial-gradient(circle at 22% 18%, rgba(124, 224, 187, 0.16) 0%, transparent 36%),
-    radial-gradient(circle at 80% 72%, rgba(244, 208, 137, 0.11) 0%, transparent 30%),
-    #032121;
+    radial-gradient(circle at 22% 18%, rgba(111, 143, 169, 0.18) 0%, transparent 36%),
+    radial-gradient(circle at 80% 72%, rgba(196, 206, 217, 0.14) 0%, transparent 30%),
+    #314d69;
   animation: copmecSplashFadeOut 1.4s ease forwards;
 }
 

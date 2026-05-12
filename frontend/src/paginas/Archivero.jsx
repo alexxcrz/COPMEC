@@ -96,7 +96,7 @@ function buildArchiveroEntry({ packageText, payload, fileName, fileType }) {
 
 function fileTypeChip(ft) {
   const map = {
-    history: { label: "Historial", bg: "#e8f5e9", color: "#1b5e20" },
+    history: { label: "Historial", bg: "#eaeff3", color: "#233e56" },
     board: { label: "Tablero", bg: "#e3f2fd", color: "#0d47a1" },
     "process-audit": { label: "Auditoría", bg: "#fff3e0", color: "#e65100" },
     "pdf-document": { label: "PDF", bg: "#fce4ec", color: "#880e4f" },
@@ -357,7 +357,7 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
       const rows = Array.isArray(payload?.rows) ? payload.rows : [];
       return (
         <div style={{ display: "grid", gap: "0.65rem" }}>
-          <p style={{ margin: 0, color: "#666", fontSize: "0.85rem" }}>
+          <p style={{ margin: 0, color: "#666666", fontSize: "0.85rem" }}>
             {String(payload?.period?.label || "Historial")} · {rows.length} registros
           </p>
           {rows.length ? (
@@ -377,7 +377,7 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
               </table>
             </div>
           ) : (
-            <p style={{ margin: 0, color: "#aaa", fontSize: "0.83rem" }}>Sin registros en este historial.</p>
+            <p style={{ margin: 0, color: "#aaaaaa", fontSize: "0.83rem" }}>Sin registros en este historial.</p>
           )}
         </div>
       );
@@ -388,7 +388,7 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
       const qs = Array.isArray(a?.questions) ? a.questions : [];
       return (
         <div style={{ display: "grid", gap: "0.65rem" }}>
-          <p style={{ margin: 0, color: "#666", fontSize: "0.85rem" }}>
+          <p style={{ margin: 0, color: "#666666", fontSize: "0.85rem" }}>
             Área: {a?.area || "-"} · Proceso: {a?.process || a?.subArea || "-"} · {qs.length} preguntas
           </p>
           <div style={{ display: "grid", gap: "0.4rem" }}>
@@ -396,7 +396,7 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
               <div key={i} style={{ background: "#f8f9fa", borderRadius: "0.75rem", padding: "0.6rem 0.9rem" }}>
                 <p style={{ margin: 0, fontWeight: 500, fontSize: "0.85rem" }}>{i + 1}. {q.text}</p>
                 {q.answer !== undefined && (
-                  <p style={{ margin: "0.2rem 0 0", fontSize: "0.8rem", color: "#555" }}>
+                  <p style={{ margin: "0.2rem 0 0", fontSize: "0.8rem", color: "#555555" }}>
                     Respuesta: {String(q.answer)}
                   </p>
                 )}
@@ -410,10 +410,10 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
     if (fileType === "board") {
       return (
         <div style={{ display: "grid", gap: "0.5rem" }}>
-          <p style={{ margin: 0, color: "#666", fontSize: "0.85rem" }}>
+          <p style={{ margin: 0, color: "#666666", fontSize: "0.85rem" }}>
             Tablero: {payload?.name || payload?.format || "-"}
           </p>
-          <p style={{ margin: 0, color: "#aaa", fontSize: "0.82rem" }}>Exportado desde el Creador de Tableros.</p>
+          <p style={{ margin: 0, color: "#aaaaaa", fontSize: "0.82rem" }}>Exportado desde el Creador de Tableros.</p>
         </div>
       );
     }
@@ -422,8 +422,8 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
       const displayName = String(payload?.originalName || preview.fileName.replace(/\.cop$/i, ".pdf"));
       return (
         <div style={{ display: "grid", gap: "0.5rem" }}>
-          <p style={{ margin: 0, color: "#666", fontSize: "0.85rem" }}>PDF: {displayName}</p>
-          <p style={{ margin: 0, color: "#aaa", fontSize: "0.82rem" }}>
+          <p style={{ margin: 0, color: "#666666", fontSize: "0.85rem" }}>PDF: {displayName}</p>
+          <p style={{ margin: 0, color: "#aaaaaa", fontSize: "0.82rem" }}>
             Tamaño: {payload?.size ? `${(payload.size / 1024).toFixed(1)} KB` : "-"}
           </p>
           {pdfPreviewUrl ? (
@@ -435,11 +435,11 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
                 minHeight: "72vh",
                 border: "1px solid #e5e7eb",
                 borderRadius: "0.9rem",
-                background: "#fff",
+                background: "#ffffff",
               }}
             />
           ) : (
-            <p style={{ margin: 0, color: "#aaa", fontSize: "0.82rem" }}>
+            <p style={{ margin: 0, color: "#aaaaaa", fontSize: "0.82rem" }}>
               No se pudo generar la vista previa. Puedes usar "Descargar PDF".
             </p>
           )}
@@ -450,15 +450,15 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
     if (fileType === "dashboard") {
       return (
         <div style={{ display: "grid", gap: "0.5rem" }}>
-          <p style={{ margin: 0, color: "#666", fontSize: "0.85rem" }}>
+          <p style={{ margin: 0, color: "#666666", fontSize: "0.85rem" }}>
             Snapshot del Dashboard · {payload?.label || payload?.period || "-"}
           </p>
-          <p style={{ margin: 0, color: "#aaa", fontSize: "0.82rem" }}>Exportado desde el Panel de Indicadores.</p>
+          <p style={{ margin: 0, color: "#aaaaaa", fontSize: "0.82rem" }}>Exportado desde el Panel de Indicadores.</p>
         </div>
       );
     }
 
-    return <p style={{ margin: 0, color: "#aaa", fontSize: "0.85rem" }}>Tipo: {fileType}</p>;
+    return <p style={{ margin: 0, color: "#aaaaaa", fontSize: "0.85rem" }}>Tipo: {fileType}</p>;
   }
 
   const previewFooterActions = preview ? [
@@ -481,12 +481,12 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.5rem" }}>
-        <div style={{ background: "#032121", borderRadius: "0.85rem", padding: "0.6rem", display: "flex", alignItems: "center" }}>
-          <Archive size={22} color="#fff" />
+        <div style={{ background: "#314d69", borderRadius: "0.85rem", padding: "0.6rem", display: "flex", alignItems: "center" }}>
+          <Archive size={22} color="#ffffff" />
         </div>
         <div>
-          <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 700, color: "#032121" }}>Archivero</h2>
-          <p style={{ margin: 0, fontSize: "0.82rem", color: "#888" }}>
+          <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 700, color: "#314d69" }}>Archivero</h2>
+          <p style={{ margin: 0, fontSize: "0.82rem", color: "#888888" }}>
             Gestiona todos tus archivos .cop cifrados · {files.length} archivo{files.length !== 1 ? "s" : ""} guardado{files.length !== 1 ? "s" : ""}
           </p>
         </div>
@@ -513,8 +513,8 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
       {message && (
         <div style={{
           padding: "0.65rem 1rem", borderRadius: "0.75rem",
-          background: message.toLowerCase().includes("error") || message.toLowerCase().includes("no se pudo") ? "#fff0f0" : "#f0faf0",
-          color: message.toLowerCase().includes("error") || message.toLowerCase().includes("no se pudo") ? "#991b1b" : "#032121",
+          background: message.toLowerCase().includes("error") || message.toLowerCase().includes("no se pudo") ? "#fff0f0" : "#f1f5f9",
+          color: message.toLowerCase().includes("error") || message.toLowerCase().includes("no se pudo") ? "#991b1b" : "#314d69",
           fontSize: "0.84rem", marginBottom: "1rem"
         }}>
           {message}
@@ -568,13 +568,13 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
                             {chip.label}
                           </span>
                         </td>
-                        <td style={{ fontSize: "0.81rem", color: "#555", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <td style={{ fontSize: "0.81rem", color: "#555555", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {entry.periodLabel}
                         </td>
-                        <td style={{ fontSize: "0.81rem", textAlign: "center", color: "#666" }}>
+                        <td style={{ fontSize: "0.81rem", textAlign: "center", color: "#666666" }}>
                           {entry.records || "—"}
                         </td>
-                        <td style={{ fontSize: "0.77rem", color: "#888", whiteSpace: "nowrap" }}>
+                        <td style={{ fontSize: "0.77rem", color: "#888888", whiteSpace: "nowrap" }}>
                           {new Date(entry.importedAt).toLocaleString("es-MX")}
                         </td>
                         <td>
@@ -604,7 +604,7 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
             </div>
           ) : (
             <div style={{
-              textAlign: "center", padding: "3.5rem 1rem", color: "#bbb",
+              textAlign: "center", padding: "3.5rem 1rem", color: "#bbbbbb",
               background: "#fafafa", borderRadius: "1.25rem", border: "2px dashed #e5e7eb"
             }}>
               <Archive size={44} style={{ marginBottom: "0.85rem", opacity: 0.25 }} />
@@ -624,10 +624,10 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
         <div style={{ maxWidth: "520px", display: "grid", gap: "1.25rem" }}>
           <div style={{ background: "#f8f9fa", borderRadius: "1.25rem", padding: "1.5rem", border: "1px solid #e5e7eb" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.75rem" }}>
-              <FileText size={20} color="#032121" />
-              <p style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "#032121" }}>Convertir PDF a .cop cifrado</p>
+              <FileText size={20} color="#314d69" />
+              <p style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "#314d69" }}>Convertir PDF a .cop cifrado</p>
             </div>
-            <p style={{ margin: "0 0 1.1rem", color: "#666", fontSize: "0.83rem", lineHeight: 1.5 }}>
+            <p style={{ margin: "0 0 1.1rem", color: "#666666", fontSize: "0.83rem", lineHeight: 1.5 }}>
               Selecciona cualquier PDF del sistema. Se cifrará con AES-GCM y se guardará como archivo
               <strong> .cop</strong> en tu archivero. Puedes recuperar el PDF original en cualquier momento.
             </p>
@@ -639,7 +639,7 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
               </button>
               <input ref={pdfRef} type="file" accept=".pdf" style={{ display: "none" }} onChange={handlePdfFileChange} />
               {pdfFile && (
-                <span style={{ fontSize: "0.83rem", color: "#032121", fontWeight: 600 }}>
+                <span style={{ fontSize: "0.83rem", color: "#314d69", fontWeight: 600 }}>
                   📄 PDF seleccionado
                 </span>
               )}
@@ -660,8 +660,8 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
           {pdfMsg && (
             <div style={{
               padding: "0.65rem 1rem", borderRadius: "0.75rem",
-              background: pdfMsg.includes("Error") ? "#fff0f0" : "#f0faf0",
-              color: pdfMsg.includes("Error") ? "#991b1b" : "#032121",
+              background: pdfMsg.includes("Error") ? "#fff0f0" : "#f1f5f9",
+              color: pdfMsg.includes("Error") ? "#991b1b" : "#314d69",
               fontSize: "0.84rem"
             }}>
               {pdfMsg}
@@ -709,7 +709,7 @@ export default function Archivero({ currentUser, onUpdateCopmecFiles }) {
             ¿Guardar <strong>{pendingEntry?.fileName}</strong> en el archivero?
           </p>
           {pendingEntry && (
-            <p className="ep-footnote" style={{ margin: 0, color: "#888" }}>
+            <p className="ep-footnote" style={{ margin: 0, color: "#888888" }}>
               Tipo: {fileTypeChip(pendingEntry.fileType).label} · {pendingEntry.periodLabel}
             </p>
           )}

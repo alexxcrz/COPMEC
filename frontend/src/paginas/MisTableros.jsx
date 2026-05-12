@@ -1237,7 +1237,7 @@ export default function MisTableros({ contexto }) {
                       <button type="button" className="custom-board-menu-item" onClick={() => { setCustomBoardActionsMenuOpen(false); exportSelectedBoardToCopmec(); }} disabled={!selectedBoardActionPermissions.exportBoardPdf}>
                         Descargar .copmec
                       </button>
-                      <hr style={{ margin: "0.3rem 0", border: "none", borderTop: "1px solid rgba(3,33,33,0.1)" }} />
+                      <hr style={{ margin: "0.3rem 0", border: "none", borderTop: "1px solid rgba(49, 77, 105, 0.1)" }} />
                       <button type="button" className="custom-board-menu-item" onClick={() => { setCustomBoardActionsMenuOpen(false); exportCurrentBoardAsJson(); }}>
                         Exportar estructura JSON
                       </button>
@@ -1543,7 +1543,7 @@ export default function MisTableros({ contexto }) {
                                 ? Math.max(computedTotalSecs, Math.max(0, overriddenTotalSecs))
                                 : computedTotalSecs;
                               const pct = totalSecs > 0 ? Math.round((prodSecs / totalSecs) * 100) : (row.startTime ? 100 : 0);
-                              const color = pct >= 80 ? "#16a34a" : pct >= 50 ? "#15803d" : "#dc2626";
+                              const color = pct >= 80 ? "#4f7da9" : pct >= 50 ? "#3f678f" : "#dc2626";
                               return (
                                 <td key={`${row.id}-${column.token}`} style={getEffectiveColumnWidth(column)}>
                                   <span style={{ color, fontWeight: 600 }}>{row.startTime ? `${pct}%` : "—"}</span>
@@ -1940,7 +1940,7 @@ export default function MisTableros({ contexto }) {
                                       key={star}
                                       type="button"
                                       onClick={() => rowFieldEditable && updateBoardRowValue(selectedCustomBoard.id, row.id, field, star)}
-                                      style={{ background: "none", border: "none", cursor: rowFieldEditable ? "pointer" : "default", fontSize: "16px", padding: "0", color: star <= ratingVal ? "#16a34a" : "#d1d5db" }}
+                                      style={{ background: "none", border: "none", cursor: rowFieldEditable ? "pointer" : "default", fontSize: "16px", padding: "0", color: star <= ratingVal ? "#4f7da9" : "#d1d5db" }}
                                       disabled={!rowFieldEditable}
                                       aria-label={`${star} estrella${star !== 1 ? "s" : ""}`}
                                     >★</button>
@@ -1955,7 +1955,7 @@ export default function MisTableros({ contexto }) {
                             const hasProgressValue = rawProgressValue !== "" && rawProgressValue !== null && rawProgressValue !== undefined;
                             const progVal = hasProgressValue ? Math.min(100, Math.max(0, Number(rawProgressValue))) : 0;
                             const progressInputValue = hasProgressValue ? progVal : "";
-                            const progColor = progVal >= 80 ? "#16a34a" : progVal >= 50 ? "#15803d" : "#dc2626";
+                            const progColor = progVal >= 80 ? "#4f7da9" : progVal >= 50 ? "#3f678f" : "#dc2626";
                             return (
                               <td key={field.id} style={columnStyle}>
                                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -2166,7 +2166,7 @@ export default function MisTableros({ contexto }) {
                   const canEditPauseDuration = Boolean(canManageDashboardState) && Boolean(entry?.resumedAt);
                   const canDeletePauseEntry = Boolean(canManageDashboardState);
                   return (
-                    <article key={entry?.id || `${pauseDetailsRow.id}-pause-${index}`} style={{ border: "1px solid rgba(3,33,33,0.14)", borderRadius: "0.8rem", padding: "0.48rem 0.58rem", display: "grid", gap: "0.2rem" }}>
+                    <article key={entry?.id || `${pauseDetailsRow.id}-pause-${index}`} style={{ border: "1px solid rgba(49, 77, 105, 0.14)", borderRadius: "0.8rem", padding: "0.48rem 0.58rem", display: "grid", gap: "0.2rem" }}>
                       <strong style={{ fontSize: "0.78rem" }}>Pausa {index + 1}</strong>
                       <span style={{ fontSize: "0.76rem" }}>Inicio: {startLabel}</span>
                       <span style={{ fontSize: "0.76rem" }}>Fin: {endLabel}</span>

@@ -401,6 +401,313 @@ function createDeleteTransportModalState() {
   };
 }
 
+function createTransportLogisticsAddressDraft() {
+  return {
+    destination: "",
+    customerName: "",
+    address: "",
+    contactName: "",
+    phone: "",
+    areaId: "",
+    serviceType: "otro",
+    notes: "",
+  };
+}
+
+const TRANSPORT_SERVICE_TYPE_OPTIONS = [
+  { value: "local", label: "Local" },
+  { value: "foraneo", label: "Foráneo" },
+  { value: "paqueteria", label: "Paquetería" },
+  { value: "traslado", label: "Traslado" },
+  { value: "otro", label: "Otro" },
+];
+
+const TRANSPORT_ROAD_NEWS_TOPIC_OPTIONS = [
+  { value: "general", label: "General" },
+  { value: "accidentes", label: "Accidentes" },
+  { value: "bloqueos", label: "Bloqueos y cierres" },
+  { value: "clima", label: "Clima" },
+  { value: "seguridad", label: "Seguridad" },
+  { value: "obras", label: "Obras y mantenimiento" },
+];
+
+const TRANSPORT_ROAD_NEWS_REGION_OPTIONS = [
+  "México",
+  "Nacional",
+  "CDMX",
+  "Estado de México",
+  "Puebla",
+  "Veracruz",
+  "Nuevo León",
+  "Jalisco",
+  "Querétaro",
+  "Guanajuato",
+  "Michoacán",
+  "Chiapas",
+  "Sonora",
+  "Baja California",
+  "Yucatán",
+];
+
+function createRoadNewsFiltersDraft() {
+  return {
+    topic: "general",
+    region: "México",
+    q: "",
+    hours: "24",
+    limit: "20",
+  };
+}
+
+function inferServiceTypeByArea(areaId) {
+  const id = String(areaId || "").trim();
+  if (id === "locales") return "local";
+  if (id === "foraneas") return "foraneo";
+  if (id === "pedidos") return "paqueteria";
+  if (id === "inventarioTraslados") return "traslado";
+  return "otro";
+}
+
+function normalizeServiceType(serviceType, fallback = "otro") {
+  const value = String(serviceType || "").trim().toLowerCase();
+  return TRANSPORT_SERVICE_TYPE_OPTIONS.some((entry) => entry.value === value) ? value : fallback;
+}
+
+function getDestinationMissingFields(entry = {}) {
+  const missing = [];
+  if (!String(entry?.customerName || "").trim()) missing.push("cliente");
+  if (!String(entry?.address || "").trim()) missing.push("dirección");
+  if (!String(entry?.contactName || "").trim()) missing.push("contacto");
+  if (!String(entry?.phone || "").trim()) missing.push("teléfono");
+  return missing;
+}
+
+function buildAddressNavigationHref(addressEntry = {}) {
+  const query = String(addressEntry?.address || addressEntry?.destination || "").trim();
+  if (!query) return "";
+  return `geo:0,0?q=${encodeURIComponent(query)}`;
+}
+
+function createTransportLogisticsExpenseDraft() {
+  return {
+    dateKey: new Date().toISOString().slice(0, 10),
+    expenseType: "combustible",
+    amount: "",
+    description: "",
+    areaId: "",
+    routeLabel: "",
+    reference: "",
+  };
+}
+
+function createTransportUnitDraft() {
+  return {
+    unitName: "",
+    unitCode: "",
+    plate: "",
+    model: "",
+    areaId: "",
+    notes: "",
+    photo: null,
+  };
+}
+
+function createTransportUnitServiceDraft() {
+  return {
+    unitId: "",
+    dateKey: new Date().toISOString().slice(0, 10),
+    serviceLabel: "",
+    kmBefore: "",
+    kmAfter: "",
+    notes: "",
+  };
+}
+
+const TRANSPORT_CHECKLIST_STRUCTURE = [
+  {
+    section: "Sistema de luces",
+    items: [
+      { key: "luzDelanteraDerecha", label: "Luz delantera derecha" },
+      { key: "luzDelanteraIzquierda", label: "Luz delantera izquierda" },
+      { key: "luzTraseraDerecha", label: "Luz trasera derecha" },
+      { key: "luzTraseraIzquierda", label: "Luz trasera izquierda" },
+      { key: "luzPlaca", label: "Luz de placa" },
+      { key: "lucesEmergencia", label: "Luces de emergencia" },
+      { key: "cuartos", label: "Cuartos" },
+      { key: "direccionalDelantera", label: "Luz direccional delantera" },
+      { key: "direccionalTrasera", label: "Luz direccional trasera" },
+      { key: "luzInteriorCaja", label: "Luz interior de caja" },
+    ],
+  },
+  {
+    section: "Parte externa",
+    items: [
+      { key: "limpiaParabrisas", label: "Limpia parabrisas" },
+      { key: "espejosRetrovisores", label: "Espejos retrovisores" },
+      { key: "parabrisas", label: "Parabrisas" },
+      { key: "defensasLaterales", label: "Defensas laterales" },
+      { key: "cajaExterior", label: "Caja" },
+      { key: "rampa", label: "Rampa" },
+      { key: "camaraReversa", label: "Cámara de reversa" },
+    ],
+  },
+  {
+    section: "Parte interna",
+    items: [
+      { key: "estadoTablero", label: "Estado del tablero / indicadores operativos" },
+      { key: "velocimetroTacometro", label: "Velocímetro y tacómetro" },
+      { key: "frenoServicio", label: "Freno de servicio" },
+      { key: "frenoEmergencia", label: "Freno de estacionamiento" },
+      { key: "cinturonCopiloto", label: "Cinturón de seguridad copiloto" },
+      { key: "cinturonConductor", label: "Cinturón de seguridad conductor" },
+      { key: "ordenCabinaCaja", label: "Orden y limpieza de cabina y caja" },
+      { key: "claxon", label: "Claxon" },
+    ],
+  },
+  {
+    section: "Estado de llantas",
+    items: [
+      { key: "llantaDelanteraDerecha", label: "Llanta delantera derecha" },
+      { key: "llantaDelanteraIzquierda", label: "Llanta delantera izquierda" },
+      { key: "llantaTraseraDerecha", label: "Llanta trasera derecha" },
+      { key: "llantaTraseraIzquierda", label: "Llanta trasera izquierda" },
+      { key: "llantaRefaccion", label: "Llanta de refacción" },
+    ],
+  },
+  {
+    section: "Accesorios de seguridad",
+    items: [
+      { key: "trianguloSeguridad", label: "Triángulo de seguridad" },
+      { key: "extintor", label: "Extintor" },
+      { key: "alarmaRetroceso", label: "Alarma de retroceso" },
+      { key: "alarmaCabina", label: "Alarma de cabina" },
+      { key: "chalecoReflejante", label: "Chaleco reflejante" },
+      { key: "botiquin", label: "Botiquín" },
+    ],
+  },
+  {
+    section: "Tapas y otros",
+    items: [
+      { key: "tapaTanqueCombustible", label: "Tapa de tanque de combustible" },
+      { key: "tapasAceite", label: "Tapas de aceite" },
+      { key: "herramientasGato", label: "Herramientas y gato" },
+      { key: "sogasCuerdas", label: "Sogas y cuerdas" },
+      { key: "gata", label: "Gata" },
+      { key: "llavesRuedas", label: "Llaves de ruedas" },
+    ],
+  },
+  {
+    section: "Documentación",
+    items: [
+      { key: "tarjetaPropiedad", label: "Tarjeta de propiedad" },
+      { key: "polizaSeguro", label: "Póliza de seguro" },
+      { key: "licenciaConductor", label: "Licencia de conductor" },
+    ],
+  },
+  {
+    section: "Carrocería y observaciones",
+    items: [
+      { key: "golpesRaspaduras", label: "Golpes exteriores / raspaduras" },
+      { key: "tapaHidraulica", label: "Desgaste de tapa hidráulica por uso y maniobras" },
+      { key: "canastillaGomasCaja", label: "Desprendimiento de gomas en puertas de la caja" },
+    ],
+  },
+];
+
+const TRANSPORT_CHECKLIST_ITEM_INDEX = TRANSPORT_CHECKLIST_STRUCTURE.reduce((acc, group) => {
+  group.items.forEach((item) => {
+    acc[item.key] = { label: item.label, section: group.section };
+  });
+  return acc;
+}, {});
+
+const TRANSPORT_CHECKLIST_SECTION_ORDER = TRANSPORT_CHECKLIST_STRUCTURE.reduce((acc, group, index) => {
+  acc[group.section] = index;
+  return acc;
+}, {});
+
+const TRANSPORT_CHECKLIST_ITEM_ORDER = TRANSPORT_CHECKLIST_STRUCTURE.reduce((acc, group) => {
+  group.items.forEach((item, index) => {
+    acc[item.key] = index;
+  });
+  return acc;
+}, {});
+
+function createTransportChecklistCustomKey() {
+  return `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function isTransportChecklistBaseKey(key) {
+  return Boolean(TRANSPORT_CHECKLIST_ITEM_INDEX[String(key || "")]);
+}
+
+function createTransportChecklistItemsDraft() {
+  return Object.entries(TRANSPORT_CHECKLIST_ITEM_INDEX).reduce((acc, [key, meta]) => {
+    acc[key] = {
+      status: "good",
+      label: meta.label,
+      section: meta.section,
+      notes: "",
+      evidence: null,
+    };
+    return acc;
+  }, {});
+}
+
+function createTransportChecklistItemsDraftFromTemplate(templateChecks) {
+  const source = templateChecks && typeof templateChecks === "object" ? templateChecks : null;
+  if (!source || !Object.keys(source).length) {
+    return createTransportChecklistItemsDraft();
+  }
+
+  return Object.entries(source).reduce((acc, [key, item]) => {
+    const baseMeta = TRANSPORT_CHECKLIST_ITEM_INDEX[key] || {};
+    acc[key] = {
+      status: "good",
+      label: String(item?.label || baseMeta.label || key).trim() || key,
+      section: String(item?.section || baseMeta.section || "General").trim() || "General",
+      notes: "",
+      evidence: null,
+    };
+    return acc;
+  }, {});
+}
+
+function buildTransportChecklistTemplateFromChecks(checks) {
+  return Object.entries(checks || {}).reduce((acc, [key, item]) => {
+    const baseMeta = TRANSPORT_CHECKLIST_ITEM_INDEX[key] || {};
+    acc[key] = {
+      label: String(item?.label || baseMeta.label || key).trim() || key,
+      section: String(item?.section || baseMeta.section || "General").trim() || "General",
+    };
+    return acc;
+  }, {});
+}
+
+function resolveChecklistItemStatus(item) {
+  if (item && typeof item === "object") {
+    const status = String(item.status || "").trim().toLowerCase();
+    if (["good", "bad", "na"].includes(status)) return status;
+    if (typeof item.ok === "boolean") return item.ok ? "good" : "bad";
+  }
+  if (typeof item === "boolean") return item ? "good" : "bad";
+  return "good";
+}
+
+function resolveChecklistItemEvidence(item) {
+  if (!item || typeof item !== "object") return null;
+  return item.evidence && typeof item.evidence === "object" ? item.evidence : null;
+}
+
+function createTransportUnitChecklistDraft({ unitId = "", templateChecks = null } = {}) {
+  return {
+    unitId: String(unitId || ""),
+    dateKey: new Date().toISOString().slice(0, 10),
+    notes: "",
+    checks: createTransportChecklistItemsDraftFromTemplate(templateChecks),
+  };
+}
+
 function renderRouteStatusChip(statusValue, assignedToName) {
   const status = String(statusValue || "Pendiente").trim() || "Pendiente";
   const assignee = String(assignedToName || "").trim();
@@ -410,7 +717,7 @@ function renderRouteStatusChip(statusValue, assignedToName) {
     Asignado: { bg: "#cfe2ff", color: "#084298" },
     "En camino": { bg: "#d1ecf1", color: "#0c5460" },
     Retorno: { bg: "#ffe8cc", color: "#7a4100" },
-    Entregado: { bg: "#d4edda", color: "#155724" },
+    Entregado: { bg: "#dbe7f2", color: "#1d384f" },
     Devuelto: { bg: "#f8d7da", color: "#842029" },
     Cancelado: { bg: "#e2e3e5", color: "#41464b" },
   };
@@ -439,6 +746,11 @@ function renderRouteStatusChip(statusValue, assignedToName) {
 
 export default function GestionTransporte({ contexto }) {
   const {
+    state,
+    setState,
+    setLoginDirectory,
+    skipNextSyncRef,
+    setSyncStatus,
     transportState,
     users,
     createTransportRecord,
@@ -451,6 +763,9 @@ export default function GestionTransporte({ contexto }) {
     createDocumentacionRecord,
     updateDocumentacionRecord,
     addDocumentacionArea,
+    applyRemoteWarehouseState,
+    navTransportSection,
+    navTransportTab,
   } = contexto;
 
   const usersById = useMemo(() => {
@@ -463,6 +778,16 @@ export default function GestionTransporte({ contexto }) {
     });
     return map;
   }, [users]);
+
+  const canDeleteHistoryTransportRecords = Boolean(
+    String(contexto.currentUser?.role || "").trim() === "Lead"
+    && (
+      !actionPermissions
+      || typeof actionPermissions !== "object"
+      || !("deleteTransportRecord" in actionPermissions)
+      || Boolean(actionPermissions.deleteTransportRecord)
+    ),
+  );
 
   const resolveAssignedName = (record) => {
     const inlineName = String(record?.assignedToName || "").trim();
@@ -526,6 +851,8 @@ export default function GestionTransporte({ contexto }) {
     || hasActionPermission("viewTransportPostponed", false)
     || hasActionPermission("manageTransportPostponed", false)
     || hasActionPermission("viewTransportMyRoutes", false)
+    || hasActionPermission("viewTransportLogistics", false)
+    || hasActionPermission("manageTransportLogistics", false)
     || hasActionPermission("viewTransportConsolidated", false)
   );
   const canSeeDocumentacionTab = hasTransportOnlyAccess
@@ -536,40 +863,78 @@ export default function GestionTransporte({ contexto }) {
     && hasActionPermission("viewTransportPostponed", false);
   const canSeeMyRoutesTab = hasTransportOnlyAccess
     && hasActionPermission("viewTransportMyRoutes", false);
+  const canSeeLogisticsTab = hasTransportOnlyAccess
+    && (hasActionPermission("viewTransportLogistics", false) || hasActionPermission("manageTransportLogistics", false));
+  const canManageLogisticsTab = hasActionPermission("manageTransportLogistics", false);
   const canSeeConsolidatedTab = hasTransportOnlyAccess
     && hasActionPermission("viewTransportConsolidated", false);
+  const canManageIncidencias = hasActionPermission("createIncidencia", false)
+    || hasActionPermission("editIncidencia", false)
+    || hasActionPermission("deleteIncidencia", false);
+  const canSeeTransportIncidenciasTab = canManageIncidencias;
   const canManageDocumentacionTab = hasActionPermission("manageTransportDocumentacion", false);
   const canDeleteTransportRecord = hasAnyTransportManageAccess
     && hasActionPermission("deleteTransportRecord", hasAnyTransportManageAccess);
 
-  const areaTabOptions = useMemo(() => {
+  const shippingTabOptions = useMemo(() => {
     const tabs = [];
-    if (hasRetailAccess) tabs.push({ id: "area-retail", label: "Retail", shortLabel: "Retail", icon: "🛍️", accent: "#0f7b5c", soft: "rgba(15, 123, 92, 0.12)" });
+    if (hasRetailAccess) tabs.push({ id: "area-retail", label: "Retail", shortLabel: "Retail", icon: "🛍️", accent: "#1f486b", soft: "rgba(31, 72, 107, 0.12)" });
     if (hasPedidosAccess) tabs.push({ id: "area-pedidos", label: "Pedidos", shortLabel: "Pedidos", icon: "📦", accent: "#b45309", soft: "rgba(180, 83, 9, 0.12)" });
     if (hasInventarioAccess) tabs.push({ id: "area-inventario", label: "Inventario", shortLabel: "Inv.", icon: "🏷️", accent: "#0e7490", soft: "rgba(14, 116, 144, 0.12)" });
-    if (canSeeDocumentacionTab) tabs.push({ id: "documentacion", label: "Documentación", shortLabel: "Doc.", icon: "📄", accent: "#6d28d9", soft: "rgba(109, 40, 217, 0.12)" });
     return tabs;
-  }, [canSeeDocumentacionTab, hasInventarioAccess, hasPedidosAccess, hasRetailAccess]);
+  }, [hasInventarioAccess, hasPedidosAccess, hasRetailAccess]);
 
-  const transportOnlyTabOptions = useMemo(() => {
+  const transportAdminTabOptions = useMemo(() => {
     const tabs = [];
+    if (canSeeDocumentacionTab) tabs.push({ id: "documentacion", label: "Documentación", shortLabel: "Doc.", icon: "📄", accent: "#6d28d9", soft: "rgba(109, 40, 217, 0.12)" });
     if (canSeeAssignmentsTab) tabs.push({ id: "asignaciones", label: "Asignaciones", shortLabel: "Asig.", icon: "🚚", accent: "#2563eb", soft: "rgba(37, 99, 235, 0.12)" });
     if (canSeePostponedTab) tabs.push({ id: "pospuestos", label: "Pospuestos y programados", shortLabel: "Prog.", icon: "⏰", accent: "#b45309", soft: "rgba(180, 83, 9, 0.12)" });
-    if (canSeeMyRoutesTab) tabs.push({ id: "mis-rutas", label: "Mis rutas", shortLabel: "Rutas", icon: "🛣️", accent: "#15803d", soft: "rgba(21, 128, 61, 0.12)" });
-    if (canSeeConsolidatedTab) tabs.push({ id: "consolidado", label: "Consolidado", shortLabel: "Consol.", icon: "📊", accent: "#0f766e", soft: "rgba(15, 118, 110, 0.12)" });
+    if (canSeeMyRoutesTab) tabs.push({ id: "mis-rutas", label: "Mis rutas", shortLabel: "Rutas", icon: "🛣️", accent: "#3f678f", soft: "rgba(34, 77, 115, 0.12)" });
+    if (canSeeTransportIncidenciasTab) tabs.push({ id: "incidencias-transporte", label: "Incidencias transporte", shortLabel: "Incidencias", icon: "🚨", accent: "#b91c1c", soft: "rgba(185, 28, 28, 0.12)" });
+    if (canSeeLogisticsTab) tabs.push({ id: "logistica", label: "Direcciones y gastos", shortLabel: "Dir./Gts.", icon: "🧭", accent: "#7c3aed", soft: "rgba(124, 58, 237, 0.12)" });
+    if (canSeeConsolidatedTab) tabs.push({ id: "consolidado", label: "Consolidado", shortLabel: "Consol.", icon: "📊", accent: "#355f88", soft: "rgba(15, 118, 110, 0.12)" });
     return tabs;
   }, [
+    canSeeDocumentacionTab,
     canSeeAssignmentsTab,
     canSeeConsolidatedTab,
+    canSeeTransportIncidenciasTab,
     canSeeMyRoutesTab,
     canSeePostponedTab,
+    canSeeLogisticsTab,
   ]);
 
-  const mainTabOptions = useMemo(() => ([...areaTabOptions, ...transportOnlyTabOptions]), [areaTabOptions, transportOnlyTabOptions]);
+  const transportDashboardTabOptions = useMemo(() => {
+    if (!canSeeConsolidatedTab) return [];
+    return [{ id: "dashboard-transporte", label: "Dashboard", shortLabel: "Dashboard", icon: "📈", accent: "#355f88", soft: "rgba(15, 118, 110, 0.12)" }];
+  }, [canSeeConsolidatedTab]);
+
+  const mainTabOptions = useMemo(
+    () => ([...shippingTabOptions, ...transportAdminTabOptions, ...transportDashboardTabOptions]),
+    [shippingTabOptions, transportAdminTabOptions, transportDashboardTabOptions],
+  );
+
+  const transportSectionOptions = useMemo(() => {
+    const sections = [];
+    const hasControlTransporteTabs = transportAdminTabOptions.some((tab) => ["asignaciones", "pospuestos", "mis-rutas"].includes(tab.id));
+    const hasIncidenciasTab = transportAdminTabOptions.some((tab) => tab.id === "incidencias-transporte");
+    const hasConsolidadoTab = transportAdminTabOptions.some((tab) => tab.id === "consolidado");
+    const hasLogisticaTab = transportAdminTabOptions.some((tab) => tab.id === "logistica");
+    if (shippingTabOptions.length) sections.push({ id: "registros-envios", label: "Registros de envíos" });
+    if (hasControlTransporteTabs) sections.push({ id: "control-transporte", label: "Control transporte" });
+    if (hasIncidenciasTab) sections.push({ id: "incidencias-transporte", label: "Incidencias transporte" });
+    if (hasConsolidadoTab) sections.push({ id: "consolidados", label: "Consolidados" });
+    if (transportDashboardTabOptions.length) sections.push({ id: "dashboard-transporte", label: "Dashboard" });
+    if (hasLogisticaTab) sections.push({ id: "direcciones-gastos", label: "Direcciones y gastos" });
+    return sections;
+  }, [shippingTabOptions, transportAdminTabOptions, transportDashboardTabOptions]);
 
   const firstAreaId = areaConfig[0]?.id || "";
   const [selectedAreaId, setSelectedAreaId] = useState(firstAreaId);
   const [selectedViewTab, setSelectedViewTab] = useState("active");
+  const [areaHistorySearch, setAreaHistorySearch] = useState("");
+  const [areaHistoryStatusFilter, setAreaHistoryStatusFilter] = useState("all");
+  const [selectedTransportSection, setSelectedTransportSection] = useState(() => (shippingTabOptions.length ? "registros-envios" : "control-transporte"));
   const [selectedMainTab, setSelectedMainTab] = useState(() => mainTabOptions[0]?.id || "documentacion");
   const [selectedPrincipalMonth, setSelectedPrincipalMonth] = useState(() => String(transportState?.activeDateKey || new Date().toISOString().slice(0, 10)).slice(0, 7));
   const [selectedConsolidatedRange] = useState("dias");
@@ -580,11 +945,47 @@ export default function GestionTransporte({ contexto }) {
   const [selectedPrincipalYear, setSelectedPrincipalYear] = useState(() => Number(String(transportState?.activeDateKey || "").slice(0, 4)) || new Date().getFullYear());
   const [selectedPrincipalMonthSpan] = useState(3);
   const [selectedConsolidatedPlayerId, setSelectedConsolidatedPlayerId] = useState("all");
+  const [selectedConsolidatedAreaId, setSelectedConsolidatedAreaId] = useState("all");
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [transportModal, setTransportModal] = useState(createTransportModalState(firstAreaId));
   const [transportModalError, setTransportModalError] = useState("");
   const [postponeModal, setPostponeModal] = useState(createPostponeModalState());
   const [deleteTransportModal, setDeleteTransportModal] = useState(createDeleteTransportModalState());
+  const [logisticsAddressDraft, setLogisticsAddressDraft] = useState(createTransportLogisticsAddressDraft());
+  const [logisticsExpenseDraft, setLogisticsExpenseDraft] = useState(createTransportLogisticsExpenseDraft());
+  const [logisticsViewTab, setLogisticsViewTab] = useState("direcciones");
+  const [logisticsUnitDraft, setLogisticsUnitDraft] = useState(createTransportUnitDraft());
+  const [logisticsUnitServiceDraft, setLogisticsUnitServiceDraft] = useState(createTransportUnitServiceDraft());
+  const [logisticsUnitChecklistDraft, setLogisticsUnitChecklistDraft] = useState(createTransportUnitChecklistDraft());
+  const [logisticsAddressEditId, setLogisticsAddressEditId] = useState("");
+  const [logisticsAddressSearch, setLogisticsAddressSearch] = useState("");
+  const [logisticsAddressCompletenessFilter, setLogisticsAddressCompletenessFilter] = useState("all");
+  const [roadNewsFilters, setRoadNewsFilters] = useState(createRoadNewsFiltersDraft());
+  const [roadNewsItems, setRoadNewsItems] = useState([]);
+  const [roadNewsError, setRoadNewsError] = useState("");
+  const [roadNewsLoading, setRoadNewsLoading] = useState(false);
+  const [roadNewsLoadedAt, setRoadNewsLoadedAt] = useState("");
+  const [checklistCustomItemDraft, setChecklistCustomItemDraft] = useState({
+    section: TRANSPORT_CHECKLIST_STRUCTURE[0]?.section || "General",
+    label: "",
+  });
+  const [logisticsAddressModalOpen, setLogisticsAddressModalOpen] = useState(false);
+  const [logisticsExpenseModalOpen, setLogisticsExpenseModalOpen] = useState(false);
+  const [logisticsUnitModalOpen, setLogisticsUnitModalOpen] = useState(false);
+  const [logisticsUnitServiceModalOpen, setLogisticsUnitServiceModalOpen] = useState(false);
+  const [logisticsUnitChecklistModalOpen, setLogisticsUnitChecklistModalOpen] = useState(false);
+  const [isChecklistEditMode, setIsChecklistEditMode] = useState(false);
+  const [uploadingUnitPhoto, setUploadingUnitPhoto] = useState(false);
+  const [uploadingUnitChecklistEvidence, setUploadingUnitChecklistEvidence] = useState(false);
+  const checklistCameraInputRefs = useRef({});
+  const checklistUploadInputRefs = useRef({});
+  const [logisticsSaving, setLogisticsSaving] = useState(false);
+  const [logisticsBanner, setLogisticsBanner] = useState({ tone: "", message: "" });
+  const logisticsError = logisticsBanner.message;
+  const setLogisticsError = (message) => setLogisticsBanner({ tone: message ? "danger" : "", message: String(message || "") });
+  const setLogisticsWarning = (message) => setLogisticsBanner({ tone: message ? "warning" : "", message: String(message || "") });
+  const setLogisticsSuccess = (message) => setLogisticsBanner({ tone: message ? "success" : "", message: String(message || "") });
+  const unitPhotoInputRef = useRef(null);
   const [evidenceViewer, setEvidenceViewer] = useState({ open: false, evidence: null, title: "" });
   const [uploadingEvidence, setUploadingEvidence] = useState(false);
   const fileInputRef = useRef(null);
@@ -600,6 +1001,60 @@ export default function GestionTransporte({ contexto }) {
   const [selectedDocViewTab, setSelectedDocViewTab] = useState("active");
   const [docFilterUbicacion, setDocFilterUbicacion] = useState("ALL");
   const [docFilterArea, setDocFilterArea] = useState("ALL");
+  const [incidenciasSearch, setIncidenciasSearch] = useState("");
+  const [incidenciasStatusFilter, setIncidenciasStatusFilter] = useState("all");
+  const [incidenciasPriorityFilter, setIncidenciasPriorityFilter] = useState("all");
+  const [incidenciaModalOpen, setIncidenciaModalOpen] = useState(false);
+  const [incidenciaSaving, setIncidenciaSaving] = useState(false);
+  const [incidenciaError, setIncidenciaError] = useState("");
+  const [incidenciaEditId, setIncidenciaEditId] = useState(null);
+  const [incidenciaDeleteId, setIncidenciaDeleteId] = useState(null);
+  const [incidenciaDraft, setIncidenciaDraft] = useState({
+    title: "",
+    description: "",
+    area: "",
+    priority: "media",
+    status: "abierta",
+  });
+
+  const checklistGroupsForModal = useMemo(() => {
+    const checks = logisticsUnitChecklistDraft.checks || {};
+    const sectionMap = new Map();
+
+    Object.entries(checks).forEach(([key, item]) => {
+      const baseMeta = TRANSPORT_CHECKLIST_ITEM_INDEX[key] || {};
+      const label = String(item?.label || baseMeta.label || "").trim() || "Check personalizado";
+      const section = String(item?.section || baseMeta.section || "").trim() || "General";
+      if (!sectionMap.has(section)) {
+        sectionMap.set(section, { section, items: [] });
+      }
+      sectionMap.get(section).items.push({
+        key,
+        label,
+        custom: !isTransportChecklistBaseKey(key),
+      });
+    });
+
+    return Array.from(sectionMap.values())
+      .map((group) => ({
+        ...group,
+        items: [...group.items].sort((left, right) => {
+          const leftBase = isTransportChecklistBaseKey(left.key);
+          const rightBase = isTransportChecklistBaseKey(right.key);
+          if (leftBase && rightBase) {
+            return (TRANSPORT_CHECKLIST_ITEM_ORDER[left.key] || 0) - (TRANSPORT_CHECKLIST_ITEM_ORDER[right.key] || 0);
+          }
+          if (leftBase !== rightBase) return leftBase ? -1 : 1;
+          return left.label.localeCompare(right.label, "es-MX");
+        }),
+      }))
+      .sort((left, right) => {
+        const leftOrder = Number.isInteger(TRANSPORT_CHECKLIST_SECTION_ORDER[left.section]) ? TRANSPORT_CHECKLIST_SECTION_ORDER[left.section] : 999;
+        const rightOrder = Number.isInteger(TRANSPORT_CHECKLIST_SECTION_ORDER[right.section]) ? TRANSPORT_CHECKLIST_SECTION_ORDER[right.section] : 999;
+        if (leftOrder !== rightOrder) return leftOrder - rightOrder;
+        return left.section.localeCompare(right.section, "es-MX");
+      });
+  }, [logisticsUnitChecklistDraft.checks]);
 
   useEffect(() => {
     const timer = globalThis.setInterval(() => setNowMs(Date.now()), 10000);
@@ -626,16 +1081,63 @@ export default function GestionTransporte({ contexto }) {
   const canManageSelectedArea = canManageTransportArea(selectedArea?.id);
 
   useEffect(() => {
-    if (!mainTabOptions.length) return;
-    if (mainTabOptions.some((tab) => tab.id === selectedMainTab)) return;
-    setSelectedMainTab(mainTabOptions[0].id);
-  }, [mainTabOptions, selectedMainTab]);
+    if (!transportSectionOptions.length) return;
+    if (transportSectionOptions.some((section) => section.id === selectedTransportSection)) return;
+    setSelectedTransportSection(transportSectionOptions[0].id);
+  }, [selectedTransportSection, transportSectionOptions]);
+
+  useEffect(() => {
+    if (!navTransportSection) return;
+    if (!transportSectionOptions.some((s) => s.id === navTransportSection)) return;
+    setSelectedTransportSection(navTransportSection);
+  }, [navTransportSection, transportSectionOptions]);
+
+  const visibleMainTabOptions = useMemo(() => {
+    if (selectedTransportSection === "registros-envios") {
+      const documentacionTab = transportAdminTabOptions.find((tab) => tab.id === "documentacion");
+      return documentacionTab ? [...shippingTabOptions, documentacionTab] : shippingTabOptions;
+    }
+    if (selectedTransportSection === "control-transporte") {
+      return transportAdminTabOptions.filter((tab) => ["asignaciones", "pospuestos", "mis-rutas"].includes(tab.id));
+    }
+    if (selectedTransportSection === "incidencias-transporte") {
+      return transportAdminTabOptions.filter((tab) => tab.id === "incidencias-transporte");
+    }
+    if (selectedTransportSection === "consolidados") {
+      return transportAdminTabOptions.filter((tab) => tab.id === "consolidado");
+    }
+    if (selectedTransportSection === "dashboard-transporte") {
+      return transportDashboardTabOptions;
+    }
+    if (selectedTransportSection === "direcciones-gastos") {
+      return transportAdminTabOptions.filter((tab) => tab.id === "logistica");
+    }
+    return transportAdminTabOptions;
+  }, [selectedTransportSection, shippingTabOptions, transportAdminTabOptions, transportDashboardTabOptions]);
+
+  useEffect(() => {
+    if (!navTransportTab) return;
+    if (!visibleMainTabOptions.some((tab) => tab.id === navTransportTab)) return;
+    setSelectedMainTab(navTransportTab);
+  }, [navTransportTab, visibleMainTabOptions]);
+
+  useEffect(() => {
+    if (!visibleMainTabOptions.length) return;
+    if (visibleMainTabOptions.some((tab) => tab.id === selectedMainTab)) return;
+    setSelectedMainTab(visibleMainTabOptions[0].id);
+  }, [selectedMainTab, visibleMainTabOptions]);
 
   useEffect(() => {
     if (!selectedAreaOptions.length) return;
     if (selectedAreaOptions.some((entry) => entry.id === selectedAreaId)) return;
     setSelectedAreaId(selectedAreaOptions[0].id);
   }, [selectedAreaId, selectedAreaOptions]);
+
+  useEffect(() => {
+    if (selectedMainTab !== "logistica" || logisticsViewTab !== "noticias") return;
+    if (roadNewsLoading || roadNewsItems.length) return;
+    loadTransportRoadNews();
+  }, [selectedMainTab, logisticsViewTab]);
 
   const activeRecords = useMemo(
     () => (Array.isArray(transportState?.activeRecords) ? transportState.activeRecords : [])
@@ -649,6 +1151,32 @@ export default function GestionTransporte({ contexto }) {
     [selectedArea?.id, transportState?.historyRecords],
   );
 
+  const filteredHistoryRecords = useMemo(() => {
+    const normalizedSearch = String(areaHistorySearch || "").trim().toLowerCase();
+    const normalizedStatusFilter = String(areaHistoryStatusFilter || "all").trim().toLowerCase();
+
+    return historyRecords.filter((record) => {
+      const status = String(record?.status || "").trim();
+      if (normalizedStatusFilter !== "all" && status.toLowerCase() !== normalizedStatusFilter) {
+        return false;
+      }
+
+      if (!normalizedSearch) return true;
+      const searchableText = [
+        record?.shipmentCode,
+        record?.dateKey,
+        record?.destination,
+        record?.notes,
+        record?.createdByName,
+        record?.assignedToName,
+        status,
+      ].map((value) => String(value || "").toLowerCase()).join(" ");
+      return searchableText.includes(normalizedSearch);
+    });
+  }, [areaHistorySearch, areaHistoryStatusFilter, historyRecords]);
+
+  const visibleAreaRecords = selectedViewTab === "history" ? filteredHistoryRecords : activeRecords;
+
   const transportRecordsAll = useMemo(
     () => [
       ...(Array.isArray(transportState?.historyRecords) ? transportState.historyRecords : []),
@@ -656,6 +1184,874 @@ export default function GestionTransporte({ contexto }) {
     ],
     [transportState?.activeRecords, transportState?.historyRecords],
   );
+
+  const customerAddresses = useMemo(
+    () => (Array.isArray(transportState?.customerAddresses) ? transportState.customerAddresses : []),
+    [transportState?.customerAddresses],
+  );
+
+  const transportExpenses = useMemo(
+    () => (Array.isArray(transportState?.transportExpenses) ? transportState.transportExpenses : []),
+    [transportState?.transportExpenses],
+  );
+
+  const transportUnits = useMemo(
+    () => (Array.isArray(transportState?.transportUnits) ? transportState.transportUnits : []),
+    [transportState?.transportUnits],
+  );
+
+  const transportUnitServiceLogs = useMemo(
+    () => (Array.isArray(transportState?.transportUnitServiceLogs) ? transportState.transportUnitServiceLogs : []),
+    [transportState?.transportUnitServiceLogs],
+  );
+
+  const normalizedCustomerAddresses = useMemo(
+    () => customerAddresses.map((entry) => ({
+      ...entry,
+      destination: String(entry?.destination || entry?.routeLabel || entry?.customerName || "").trim(),
+      serviceType: normalizeServiceType(entry?.serviceType, inferServiceTypeByArea(entry?.areaId)),
+      _seed: false,
+    })),
+    [customerAddresses],
+  );
+
+  const inferredDestinationSeedRows = useMemo(() => {
+    const existingKeys = new Set(
+      normalizedCustomerAddresses
+        .map((entry) => `${String(entry?.areaId || "").trim()}::${String(entry?.destination || "").trim().toLowerCase()}`)
+        .filter((value) => !value.endsWith("::")),
+    );
+    const rows = [];
+
+    const pushSeed = (areaId, destination) => {
+      const normalizedAreaId = String(areaId || "").trim();
+      const normalizedDestination = String(destination || "").trim();
+      if (!normalizedAreaId || !normalizedDestination) return;
+      const key = `${normalizedAreaId}::${normalizedDestination.toLowerCase()}`;
+      if (existingKeys.has(key)) return;
+      existingKeys.add(key);
+      rows.push({
+        id: `seed-${normalizedAreaId}-${normalizedDestination.toLowerCase().replace(/\s+/g, "-")}`,
+        areaId: normalizedAreaId,
+        destination: normalizedDestination,
+        customerName: normalizedDestination,
+        address: "",
+        contactName: "",
+        phone: "",
+        routeLabel: null,
+        notes: null,
+        serviceType: normalizeServiceType("", inferServiceTypeByArea(normalizedAreaId)),
+        _seed: true,
+      });
+    };
+
+    areaConfig.forEach((area) => {
+      (Array.isArray(area?.destinations) ? area.destinations : []).forEach((destination) => {
+        pushSeed(area.id, destination);
+      });
+    });
+
+    transportRecordsAll.forEach((record) => {
+      pushSeed(record?.areaId, record?.destination);
+    });
+
+    return rows;
+  }, [areaConfig, normalizedCustomerAddresses, transportRecordsAll]);
+
+  const destinationDirectoryRows = useMemo(
+    () => [...normalizedCustomerAddresses, ...inferredDestinationSeedRows].map((entry) => {
+      const missingFields = getDestinationMissingFields(entry);
+      return {
+        ...entry,
+        missingFields,
+        isComplete: missingFields.length === 0,
+      };
+    }),
+    [inferredDestinationSeedRows, normalizedCustomerAddresses],
+  );
+
+  const destinationDirectorySummary = useMemo(() => {
+    const total = destinationDirectoryRows.length;
+    const pending = destinationDirectoryRows.filter((entry) => !entry.isComplete).length;
+    const complete = Math.max(0, total - pending);
+    return { total, pending, complete };
+  }, [destinationDirectoryRows]);
+
+  const filteredDestinationDirectoryRows = useMemo(() => {
+    let list = [...destinationDirectoryRows];
+
+    const search = String(logisticsAddressSearch || "").trim().toLowerCase();
+    if (search) {
+      list = list.filter((entry) => {
+        const destination = String(entry?.destination || "").toLowerCase();
+        const customerName = String(entry?.customerName || "").toLowerCase();
+        const address = String(entry?.address || "").toLowerCase();
+        const contact = String(entry?.contactName || "").toLowerCase();
+        const phone = String(entry?.phone || "").toLowerCase();
+        return destination.includes(search)
+          || customerName.includes(search)
+          || address.includes(search)
+          || contact.includes(search)
+          || phone.includes(search);
+      });
+    }
+
+    if (logisticsAddressCompletenessFilter === "pending") {
+      list = list.filter((entry) => !entry.isComplete);
+    } else if (logisticsAddressCompletenessFilter === "complete") {
+      list = list.filter((entry) => entry.isComplete);
+    }
+
+    return list.sort((left, right) => {
+      if (left.isComplete !== right.isComplete) {
+        return left.isComplete ? 1 : -1;
+      }
+      return String(left.destination || "").localeCompare(String(right.destination || ""), "es");
+    });
+  }, [destinationDirectoryRows, logisticsAddressCompletenessFilter, logisticsAddressSearch]);
+
+  const destinationDirectoryGroupsByServiceType = useMemo(
+    () => TRANSPORT_SERVICE_TYPE_OPTIONS.map((type) => ({
+      serviceType: type.value,
+      label: type.label,
+      rows: filteredDestinationDirectoryRows.filter((entry) => entry.serviceType === type.value),
+    })),
+    [filteredDestinationDirectoryRows],
+  );
+
+  const destinationMenuGroupsByArea = useMemo(() => {
+    const groupsMap = new Map();
+
+    areaConfig.forEach((area) => {
+      const areaId = String(area?.id || "").trim();
+      if (!areaId) return;
+      groupsMap.set(areaId, new Map());
+      (Array.isArray(area?.destinations) ? area.destinations : []).forEach((destination) => {
+        const serviceType = inferServiceTypeByArea(areaId);
+        const typeMap = groupsMap.get(areaId);
+        if (!typeMap.has(serviceType)) typeMap.set(serviceType, new Set());
+        typeMap.get(serviceType).add(String(destination || "").trim());
+      });
+    });
+
+    normalizedCustomerAddresses.forEach((entry) => {
+      const areaId = String(entry?.areaId || "").trim();
+      const destination = String(entry?.destination || "").trim();
+      if (!areaId || !destination) return;
+      if (!groupsMap.has(areaId)) groupsMap.set(areaId, new Map());
+      const type = normalizeServiceType(entry?.serviceType, inferServiceTypeByArea(areaId));
+      const typeMap = groupsMap.get(areaId);
+      if (!typeMap.has(type)) typeMap.set(type, new Set());
+      typeMap.get(type).add(destination);
+    });
+
+    const result = {};
+    groupsMap.forEach((typeMap, areaId) => {
+      result[areaId] = TRANSPORT_SERVICE_TYPE_OPTIONS
+        .map((entry) => ({
+          serviceType: entry.value,
+          label: entry.label,
+          destinations: Array.from(typeMap.get(entry.value) || []).sort((a, b) => a.localeCompare(b, "es")),
+        }))
+        .filter((group) => group.destinations.length > 0);
+    });
+    return result;
+  }, [areaConfig, normalizedCustomerAddresses]);
+
+  const transportIncidencias = useMemo(() => {
+    const list = Array.isArray(state?.incidencias) ? state.incidencias : [];
+    return list
+      .filter((item) => String(item?.category || "").toLowerCase() === "transporte")
+      .sort((a, b) => String(b?.reportedAt || b?.createdAt || "").localeCompare(String(a?.reportedAt || a?.createdAt || "")));
+  }, [state?.incidencias]);
+
+  const filteredTransportIncidencias = useMemo(() => {
+    let list = [...transportIncidencias];
+    const query = String(incidenciasSearch || "").trim().toLowerCase();
+    if (query) {
+      list = list.filter((item) => (
+        String(item?.title || "").toLowerCase().includes(query)
+        || String(item?.description || "").toLowerCase().includes(query)
+        || String(item?.area || "").toLowerCase().includes(query)
+      ));
+    }
+    if (incidenciasStatusFilter !== "all") {
+      list = list.filter((item) => String(item?.status || "") === incidenciasStatusFilter);
+    }
+    if (incidenciasPriorityFilter !== "all") {
+      list = list.filter((item) => String(item?.priority || "") === incidenciasPriorityFilter);
+    }
+    return list;
+  }, [transportIncidencias, incidenciasSearch, incidenciasStatusFilter, incidenciasPriorityFilter]);
+
+  function openTransportIncidenciaCreateModal() {
+    setIncidenciaError("");
+    setIncidenciaEditId(null);
+    setIncidenciaDraft({
+      title: "",
+      description: "",
+      area: selectedArea?.label || "",
+      priority: "media",
+      status: "abierta",
+    });
+    setIncidenciaModalOpen(true);
+  }
+
+  function openTransportIncidenciaEditModal(item) {
+    setIncidenciaError("");
+    setIncidenciaEditId(item?.id || null);
+    setIncidenciaDraft({
+      title: String(item?.title || ""),
+      description: String(item?.description || ""),
+      area: String(item?.area || ""),
+      priority: String(item?.priority || "media"),
+      status: String(item?.status || "abierta"),
+    });
+    setIncidenciaModalOpen(true);
+  }
+
+  async function saveTransportIncidencia() {
+    const title = String(incidenciaDraft.title || "").trim();
+    if (!title) {
+      setIncidenciaError("El título es obligatorio.");
+      return;
+    }
+
+    setIncidenciaSaving(true);
+    setIncidenciaError("");
+    try {
+      const payload = {
+        title,
+        description: String(incidenciaDraft.description || "").trim(),
+        area: String(incidenciaDraft.area || "").trim(),
+        priority: incidenciaDraft.priority,
+        status: incidenciaDraft.status,
+        category: "Transporte",
+      };
+      const method = incidenciaEditId ? "PATCH" : "POST";
+      const url = incidenciaEditId ? `/warehouse/incidencias/${incidenciaEditId}` : "/warehouse/incidencias";
+      const response = await requestJson(url, { method, body: JSON.stringify(payload) });
+      if (response?.data?.state) {
+        setState(response.data.state);
+      }
+      setIncidenciaModalOpen(false);
+    } catch (error) {
+      setIncidenciaError(error?.message || "No se pudo guardar la incidencia.");
+    } finally {
+      setIncidenciaSaving(false);
+    }
+  }
+
+  async function removeTransportIncidencia(incidenciaId) {
+    if (!incidenciaId) return;
+    try {
+      const response = await requestJson(`/warehouse/incidencias/${incidenciaId}`, { method: "DELETE" });
+      if (response?.data?.state) {
+        setState(response.data.state);
+      }
+      setIncidenciaDeleteId(null);
+    } catch (error) {
+      setIncidenciaError(error?.message || "No se pudo eliminar la incidencia.");
+    }
+  }
+
+  const latestUnitActivityByUnitId = useMemo(() => {
+    const map = new Map();
+    transportUnitServiceLogs.forEach((log) => {
+      const unitId = String(log?.unitId || "").trim();
+      if (!unitId) return;
+      const current = map.get(unitId);
+      const nextStamp = String(log?.createdAt || "").trim() || String(log?.dateKey || "").trim();
+      const currentStamp = String(current?.createdAt || "").trim() || String(current?.dateKey || "").trim();
+      if (!current || nextStamp >= currentStamp) {
+        map.set(unitId, log);
+      }
+    });
+    return map;
+  }, [transportUnitServiceLogs]);
+
+  const transportLogisticsAreaOptions = useMemo(
+    () => areaConfig.filter((area) => Boolean(area?.id)).map((area) => ({ value: area.id, label: area.label })),
+    [areaConfig],
+  );
+
+  const persistWarehouseState = async (nextTransportState) => {
+    const result = await requestJson("/warehouse/transport/logistics", {
+      method: "PATCH",
+      body: JSON.stringify({
+        customerAddresses: nextTransportState?.customerAddresses,
+        transportExpenses: nextTransportState?.transportExpenses,
+        transportUnits: nextTransportState?.transportUnits,
+        transportUnitServiceLogs: nextTransportState?.transportUnitServiceLogs,
+      }),
+    });
+
+    const resolvedState = result?.data?.state || result?.state || null;
+    if (resolvedState) {
+      applyRemoteWarehouseState(resolvedState, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+    }
+
+    return resolvedState;
+  };
+
+  const saveTransportLogistics = async () => {
+    setLogisticsError("");
+    setLogisticsSaving(true);
+    try {
+      await persistWarehouseState({
+        ...(transportState || {}),
+        customerAddresses,
+        transportExpenses,
+      });
+    } catch (error) {
+      setLogisticsError(error?.message || "No se pudo guardar la información de logística.");
+    } finally {
+      setLogisticsSaving(false);
+    }
+  };
+
+  const loadTransportRoadNews = async () => {
+    const params = new URLSearchParams();
+    params.set("topic", String(roadNewsFilters.topic || "general"));
+    params.set("region", String(roadNewsFilters.region || "México"));
+    params.set("hours", String(roadNewsFilters.hours || "24"));
+    params.set("limit", String(roadNewsFilters.limit || "20"));
+    const keyword = String(roadNewsFilters.q || "").trim();
+    if (keyword) params.set("q", keyword);
+
+    setRoadNewsLoading(true);
+    setRoadNewsError("");
+    try {
+      const result = await requestJson(`/warehouse/transport/news?${params.toString()}`);
+      const items = Array.isArray(result?.data?.items) ? result.data.items : [];
+      setRoadNewsItems(items);
+      setRoadNewsLoadedAt(String(result?.data?.generatedAt || new Date().toISOString()));
+    } catch (error) {
+      setRoadNewsError(error?.message || "No se pudieron cargar las noticias viales.");
+      setRoadNewsItems([]);
+    } finally {
+      setRoadNewsLoading(false);
+    }
+  };
+
+  function openTransportAddressCreateModal() {
+    setLogisticsError("");
+    setLogisticsAddressEditId("");
+    setLogisticsAddressDraft(createTransportLogisticsAddressDraft());
+    setLogisticsAddressModalOpen(true);
+  }
+
+  function openTransportAddressEditModal(address) {
+    const areaId = String(address?.areaId || "").trim();
+    const destination = String(address?.destination || address?.routeLabel || address?.customerName || "").trim();
+    setLogisticsError("");
+    setLogisticsAddressEditId(String(address?.id || "").trim());
+    setLogisticsAddressDraft({
+      destination,
+      customerName: String(address?.customerName || destination).trim(),
+      address: String(address?.address || "").trim(),
+      contactName: String(address?.contactName || "").trim(),
+      phone: String(address?.phone || "").trim(),
+      areaId,
+      serviceType: normalizeServiceType(address?.serviceType, inferServiceTypeByArea(areaId)),
+      notes: String(address?.notes || "").trim(),
+    });
+    setLogisticsAddressModalOpen(true);
+  }
+
+  function addTransportAddress(event) {
+    event?.preventDefault?.();
+    const destination = String(logisticsAddressDraft.destination || "").trim();
+    const customerName = String(logisticsAddressDraft.customerName || "").trim();
+    const address = String(logisticsAddressDraft.address || "").trim();
+    const areaId = String(logisticsAddressDraft.areaId || "").trim() || null;
+    const serviceType = normalizeServiceType(logisticsAddressDraft.serviceType, inferServiceTypeByArea(areaId));
+    if (!destination || !customerName || !address) {
+      setLogisticsWarning("Debes capturar destino, cliente y dirección.");
+      return;
+    }
+
+    const normalizedDestination = destination.toLowerCase();
+    const isEditing = Boolean(logisticsAddressEditId);
+    const replacingId = String(logisticsAddressEditId || "").trim();
+
+    const nextAddressEntry = {
+      id: replacingId && !replacingId.startsWith("seed-") ? replacingId : `taddr-${Date.now()}`,
+      destination,
+      customerName,
+      address,
+      contactName: String(logisticsAddressDraft.contactName || "").trim(),
+      phone: String(logisticsAddressDraft.phone || "").trim(),
+      areaId,
+      serviceType,
+      routeLabel: null,
+      notes: String(logisticsAddressDraft.notes || "").trim() || null,
+      createdById: contexto.currentUser?.id || null,
+      createdByName: contexto.currentUser?.name || contexto.currentUser?.username || null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    let nextAddresses = [];
+    if (isEditing && replacingId && !replacingId.startsWith("seed-")) {
+      nextAddresses = customerAddresses.map((entry) => (
+        String(entry?.id || "").trim() === replacingId
+          ? { ...entry, ...nextAddressEntry, createdAt: entry?.createdAt || nextAddressEntry.createdAt }
+          : entry
+      ));
+    } else {
+      const existingIndex = customerAddresses.findIndex((entry) => {
+        const entryArea = String(entry?.areaId || "").trim();
+        const entryDestination = String(entry?.destination || entry?.routeLabel || entry?.customerName || "").trim().toLowerCase();
+        return entryArea === String(areaId || "") && entryDestination === normalizedDestination;
+      });
+      if (existingIndex >= 0) {
+        nextAddresses = customerAddresses.map((entry, index) => (
+          index === existingIndex
+            ? { ...entry, ...nextAddressEntry, id: entry.id, createdAt: entry?.createdAt || nextAddressEntry.createdAt }
+            : entry
+        ));
+      } else {
+        nextAddresses = [nextAddressEntry, ...customerAddresses];
+      }
+    }
+
+    void (async () => {
+      setLogisticsSaving(true);
+      setLogisticsError("");
+      try {
+        await persistWarehouseState({
+          ...(transportState || {}),
+          customerAddresses: nextAddresses,
+          transportExpenses,
+        });
+        setLogisticsAddressDraft(createTransportLogisticsAddressDraft());
+        setLogisticsAddressEditId("");
+        setLogisticsAddressModalOpen(false);
+        setLogisticsSuccess(isEditing ? "Destino actualizado correctamente." : "Destino guardado correctamente.");
+      } catch (error) {
+        setLogisticsError(error?.message || "No se pudo guardar el destino.");
+      } finally {
+        setLogisticsSaving(false);
+      }
+    })();
+  }
+
+  function addTransportExpense(event) {
+    event?.preventDefault?.();
+    const description = String(logisticsExpenseDraft.description || "").trim();
+    const amount = Number(logisticsExpenseDraft.amount);
+    if (!description || !Number.isFinite(amount) || amount <= 0) {
+      setLogisticsWarning("Debes capturar concepto y un importe válido.");
+      return;
+    }
+
+    const nextExpenses = [
+      {
+        id: `texp-${Date.now()}`,
+        dateKey: String(logisticsExpenseDraft.dateKey || new Date().toISOString().slice(0, 10)).trim(),
+        expenseType: String(logisticsExpenseDraft.expenseType || "").trim() || "gasto",
+        amount,
+        description,
+        areaId: String(logisticsExpenseDraft.areaId || "").trim() || null,
+        routeLabel: String(logisticsExpenseDraft.routeLabel || "").trim() || null,
+        reference: String(logisticsExpenseDraft.reference || "").trim() || null,
+        createdById: contexto.currentUser?.id || null,
+        createdByName: contexto.currentUser?.name || contexto.currentUser?.username || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      ...transportExpenses,
+    ];
+
+    void (async () => {
+      setLogisticsSaving(true);
+      setLogisticsError("");
+      try {
+        await persistWarehouseState({
+          ...(transportState || {}),
+          customerAddresses,
+          transportExpenses: nextExpenses,
+        });
+        setLogisticsExpenseDraft(createTransportLogisticsExpenseDraft());
+        setLogisticsExpenseModalOpen(false);
+        setLogisticsSuccess("Gasto guardado correctamente.");
+      } catch (error) {
+        setLogisticsError(error?.message || "No se pudo guardar el gasto.");
+      } finally {
+        setLogisticsSaving(false);
+      }
+    })();
+  }
+
+  function removeTransportAddress(addressId) {
+    if (!canManageLogisticsTab) {
+      setLogisticsWarning("No cuentas con permisos para eliminar destinos.");
+      return;
+    }
+    const nextAddresses = customerAddresses.filter((address) => address.id !== addressId);
+    void (async () => {
+      setLogisticsSaving(true);
+      setLogisticsError("");
+      try {
+        await persistWarehouseState({
+          ...(transportState || {}),
+          customerAddresses: nextAddresses,
+          transportExpenses,
+        });
+        setLogisticsSuccess("Destino eliminado correctamente.");
+      } catch (error) {
+        setLogisticsError(error?.message || "No se pudo eliminar el destino.");
+      } finally {
+        setLogisticsSaving(false);
+      }
+    })();
+  }
+
+  function removeTransportExpense(expenseId) {
+    const nextExpenses = transportExpenses.filter((expense) => expense.id !== expenseId);
+    void (async () => {
+      setLogisticsSaving(true);
+      setLogisticsError("");
+      try {
+        await persistWarehouseState({
+          ...(transportState || {}),
+          customerAddresses,
+          transportExpenses: nextExpenses,
+        });
+        setLogisticsSuccess("Gasto eliminado correctamente.");
+      } catch (error) {
+        setLogisticsError(error?.message || "No se pudo eliminar el gasto.");
+      } finally {
+        setLogisticsSaving(false);
+      }
+    })();
+  }
+
+  async function handleUploadUnitPhoto(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploadingUnitPhoto(true);
+    try {
+      const uploaded = await uploadFileToCloudinary(file);
+      setLogisticsUnitDraft((current) => ({
+        ...current,
+        photo: {
+          url: uploaded.url,
+          thumbnailUrl: uploaded.thumbnailUrl || uploaded.url,
+          name: uploaded.originalName || file.name,
+          type: uploaded.resourceType || file.type || "image",
+        },
+      }));
+    } finally {
+      setUploadingUnitPhoto(false);
+      event.target.value = "";
+    }
+  }
+
+  async function handleUploadUnitChecklistEvidence(event, checkKey) {
+    const file = event.target.files?.[0];
+    if (!file || !checkKey) return;
+    setUploadingUnitChecklistEvidence(true);
+    try {
+      const uploaded = await uploadFileToCloudinary(file);
+      setLogisticsUnitChecklistDraft((current) => ({
+        ...current,
+        checks: {
+          ...(current.checks || {}),
+          [checkKey]: {
+            ...(current.checks?.[checkKey] || {}),
+            evidence: {
+              url: uploaded.url,
+              thumbnailUrl: uploaded.thumbnailUrl || uploaded.url,
+              name: uploaded.originalName || file.name,
+              type: uploaded.resourceType || file.type || "image",
+            },
+          },
+        },
+      }));
+    } finally {
+      setUploadingUnitChecklistEvidence(false);
+      event.target.value = "";
+    }
+  }
+
+  function addTransportUnit() {
+    const unitName = String(logisticsUnitDraft.unitName || "").trim();
+    if (!unitName) {
+      setLogisticsWarning("Debes capturar el nombre de la unidad.");
+      return;
+    }
+
+    const nextUnits = [
+      {
+        id: `tunit-${Date.now()}`,
+        unitName,
+        unitCode: String(logisticsUnitDraft.unitCode || "").trim() || null,
+        plate: String(logisticsUnitDraft.plate || "").trim() || null,
+        model: String(logisticsUnitDraft.model || "").trim() || null,
+        areaId: String(logisticsUnitDraft.areaId || "").trim() || null,
+        notes: String(logisticsUnitDraft.notes || "").trim() || null,
+        photo: logisticsUnitDraft.photo || null,
+        checklistTemplate: buildTransportChecklistTemplateFromChecks(createTransportChecklistItemsDraft()),
+        createdById: contexto.currentUser?.id || null,
+        createdByName: contexto.currentUser?.name || contexto.currentUser?.username || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      ...transportUnits,
+    ];
+
+    void (async () => {
+      setLogisticsSaving(true);
+      setLogisticsError("");
+      try {
+        await persistWarehouseState({
+          ...(transportState || {}),
+          customerAddresses,
+          transportExpenses,
+          transportUnits: nextUnits,
+          transportUnitServiceLogs,
+        });
+        setLogisticsUnitDraft(createTransportUnitDraft());
+        setLogisticsUnitModalOpen(false);
+        setLogisticsSuccess("Unidad guardada correctamente.");
+      } catch (error) {
+        setLogisticsError(error?.message || "No se pudo guardar la unidad.");
+      } finally {
+        setLogisticsSaving(false);
+      }
+    })();
+  }
+
+  function openTransportUnitServiceModal(unitId) {
+    setLogisticsError("");
+    setLogisticsUnitServiceDraft({ ...createTransportUnitServiceDraft(), unitId: String(unitId || "") });
+    setLogisticsUnitServiceModalOpen(true);
+  }
+
+  function addTransportUnitServiceLog() {
+    const unitId = String(logisticsUnitServiceDraft.unitId || "").trim();
+    const serviceLabel = String(logisticsUnitServiceDraft.serviceLabel || "").trim();
+    const kmBefore = Number(logisticsUnitServiceDraft.kmBefore);
+    const kmAfter = Number(logisticsUnitServiceDraft.kmAfter);
+    if (!unitId || !serviceLabel || !Number.isFinite(kmBefore) || !Number.isFinite(kmAfter) || kmBefore < 0 || kmAfter < 0 || kmAfter < kmBefore) {
+      setLogisticsWarning("Captura unidad, servicio y kilometrajes válidos (final >= inicial).");
+      return;
+    }
+
+    const nextLogs = [
+      {
+        id: `tunitlog-${Date.now()}`,
+        unitId,
+        dateKey: String(logisticsUnitServiceDraft.dateKey || new Date().toISOString().slice(0, 10)).trim(),
+        serviceLabel,
+        kmBefore,
+        kmAfter,
+        kmDelta: kmAfter - kmBefore,
+        notes: String(logisticsUnitServiceDraft.notes || "").trim() || null,
+        checklist: null,
+        createdById: contexto.currentUser?.id || null,
+        createdByName: contexto.currentUser?.name || contexto.currentUser?.username || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      ...transportUnitServiceLogs,
+    ];
+
+    void (async () => {
+      setLogisticsSaving(true);
+      setLogisticsError("");
+      try {
+        await persistWarehouseState({
+          ...(transportState || {}),
+          customerAddresses,
+          transportExpenses,
+          transportUnits,
+          transportUnitServiceLogs: nextLogs,
+        });
+        setLogisticsUnitServiceDraft(createTransportUnitServiceDraft());
+        setLogisticsUnitServiceModalOpen(false);
+        setLogisticsSuccess("Servicio de unidad guardado correctamente.");
+      } catch (error) {
+        setLogisticsError(error?.message || "No se pudo guardar el servicio de la unidad.");
+      } finally {
+        setLogisticsSaving(false);
+      }
+    })();
+  }
+
+  function openTransportUnitChecklistModal(unitId) {
+    setLogisticsError("");
+    setIsChecklistEditMode(false);
+    const normalizedUnitId = String(unitId || "").trim();
+    const selectedUnit = transportUnits.find((unit) => String(unit?.id || "").trim() === normalizedUnitId);
+    const latestChecklistLog = transportUnitServiceLogs.find((log) => (
+      String(log?.unitId || "").trim() === normalizedUnitId
+      && log?.checklist
+      && typeof log.checklist === "object"
+    ));
+    const unitTemplateChecks = selectedUnit?.checklistTemplate && typeof selectedUnit.checklistTemplate === "object"
+      ? selectedUnit.checklistTemplate
+      : (latestChecklistLog?.checklist || null);
+
+    setChecklistCustomItemDraft({
+      section: TRANSPORT_CHECKLIST_STRUCTURE[0]?.section || "General",
+      label: "",
+    });
+    setLogisticsUnitChecklistDraft(createTransportUnitChecklistDraft({ unitId: normalizedUnitId, templateChecks: unitTemplateChecks }));
+    setLogisticsUnitChecklistModalOpen(true);
+  }
+
+  function addTransportChecklistCustomItem() {
+    if (!canManageLogisticsTab) {
+      setLogisticsWarning("No cuentas con permiso para editar el checklist.");
+      return;
+    }
+    if (!isChecklistEditMode) {
+      setLogisticsWarning("Activa el modo de edición para agregar checks.");
+      return;
+    }
+
+    const label = String(checklistCustomItemDraft.label || "").trim();
+    const section = String(checklistCustomItemDraft.section || "").trim() || "General";
+    if (!label) {
+      setLogisticsWarning("Escribe el nombre del check a agregar.");
+      return;
+    }
+
+    const key = createTransportChecklistCustomKey();
+    setLogisticsUnitChecklistDraft((current) => ({
+      ...current,
+      checks: {
+        ...(current.checks || {}),
+        [key]: {
+          status: "good",
+          label,
+          section,
+          notes: "",
+          evidence: null,
+        },
+      },
+    }));
+    setChecklistCustomItemDraft((current) => ({ ...current, label: "" }));
+  }
+
+  function removeTransportChecklistItem(checkKey) {
+    if (!canManageLogisticsTab) {
+      setLogisticsWarning("No cuentas con permiso para editar el checklist.");
+      return;
+    }
+    if (!isChecklistEditMode) {
+      setLogisticsWarning("Activa el modo de edición para eliminar checks.");
+      return;
+    }
+    setLogisticsUnitChecklistDraft((current) => {
+      const nextChecks = { ...(current.checks || {}) };
+      delete nextChecks[checkKey];
+      return {
+        ...current,
+        checks: nextChecks,
+      };
+    });
+  }
+
+  function addTransportUnitChecklist() {
+    if (!canManageLogisticsTab) {
+      setLogisticsWarning("No cuentas con permiso para editar el checklist.");
+      return;
+    }
+
+    const unitId = String(logisticsUnitChecklistDraft.unitId || "").trim();
+    if (!unitId) {
+      setLogisticsWarning("Selecciona una unidad para guardar el checklist.");
+      return;
+    }
+
+    const checklistEntries = Object.entries(logisticsUnitChecklistDraft.checks || {});
+    const missingEvidenceBadChecks = checklistEntries.filter(([, item]) => {
+      const status = resolveChecklistItemStatus(item);
+      const evidence = resolveChecklistItemEvidence(item);
+      return status === "bad" && !evidence?.url;
+    });
+    const missingReasonBadChecks = checklistEntries.filter(([, item]) => {
+      const status = resolveChecklistItemStatus(item);
+      return status === "bad" && !String(item?.notes || "").trim();
+    });
+    if (missingReasonBadChecks.length) {
+      setLogisticsWarning("Escribe el motivo de incidencia en todos los checks marcados como Malo.");
+      return;
+    }
+    if (missingEvidenceBadChecks.length) {
+      setLogisticsWarning("Adjunta evidencia en todos los checks marcados como Malo.");
+      return;
+    }
+
+    const checklistPayload = checklistEntries.reduce((acc, [key, item]) => {
+      const meta = TRANSPORT_CHECKLIST_ITEM_INDEX[key] || {};
+      acc[key] = {
+        status: resolveChecklistItemStatus(item),
+        label: String(item?.label || meta.label || key),
+        section: String(item?.section || meta.section || "General"),
+        notes: String(item?.notes || "").trim() || null,
+        evidence: resolveChecklistItemEvidence(item) || null,
+      };
+      return acc;
+    }, {});
+    const firstEvidence = Object.values(checklistPayload)
+      .map((item) => item?.evidence)
+      .find((ev) => ev?.url) || null;
+    const nextUnitTemplate = buildTransportChecklistTemplateFromChecks(checklistPayload);
+    const nextUnits = transportUnits.map((unit) => {
+      if (String(unit?.id || "") !== unitId) return unit;
+      return {
+        ...unit,
+        checklistTemplate: nextUnitTemplate,
+        updatedAt: new Date().toISOString(),
+      };
+    });
+
+    const nextLogs = [
+      {
+        id: `tunitchk-${Date.now()}`,
+        unitId,
+        dateKey: String(logisticsUnitChecklistDraft.dateKey || new Date().toISOString().slice(0, 10)).trim(),
+        serviceLabel: "Checklist de unidad",
+        kmBefore: null,
+        kmAfter: null,
+        kmDelta: null,
+        notes: String(logisticsUnitChecklistDraft.notes || "").trim() || null,
+        evidence: firstEvidence,
+        checklist: checklistPayload,
+        createdById: contexto.currentUser?.id || null,
+        createdByName: contexto.currentUser?.name || contexto.currentUser?.username || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      ...transportUnitServiceLogs,
+    ];
+
+    void (async () => {
+      setLogisticsSaving(true);
+      setLogisticsError("");
+      try {
+        await persistWarehouseState({
+          ...(transportState || {}),
+          customerAddresses,
+          transportExpenses,
+          transportUnits: nextUnits,
+          transportUnitServiceLogs: nextLogs,
+        });
+        setLogisticsUnitChecklistDraft(createTransportUnitChecklistDraft());
+        setLogisticsUnitChecklistModalOpen(false);
+        setLogisticsSuccess("Checklist guardado correctamente.");
+      } catch (error) {
+        setLogisticsError(error?.message || "No se pudo guardar el checklist de la unidad.");
+      } finally {
+        setLogisticsSaving(false);
+      }
+    })();
+  }
 
   const principalMonthOptions = useMemo(() => {
     const monthSet = new Set();
@@ -982,11 +2378,11 @@ export default function GestionTransporte({ contexto }) {
       .sort((left, right) => right.salidas - left.salidas)[0] || null;
 
     const palette = [
-      "#0f766e",
+      "#355f88",
       "#2563eb",
       "#b45309",
       "#6d28d9",
-      "#15803d",
+      "#3f678f",
       "#be123c",
       "#0e7490",
       "#334155",
@@ -1052,6 +2448,95 @@ export default function GestionTransporte({ contexto }) {
       areaBarSeries,
     };
   }, [principalSummary]);
+
+  const consolidatedAreaOptions = useMemo(() => {
+    const areas = Array.isArray(principalSummary?.areas) ? principalSummary.areas : [];
+    return areas
+      .map((area) => ({
+        value: String(area?.areaId || "").trim(),
+        label: String(area?.areaLabel || area?.areaId || "Área").trim() || "Área",
+      }))
+      .filter((area) => area.value);
+  }, [principalSummary?.areas]);
+
+  useEffect(() => {
+    if (selectedConsolidatedAreaId === "all") return;
+    const exists = consolidatedAreaOptions.some((area) => area.value === selectedConsolidatedAreaId);
+    if (!exists) setSelectedConsolidatedAreaId("all");
+  }, [consolidatedAreaOptions, selectedConsolidatedAreaId]);
+
+  const scopedConsolidatedAreas = useMemo(() => {
+    const areas = Array.isArray(principalSummary?.areas) ? principalSummary.areas : [];
+    if (selectedConsolidatedAreaId === "all") return areas;
+    return areas.filter((area) => String(area?.areaId || "").trim() === selectedConsolidatedAreaId);
+  }, [principalSummary?.areas, selectedConsolidatedAreaId]);
+
+  const selectedConsolidatedAreaData = useMemo(() => {
+    if (selectedConsolidatedAreaId === "all") return null;
+    return scopedConsolidatedAreas[0] || null;
+  }, [scopedConsolidatedAreas, selectedConsolidatedAreaId]);
+
+  const selectedAreaDashboard = useMemo(() => {
+    const area = selectedConsolidatedAreaData;
+    const weeks = Array.isArray(principalSummary?.weeks) ? principalSummary.weeks : [];
+    if (!area) return null;
+
+    const totalSalidas = Number(area?.totals?.salidas || 0);
+    const totalCajas = Number(area?.totals?.cajas || 0);
+    const totalPiezas = Number(area?.totals?.piezas || 0);
+    const totalDestinos = Array.isArray(area?.rows) ? area.rows.length : 0;
+
+    const weeklySeries = weeks.map((week, index) => ({
+      label: week.label,
+      shortLabel: week.shortLabel,
+      salidas: Number(area?.weeklyTotals?.[index]?.salidas || 0),
+      cajas: Number(area?.weeklyTotals?.[index]?.cajas || 0),
+      piezas: Number(area?.weeklyTotals?.[index]?.piezas || 0),
+    }));
+
+    const maxWeeklySalidas = Math.max(1, ...weeklySeries.map((entry) => Number(entry.salidas || 0)));
+    const lineSeries = weeklySeries.map((week, index, list) => {
+      const ratio = maxWeeklySalidas > 0 ? week.salidas / maxWeeklySalidas : 0;
+      const x = list.length <= 1 ? 40 : 40 + (index * (560 / (list.length - 1)));
+      const y = 170 - (ratio * 130);
+      return {
+        ...week,
+        shortLabel: String(week.shortLabel || week.label || ""),
+        x,
+        y,
+      };
+    });
+    const linePath = lineSeries.map((point) => `${point.x},${point.y}`).join(" ");
+
+    const destinationBarSeries = (Array.isArray(area?.rows) ? area.rows : [])
+      .map((row) => ({
+        destination: row.destination,
+        salidas: Number(row?.totals?.salidas || 0),
+        cajas: Number(row?.totals?.cajas || 0),
+        piezas: Number(row?.totals?.piezas || 0),
+      }))
+      .sort((left, right) => right.salidas - left.salidas)
+      .slice(0, 8);
+
+    const maxDestSalidas = Math.max(1, ...destinationBarSeries.map((entry) => Number(entry.salidas || 0)));
+    const destinations = destinationBarSeries.map((row) => ({
+      ...row,
+      ratio: maxDestSalidas > 0 ? (row.salidas / maxDestSalidas) : 0,
+    }));
+
+    return {
+      areaLabel: area.areaLabel,
+      totalSalidas,
+      totalCajas,
+      totalPiezas,
+      totalDestinos,
+      weeklySeries,
+      lineSeries,
+      linePath,
+      destinations,
+      topDestination: destinations[0] || null,
+    };
+  }, [principalSummary?.weeks, selectedConsolidatedAreaData]);
 
   const transportPlayersRanking = useMemo(() => {
     const visibleTransportAreaIds = new Set(
@@ -1223,11 +2708,13 @@ export default function GestionTransporte({ contexto }) {
     const baseDate = new Date(Date.now() + (2 * 60 * 60 * 1000));
     const defaultDate = baseDate.toISOString().slice(0, 10);
     const defaultTime = baseDate.toTimeString().slice(0, 5);
+    const destinationGroups = destinationMenuGroupsByArea[selectedArea?.id || ""] || [];
+    const firstDestination = destinationGroups.flatMap((group) => group.destinations)[0] || "";
     setTransportModalError("");
     setTransportModal({
       ...createTransportModalState(selectedArea?.id || ""),
       open: true,
-      destination: selectedArea?.destinations?.[0] || "",
+      destination: firstDestination,
       scheduledDate: defaultDate,
       scheduledTime: defaultTime,
     });
@@ -1562,60 +3049,30 @@ export default function GestionTransporte({ contexto }) {
     <section className="page-shell inventory-page-shell transport-page-shell">
       <section className="inventory-stack transport-page-stack">
         <article className="surface-card inventory-surface-card full-width transport-responsive-card">
-          <div className="card-header-row" style={{ alignItems: "center" }}>
-            <div>
-              <h3>Control de Transporte</h3>
-              <p>Captura diaria por área. Al cambiar de día, los registros pasan automáticamente al historial.</p>
-            </div>
-            <span className="chip">Día activo: {transportState?.activeDateKey || "-"}</span>
-          </div>
-
           <div className="transport-main-groups">
-            {areaTabOptions.length ? (
+            {transportSectionOptions.length ? (
               <section className="transport-tab-section">
-                <div className="transport-view-tabs transport-view-tabs-separated">
-                  {areaTabOptions.map((tab) => (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      className={`transport-view-tab transport-main-tab ${selectedMainTab === tab.id ? "is-active" : ""}`}
-                      onClick={() => setSelectedMainTab(tab.id)}
-                      aria-label={tab.label}
-                      title={tab.label}
-                      style={{ "--transport-tab-accent": tab.accent, "--transport-tab-soft": tab.soft }}
-                    >
-                      <span className="transport-main-tab-icon" aria-hidden="true">{tab.icon}</span>
-                      <span>{tab.shortLabel || tab.label}</span>
-                      {Number(mainTabCountById[tab.id] || 0) > 0 ? (
-                        <span className="transport-main-tab-count">{mainTabCountById[tab.id]}</span>
-                      ) : null}
-                    </button>
-                  ))}
-                </div>
-              </section>
-            ) : null}
-
-            {transportOnlyTabOptions.length ? (
-              <section className="transport-tab-section transport-tab-section-ops">
-                <div className="transport-view-tabs transport-view-tabs-separated">
-                  {transportOnlyTabOptions.map((tab) => (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      className={`transport-view-tab transport-main-tab ${tab.id === "consolidado" ? "transport-main-tab-end" : ""} ${selectedMainTab === tab.id ? "is-active" : ""}`}
-                      onClick={() => setSelectedMainTab(tab.id)}
-                      aria-label={tab.label}
-                      title={tab.label}
-                      style={{ "--transport-tab-accent": tab.accent, "--transport-tab-soft": tab.soft }}
-                    >
-                      <span className="transport-main-tab-icon" aria-hidden="true">{tab.icon}</span>
-                      <span>{tab.shortLabel || tab.label}</span>
-                      {tab.id !== "consolidado" && Number(mainTabCountById[tab.id] || 0) > 0 ? (
-                        <span className="transport-main-tab-count">{mainTabCountById[tab.id]}</span>
-                      ) : null}
-                    </button>
-                  ))}
-                </div>
+                {visibleMainTabOptions.length > 1 ? (
+                  <div className="transport-view-tabs transport-view-tabs-separated">
+                    {visibleMainTabOptions.map((tab) => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        className={`transport-view-tab transport-main-tab ${tab.id === "consolidado" ? "transport-main-tab-end" : ""} ${selectedMainTab === tab.id ? "is-active" : ""}`}
+                        onClick={() => setSelectedMainTab(tab.id)}
+                        aria-label={tab.label}
+                        title={tab.label}
+                        style={{ "--transport-tab-accent": tab.accent, "--transport-tab-soft": tab.soft }}
+                      >
+                        <span className="transport-main-tab-icon" aria-hidden="true">{tab.icon}</span>
+                        <span>{tab.shortLabel || tab.label}</span>
+                        {tab.id !== "consolidado" && Number(mainTabCountById[tab.id] || 0) > 0 ? (
+                          <span className="transport-main-tab-count">{mainTabCountById[tab.id]}</span>
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </section>
             ) : null}
           </div>
@@ -1650,9 +3107,9 @@ export default function GestionTransporte({ contexto }) {
                       className="chip"
                       onClick={() => setSelectedAreaId(area.id)}
                       style={{
-                        border: area.id === selectedArea?.id ? "1px solid rgba(3,33,33,0.36)" : "1px solid rgba(162,170,181,0.25)",
-                        background: area.id === selectedArea?.id ? "rgba(3,33,33,0.08)" : "#fff",
-                        color: "#032121",
+                        border: area.id === selectedArea?.id ? "1px solid rgba(49, 77, 105, 0.36)" : "1px solid rgba(162, 170, 181, 0.25)",
+                        background: area.id === selectedArea?.id ? "rgba(49, 77, 105, 0.08)" : "#ffffff",
+                        color: "#314d69",
                         cursor: "pointer",
                       }}
                     >
@@ -1662,9 +3119,51 @@ export default function GestionTransporte({ contexto }) {
                 </div>
               ) : null}
 
+              {selectedViewTab === "history" ? (
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "0.75rem",
+                    flexWrap: "wrap",
+                    marginBottom: "0.85rem",
+                    alignItems: "flex-end",
+                  }}
+                >
+                  <label className="dashboard-filter-field" style={{ minWidth: "260px", margin: 0 }}>
+                    <span>Buscar en historial</span>
+                    <input
+                      type="search"
+                      value={areaHistorySearch}
+                      onChange={(event) => setAreaHistorySearch(event.target.value)}
+                      placeholder="Código, destino, fecha, chofer, notas..."
+                    />
+                  </label>
+
+                  <label className="dashboard-filter-field" style={{ minWidth: "220px", margin: 0 }}>
+                    <span>Filtrar por estado</span>
+                    <select
+                      value={areaHistoryStatusFilter}
+                      onChange={(event) => setAreaHistoryStatusFilter(event.target.value)}
+                    >
+                      <option value="all">Todos</option>
+                      <option value="pendiente">Pendiente</option>
+                      <option value="asignado">Asignado</option>
+                      <option value="en camino">En camino</option>
+                      <option value="retorno">Retorno</option>
+                      <option value="entregado">Entregado</option>
+                      <option value="devuelto">Devuelto</option>
+                      <option value="cancelado">Cancelado</option>
+                      <option value="pospuesto">Pospuesto</option>
+                    </select>
+                  </label>
+                </div>
+              ) : null}
+
               <div className="card-header-row" style={{ marginBottom: "0.5rem" }}>
                 <h3 style={{ margin: 0 }}>{selectedArea?.label || "Area"}</h3>
-                <button type="button" className="primary-button" onClick={openCreateModal} disabled={!canManageSelectedArea || !selectedArea}>Crear registro de envio</button>
+                {selectedViewTab === "active" ? (
+                  <button type="button" className="primary-button" onClick={openCreateModal} disabled={!canManageSelectedArea || !selectedArea}>Crear registro de envio</button>
+                ) : null}
               </div>
 
               <div className="table-wrap">
@@ -1672,6 +3171,7 @@ export default function GestionTransporte({ contexto }) {
                   <thead>
                     <tr>
                       {selectedViewTab === "history" ? <th>Fecha</th> : null}
+                      <th>Código</th>
                       <th>Destino</th>
                       <th>Cajas</th>
                       <th>Piezas</th>
@@ -1683,9 +3183,10 @@ export default function GestionTransporte({ contexto }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {(selectedViewTab === "history" ? historyRecords : activeRecords).map((record) => (
+                    {visibleAreaRecords.map((record) => (
                       <tr key={record.id}>
                         {selectedViewTab === "history" ? <td>{record.dateKey || "-"}</td> : null}
+                        <td>{record.shipmentCode || "-"}</td>
                         <td>{record.destination}</td>
                         <td>{record.boxes}</td>
                         <td>{record.pieces}</td>
@@ -1718,9 +3219,9 @@ export default function GestionTransporte({ contexto }) {
                         </td>
                       </tr>
                     ))}
-                    {!(selectedViewTab === "history" ? historyRecords : activeRecords).length ? (
+                    {!visibleAreaRecords.length ? (
                       <tr>
-                        <td colSpan={selectedViewTab === "history" ? 9 : 8} className="subtle-line">
+                        <td colSpan={selectedViewTab === "history" ? 10 : 9} className="subtle-line">
                           {selectedViewTab === "history" ? "Sin historial para esta area." : "Sin registros capturados hoy para esta area."}
                         </td>
                       </tr>
@@ -1769,6 +3270,7 @@ export default function GestionTransporte({ contexto }) {
               transportState={transportState}
               documentacionState={documentacionState}
               currentUser={contexto.currentUser}
+              canDeleteHistoryTransportRecords={canDeleteHistoryTransportRecords}
               formatDateTime={formatDateTime}
               requestJson={contexto.requestJson}
               onStatusUpdated={() => {
@@ -1778,8 +3280,523 @@ export default function GestionTransporte({ contexto }) {
             />
           ) : null}
 
-          {/* ── CONSOLIDADO ── */}
-          {selectedMainTab === "consolidado" ? (
+
+
+          {/* ── DIRECCIONES Y GASTOS ── */}
+          {selectedMainTab === "logistica" ? (
+            <section className="transport-logistics-section" style={{ display: "grid", gap: "0.9rem" }}>
+              <div className="card-header-row" style={{ marginBottom: 0, gap: "0.6rem", flexWrap: "wrap" }}>
+                <div>
+                  <h3 style={{ margin: 0 }}>Direcciones, unidades y gastos</h3>
+                  <p className="subtle-line" style={{ marginTop: "0.25rem" }}>
+                    Aquí se administran direcciones de clientes, parque vehicular y gastos de transporte.
+                  </p>
+                </div>
+                <span className="chip">Direcciones: {customerAddresses.length} | Unidades: {transportUnits.length} | Gastos: {transportExpenses.length}</span>
+              </div>
+
+              {logisticsError ? <div className={`status-banner ${logisticsBanner.tone === "success" ? "status-banner-success" : logisticsBanner.tone === "warning" ? "status-banner-warning" : "status-banner-error"}`}>{logisticsError}</div> : null}
+
+              <div className="transport-view-tabs transport-view-tabs-separated" style={{ marginBottom: "0.5rem" }}>
+                <button
+                  type="button"
+                  className={`transport-view-tab transport-main-tab ${logisticsViewTab === "direcciones" ? "is-active" : ""}`}
+                  onClick={() => setLogisticsViewTab("direcciones")}
+                >
+                  Direcciones
+                </button>
+                <button
+                  type="button"
+                  className={`transport-view-tab transport-main-tab ${logisticsViewTab === "gastos" ? "is-active" : ""}`}
+                  onClick={() => setLogisticsViewTab("gastos")}
+                >
+                  Gastos
+                </button>
+                <button
+                  type="button"
+                  className={`transport-view-tab transport-main-tab ${logisticsViewTab === "unidades" ? "is-active" : ""}`}
+                  onClick={() => setLogisticsViewTab("unidades")}
+                >
+                  Unidades
+                </button>
+                <button
+                  type="button"
+                  className={`transport-view-tab transport-main-tab ${logisticsViewTab === "noticias" ? "is-active" : ""}`}
+                  onClick={() => setLogisticsViewTab("noticias")}
+                >
+                  Noticias viales
+                </button>
+              </div>
+
+              {logisticsViewTab === "direcciones" ? (
+                <article className="surface-card transport-logistics-card" style={{ padding: "0.9rem", borderRadius: "1.2rem" }}>
+                  <div className="card-header-row" style={{ marginBottom: "0.7rem" }}>
+                    <div>
+                      <h4 style={{ margin: 0 }}>Directorio de destinos</h4>
+                      <p className="subtle-line" style={{ marginTop: "0.25rem" }}>Incluye destinos ya detectados; edítalos para completar la información de cliente y dirección.</p>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
+                      <span className="chip">Total: {destinationDirectorySummary.total}</span>
+                      <button
+                        type="button"
+                        className={`chip ${logisticsAddressCompletenessFilter === "pending" ? "danger" : ""}`}
+                        onClick={() => setLogisticsAddressCompletenessFilter((current) => (current === "pending" ? "all" : "pending"))}
+                        style={{ cursor: "pointer" }}
+                      >
+                        Pendientes: {destinationDirectorySummary.pending}
+                      </button>
+                      <button
+                        type="button"
+                        className={`chip ${logisticsAddressCompletenessFilter === "complete" ? "success" : ""}`}
+                        onClick={() => setLogisticsAddressCompletenessFilter((current) => (current === "complete" ? "all" : "complete"))}
+                        style={{ cursor: "pointer" }}
+                      >
+                        Completos: {destinationDirectorySummary.complete}
+                      </button>
+                      {canManageLogisticsTab ? (
+                        <button
+                          type="button"
+                          className="primary-button"
+                          onClick={openTransportAddressCreateModal}
+                          disabled={logisticsSaving}
+                        >
+                          Agregar destino
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "minmax(240px, 340px)", gap: "0.6rem", marginBottom: "0.65rem" }}>
+                    <label className="app-modal-field" style={{ marginBottom: 0 }}>
+                      <span>Buscar destino</span>
+                      <input
+                        value={logisticsAddressSearch}
+                        onChange={(event) => setLogisticsAddressSearch(event.target.value)}
+                        placeholder="Destino, cliente, dirección, contacto o teléfono"
+                      />
+                    </label>
+                  </div>
+
+                  <div style={{ display: "grid", gap: "0.7rem" }}>
+                    {destinationDirectoryGroupsByServiceType.map((group) => (
+                      <article key={`dest-group-${group.serviceType}`} className="surface-card" style={{ padding: "0.65rem", borderRadius: "1rem", border: "1px solid rgba(49, 77, 105, 0.12)" }}>
+                        <div className="card-header-row" style={{ marginBottom: "0.5rem" }}>
+                          <h5 style={{ margin: 0 }}>{group.label}</h5>
+                          <span className="chip">{group.rows.length}</span>
+                        </div>
+
+                        <div className="table-wrap">
+                          <table className="inventory-table-clean">
+                            <thead>
+                              <tr>
+                                <th>Destino</th>
+                                <th>Cliente</th>
+                                <th>Dirección</th>
+                                <th>Contacto</th>
+                                <th>Área</th>
+                                <th>Notas</th>
+                                <th>Acciones</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {group.rows.length ? group.rows.map((address) => (
+                                <tr key={address.id}>
+                                  <td>
+                                    <div style={{ display: "grid", gap: "0.2rem" }}>
+                                      <span>{address.destination || "-"}</span>
+                                      {!address.isComplete ? (
+                                        <span className="chip danger" style={{ width: "fit-content", fontSize: "0.68rem", padding: "0.16rem 0.48rem" }}>
+                                          Pendiente completar
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  </td>
+                                  <td>{address.customerName || "-"}</td>
+                                  <td>
+                                    {buildAddressNavigationHref(address) ? (
+                                      <a
+                                        href={buildAddressNavigationHref(address)}
+                                        className="transport-address-link"
+                                      >
+                                        {address.address || address.destination || "Sin dirección"}
+                                      </a>
+                                    ) : (
+                                      <span className="subtle-line">-</span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    <div style={{ display: "grid", gap: "0.15rem" }}>
+                                      <span>{address.contactName || "-"}</span>
+                                      <span className="subtle-line">{address.phone || "Sin teléfono"}</span>
+                                    </div>
+                                  </td>
+                                  <td>{transportLogisticsAreaOptions.find((area) => area.value === address.areaId)?.label || "-"}</td>
+                                  <td>
+                                    <div style={{ display: "grid", gap: "0.2rem" }}>
+                                      <span>{address.notes || "-"}</span>
+                                      {!address.isComplete ? (
+                                        <span className="subtle-line" style={{ color: "#b13f34" }}>
+                                          Faltan: {address.missingFields.join(", ")}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                                      {canManageLogisticsTab ? (
+                                        <>
+                                          <button type="button" className="icon-button" onClick={() => openTransportAddressEditModal(address)} disabled={logisticsSaving}>Editar</button>
+                                          {!address._seed ? (
+                                            <button type="button" className="icon-button" onClick={() => removeTransportAddress(address.id)} disabled={logisticsSaving}>Eliminar</button>
+                                          ) : null}
+                                        </>
+                                      ) : null}
+                                    </div>
+                                  </td>
+                                </tr>
+                              )) : (
+                                <tr>
+                                  <td colSpan="7" className="subtle-line">Sin destinos en esta categoría.</td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </article>
+              ) : logisticsViewTab === "gastos" ? (
+                <article className="surface-card transport-logistics-card" style={{ padding: "0.9rem", borderRadius: "1.2rem" }}>
+                  <div className="card-header-row" style={{ marginBottom: "0.7rem" }}>
+                    <div>
+                      <h4 style={{ margin: 0 }}>Gastos de transporte</h4>
+                      <p className="subtle-line" style={{ marginTop: "0.25rem" }}>Combustible, casetas, taxis, viáticos y otros gastos.</p>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
+                      <span className="chip">{transportExpenses.length}</span>
+                      {canManageLogisticsTab ? (
+                        <button
+                          type="button"
+                          className="primary-button"
+                          onClick={() => {
+                            setLogisticsError("");
+                            setLogisticsExpenseDraft(createTransportLogisticsExpenseDraft());
+                            setLogisticsExpenseModalOpen(true);
+                          }}
+                          disabled={logisticsSaving}
+                        >
+                          Agregar gasto
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="table-wrap">
+                    <table className="inventory-table-clean">
+                      <thead>
+                        <tr>
+                          <th>Fecha</th>
+                          <th>Tipo</th>
+                          <th>Importe</th>
+                          <th>Área</th>
+                          <th>Ruta</th>
+                          <th>Referencia</th>
+                          <th>Descripción</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {transportExpenses.length ? transportExpenses.map((expense) => (
+                          <tr key={expense.id}>
+                            <td>{expense.dateKey || "-"}</td>
+                            <td>{expense.expenseType || "-"}</td>
+                            <td>{expense.amount}</td>
+                            <td>{transportLogisticsAreaOptions.find((area) => area.value === expense.areaId)?.label || "-"}</td>
+                            <td>{expense.routeLabel || "-"}</td>
+                            <td>{expense.reference || "-"}</td>
+                            <td>{expense.description || "-"}</td>
+                            <td>
+                              {canManageLogisticsTab ? (
+                                <button type="button" className="icon-button" onClick={() => removeTransportExpense(expense.id)} disabled={logisticsSaving}>Eliminar</button>
+                              ) : (
+                                <span className="subtle-line">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        )) : (
+                          <tr>
+                            <td colSpan="8" className="subtle-line">No hay gastos registrados.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </article>
+              ) : logisticsViewTab === "noticias" ? (
+                <article className="surface-card transport-logistics-card" style={{ padding: "0.9rem", borderRadius: "1.2rem" }}>
+                  <div className="card-header-row" style={{ marginBottom: "0.7rem", gap: "0.6rem", flexWrap: "wrap" }}>
+                    <div>
+                      <h4 style={{ margin: 0 }}>Noticias viales de México</h4>
+                      <p className="subtle-line" style={{ marginTop: "0.25rem" }}>
+                        Feed gratuito para monitorear accidentes, cierres, bloqueos, clima y seguridad carretera.
+                      </p>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", flexWrap: "wrap" }}>
+                      <span className="chip">Resultados: {roadNewsItems.length}</span>
+                      {roadNewsLoadedAt ? <span className="subtle-line">Actualizado: {formatDateTime(roadNewsLoadedAt)}</span> : null}
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "0.55rem", marginBottom: "0.65rem" }}>
+                    <label className="app-modal-field" style={{ marginBottom: 0 }}>
+                      <span>Tema</span>
+                      <select
+                        value={roadNewsFilters.topic}
+                        onChange={(event) => setRoadNewsFilters((prev) => ({ ...prev, topic: event.target.value }))}
+                      >
+                        {TRANSPORT_ROAD_NEWS_TOPIC_OPTIONS.map((entry) => (
+                          <option key={`news-topic-${entry.value}`} value={entry.value}>{entry.label}</option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="app-modal-field" style={{ marginBottom: 0 }}>
+                      <span>Región</span>
+                      <select
+                        value={roadNewsFilters.region}
+                        onChange={(event) => setRoadNewsFilters((prev) => ({ ...prev, region: event.target.value }))}
+                      >
+                        {TRANSPORT_ROAD_NEWS_REGION_OPTIONS.map((entry) => (
+                          <option key={`news-region-${entry}`} value={entry}>{entry}</option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="app-modal-field" style={{ marginBottom: 0 }}>
+                      <span>Últimas horas</span>
+                      <select
+                        value={roadNewsFilters.hours}
+                        onChange={(event) => setRoadNewsFilters((prev) => ({ ...prev, hours: event.target.value }))}
+                      >
+                        <option value="6">6 horas</option>
+                        <option value="12">12 horas</option>
+                        <option value="24">24 horas</option>
+                        <option value="48">48 horas</option>
+                        <option value="72">72 horas</option>
+                        <option value="168">7 días</option>
+                      </select>
+                    </label>
+
+                    <label className="app-modal-field" style={{ marginBottom: 0 }}>
+                      <span>Máximo resultados</span>
+                      <select
+                        value={roadNewsFilters.limit}
+                        onChange={(event) => setRoadNewsFilters((prev) => ({ ...prev, limit: event.target.value }))}
+                      >
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="40">40</option>
+                        <option value="50">50</option>
+                      </select>
+                    </label>
+
+                    <label className="app-modal-field" style={{ marginBottom: 0, gridColumn: "span 2" }}>
+                      <span>Palabra clave (opcional)</span>
+                      <input
+                        value={roadNewsFilters.q}
+                        onChange={(event) => setRoadNewsFilters((prev) => ({ ...prev, q: event.target.value }))}
+                        placeholder="Ejemplo: Puebla-Orizaba, caseta, bloqueo, volcadura"
+                      />
+                    </label>
+                  </div>
+
+                  <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", marginBottom: "0.65rem" }}>
+                    <button type="button" className="primary-button" onClick={loadTransportRoadNews} disabled={roadNewsLoading}>
+                      {roadNewsLoading ? "Consultando..." : "Buscar noticias"}
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-button"
+                      onClick={() => {
+                        setRoadNewsFilters(createRoadNewsFiltersDraft());
+                        setRoadNewsItems([]);
+                        setRoadNewsError("");
+                        setRoadNewsLoadedAt("");
+                      }}
+                      disabled={roadNewsLoading}
+                    >
+                      Limpiar filtros
+                    </button>
+                  </div>
+
+                  {roadNewsError ? <div className="status-banner status-banner-error" style={{ marginBottom: "0.65rem" }}>{roadNewsError}</div> : null}
+
+                  <div className="table-wrap">
+                    <table className="inventory-table-clean">
+                      <thead>
+                        <tr>
+                          <th>Fecha</th>
+                          <th>Título</th>
+                          <th>Fuente</th>
+                          <th>Resumen</th>
+                          <th>Enlace</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {roadNewsItems.length ? roadNewsItems.map((item) => (
+                          <tr key={item.id || item.link}>
+                            <td>{formatDateTime(item.publishedAt || item.publishedAtLabel || "")}</td>
+                            <td>{item.title || "Sin título"}</td>
+                            <td>{item.source || "-"}</td>
+                            <td>{item.summary || "-"}</td>
+                            <td>
+                              {item.link ? (
+                                <a href={item.link} target="_blank" rel="noreferrer" className="transport-address-link">
+                                  Abrir noticia
+                                </a>
+                              ) : (
+                                <span className="subtle-line">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        )) : (
+                          <tr>
+                            <td colSpan="5" className="subtle-line">{roadNewsLoading ? "Consultando noticias viales..." : "Sin resultados para los filtros seleccionados."}</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </article>
+              ) : (
+                <article className="surface-card transport-logistics-card" style={{ padding: "0.9rem", borderRadius: "1.2rem" }}>
+                  <div className="card-header-row" style={{ marginBottom: "0.7rem" }}>
+                    <div>
+                      <h4 style={{ margin: 0 }}>Unidades de transporte</h4>
+                      <p className="subtle-line" style={{ marginTop: "0.25rem" }}>Registra unidades, checklist y kilometraje antes/después de cada servicio.</p>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
+                      <span className="chip">{transportUnits.length}</span>
+                      {canManageLogisticsTab ? (
+                        <button
+                          type="button"
+                          className="primary-button"
+                          onClick={() => {
+                            setLogisticsError("");
+                            setLogisticsUnitDraft(createTransportUnitDraft());
+                            setLogisticsUnitModalOpen(true);
+                          }}
+                          disabled={logisticsSaving}
+                        >
+                          Agregar unidad
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gap: "0.65rem" }}>
+                    {transportUnits.length ? transportUnits.map((unit) => {
+                      const unitPhoto = unit?.photo;
+                      const lastActivity = latestUnitActivityByUnitId.get(String(unit?.id || "").trim());
+                      const unitArea = transportLogisticsAreaOptions.find((area) => area.value === unit?.areaId)?.label || "Sin área";
+                      return (
+                        <div key={unit.id} style={{ border: "1px solid rgba(49, 77, 105, 0.16)", borderRadius: "1rem", padding: "0.65rem", display: "grid", gap: "0.55rem" }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: "0.7rem", alignItems: "center" }}>
+                            <div style={{ width: "58px", height: "58px", borderRadius: "0.8rem", overflow: "hidden", background: "rgba(49, 77, 105, 0.08)", display: "grid", placeItems: "center" }}>
+                              {unitPhoto?.url ? <img src={unitPhoto.thumbnailUrl || unitPhoto.url} alt={unit.unitName || "Unidad"} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span className="subtle-line" style={{ fontSize: "0.7rem" }}>Sin foto</span>}
+                            </div>
+                            <div style={{ display: "grid", gap: "0.2rem" }}>
+                              <strong style={{ fontSize: "0.9rem" }}>{unit.unitName || "Unidad"}</strong>
+                              <span className="subtle-line" style={{ fontSize: "0.77rem" }}>Código: {unit.unitCode || "—"} | Placas: {unit.plate || "—"}</span>
+                              <span className="subtle-line" style={{ fontSize: "0.77rem" }}>Modelo: {unit.model || "—"} | Área: {unitArea}</span>
+                            </div>
+                            {canManageLogisticsTab ? (
+                              <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                                <button type="button" className="icon-button" onClick={() => openTransportUnitServiceModal(unit.id)} disabled={logisticsSaving}>Registrar servicio</button>
+                                <button type="button" className="icon-button" onClick={() => openTransportUnitChecklistModal(unit.id)} disabled={logisticsSaving}>Checklist</button>
+                              </div>
+                            ) : null}
+                          </div>
+                          {lastActivity ? (
+                            <span className="subtle-line" style={{ fontSize: "0.78rem" }}>
+                              Último registro ({lastActivity.dateKey || "sin fecha"}): {lastActivity.serviceLabel || "Servicio"}
+                              {Number.isFinite(lastActivity.kmBefore) && Number.isFinite(lastActivity.kmAfter)
+                                ? ` | KM ${lastActivity.kmBefore} -> ${lastActivity.kmAfter}`
+                                : ""}
+                            </span>
+                          ) : (
+                            <span className="subtle-line" style={{ fontSize: "0.78rem" }}>Sin servicios ni checklist registrados.</span>
+                          )}
+                        </div>
+                      );
+                    }) : <span className="subtle-line">No hay unidades registradas.</span>}
+                  </div>
+
+                  <div className="table-wrap" style={{ marginTop: "0.8rem" }}>
+                    <table className="inventory-table-clean">
+                      <thead>
+                        <tr>
+                          <th>Fecha</th>
+                          <th>Unidad</th>
+                          <th>Tipo</th>
+                          <th>Servicio / Check</th>
+                          <th>KM</th>
+                          <th>Evidencia</th>
+                          <th>Registró</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {transportUnitServiceLogs.length ? transportUnitServiceLogs.slice().sort((a, b) => String(b.createdAt || b.dateKey || "").localeCompare(String(a.createdAt || a.dateKey || ""))).map((log) => {
+                          const unit = transportUnits.find((entry) => entry.id === log.unitId);
+                          const checklistEntries = log?.checklist && typeof log.checklist === "object" ? Object.entries(log.checklist) : [];
+                          const checksOk = checklistEntries.filter(([, item]) => resolveChecklistItemStatus(item) === "good").length;
+                          const checksBad = checklistEntries.filter(([, item]) => resolveChecklistItemStatus(item) === "bad").length;
+                          const checklistEvidence = checklistEntries
+                            .map(([, item]) => resolveChecklistItemEvidence(item))
+                            .find((ev) => ev?.url) || null;
+                          const evidenceToShow = log?.evidence?.url ? log.evidence : checklistEvidence;
+                          return (
+                            <tr key={log.id}>
+                              <td>{log.dateKey || "-"}</td>
+                              <td>{unit?.unitName || unit?.unitCode || unit?.plate || "Unidad"}</td>
+                              <td>{log?.checklist ? "Checklist" : "Servicio"}</td>
+                              <td>
+                                {log?.checklist
+                                  ? `${checksOk} OK / ${checksBad} Malo${log.notes ? ` · ${log.notes}` : ""}`
+                                  : `${log.serviceLabel || "Servicio"}${log.notes ? ` · ${log.notes}` : ""}`}
+                              </td>
+                              <td>{Number.isFinite(log.kmBefore) && Number.isFinite(log.kmAfter) ? `${log.kmBefore} -> ${log.kmAfter}` : "—"}</td>
+                              <td>
+                                {evidenceToShow?.url ? (
+                                  isImageEvidence(evidenceToShow) ? (
+                                    <button type="button" className="transport-evidence-thumb" onClick={() => setEvidenceViewer({ open: true, evidence: evidenceToShow, title: "Evidencia checklist" })}>
+                                      <img src={evidenceToShow.thumbnailUrl || evidenceToShow.url} alt={evidenceToShow.name || "Evidencia"} />
+                                    </button>
+                                  ) : (
+                                    <a href={evidenceToShow.url} target="_blank" rel="noreferrer" className="transport-evidence-file-link">{evidenceToShow.name || "Abrir"}</a>
+                                  )
+                                ) : <span className="subtle-line">—</span>}
+                              </td>
+                              <td>{log.createdByName || "—"}</td>
+                            </tr>
+                          );
+                        }) : (
+                          <tr>
+                            <td colSpan="7" className="subtle-line">Sin historial de checks o servicios.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </article>
+              )}
+            </section>
+          ) : null}
+
+          {/* ── CONSOLIDADO / DASHBOARD ── */}
+          {["consolidado", "dashboard-transporte"].includes(selectedMainTab) ? (
             <>
               <div className="card-header-row" style={{ marginBottom: "0.65rem", gap: "0.65rem", flexWrap: "wrap" }}>
                 <h3 style={{ margin: 0 }}>Consolidado general por área</h3>
@@ -1824,7 +3841,49 @@ export default function GestionTransporte({ contexto }) {
                 Vista actual: {consolidatedRangeModel.rangeLabel}. Agrupación: {selectedCalendarGrouping === "semana" ? "por días" : selectedCalendarGrouping === "anio" ? "por meses" : "por semanas"}. Player: {selectedConsolidatedPlayerId === "all" ? "Todos" : selectedConsolidatedPlayerId === "unassigned" ? "Sin asignar" : consolidatedPlayerOptions.find((entry) => entry.value === selectedConsolidatedPlayerId)?.label || "Seleccionado"}. Columnas: S (salidas/folios), C (cajas), PZ (piezas). En DOCUMENTACIÓN, S representa cantidad de registros.
               </p>
 
-              <section className="transport-consolidated-dashboard">
+              <div style={{ border: "1px solid rgba(47, 89, 126, 0.34)", borderRadius: "1rem", padding: "0.7rem 0.9rem", background: "rgba(93, 152, 203, 0.16)", marginBottom: "0.8rem" }}>
+                <strong style={{ color: "#173651", fontSize: "0.85rem" }}>Dashboard general del período</strong>
+                <div style={{ marginTop: "0.35rem", display: "flex", gap: "0.8rem", flexWrap: "wrap", fontSize: "0.82rem" }}>
+                  <span><strong>S:</strong> {principalSummary.grandTotals.salidas}</span>
+                  <span><strong>C:</strong> {principalSummary.grandTotals.cajas}</span>
+                  <span><strong>PZ:</strong> {principalSummary.grandTotals.piezas}</span>
+                </div>
+              </div>
+
+              <div className="saved-board-list board-builder-launch-list" style={{ marginBottom: "0.8rem", display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                <button
+                  type="button"
+                  className="chip"
+                  onClick={() => setSelectedConsolidatedAreaId("all")}
+                  style={{
+                    border: selectedConsolidatedAreaId === "all" ? "1px solid rgba(49, 77, 105, 0.36)" : "1px solid rgba(162, 170, 181, 0.25)",
+                    background: selectedConsolidatedAreaId === "all" ? "rgba(49, 77, 105, 0.08)" : "#ffffff",
+                    color: "#314d69",
+                    cursor: "pointer",
+                  }}
+                >
+                  Dashboard general
+                </button>
+                {consolidatedAreaOptions.map((area) => (
+                  <button
+                    key={`consolidated-area-${area.value}`}
+                    type="button"
+                    className="chip"
+                    onClick={() => setSelectedConsolidatedAreaId(area.value)}
+                    style={{
+                      border: selectedConsolidatedAreaId === area.value ? "1px solid rgba(49, 77, 105, 0.36)" : "1px solid rgba(162, 170, 181, 0.25)",
+                      background: selectedConsolidatedAreaId === area.value ? "rgba(49, 77, 105, 0.08)" : "#ffffff",
+                      color: "#314d69",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {area.label}
+                  </button>
+                ))}
+              </div>
+
+              {selectedMainTab === "dashboard-transporte" ? (
+                <section className="transport-consolidated-dashboard">
                 <div className="transport-consolidated-kpi-grid">
                   <article className="transport-consolidated-kpi-card">
                     <span className="transport-consolidated-kpi-label">Salidas del periodo</span>
@@ -1876,19 +3935,19 @@ export default function GestionTransporte({ contexto }) {
                       {consolidatedDashboard.lineSeries.length ? (
                         <>
                           <svg className="transport-consolidated-line-chart" viewBox="0 0 620 210" role="img" aria-label="Gráfica de línea semanal de salidas">
-                            <line x1="40" y1="170" x2="600" y2="170" stroke="rgba(3, 33, 33, 0.22)" strokeWidth="1" />
-                            <line x1="40" y1="26" x2="40" y2="170" stroke="rgba(3, 33, 33, 0.22)" strokeWidth="1" />
+                            <line x1="40" y1="170" x2="600" y2="170" stroke="rgba(49, 77, 105, 0.22)" strokeWidth="1" />
+                            <line x1="40" y1="26" x2="40" y2="170" stroke="rgba(49, 77, 105, 0.22)" strokeWidth="1" />
                             <polyline
                               points={consolidatedDashboard.linePath}
                               fill="none"
-                              stroke="#0f766e"
+                              stroke="#355f88"
                               strokeWidth="3"
                               strokeLinecap="round"
                               strokeLinejoin="round"
                             />
                             {consolidatedDashboard.lineSeries.map((point) => (
                               <g key={`line-point-${point.label}`}>
-                                <circle cx={point.x} cy={point.y} r="4.4" fill="#14b8a6" stroke="#ffffff" strokeWidth="1.5" />
+                                <circle cx={point.x} cy={point.y} r="4.4" fill="#405db0" stroke="#ffffff" strokeWidth="1.5" />
                                 <text x={point.x} y={point.y - 10} textAnchor="middle" className="transport-consolidated-line-value">{point.salidas}</text>
                                 <text x={point.x} y="190" textAnchor="middle" className="transport-consolidated-line-label">{point.shortLabel}</text>
                               </g>
@@ -1952,11 +4011,100 @@ export default function GestionTransporte({ contexto }) {
                     </div>
                   </article>
                 </div>
-              </section>
 
-              {principalSummary.areas.map((area) => (
-                <div key={area.areaId} style={{ marginBottom: "1rem", border: "1px solid rgba(34, 139, 84, 0.28)", borderRadius: "1rem", overflow: "hidden" }}>
-                  <div style={{ padding: "0.55rem 0.8rem", background: "rgba(74, 222, 128, 0.18)", fontWeight: 700, color: "#0b5d46" }}>
+                {selectedConsolidatedAreaData ? (
+                  <>
+                    <div className="card-header-row" style={{ marginTop: "0.8rem", marginBottom: "0.45rem" }}>
+                      <h4 style={{ margin: 0 }}>Dashboard por área: {selectedAreaDashboard?.areaLabel || selectedConsolidatedAreaData.areaLabel}</h4>
+                    </div>
+
+                    <div className="transport-consolidated-kpi-grid">
+                      <article className="transport-consolidated-kpi-card">
+                        <span className="transport-consolidated-kpi-label">Salidas del período</span>
+                        <strong>{selectedAreaDashboard?.totalSalidas || 0}</strong>
+                        <small>{selectedAreaDashboard?.topDestination ? `Destino líder: ${selectedAreaDashboard.topDestination.destination}` : "Sin datos"}</small>
+                      </article>
+                      <article className="transport-consolidated-kpi-card">
+                        <span className="transport-consolidated-kpi-label">Cajas del período</span>
+                        <strong>{selectedAreaDashboard?.totalCajas || 0}</strong>
+                        <small>Promedio por salida: {(selectedAreaDashboard?.totalSalidas || 0) > 0 ? ((selectedAreaDashboard.totalCajas || 0) / selectedAreaDashboard.totalSalidas).toFixed(1) : "0.0"}</small>
+                      </article>
+                      <article className="transport-consolidated-kpi-card">
+                        <span className="transport-consolidated-kpi-label">Piezas del período</span>
+                        <strong>{selectedAreaDashboard?.totalPiezas || 0}</strong>
+                        <small>Promedio por salida: {(selectedAreaDashboard?.totalSalidas || 0) > 0 ? ((selectedAreaDashboard.totalPiezas || 0) / selectedAreaDashboard.totalSalidas).toFixed(1) : "0.0"}</small>
+                      </article>
+                      <article className="transport-consolidated-kpi-card">
+                        <span className="transport-consolidated-kpi-label">Destinos activos</span>
+                        <strong>{selectedAreaDashboard?.totalDestinos || 0}</strong>
+                        <small>{selectedAreaDashboard?.weeklySeries?.length ? `Barras por ${consolidatedRangeModel.unitLabel}` : "Sin datos"}</small>
+                      </article>
+                    </div>
+
+                    <div className="transport-consolidated-bar-ranking-grid">
+                      <article className="transport-consolidated-chart-card">
+                        <div className="transport-consolidated-chart-head">
+                          <h4>Gráfica de línea por {consolidatedRangeModel.unitLabel} (S)</h4>
+                        </div>
+                        <div className="transport-consolidated-line-chart-wrap">
+                          {selectedAreaDashboard?.lineSeries?.length ? (
+                            <>
+                              <svg className="transport-consolidated-line-chart" viewBox="0 0 620 210" role="img" aria-label="Gráfica de línea por área">
+                                <line x1="40" y1="170" x2="600" y2="170" stroke="rgba(49, 77, 105, 0.22)" strokeWidth="1" />
+                                <line x1="40" y1="26" x2="40" y2="170" stroke="rgba(49, 77, 105, 0.22)" strokeWidth="1" />
+                                <polyline
+                                  points={selectedAreaDashboard.linePath}
+                                  fill="none"
+                                  stroke="#355f88"
+                                  strokeWidth="3"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                                {selectedAreaDashboard.lineSeries.map((point) => (
+                                  <g key={`area-line-point-${point.label}`}>
+                                    <circle cx={point.x} cy={point.y} r="4.4" fill="#405db0" stroke="#ffffff" strokeWidth="1.5" />
+                                    <text x={point.x} y={point.y - 10} textAnchor="middle" className="transport-consolidated-line-value">{point.salidas}</text>
+                                    <text x={point.x} y="190" textAnchor="middle" className="transport-consolidated-line-label">{point.shortLabel}</text>
+                                  </g>
+                                ))}
+                              </svg>
+                              <span className="subtle-line">Tendencia de salidas de {selectedAreaDashboard.areaLabel} por {consolidatedRangeModel.unitLabel}.</span>
+                            </>
+                          ) : (
+                            <span className="subtle-line">Sin datos para graficar.</span>
+                          )}
+                        </div>
+                      </article>
+
+                      <article className="transport-consolidated-chart-card transport-consolidated-chart-card--compact-bars">
+                        <div className="transport-consolidated-chart-head">
+                          <h4>Top destinos del área (S)</h4>
+                        </div>
+                        <div className="transport-consolidated-columns-wrap">
+                          {selectedAreaDashboard?.destinations?.length ? (
+                            selectedAreaDashboard.destinations.map((destination) => (
+                              <div key={`area-dest-${destination.destination}`} className="transport-consolidated-column-item">
+                                <div className="transport-consolidated-column-track">
+                                  <span className="transport-consolidated-column-fill" style={{ height: `${Math.max(6, Math.round((destination.ratio || 0) * 100))}%` }} />
+                                </div>
+                                <strong className="transport-consolidated-column-value">{destination.salidas}</strong>
+                                <span className="transport-consolidated-column-label" title={destination.destination}>{destination.destination}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <span className="subtle-line">Sin destinos para graficar.</span>
+                          )}
+                        </div>
+                      </article>
+                    </div>
+                  </>
+                ) : null}
+                </section>
+              ) : null}
+
+              {selectedMainTab === "consolidado" ? scopedConsolidatedAreas.map((area) => (
+                <div key={area.areaId} style={{ marginBottom: "1rem", border: "1px solid rgba(47, 89, 126, 0.28)", borderRadius: "1rem", overflow: "hidden" }}>
+                  <div style={{ padding: "0.55rem 0.8rem", background: "rgba(93, 152, 203, 0.18)", fontWeight: 700, color: "#173651" }}>
                     {area.areaLabel}
                   </div>
                   <div className="table-wrap" style={{ margin: 0 }}>
@@ -1999,7 +4147,7 @@ export default function GestionTransporte({ contexto }) {
                             <td colSpan={1 + principalSummary.weeks.length * 3 + 3} className="subtle-line">Sin movimientos en este periodo para esta área.</td>
                           </tr>
                         ) : null}
-                        <tr style={{ background: "rgba(74, 222, 128, 0.14)", fontWeight: 700 }}>
+                        <tr style={{ background: "rgba(93, 152, 203, 0.14)", fontWeight: 700 }}>
                           <td>Total área</td>
                           {area.weeklyTotals.flatMap((weekTotals, index) => ([
                             <td key={`${area.areaId}-total-${index}-s`}>{weekTotals.salidas}</td>,
@@ -2014,17 +4162,124 @@ export default function GestionTransporte({ contexto }) {
                     </table>
                   </div>
                 </div>
-              ))}
+              )) : null}
 
-              <div style={{ border: "1px solid rgba(34, 139, 84, 0.34)", borderRadius: "1rem", padding: "0.7rem 0.9rem", background: "rgba(74, 222, 128, 0.16)" }}>
-                <strong style={{ color: "#0b5d46", fontSize: "0.85rem" }}>Total general del período</strong>
+              {selectedMainTab === "consolidado" ? (
+                <div style={{ border: "1px solid rgba(47, 89, 126, 0.34)", borderRadius: "1rem", padding: "0.7rem 0.9rem", background: "rgba(93, 152, 203, 0.16)" }}>
+                <strong style={{ color: "#173651", fontSize: "0.85rem" }}>Total general del período</strong>
                 <div style={{ marginTop: "0.35rem", display: "flex", gap: "0.8rem", flexWrap: "wrap", fontSize: "0.82rem" }}>
                   <span><strong>S:</strong> {principalSummary.grandTotals.salidas}</span>
                   <span><strong>C:</strong> {principalSummary.grandTotals.cajas}</span>
                   <span><strong>PZ:</strong> {principalSummary.grandTotals.piezas}</span>
                 </div>
-              </div>
+                </div>
+              ) : null}
             </>
+          ) : null}
+
+          {selectedMainTab === "incidencias-transporte" ? (
+            <section className="transport-logistics-section" style={{ display: "grid", gap: "0.9rem" }}>
+              <div className="card-header-row" style={{ marginBottom: 0, gap: "0.6rem", flexWrap: "wrap" }}>
+                <div>
+                  <h3 style={{ margin: 0 }}>Incidencias de transporte</h3>
+                  <p className="subtle-line" style={{ marginTop: "0.25rem" }}>
+                    Registro operativo de incidencias para rutas, unidades, entregas y devoluciones.
+                  </p>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
+                  <span className="chip">{filteredTransportIncidencias.length} incidencias</span>
+                  {canManageIncidencias ? (
+                    <button
+                      type="button"
+                      className="primary-button"
+                      onClick={openTransportIncidenciaCreateModal}
+                      disabled={incidenciaSaving}
+                    >
+                      Registrar incidencia
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "0.55rem" }}>
+                <label className="app-modal-field" style={{ marginBottom: 0 }}>
+                  <span>Buscar</span>
+                  <input
+                    value={incidenciasSearch}
+                    onChange={(event) => setIncidenciasSearch(event.target.value)}
+                    placeholder="Título, descripción o área"
+                  />
+                </label>
+
+                <label className="app-modal-field" style={{ marginBottom: 0 }}>
+                  <span>Estado</span>
+                  <select value={incidenciasStatusFilter} onChange={(event) => setIncidenciasStatusFilter(event.target.value)}>
+                    <option value="all">Todos</option>
+                    <option value="abierta">Abierta</option>
+                    <option value="en_proceso">En proceso</option>
+                    <option value="resuelta">Resuelta</option>
+                    <option value="cerrada">Cerrada</option>
+                  </select>
+                </label>
+
+                <label className="app-modal-field" style={{ marginBottom: 0 }}>
+                  <span>Prioridad</span>
+                  <select value={incidenciasPriorityFilter} onChange={(event) => setIncidenciasPriorityFilter(event.target.value)}>
+                    <option value="all">Todas</option>
+                    <option value="baja">Baja</option>
+                    <option value="media">Media</option>
+                    <option value="alta">Alta</option>
+                    <option value="critica">Crítica</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className="table-wrap">
+                <table className="inventory-table-clean">
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Título</th>
+                      <th>Área</th>
+                      <th>Prioridad</th>
+                      <th>Estado</th>
+                      <th>Descripción</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredTransportIncidencias.length ? filteredTransportIncidencias.map((item) => (
+                      <tr key={item.id}>
+                        <td>{formatDateTime(item.reportedAt || item.createdAt)}</td>
+                        <td>{item.title || "-"}</td>
+                        <td>{item.area || "-"}</td>
+                        <td>{item.priority || "-"}</td>
+                        <td>{item.status || "-"}</td>
+                        <td style={{ maxWidth: "260px", whiteSpace: "normal" }}>{item.description || "-"}</td>
+                        <td>
+                          {canManageIncidencias ? (
+                            <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                              <button type="button" className="icon-button" onClick={() => openTransportIncidenciaEditModal(item)}>
+                                Editar
+                              </button>
+                              <button type="button" className="icon-button danger" onClick={() => setIncidenciaDeleteId(item.id)}>
+                                Eliminar
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="subtle-line">Solo lectura</span>
+                          )}
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan="7" className="subtle-line">No hay incidencias de transporte para los filtros seleccionados.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
           ) : null}
 
           {/* ── DOCUMENTACIÓN TAB ── */}
@@ -2071,6 +4326,7 @@ export default function GestionTransporte({ contexto }) {
                   <thead>
                     <tr>
                       <th>Fecha</th>
+                      <th>Código</th>
                       <th>Ubicación</th>
                       <th>Área</th>
                       <th>Dirigido a</th>
@@ -2085,6 +4341,7 @@ export default function GestionTransporte({ contexto }) {
                     {(selectedDocViewTab === "history" ? docHistoryRecords : docActiveRecords).map((record) => (
                       <tr key={record.id}>
                         <td>{record.dateKey || "-"}</td>
+                        <td>{record.shipmentCode || "-"}</td>
                         <td><span className="chip" style={{ fontSize: "0.75rem" }}>{record.ubicacion}</span></td>
                         <td>{record.area}</td>
                         <td>{record.dirigidoA}</td>
@@ -2099,7 +4356,7 @@ export default function GestionTransporte({ contexto }) {
                     ))}
                     {!(selectedDocViewTab === "history" ? docHistoryRecords : docActiveRecords).length ? (
                       <tr>
-                        <td colSpan={9} className="subtle-line">
+                        <td colSpan={10} className="subtle-line">
                           {selectedDocViewTab === "history" ? "Sin historial en documentación." : "Sin registros de documentación para hoy."}
                         </td>
                       </tr>
@@ -2111,6 +4368,547 @@ export default function GestionTransporte({ contexto }) {
           ) : null}
         </article>
       </section>
+
+      <Modal
+        open={logisticsAddressModalOpen}
+        title={logisticsAddressEditId ? "Editar destino" : "Agregar destino"}
+        confirmLabel={logisticsSaving ? "Guardando..." : logisticsAddressEditId ? "Guardar cambios" : "Guardar destino"}
+        cancelLabel="Cancelar"
+        onClose={() => {
+          setLogisticsAddressEditId("");
+          setLogisticsAddressDraft(createTransportLogisticsAddressDraft());
+          setLogisticsAddressModalOpen(false);
+        }}
+        onConfirm={() => addTransportAddress()}
+      >
+        <div className="modal-form-grid">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.6rem" }}>
+            <label className="app-modal-field">
+              <span>Destino</span>
+              <input value={logisticsAddressDraft.destination} onChange={(event) => setLogisticsAddressDraft((current) => ({ ...current, destination: event.target.value }))} placeholder="Nombre del destino" />
+            </label>
+            <label className="app-modal-field">
+              <span>Cliente</span>
+              <input value={logisticsAddressDraft.customerName} onChange={(event) => setLogisticsAddressDraft((current) => ({ ...current, customerName: event.target.value }))} placeholder="Nombre del cliente" />
+            </label>
+            <label className="app-modal-field">
+              <span>Área</span>
+              <select
+                value={logisticsAddressDraft.areaId}
+                onChange={(event) => {
+                  const nextAreaId = event.target.value;
+                  setLogisticsAddressDraft((current) => ({
+                    ...current,
+                    areaId: nextAreaId,
+                    serviceType: normalizeServiceType(current.serviceType, inferServiceTypeByArea(nextAreaId)),
+                  }));
+                }}
+              >
+                <option value="">Sin área</option>
+                {transportLogisticsAreaOptions.map((area) => (
+                  <option key={`addr-modal-${area.value}`} value={area.value}>{area.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="app-modal-field">
+              <span>Tipo de servicio</span>
+              <select value={logisticsAddressDraft.serviceType} onChange={(event) => setLogisticsAddressDraft((current) => ({ ...current, serviceType: event.target.value }))}>
+                {TRANSPORT_SERVICE_TYPE_OPTIONS.map((entry) => (
+                  <option key={`addr-service-${entry.value}`} value={entry.value}>{entry.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <label className="app-modal-field transport-field-full">
+            <span>Dirección</span>
+            <textarea rows={2} value={logisticsAddressDraft.address} onChange={(event) => setLogisticsAddressDraft((current) => ({ ...current, address: event.target.value }))} placeholder="Calle, colonia, número exterior e interior" />
+          </label>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.6rem" }}>
+            <label className="app-modal-field">
+              <span>Contacto</span>
+              <input value={logisticsAddressDraft.contactName} onChange={(event) => setLogisticsAddressDraft((current) => ({ ...current, contactName: event.target.value }))} placeholder="Nombre de contacto" />
+            </label>
+            <label className="app-modal-field">
+              <span>Teléfono</span>
+              <input value={logisticsAddressDraft.phone} onChange={(event) => setLogisticsAddressDraft((current) => ({ ...current, phone: event.target.value }))} placeholder="WhatsApp o teléfono" />
+            </label>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.6rem" }}>
+            <label className="app-modal-field">
+              <span>Notas</span>
+              <input value={logisticsAddressDraft.notes} onChange={(event) => setLogisticsAddressDraft((current) => ({ ...current, notes: event.target.value }))} placeholder="Observaciones" />
+            </label>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={logisticsExpenseModalOpen}
+        title="Agregar gasto"
+        confirmLabel={logisticsSaving ? "Guardando..." : "Guardar gasto"}
+        cancelLabel="Cancelar"
+        onClose={() => setLogisticsExpenseModalOpen(false)}
+        onConfirm={() => addTransportExpense()}
+      >
+        <div className="modal-form-grid">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.6rem" }}>
+            <label className="app-modal-field">
+              <span>Fecha</span>
+              <input type="date" value={logisticsExpenseDraft.dateKey} onChange={(event) => setLogisticsExpenseDraft((current) => ({ ...current, dateKey: event.target.value }))} />
+            </label>
+            <label className="app-modal-field">
+              <span>Tipo</span>
+              <select value={logisticsExpenseDraft.expenseType} onChange={(event) => setLogisticsExpenseDraft((current) => ({ ...current, expenseType: event.target.value }))}>
+                <option value="combustible">Combustible</option>
+                <option value="caseta">Caseta</option>
+                <option value="taxi">Taxi</option>
+                <option value="viatico">Viático</option>
+                <option value="gasto">Gasto</option>
+                <option value="otro">Otro</option>
+              </select>
+            </label>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.6rem" }}>
+            <label className="app-modal-field">
+              <span>Importe</span>
+              <input type="number" min="0" step="0.01" value={logisticsExpenseDraft.amount} onChange={(event) => setLogisticsExpenseDraft((current) => ({ ...current, amount: event.target.value }))} placeholder="0.00" />
+            </label>
+            <label className="app-modal-field">
+              <span>Área</span>
+              <select value={logisticsExpenseDraft.areaId} onChange={(event) => setLogisticsExpenseDraft((current) => ({ ...current, areaId: event.target.value }))}>
+                <option value="">Sin área</option>
+                {transportLogisticsAreaOptions.map((area) => (
+                  <option key={`exp-modal-${area.value}`} value={area.value}>{area.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.6rem" }}>
+            <label className="app-modal-field">
+              <span>Ruta</span>
+              <input value={logisticsExpenseDraft.routeLabel} onChange={(event) => setLogisticsExpenseDraft((current) => ({ ...current, routeLabel: event.target.value }))} placeholder="Ruta o referencia" />
+            </label>
+            <label className="app-modal-field">
+              <span>Referencia</span>
+              <input value={logisticsExpenseDraft.reference} onChange={(event) => setLogisticsExpenseDraft((current) => ({ ...current, reference: event.target.value }))} placeholder="Folio, ticket o factura" />
+            </label>
+          </div>
+
+          <label className="app-modal-field transport-field-full">
+            <span>Descripción</span>
+            <textarea rows={2} value={logisticsExpenseDraft.description} onChange={(event) => setLogisticsExpenseDraft((current) => ({ ...current, description: event.target.value }))} placeholder="Detalle del gasto" />
+          </label>
+        </div>
+      </Modal>
+
+      <Modal
+        open={logisticsUnitModalOpen}
+        title="Agregar unidad"
+        confirmLabel={logisticsSaving ? "Guardando..." : "Guardar unidad"}
+        cancelLabel="Cancelar"
+        onClose={() => setLogisticsUnitModalOpen(false)}
+        onConfirm={addTransportUnit}
+      >
+        <div className="modal-form-grid">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.6rem" }}>
+            <label className="app-modal-field">
+              <span>Unidad</span>
+              <input value={logisticsUnitDraft.unitName} onChange={(event) => setLogisticsUnitDraft((current) => ({ ...current, unitName: event.target.value }))} placeholder="Ej. Camioneta 01" />
+            </label>
+            <label className="app-modal-field">
+              <span>Código interno</span>
+              <input value={logisticsUnitDraft.unitCode} onChange={(event) => setLogisticsUnitDraft((current) => ({ ...current, unitCode: event.target.value }))} placeholder="Ej. U-01" />
+            </label>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.6rem" }}>
+            <label className="app-modal-field">
+              <span>Placas</span>
+              <input value={logisticsUnitDraft.plate} onChange={(event) => setLogisticsUnitDraft((current) => ({ ...current, plate: event.target.value }))} placeholder="ABC-123-A" />
+            </label>
+            <label className="app-modal-field">
+              <span>Modelo</span>
+              <input value={logisticsUnitDraft.model} onChange={(event) => setLogisticsUnitDraft((current) => ({ ...current, model: event.target.value }))} placeholder="Nissan NP300 2022" />
+            </label>
+          </div>
+
+          <label className="app-modal-field">
+            <span>Área</span>
+            <select value={logisticsUnitDraft.areaId} onChange={(event) => setLogisticsUnitDraft((current) => ({ ...current, areaId: event.target.value }))}>
+              <option value="">Sin área</option>
+              {transportLogisticsAreaOptions.map((area) => (
+                <option key={`unit-modal-${area.value}`} value={area.value}>{area.label}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="app-modal-field transport-field-full">
+            <span>Notas</span>
+            <textarea rows={2} value={logisticsUnitDraft.notes} onChange={(event) => setLogisticsUnitDraft((current) => ({ ...current, notes: event.target.value }))} placeholder="Observaciones de la unidad" />
+          </label>
+
+          <div className="app-modal-field transport-field-full">
+            <span>Foto de la unidad</span>
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+              <button type="button" className="icon-button sm-button" onClick={() => unitPhotoInputRef.current?.click()} disabled={uploadingUnitPhoto}>
+                {uploadingUnitPhoto ? "Subiendo..." : "Subir foto"}
+              </button>
+              {logisticsUnitDraft.photo?.url ? (
+                <img src={logisticsUnitDraft.photo.thumbnailUrl || logisticsUnitDraft.photo.url} alt="Unidad" style={{ width: "56px", height: "56px", borderRadius: "0.7rem", objectFit: "cover", border: "1px solid rgba(49, 77, 105, 0.18)" }} />
+              ) : <span className="subtle-line">Sin foto</span>}
+            </div>
+            <input ref={unitPhotoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleUploadUnitPhoto} />
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={logisticsUnitServiceModalOpen}
+        title="Registrar servicio de unidad"
+        confirmLabel={logisticsSaving ? "Guardando..." : "Guardar servicio"}
+        cancelLabel="Cancelar"
+        onClose={() => setLogisticsUnitServiceModalOpen(false)}
+        onConfirm={addTransportUnitServiceLog}
+      >
+        <div className="modal-form-grid">
+          <label className="app-modal-field">
+            <span>Unidad</span>
+            <select value={logisticsUnitServiceDraft.unitId} onChange={(event) => setLogisticsUnitServiceDraft((current) => ({ ...current, unitId: event.target.value }))}>
+              <option value="">Selecciona unidad</option>
+              {transportUnits.map((unit) => <option key={`service-unit-${unit.id}`} value={unit.id}>{unit.unitName || unit.unitCode || unit.plate || unit.id}</option>)}
+            </select>
+          </label>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.6rem" }}>
+            <label className="app-modal-field">
+              <span>Fecha</span>
+              <input type="date" value={logisticsUnitServiceDraft.dateKey} onChange={(event) => setLogisticsUnitServiceDraft((current) => ({ ...current, dateKey: event.target.value }))} />
+            </label>
+            <label className="app-modal-field">
+              <span>Servicio</span>
+              <input value={logisticsUnitServiceDraft.serviceLabel} onChange={(event) => setLogisticsUnitServiceDraft((current) => ({ ...current, serviceLabel: event.target.value }))} placeholder="Ej. Entrega ruta SONATA" />
+            </label>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.6rem" }}>
+            <label className="app-modal-field">
+              <span>KM antes</span>
+              <input type="number" min="0" step="0.1" value={logisticsUnitServiceDraft.kmBefore} onChange={(event) => setLogisticsUnitServiceDraft((current) => ({ ...current, kmBefore: event.target.value }))} placeholder="0" />
+            </label>
+            <label className="app-modal-field">
+              <span>KM después</span>
+              <input type="number" min="0" step="0.1" value={logisticsUnitServiceDraft.kmAfter} onChange={(event) => setLogisticsUnitServiceDraft((current) => ({ ...current, kmAfter: event.target.value }))} placeholder="0" />
+            </label>
+          </div>
+
+          <label className="app-modal-field transport-field-full">
+            <span>Notas</span>
+            <textarea rows={2} value={logisticsUnitServiceDraft.notes} onChange={(event) => setLogisticsUnitServiceDraft((current) => ({ ...current, notes: event.target.value }))} placeholder="Observaciones del servicio" />
+          </label>
+        </div>
+      </Modal>
+
+      <Modal
+        open={logisticsUnitChecklistModalOpen}
+        title="Checklist de unidad"
+        confirmLabel={logisticsSaving ? "Guardando..." : "Guardar checklist"}
+        cancelLabel="Cancelar"
+        onClose={() => {
+          setIsChecklistEditMode(false);
+          setLogisticsUnitChecklistModalOpen(false);
+        }}
+        onConfirm={addTransportUnitChecklist}
+      >
+        <div className="modal-form-grid">
+          <label className="app-modal-field">
+            <span>Unidad</span>
+            <select value={logisticsUnitChecklistDraft.unitId} onChange={(event) => setLogisticsUnitChecklistDraft((current) => ({ ...current, unitId: event.target.value }))}>
+              <option value="">Selecciona unidad</option>
+              {transportUnits.map((unit) => <option key={`check-unit-${unit.id}`} value={unit.id}>{unit.unitName || unit.unitCode || unit.plate || unit.id}</option>)}
+            </select>
+          </label>
+
+          <label className="app-modal-field">
+            <span>Fecha</span>
+            <input type="date" value={logisticsUnitChecklistDraft.dateKey} onChange={(event) => setLogisticsUnitChecklistDraft((current) => ({ ...current, dateKey: event.target.value }))} />
+          </label>
+
+          <div className="transport-field-full" style={{ display: "grid", gap: "0.45rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+              <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#315753" }}>Checklist operativo detallado</span>
+              {canManageLogisticsTab ? (
+                <button
+                  type="button"
+                  className="icon-button"
+                  onClick={() => setIsChecklistEditMode((current) => !current)}
+                >
+                  {isChecklistEditMode ? "Terminar edición" : "Editar checklist"}
+                </button>
+              ) : null}
+            </div>
+            {checklistGroupsForModal.map((group) => (
+              <div key={group.section} className="transport-checklist-group">
+                <div className="transport-checklist-group-head">
+                  <strong>{group.section}</strong>
+                </div>
+                <div className="transport-checklist-items">
+                  {group.items.map((checkItem) => {
+                    const itemValue = logisticsUnitChecklistDraft.checks?.[checkItem.key] || {};
+                    const status = resolveChecklistItemStatus(itemValue);
+                    const evidence = resolveChecklistItemEvidence(itemValue);
+                    return (
+                      <div key={checkItem.key} className={`transport-checklist-item ${status === "bad" ? "is-bad" : ""}`}>
+                        <div className="transport-checklist-row">
+                          <div>
+                            <span>{checkItem.label}</span>
+                          </div>
+                          <div className="transport-checklist-switch-wrap">
+                            <span
+                              className="chip"
+                              style={{
+                                background: status === "bad" ? "rgba(185, 28, 28, 0.14)" : "rgba(42, 96, 143, 0.14)",
+                                color: status === "bad" ? "#991b1b" : "#2d4f72",
+                              }}
+                            >
+                              {status === "bad" ? "Malo" : "Bueno"}
+                            </span>
+                            <button
+                              type="button"
+                              className={`switch-button transport-schedule-switch ${status !== "bad" ? "on" : ""}`}
+                              onClick={() => setLogisticsUnitChecklistDraft((current) => ({
+                                ...current,
+                                checks: {
+                                  ...(current.checks || {}),
+                                  [checkItem.key]: {
+                                    ...(current.checks?.[checkItem.key] || {}),
+                                    status: resolveChecklistItemStatus(current.checks?.[checkItem.key]) === "bad" ? "good" : "bad",
+                                    label: checkItem.label,
+                                    section: group.section,
+                                  },
+                                },
+                              }))}
+                              aria-label={`Cambiar estado de ${checkItem.label}`}
+                            >
+                              <span className="switch-thumb" />
+                            </button>
+                            {canManageLogisticsTab && isChecklistEditMode ? (
+                              <button
+                                type="button"
+                                className="icon-button"
+                                onClick={() => removeTransportChecklistItem(checkItem.key)}
+                              >
+                                Eliminar
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        {status === "bad" ? (
+                          <div className="transport-checklist-evidence-wrap">
+                            <label className="app-modal-field transport-field-full" style={{ marginBottom: 0 }}>
+                              <span>Motivo de incidencia</span>
+                              <textarea
+                                rows={2}
+                                value={String(itemValue?.notes || "")}
+                                onChange={(event) => setLogisticsUnitChecklistDraft((current) => ({
+                                  ...current,
+                                  checks: {
+                                    ...(current.checks || {}),
+                                    [checkItem.key]: {
+                                      ...(current.checks?.[checkItem.key] || {}),
+                                      notes: event.target.value,
+                                      label: checkItem.label,
+                                      section: group.section,
+                                    },
+                                  },
+                                }))}
+                                placeholder="Describe por qué se marcó incidencia"
+                              />
+                            </label>
+
+                            <label className="app-modal-field transport-field-full" style={{ marginBottom: 0 }}>
+                              <span>Evidencia del hallazgo</span>
+                              <input
+                                ref={(node) => {
+                                  if (node) checklistCameraInputRefs.current[checkItem.key] = node;
+                                  else delete checklistCameraInputRefs.current[checkItem.key];
+                                }}
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                onChange={(event) => handleUploadUnitChecklistEvidence(event, checkItem.key)}
+                                disabled={uploadingUnitChecklistEvidence}
+                                style={{ display: "none" }}
+                              />
+                              <input
+                                ref={(node) => {
+                                  if (node) checklistUploadInputRefs.current[checkItem.key] = node;
+                                  else delete checklistUploadInputRefs.current[checkItem.key];
+                                }}
+                                type="file"
+                                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                                onChange={(event) => handleUploadUnitChecklistEvidence(event, checkItem.key)}
+                                disabled={uploadingUnitChecklistEvidence}
+                                style={{ display: "none" }}
+                              />
+                            </label>
+                            <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap" }}>
+                              <button
+                                type="button"
+                                className="icon-button"
+                                onClick={() => checklistCameraInputRefs.current[checkItem.key]?.click()}
+                                disabled={uploadingUnitChecklistEvidence}
+                              >
+                                Tomar foto
+                              </button>
+                              <button
+                                type="button"
+                                className="icon-button"
+                                onClick={() => checklistUploadInputRefs.current[checkItem.key]?.click()}
+                                disabled={uploadingUnitChecklistEvidence}
+                              >
+                                Subir archivo
+                              </button>
+                            </div>
+                            {evidence?.url ? (
+                              <button
+                                type="button"
+                                className="icon-button"
+                                onClick={() => setEvidenceViewer({ open: true, evidence, title: `Evidencia: ${checkItem.label}` })}
+                              >
+                                Ver evidencia
+                              </button>
+                            ) : (
+                              <span className="subtle-line">Captura o sube evidencia para continuar.</span>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
+            {canManageLogisticsTab && isChecklistEditMode ? (
+              <div className="transport-checklist-group" style={{ background: "rgba(237, 245, 243, 0.8)" }}>
+                <div className="transport-checklist-group-head">
+                  <strong>Editar checklist (agregar check)</strong>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(140px, 1fr) minmax(220px, 2fr) auto", gap: "0.45rem", alignItems: "end" }}>
+                  <label className="app-modal-field" style={{ marginBottom: 0 }}>
+                    <span>Sección</span>
+                    <select
+                      value={checklistCustomItemDraft.section}
+                      onChange={(event) => setChecklistCustomItemDraft((current) => ({ ...current, section: event.target.value }))}
+                    >
+                      {[...new Set([...(TRANSPORT_CHECKLIST_STRUCTURE.map((entry) => entry.section)), "General"])].map((section) => (
+                        <option key={`check-section-${section}`} value={section}>{section}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="app-modal-field" style={{ marginBottom: 0 }}>
+                    <span>Nuevo check</span>
+                    <input
+                      value={checklistCustomItemDraft.label}
+                      onChange={(event) => setChecklistCustomItemDraft((current) => ({ ...current, label: event.target.value }))}
+                      placeholder="Ej. Cinturón de seguridad"
+                    />
+                  </label>
+                  <button type="button" className="icon-button" onClick={addTransportChecklistCustomItem}>Agregar</button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <label className="app-modal-field transport-field-full">
+            <span>Notas</span>
+            <textarea rows={2} value={logisticsUnitChecklistDraft.notes} onChange={(event) => setLogisticsUnitChecklistDraft((current) => ({ ...current, notes: event.target.value }))} placeholder="Hallazgos del checklist" />
+          </label>
+        </div>
+      </Modal>
+
+      <Modal
+        open={incidenciaModalOpen}
+        title={incidenciaEditId ? "Editar incidencia de transporte" : "Nueva incidencia de transporte"}
+        confirmLabel={incidenciaSaving ? "Guardando..." : incidenciaEditId ? "Guardar cambios" : "Registrar incidencia"}
+        cancelLabel="Cancelar"
+        onClose={() => {
+          setIncidenciaError("");
+          setIncidenciaModalOpen(false);
+        }}
+        onConfirm={saveTransportIncidencia}
+      >
+        <div className="modal-form-grid">
+          {incidenciaError ? <div className="status-banner status-banner-error">{incidenciaError}</div> : null}
+
+          <label className="app-modal-field transport-field-full">
+            <span>Título</span>
+            <input
+              value={incidenciaDraft.title}
+              onChange={(event) => setIncidenciaDraft((current) => ({ ...current, title: event.target.value }))}
+              placeholder="Ej. Falla de frenos en ruta norte"
+            />
+          </label>
+
+          <label className="app-modal-field transport-field-full">
+            <span>Descripción</span>
+            <textarea
+              rows={3}
+              value={incidenciaDraft.description}
+              onChange={(event) => setIncidenciaDraft((current) => ({ ...current, description: event.target.value }))}
+              placeholder="Describe lo sucedido y la acción requerida"
+            />
+          </label>
+
+          <label className="app-modal-field">
+            <span>Área / ruta</span>
+            <input
+              value={incidenciaDraft.area}
+              onChange={(event) => setIncidenciaDraft((current) => ({ ...current, area: event.target.value }))}
+              placeholder="Ej. Pedidos / Ruta 03"
+            />
+          </label>
+
+          <label className="app-modal-field">
+            <span>Prioridad</span>
+            <select value={incidenciaDraft.priority} onChange={(event) => setIncidenciaDraft((current) => ({ ...current, priority: event.target.value }))}>
+              <option value="baja">Baja</option>
+              <option value="media">Media</option>
+              <option value="alta">Alta</option>
+              <option value="critica">Crítica</option>
+            </select>
+          </label>
+
+          <label className="app-modal-field">
+            <span>Estado</span>
+            <select value={incidenciaDraft.status} onChange={(event) => setIncidenciaDraft((current) => ({ ...current, status: event.target.value }))}>
+              <option value="abierta">Abierta</option>
+              <option value="en_proceso">En proceso</option>
+              <option value="resuelta">Resuelta</option>
+              <option value="cerrada">Cerrada</option>
+            </select>
+          </label>
+        </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(incidenciaDeleteId)}
+        title="Eliminar incidencia"
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        onClose={() => setIncidenciaDeleteId(null)}
+        onConfirm={() => removeTransportIncidencia(incidenciaDeleteId)}
+      >
+        <p style={{ margin: 0 }}>
+          Esta acción eliminará la incidencia de transporte seleccionada. ¿Deseas continuar?
+        </p>
+      </Modal>
 
       <Modal
         className="transport-record-modal"
@@ -2179,8 +4977,12 @@ export default function GestionTransporte({ contexto }) {
                   value={transportModal.destination}
                   onChange={(event) => setTransportModal((current) => ({ ...current, destination: event.target.value }))}
                 >
-                  {(areaConfig.find((area) => area.id === transportModal.areaId)?.destinations || []).map((destination) => (
-                    <option key={destination} value={destination}>{destination}</option>
+                  {(destinationMenuGroupsByArea[transportModal.areaId] || []).map((group) => (
+                    <optgroup key={`dest-group-create-${transportModal.areaId}-${group.serviceType}`} label={group.label}>
+                      {group.destinations.map((destination) => (
+                        <option key={`dest-create-${group.serviceType}-${destination}`} value={destination}>{destination}</option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               </label>
@@ -2209,8 +5011,12 @@ export default function GestionTransporte({ contexto }) {
                 value={transportModal.destination}
                 onChange={(event) => setTransportModal((current) => ({ ...current, destination: event.target.value }))}
               >
-                {(areaConfig.find((area) => area.id === transportModal.areaId)?.destinations || []).map((destination) => (
-                  <option key={destination} value={destination}>{destination}</option>
+                {(destinationMenuGroupsByArea[transportModal.areaId] || []).map((group) => (
+                  <optgroup key={`dest-group-edit-${transportModal.areaId}-${group.serviceType}`} label={group.label}>
+                    {group.destinations.map((destination) => (
+                      <option key={`dest-edit-${group.serviceType}-${destination}`} value={destination}>{destination}</option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
             </label>

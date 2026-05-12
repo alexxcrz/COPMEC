@@ -1,5 +1,58 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Modal } from "../components/Modal.jsx";
+
+function getUserAvatarUrl(user) {
+  const avatarValue = String(
+    user?.photoThumbnailUrl
+      || user?.photoThumbnail
+      || user?.photo
+      || user?.avatarUrl
+      || user?.avatar
+      || user?.imageUrl
+      || user?.profileImage
+      || "",
+  ).trim();
+
+  const loweredAvatar = avatarValue.toLowerCase();
+  if (!avatarValue || ["null", "undefined", "nan", "[object object]"].includes(loweredAvatar) || avatarValue.includes("\\fakepath\\")) {
+    return "";
+  }
+
+  return avatarValue;
+}
+
+function getUserInitials(name) {
+  const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  return parts.length >= 2
+    ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+    : (parts[0][0] || "?").toUpperCase();
+}
+
+function UserAvatar({ user, className = "", style = {}, size }) {
+  const avatarUrl = getUserAvatarUrl(user);
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [avatarUrl]);
+
+  const initials = getUserInitials(user?.name);
+  const avatarStyle = size ? { ...style, width: size, height: size } : style;
+
+  return (
+    <span className={`avatar-circle ${className}`.trim()} style={avatarStyle}>
+      {avatarUrl && !imageFailed ? (
+        <img
+          src={avatarUrl}
+          alt={`Avatar de ${user?.name || "Player"}`}
+          className="avatar-circle-image"
+          onError={() => setImageFailed(true)}
+        />
+      ) : initials}
+    </span>
+  );
+}
 
 export default function GestionUsuarios({ contexto }) {
   const {
@@ -160,7 +213,7 @@ export default function GestionUsuarios({ contexto }) {
                     <tr key={user.id}>
                       <td>
                         <div className="user-name-cell">
-                          <span className="avatar-circle">{user.name.charAt(0).toUpperCase()}</span>
+                          <UserAvatar user={user} />
                           <div>
                             <strong>{user.name.toUpperCase()}</strong>
                             <span className="subtle-line">Player de acceso · {user.email}</span>
@@ -245,7 +298,7 @@ export default function GestionUsuarios({ contexto }) {
                           style={{ flex: "1 1 180px", minWidth: "min(100%, 160px)", maxWidth: "min(100%, 220px)", cursor: "pointer", textAlign: "left", padding: "0.75rem", display: "flex", flexDirection: "column", gap: "0.35rem", border: "1px solid transparent" }}
                           onClick={() => setViewingPlayer(user)}
                         >
-                          <span className="avatar-circle" style={{ alignSelf: "flex-start" }}>{user.name.charAt(0).toUpperCase()}</span>
+                          <UserAvatar user={user} style={{ alignSelf: "flex-start" }} />
                           <strong style={{ fontSize: "0.85rem", lineHeight: 1.2 }}>{user.name}</strong>
                           <span className={`user-role-badge ${getRoleBadgeClass(user.role)}`} style={{ alignSelf: "flex-start" }}>{user.role}</span>
                           <span className="subtle-line" style={{ fontSize: "0.75rem" }}>{user.email}</span>
@@ -343,7 +396,7 @@ export default function GestionUsuarios({ contexto }) {
                             style={{ flex: "1 1 180px", minWidth: "min(100%, 160px)", maxWidth: "min(100%, 220px)", cursor: "pointer", textAlign: "left", padding: "0.75rem", display: "flex", flexDirection: "column", gap: "0.35rem", border: "1px solid transparent" }}
                             onClick={() => setViewingPlayer(user)}
                           >
-                            <span className="avatar-circle" style={{ alignSelf: "flex-start" }}>{user.name.charAt(0).toUpperCase()}</span>
+                            <UserAvatar user={user} style={{ alignSelf: "flex-start" }} />
                             <strong style={{ fontSize: "0.85rem", lineHeight: 1.2 }}>{user.name}</strong>
                             <span className={`user-role-badge ${getRoleBadgeClass(user.role)}`} style={{ alignSelf: "flex-start" }}>{user.role}</span>
                             <span className="subtle-line" style={{ fontSize: "0.75rem" }}>{getUserArea(user) || "Sin área"}</span>
@@ -419,7 +472,7 @@ export default function GestionUsuarios({ contexto }) {
         {viewingPlayer ? (
           <div className="modal-form-grid">
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.25rem" }}>
-              <span className="avatar-circle" style={{ fontSize: "1.2rem", width: 44, height: 44 }}>{viewingPlayer.name.charAt(0).toUpperCase()}</span>
+              <UserAvatar user={viewingPlayer} size={44} style={{ fontSize: "1.2rem" }} />
               <div>
                 <strong style={{ fontSize: "1rem" }}>{viewingPlayer.name}</strong>
                 <p className="subtle-line">{viewingPlayer.email}</p>

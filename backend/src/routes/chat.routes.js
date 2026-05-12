@@ -7,7 +7,7 @@ import { requireAuth } from "../middleware/auth.middleware.js";
 import { getIO, getUsuariosActivos } from "../config/socket.js";
 import { storeSubscription, getVapidPublicKey, sendPushToNick, getPushStatusSnapshot } from "../services/push.service.js";
 import { prismaChat as prisma } from "../config/prisma-chat.js";
-import { getWarehouseState } from "../services/warehouse.store.js";
+import { getWarehouseState, updateUserUiPreferences } from "../services/warehouse.store.js";
 import { normalizeNick, enqueueCallSignal, drainCallSignals, nextSignalId } from "../utils/callSignalQueue.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -394,13 +394,19 @@ chatRouter.get("/calls/historial", requireAuth, async (req, res) => {
 chatRouter.get("/usuario/:nickname/perfil", requireAuth, (req, res) => {
   try {
     const { nickname } = req.params;
-    const user = getAllUsers().find((u) => u.name === nickname);
+    const targetKey = normalizeNick(nickname);
+    const user = getAllUsers().find((u) => {
+      const aliases = buildUserAliases(u);
+      return aliases.some((alias) => normalizeNick(alias) === targetKey);
+    });
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
     res.json({
       id: user.id,
       name: user.name,
       nickname: user.name,
       photo: user.photo || null,
+      photoThumbnailUrl: user.photoThumbnailUrl || null,
+      photoTimestamp: user.photoUpdatedAt || user.updatedAt || null,
       puesto: user.role || null,
       cargo: user.jobTitle || null,
       area: user.area || null,
@@ -1669,6 +1675,42 @@ chatRouter.get("/pin/:tipo/:chatId", requireAuth, async (req, res) => {
     res.json({ ok: true, pin: mensaje ? serializarMensaje(mensaje) : null });
   } catch (e) {
     res.json({ ok: true, pin: null });
+  }
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// UI PREFERENCES (THEME, FONT, FONT SIZE)
+// ═════════════════════════════════════════════════════════════════════════════
+
+chatRouter.get("/ui-preferences", requireAuth, (req, res) => {
+  try {
+    const user = getAllUsers().find((u) => u.id === req.auth?.userId);
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+
+    const prefs = user.uiPreferences || {};
+    res.json({
+      theme: prefs.theme || "copmec-bosque",
+      font: prefs.font || "bahnschrift",
+      fontSize: prefs.fontSize || "normal",
+    });
+  } catch (e) {
+    res.status(500).json({ error: "Error obteniendo preferencias UI" });
+  }
+});
+
+chatRouter.post("/ui-preferences", requireAuth, (req, res) => {
+  try {
+    const { theme, font, fontSize } = req.body;
+
+    const result = updateUserUiPreferences(req.auth, { theme, font, fontSize });
+    if (!result.ok) {
+      return res.status(result.reason === "auth_required" ? 401 : 500).json({ error: result.reason });
+    }
+
+    const savedPrefs = result.state.users.find((u) => u.id === result.userId)?.uiPreferences || {};
+    res.json({ ok: true, preferences: savedPrefs });
+  } catch (e) {
+    res.status(500).json({ error: "Error guardando preferencias UI" });
   }
 });
 

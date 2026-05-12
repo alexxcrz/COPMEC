@@ -550,7 +550,7 @@ function ReturnsReconditionScannerInner({
     && (tarimaStatus === TARIMA_STATUS_RUNNING || tarimaStatus === TARIMA_STATUS_PAUSED)
   );
   const tarimaStatusColor = tarimaStatus === TARIMA_STATUS_FINISHED
-    ? { background: "#dcfce7", color: "#166534" }
+    ? { background: "#e8eff6", color: "#2d4f72" }
     : tarimaStatus === TARIMA_STATUS_PAUSED
       ? { background: "#fef3c7", color: "#92400e" }
       : tarimaStatus === TARIMA_STATUS_RUNNING
@@ -2289,7 +2289,7 @@ function ReturnsReconditionScannerInner({
                 <span className="chip">Tarima: {displayedTarima.tarimaNumber}</span>
                 <span className="chip">Cajas: {displayedTarimaBoxCount}</span>
                 <span className="chip primary">Total acumulado: {displayedTarimaTotalPieces}</span>
-                <span className="chip" style={viewingClosedTarima ? { background: "#dcfce7", color: "#166534" } : tarimaStatusColor}>Workflow tarima: {viewingClosedTarima ? TARIMA_STATUS_FINISHED : tarimaStatus}</span>
+                <span className="chip" style={viewingClosedTarima ? { background: "#e8eff6", color: "#2d4f72" } : tarimaStatusColor}>Workflow tarima: {viewingClosedTarima ? TARIMA_STATUS_FINISHED : tarimaStatus}</span>
                 <span className="chip">Tiempo tarima: {viewingClosedTarima ? "Cerrada" : formatElapsedMs(Math.max(0, tarimaElapsedMs))}</span>
               </div>
               {activeBox && !viewingClosedTarima ? (
@@ -2323,7 +2323,7 @@ function ReturnsReconditionScannerInner({
 
       {/* Pestañas de tarimas cerradas */}
       {(closedTarimas.length > 0 || activeTarima) ? (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", padding: "0.6rem 0", borderBottom: "1px solid rgba(3,33,33,0.12)", marginBottom: "0.75rem" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", padding: "0.6rem 0", borderBottom: "1px solid rgba(49, 77, 105, 0.12)", marginBottom: "0.75rem" }}>
           {activeTarima ? (
             <button
               type="button"
@@ -2337,13 +2337,13 @@ function ReturnsReconditionScannerInner({
           {closedTarimas.map((ct) => (
             <div
               key={ct.id}
-              style={{ display: "flex", alignItems: "center", gap: "0.35rem", background: selectedClosedTarimaId === ct.id ? "#ecfdf3" : "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: "999px", padding: "0.28rem 0.75rem", fontSize: "0.82rem", color: "#334155" }}
+              style={{ display: "flex", alignItems: "center", gap: "0.35rem", background: selectedClosedTarimaId === ct.id ? "#eff5fa" : "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: "999px", padding: "0.28rem 0.75rem", fontSize: "0.82rem", color: "#334155" }}
             >
               <button
                 type="button"
                 className="chip"
                 onClick={() => setSelectedClosedTarimaId(ct.id)}
-                style={{ background: selectedClosedTarimaId === ct.id ? "#bbf7d0" : "#e2e8f0", color: "#0f172a", border: "1px solid #cbd5e1" }}
+                style={{ background: selectedClosedTarimaId === ct.id ? "#d1deea" : "#e2e8f0", color: "#0f172a", border: "1px solid #cbd5e1" }}
               >
                 T{ct.tarimaNumber}
               </button>
@@ -2357,7 +2357,7 @@ function ReturnsReconditionScannerInner({
                 aria-label="Reimprimir PDF de tarima"
                 onClick={() => { void exportTarimaPdf(ct, ct.boxes || []); }}
                 onContextMenu={(e) => openPdfContextMenu(e, () => downloadTarimaPdf(ct, ct.boxes || []), () => downloadTarimaCopmec(ct, ct.boxes || []))}
-                style={{ marginLeft: "0.35rem", background: "#032121", color: "#fff", border: "none", borderRadius: "999px", padding: "0.18rem 0.55rem", cursor: "pointer", fontSize: "0.78rem", fontWeight: 600 }}
+                style={{ marginLeft: "0.35rem", background: "#314d69", color: "#ffffff", border: "none", borderRadius: "999px", padding: "0.18rem 0.55rem", cursor: "pointer", fontSize: "0.78rem", fontWeight: 600 }}
               >
                 🖨 Reimprimir
               </button>
@@ -2454,7 +2454,7 @@ function ReturnsReconditionScannerInner({
                     <div className="returns-scan-card-head">
                       <strong>{product.code} · {product.name}</strong>
                       <div className="saved-board-list">
-                        <span className="chip" style={{ background: "#ecfdf3", color: "#166534" }}>Caja cerrada: {box.palletNumber}</span>
+                        <span className="chip" style={{ background: "#eff5fa", color: "#2d4f72" }}>Caja cerrada: {box.palletNumber}</span>
                         <button
                           type="button"
                           className="icon-button returns-scan-icon-only"
@@ -2502,7 +2502,7 @@ function ReturnsReconditionScannerInner({
             });
 
             return completedProducts.length > 0 ? (
-              <div style={{ borderBottom: "1px solid rgba(15, 77, 64, 0.2)", paddingBottom: "0.8rem", marginBottom: "0.8rem", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+              <div style={{ borderBottom: "1px solid rgba(23, 48, 69, 0.2)", paddingBottom: "0.8rem", marginBottom: "0.8rem", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                 {completedProducts.map((product) => {
                   const productKey = `${product.boxId}-${product.itemId}`;
                   const isCollapsed = collapsedProducts.has(productKey);
@@ -2513,13 +2513,13 @@ function ReturnsReconditionScannerInner({
                       onClick={() => toggleProductCollapsed(productKey)}
                       style={{
                         padding: "0.5rem 1rem",
-                        background: isCollapsed ? "#f0fdf4" : "#e8f5e9",
-                        border: "1px solid #4caf50",
+                        background: isCollapsed ? "#f2f6fb" : "#eaeff3",
+                        border: "1px solid #5880a3",
                         borderRadius: "0.5rem",
                         cursor: "pointer",
                         fontSize: "0.85rem",
                         fontWeight: "500",
-                        color: "#15803d",
+                        color: "#3f678f",
                         transition: "all 0.2s",
                       }}
                     >
@@ -2567,7 +2567,7 @@ function ReturnsReconditionScannerInner({
                         const fromIdx = Number(e.dataTransfer.getData("text/plain"));
                         if (fromIdx !== idx) moveProduct(fromIdx, idx);
                       } : undefined}
-                      style={{ cursor: isProductActive && !isCompleted ? "grab" : "default", opacity: 1, width: width + "px", minWidth: "180px", maxWidth: "800px", position: "relative", ...(isCompleted ? { opacity: 0.7, background: "#f0fdf4" } : {}) }}
+                      style={{ cursor: isProductActive && !isCompleted ? "grab" : "default", opacity: 1, width: width + "px", minWidth: "180px", maxWidth: "800px", position: "relative", ...(isCompleted ? { opacity: 0.7, background: "#f2f6fb" } : {}) }}
                     >
                       <div className="returns-scan-card-head">
                         <strong>{product.code} · {product.name}</strong>
@@ -2581,7 +2581,7 @@ function ReturnsReconditionScannerInner({
                           >
                             x
                           </button>
-                          <span className="chip" style={{ background: "#f0fdf4", color: "#15803d" }}>Caja: {product.boxNumber}</span>
+                          <span className="chip" style={{ background: "#f2f6fb", color: "#3f678f" }}>Caja: {product.boxNumber}</span>
                           <span className="chip primary">{product.totalPieces}/{product.targetPieces} pzas</span>
                           {!isCompleted && (
                             <button type="button" className="icon-button" onClick={() => openLotModalForProduct(product)} disabled={!isProductActive}>

@@ -40,7 +40,7 @@
   border: 1px solid var(--sicfla-border);
   border-radius: 999px;
   font-size: 0.82rem;
-  background: #fff;
+  background: #ffffff;
   outline: none;
   color: var(--sicfla-text);
 }
@@ -85,7 +85,7 @@
   border-radius: 999px;
   font-size: 0.8rem;
   color: var(--sicfla-text);
-  background: #fff;
+  background: #ffffff;
   outline: none;
   cursor: pointer;
   font-family: inherit;
@@ -103,7 +103,7 @@
 }
 
 .incidencias-kpi {
-  background: #fff;
+  background: #ffffff;
   border: 1px solid var(--sicfla-border);
   border-radius: 1.1rem;
   padding: 1rem 1.15rem;
@@ -130,7 +130,7 @@
 .kpi-icon        { color: #8a94a0; flex-shrink: 0; }
 .kpi-icon.red    { color: #dc2626; }
 .kpi-icon.amber  { color: #d97706; }
-.kpi-icon.green  { color: #16a34a; }
+.kpi-icon.green  { color: #4f7da9; }
 .kpi-icon.blue   { color: #2563eb; }
 
 .incidencias-kpi-value {
@@ -142,7 +142,7 @@
 
 .incidencias-kpi-value.red    { color: #dc2626; }
 .incidencias-kpi-value.amber  { color: #d97706; }
-.incidencias-kpi-value.green  { color: #16a34a; }
+.incidencias-kpi-value.green  { color: #4f7da9; }
 .incidencias-kpi-value.blue   { color: #2563eb; }
 
 .incidencias-kpi-sub {
@@ -185,7 +185,7 @@
 }
 
 /* Priority left border on rows */
-.incidencias-table tr[data-priority="baja"] td:first-child   { border-left: 3px solid #22c55e; }
+.incidencias-table tr[data-priority="baja"] td:first-child   { border-left: 3px solid #5f8fbe; }
 .incidencias-table tr[data-priority="media"] td:first-child  { border-left: 3px solid #f59e0b; }
 .incidencias-table tr[data-priority="alta"] td:first-child   { border-left: 3px solid #f97316; }
 .incidencias-table tr[data-priority="critica"] td:first-child { border-left: 3px solid #ef4444; }
@@ -251,7 +251,7 @@
 }
 
 .incidencias-table tr:hover td {
-  background: rgba(3, 33, 33, 0.025);
+  background: rgba(49, 77, 105, 0.025);
 }
 
 /* ── Badges ─────────────────────────────────────────────────────────────── */
@@ -269,18 +269,18 @@
 /* Status badges */
 .badge-abierta     { background: #fef3c7; color: #92400e; }
 .badge-en_proceso  { background: #dbeafe; color: #1e40af; }
-.badge-resuelta    { background: #dcfce7; color: #166534; }
+.badge-resuelta    { background: #e8eff6; color: #2d4f72; }
 .badge-cerrada     { background: #f1f5f9; color: #64748b; }
 
 /* Priority badges */
-.badge-baja    { background: #f0fdf4; color: #15803d; }
+.badge-baja    { background: #f2f6fb; color: #3f678f; }
 .badge-media   { background: #fffbeb; color: #b45309; }
 .badge-alta    { background: #fff7ed; color: #c2410c; }
 .badge-critica { background: #fef2f2; color: #991b1b; }
 
 /* Payment */
 .badge-pendiente { background: #fef3c7; color: #92400e; }
-.badge-pagado    { background: #dcfce7; color: #166534; }
+.badge-pagado    { background: #e8eff6; color: #2d4f72; }
 .badge-cancelado { background: #f1f5f9; color: #64748b; }
 
 /* ── Row actions ────────────────────────────────────────────────────────── */
@@ -600,12 +600,12 @@
 }
 
 .form-step-item.active {
-  color: #032121;
+  color: #314d69;
   font-weight: 700;
 }
 
 .form-step-item.done {
-  color: #28a745;
+  color: #386b97;
   font-weight: 600;
 }
 
@@ -623,15 +623,15 @@
 }
 
 .form-step-item.active .form-step-num {
-  background: #032121;
-  color: #fff;
-  border-color: #032121;
+  background: #314d69;
+  color: #ffffff;
+  border-color: #314d69;
 }
 
 .form-step-item.done .form-step-num {
-  background: #28a745;
-  color: #fff;
-  border-color: #28a745;
+  background: #386b97;
+  color: #ffffff;
+  border-color: #386b97;
 }
 
 .form-step-sep {
@@ -669,7 +669,7 @@
   border-radius: 0.65rem;
   font-size: 0.82rem;
   color: var(--sicfla-text);
-  background: #fff;
+  background: #ffffff;
   outline: none;
   width: 100%;
   box-sizing: border-box;
@@ -791,7 +791,7 @@
 }
 
 .detail-tab-btn.active {
-  background: #032121;
+  background: #314d69;
   color: #ffffff;
   font-weight: 700;
 }
@@ -811,8 +811,8 @@
 }
 
 .detail-tab-btn.active .tab-count {
-  background: rgba(255,255,255,0.25);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
 }
 
 /* ── Evidencia grid ──────────────────────────────────────────────────────── */
@@ -962,7 +962,7 @@
   right: 0;
   background: rgba(255, 255, 255, 0.15);
   border: none;
-  color: #fff;
+  color: #ffffff;
   border-radius: 50%;
   width: 2rem;
   height: 2rem;
@@ -980,7 +980,7 @@
   transform: translateY(-50%);
   background: rgba(255, 255, 255, 0.15);
   border: none;
-  color: #fff;
+  color: #ffffff;
   border-radius: 50%;
   width: 2.5rem;
   height: 2.5rem;
@@ -1090,7 +1090,7 @@ button.ev-thumb-link {
   border: 1px solid var(--sicfla-border);
   border-radius: 0.6rem;
   font-size: 0.82rem;
-  background: #fff;
+  background: #ffffff;
   color: var(--sicfla-text);
   outline: none;
 }
@@ -1108,7 +1108,7 @@ button.ev-thumb-link {
 }
 
 .cot-logistics-section {
-  background: #fff;
+  background: #ffffff;
   border: 1px dashed #c5d2db;
   border-radius: 0.9rem;
   padding: 0.75rem;
@@ -1141,11 +1141,11 @@ button.ev-thumb-link {
   gap: 0.5rem 0.75rem;
   flex-wrap: wrap;
   background: #eef8f4;
-  border: 1px solid #b2dcc7;
+  border: 1px solid #b7c8d7;
   border-radius: 0.6rem;
   padding: 0.5rem 0.75rem;
   font-size: 0.8rem;
-  color: #2d6a4f;
+  color: #385a7d;
 }
 
 .cot-preview-cost strong {
@@ -1153,7 +1153,7 @@ button.ev-thumb-link {
 }
 
 .highlight-total {
-  color: #164e30;
+  color: #1d3347;
   font-size: 0.95rem;
 }
 
@@ -1170,7 +1170,7 @@ button.ev-thumb-link {
   gap: 0.3rem;
   font-size: 0.78rem;
   color: #5a6472;
-  background: #fff;
+  background: #ffffff;
   border: 1px solid var(--sicfla-border);
   border-radius: 0.5rem;
   padding: 0.2rem 0.5rem;
@@ -1190,7 +1190,7 @@ button.ev-thumb-link {
 }
 
 .cot-card {
-  background: #fff;
+  background: #ffffff;
   border: 1.5px solid var(--sicfla-border);
   border-radius: 1.25rem;
   padding: 0.85rem 1rem;
@@ -1200,7 +1200,7 @@ button.ev-thumb-link {
 }
 
 .cot-card--selected {
-  border-color: #032121;
+  border-color: #314d69;
   background: #f0f7f5;
 }
 
@@ -1223,8 +1223,8 @@ button.ev-thumb-link {
   gap: 0.25rem;
   font-size: 0.7rem;
   font-weight: 700;
-  color: #032121;
-  background: #d4edda;
+  color: #314d69;
+  background: #dbe7f2;
   border-radius: 999px;
   padding: 0.15rem 0.5rem;
 }
@@ -1283,7 +1283,7 @@ button.ev-thumb-link {
 .cot-metric-value.total-value {
   font-size: 1rem;
   font-weight: 800;
-  color: #032121;
+  color: #314d69;
 }
 
 .cot-notas {
@@ -1378,7 +1378,7 @@ button.ev-thumb-link {
   border: 1px solid var(--sicfla-border);
   border-radius: 0.5rem;
   font-size: 0.82rem;
-  background: #fff;
+  background: #ffffff;
   color: var(--sicfla-text);
   outline: none;
 }
@@ -1406,22 +1406,22 @@ button.ev-thumb-link {
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
-  background: #d4edda;
-  border: 1.5px solid #6ac791;
+  background: #dbe7f2;
+  border: 1.5px solid #769bbb;
   border-radius: 1rem;
   padding: 0.6rem 0.9rem;
   font-size: 0.84rem;
-  color: #1a5c34;
+  color: #223d54;
 }
 
 .comp-winner-banner svg {
   flex-shrink: 0;
-  color: #28a745;
+  color: #386b97;
 }
 
 .comp-winner-breakdown {
   font-size: 0.75rem;
-  color: #2d7a50;
+  color: #375570;
 }
 
 .comp-table-wrap {
@@ -1492,7 +1492,7 @@ button.ev-thumb-link {
 }
 
 .comp-total {
-  color: #032121;
+  color: #314d69;
   font-size: 0.9rem;
 }
 
@@ -1506,7 +1506,7 @@ button.ev-thumb-link {
 
 .comp-diff-value {
   font-weight: 700;
-  color: #032121;
+  color: #314d69;
 }
 
 .comp-proveedor-cell {
@@ -1520,8 +1520,8 @@ button.ev-thumb-link {
   display: inline-block;
   font-size: 0.62rem;
   font-weight: 800;
-  background: #032121;
-  color: #fff;
+  background: #314d69;
+  color: #ffffff;
   border-radius: 999px;
   padding: 0.1rem 0.45rem;
   text-transform: uppercase;
@@ -1532,8 +1532,8 @@ button.ev-thumb-link {
   display: inline-block;
   font-size: 0.62rem;
   font-weight: 700;
-  background: #d4edda;
-  color: #1a5c34;
+  background: #dbe7f2;
+  color: #223d54;
   border-radius: 999px;
   padding: 0.1rem 0.45rem;
 }

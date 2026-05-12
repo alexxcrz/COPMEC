@@ -1,11 +1,11 @@
 // Service Worker para manejar notificaciones de videollamada incluso cuando el celular está bloqueado
 
-// Service Worker COPMEC v2 — Push notifications (mensajes, grupos, videollamadas)
+// Service Worker AXO v2 — Push notifications (mensajes, grupos, videollamadas)
 
 const VIBRATE_MSG  = [200, 100, 200, 100, 200];
 const VIBRATE_CALL = [500, 200, 500, 200, 500, 200, 500, 200, 500];
-const ICON  = '/logocopmec.png';
-const BADGE = '/logocopmec.png';
+const ICON  = '/android-chrome-192x192.png';
+const BADGE = '/android-chrome-192x192.png';
 
 // ── Incoming push ─────────────────────────────────────────────────────────────
 self.addEventListener('push', (event) => {

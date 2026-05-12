@@ -7,19 +7,19 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { ArrowDown } from "lucide-react";
-import copmecLogo from "../assets/copmec-logo.jpeg";
+import copmecLogo from "../assets/axo-logo.png";
 
 const KPI_STYLES = {
   cyan:  { iconBg: "#53dde5", iconColor: "#178e94" },
-  green: { iconBg: "#58d88d", iconColor: "#20894d" },
+  green: { iconBg: "#7fa6c9", iconColor: "#3d6388" },
   red:   { iconBg: "#ff5f5f", iconColor: "#bf2f2f" },
-  lime:  { iconBg: "#56d97a", iconColor: "#238343" },
+  lime:  { iconBg: "#669bc9", iconColor: "#2f5577" },
   amber: { iconBg: "#ffbf47", iconColor: "#b87800" },
   slate: { iconBg: "#eef1f7", iconColor: "#8a94a6" },
 };
 
-const DASHBOARD_CHART_PALETTE = ["#0ea5e9", "#14b8a6", "#84cc16", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#64748b"];
-const DASHBOARD_LINE_PALETTE  = ["#0ea5e9", "#14b8a6", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899"];
+const DASHBOARD_CHART_PALETTE = ["#0ea5e9", "#405db0", "#3375af", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#64748b"];
+const DASHBOARD_LINE_PALETTE  = ["#0ea5e9", "#405db0", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899"];
 
 // ── Componentes simples ───────────────────────────────────────────────────────
 
@@ -226,7 +226,7 @@ export function DashboardPieChart({ rows }) {
   );
 }
 
-export function DashboardColumnChart({ rows, color = "linear-gradient(180deg, #0ea5e9 0%, #14b8a6 100%)", valueSuffix = "", emptyLabel = "No hay datos para la gráfica." }) {
+export function DashboardColumnChart({ rows, color = "linear-gradient(180deg, #0ea5e9 0%, #405db0 100%)", valueSuffix = "", emptyLabel = "No hay datos para la gráfica." }) {
   if (!rows.length) {
     return <p className="dashboard-empty-state">{emptyLabel}</p>;
   }
@@ -356,7 +356,7 @@ export function DashboardLineChart({ series = [], emptyLabel = "No hay datos par
               <path d={fillPath} fill={`url(#lineArea-${s.key || idx})`} />
               <polyline points={pts} fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
               {s.data.map((d, i) => (
-                <circle key={i} cx={toX(i)} cy={toY(d.y)} r="4" fill={color} stroke="#fff" strokeWidth="1.8">
+                <circle key={i} cx={toX(i)} cy={toY(d.y)} r="4" fill={color} stroke="#ffffff" strokeWidth="1.8">
                   <title>{`${s.label}: ${d.y}${s.valueSuffix || ""}`}</title>
                 </circle>
               ))}
@@ -411,7 +411,7 @@ export function DashboardParetoChart({ rows }) {
         <defs>
           <linearGradient id="paretoBarGradient" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%"   stopColor="#0ea5e9" />
-            <stop offset="100%" stopColor="#14b8a6" />
+            <stop offset="100%" stopColor="#405db0" />
           </linearGradient>
         </defs>
         <line x1={chartLeft} y1={chartTop} x2={chartLeft} y2={height - chartBottom} className="dashboard-axis-line" />
@@ -479,7 +479,7 @@ export function DashboardIshikawaDiagram({ rows }) {
 
 // ── Marca e identidad ─────────────────────────────────────────────────────────
 
-export function CopmecBrand({ headingTag = "h1", subtitle = "Centro de Operaciones para la Mejora Continua", tone = "dark", compact = false, showKicker = true, kicker = "Sistema operativo" }) {
+export function CopmecBrand({ headingTag = "h1", subtitle = "Sistema de Gestión Operativa.", tone = "dark", compact = false, showKicker = true, kicker = "AXO" }) {
   const HeadingTag = headingTag;
   return (
     <div className={`copmec-brand ${tone} ${compact ? "compact" : ""}`.trim()}>
@@ -488,7 +488,7 @@ export function CopmecBrand({ headingTag = "h1", subtitle = "Centro de Operacion
       </div>
       <div className="copmec-brand-copy">
         {showKicker ? <span className="copmec-brand-kicker">{kicker}</span> : null}
-        <HeadingTag>COPMEC</HeadingTag>
+        <HeadingTag>AXO</HeadingTag>
         {subtitle ? <p>{subtitle}</p> : null}
       </div>
     </div>

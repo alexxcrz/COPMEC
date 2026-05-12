@@ -39,7 +39,7 @@ export function BoardMultiSelectDetailCell({ field, value, options, disabled, on
         const selectedItem = selectedMap.get(optionValue) || null;
         const isSelected = Boolean(selectedItem);
         return (
-          <div key={optionValue} style={{ border: "1px solid rgba(162,170,181,0.16)", borderRadius: "0.55rem", padding: "0.16rem 0.24rem", display: "grid", gap: "0.12rem", background: isSelected ? "rgba(3,33,33,0.03)" : "#fff" }}>
+          <div key={optionValue} style={{ border: "1px solid rgba(162, 170, 181, 0.16)", borderRadius: "0.55rem", padding: "0.16rem 0.24rem", display: "grid", gap: "0.12rem", background: isSelected ? "rgba(49, 77, 105, 0.03)" : "#ffffff" }}>
             <label style={{ display: "flex", alignItems: "center", gap: "0.24rem", fontSize: "0.66rem", fontWeight: 600, color: "#244040", lineHeight: 1.1 }}>
               <input type="checkbox" checked={isSelected} onChange={() => handleToggleOption(option)} disabled={disabled} style={{ width: "14px", height: "14px", margin: 0 }} />
               <span>{option.label || optionValue}</span>
@@ -198,10 +198,10 @@ export function BoardEditableInventoryPropertyInput({ value, suggestions, disabl
             maxHeight: dropdownStyle.maxDropdownHeight || "7.6rem",
             overflowY: "auto",
             padding: "0.32rem",
-            border: "1px solid rgba(162,170,181,0.28)",
+            border: "1px solid rgba(162, 170, 181, 0.28)",
             borderRadius: "0.7rem",
             background: "#ffffff",
-            boxShadow: "0 12px 24px rgba(3, 33, 33, 0.12)",
+            boxShadow: "0 12px 24px rgba(49, 77, 105, 0.12)",
           }}
         >
           {filteredSuggestions.map((option) => {
@@ -218,8 +218,8 @@ export function BoardEditableInventoryPropertyInput({ value, suggestions, disabl
                 style={{
                   minHeight: "2rem",
                   borderRadius: "0.58rem",
-                  border: isActive ? "1px solid #15803d" : "1px solid rgba(162,170,181,0.22)",
-                  background: isActive ? "rgba(22, 163, 74, 0.1)" : "#f9fbfb",
+                  border: isActive ? "1px solid #3f678f" : "1px solid rgba(162, 170, 181, 0.22)",
+                  background: isActive ? "rgba(42, 96, 143, 0.1)" : "#f9fbfb",
                   color: "#244040",
                   fontSize: "0.72rem",
                   fontWeight: isActive ? 700 : 600,
@@ -338,8 +338,8 @@ export function BoardEvidenceCell({ value, disabled, onChange, label }) {
             width: "100%",
             minHeight: "78px",
             borderRadius: "0.82rem",
-            border: "1px dashed rgba(22,89,71,0.32)",
-            background: "#fff",
+            border: "1px dashed rgba(30, 57, 81, 0.32)",
+            background: "#ffffff",
             padding: "0.34rem",
             display: "grid",
             gap: "0.28rem",

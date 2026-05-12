@@ -28,9 +28,9 @@ if errorlevel 1 (
 
 for /f "tokens=*" %%i in ('git remote get-url origin 2^>nul') do set CURRENT_ORIGIN=%%i
 if "%CURRENT_ORIGIN%"=="" (
-  git remote add origin https://github.com/alexxcrz/COPMEC.git
+  git remote add origin https://github.com/alexxcrz/AXO.git
 ) else (
-  git remote set-url origin https://github.com/alexxcrz/COPMEC.git
+  git remote set-url origin https://github.com/alexxcrz/AXO.git
 )
 
 set /p COMMIT_MSG=Escribe el mensaje del commit y presiona Enter: 

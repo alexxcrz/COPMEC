@@ -257,6 +257,8 @@ export default function PanelIndicadores({ contexto }) {
     RotateCcw,
     hardResetDashboard,
     canManageDashboardState,
+    canManageDashboardControls,
+    canExportDashboardData,
     isDemoMode,
     activateDemoMode,
     deactivateDemoMode,
@@ -265,9 +267,23 @@ export default function PanelIndicadores({ contexto }) {
     currentInventoryItems,
     filteredVisibleControlBoards,
     dashboardVisibleControlBoards: rawDashboardVisibleControlBoards,
+    selectedAreaSectionId,
+    selectedAreaSection,
   } = contexto;
 
   const dashboardVisibleControlBoards = rawDashboardVisibleControlBoards ?? filteredVisibleControlBoards ?? [];
+  const canManageDashboardActions = Boolean(canManageDashboardControls ?? canManageDashboardState);
+  const canExportDashboardActions = Boolean(canExportDashboardData ?? true);
+  const showGlobalAreaFilter = selectedAreaSectionId === "all";
+  const dashboardAreaOptions = useMemo(() => {
+    const options = Array.from(new Set((Array.isArray(departmentOptions) ? departmentOptions : [])
+      .map((area) => String(area || "").trim())
+      .filter(Boolean)
+      .filter((area) => area.toLowerCase() !== "general")));
+    return [{ value: "all", label: "Todas las áreas" }].concat(
+      options.sort((left, right) => left.localeCompare(right, "es-MX")).map((area) => ({ value: area, label: area })),
+    );
+  }, [departmentOptions]);
 
   const areAllSectionsOpen = Object.values(dashboardSectionsOpen).every(Boolean);
   const dashboardExportRef = useRef(null);
@@ -355,20 +371,47 @@ export default function PanelIndicadores({ contexto }) {
     localStorage.setItem(DASHBOARD_DETAIL_VIEW_PREFS_KEY, JSON.stringify(detailPrefsRef.current));
   }, [detailBoardFilter, detailSearchText, detailSortBy, detailStatusFilter]);
 
-  const dashboardAreaTabOptions = useMemo(() => {
-    const uniqueAreas = Array.from(new Set(
-      departmentOptions
-        .concat(dashboardAreaRows.map((item) => item.area))
-        .map((item) => String(item || "").trim())
-        .filter(Boolean),
-    ));
+  useEffect(() => {
+    function normalizeAreaFilterValue(value) {
+      if (Array.isArray(value)) {
+        return value
+          .map((entry) => String(entry || "").trim())
+          .filter(Boolean)
+          .sort((left, right) => left.localeCompare(right, "es-MX"));
+      }
+      return String(value || "").trim();
+    }
 
-    return [{ value: "all", label: "General" }].concat(
-      uniqueAreas.sort((left, right) => left.localeCompare(right, "es-MX")).map((area) => ({ value: area, label: area })),
-    );
-  }, [dashboardAreaRows, departmentOptions]);
+    const currentAreaFilter = normalizeAreaFilterValue(dashboardFilters.area);
+    if (selectedAreaSectionId === "all") {
+      if (currentAreaFilter === "all" && dashboardFilters.source === "all") return;
+      setDashboardFilters((current) => ({ ...current, area: "all", source: "all" }));
+      return;
+    }
 
-  const activeAreaLabel = dashboardFilters.area === "all" ? "General" : dashboardFilters.area;
+    const sectionScopes = Array.isArray(selectedAreaSection?.scopes)
+      ? selectedAreaSection.scopes.map((scope) => String(scope || "").trim()).filter(Boolean)
+      : [];
+    const targetAreaFilter = sectionScopes.length > 1
+      ? sectionScopes
+      : (sectionScopes[0] || String(selectedAreaSection?.label || "").trim() || "all");
+
+    const normalizedTargetAreaFilter = normalizeAreaFilterValue(targetAreaFilter);
+    const areaIsSynced = JSON.stringify(currentAreaFilter) === JSON.stringify(normalizedTargetAreaFilter);
+    if (areaIsSynced && dashboardFilters.source === "all") return;
+    setDashboardFilters((current) => ({ ...current, area: targetAreaFilter, source: "all" }));
+  }, [
+    dashboardFilters.area,
+    dashboardFilters.source,
+    selectedAreaSection?.label,
+    selectedAreaSection?.scopes,
+    selectedAreaSectionId,
+    setDashboardFilters,
+  ]);
+
+  const activeAreaLabel = selectedAreaSectionId === "all"
+    ? (dashboardFilters.area === "all" ? "General" : dashboardFilters.area)
+    : (selectedAreaSection?.label || "Área");
 
   function normalizeAreaText(value) {
     return String(value || "")
@@ -931,6 +974,7 @@ export default function PanelIndicadores({ contexto }) {
   }
 
   async function exportDashboardToPdf() {
+    if (!canExportDashboardActions) return;
     if (isExportingPdf) return;
 
     try {
@@ -1110,7 +1154,6 @@ export default function PanelIndicadores({ contexto }) {
       const filterSummaryRows = [
         ["Área", activeAreaLabel],
         ["Player", dashboardFilters.responsibleId === "all" ? "Todos los players" : visibleUsers.find((u) => u.id === dashboardFilters.responsibleId)?.name || "Player filtrado"],
-        ["Fuente", dashboardFilters.source === "all" ? "Todo el flujo" : dashboardFilters.source === "activity" ? "Actividades semanales" : "Tableros operativos"],
         ["Rango", dashboardFilters.startDate || dashboardFilters.endDate ? `${dashboardFilters.startDate || "inicio"} → ${dashboardFilters.endDate || "fin"}` : "Sin filtro por fecha"],
       ];
       autoTable(pdf, {
@@ -1329,6 +1372,7 @@ export default function PanelIndicadores({ contexto }) {
   }
 
   async function exportDashboardToCopmec() {
+    if (!canExportDashboardActions) return;
     if (isExportingCopmec) return;
 
     try {
@@ -1435,6 +1479,16 @@ export default function PanelIndicadores({ contexto }) {
                 onChange={({ startDate, endDate }) => setDashboardFilters((current) => ({ ...current, startDate, endDate }))}
               />
             </label>
+            {showGlobalAreaFilter ? (
+              <label className="dashboard-filter-field">
+                <span>Área</span>
+                <select value={dashboardFilters.area} onChange={(event) => setDashboardFilters((current) => ({ ...current, area: event.target.value }))}>
+                  {dashboardAreaOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <div className="dashboard-player-source-row">
               <label className="dashboard-filter-field">
                 <span>Player</span>
@@ -1443,17 +1497,9 @@ export default function PanelIndicadores({ contexto }) {
                   {visibleUsers.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
                 </select>
               </label>
-              <label className="dashboard-filter-field">
-                <span>Fuente</span>
-                <select value={dashboardFilters.source} onChange={(event) => setDashboardFilters((current) => ({ ...current, source: event.target.value }))}>
-                  <option value="all">Todo el flujo</option>
-                  <option value="activity">Actividades semanales</option>
-                  <option value="board">Tableros operativos</option>
-                </select>
-              </label>
             </div>
             <div className="dashboard-action-row dashboard-filter-inline-actions" role="group" aria-label="Acciones del dashboard">
-              {canManageDashboardState ? (
+              {canManageDashboardActions ? (
                 <button
                   type="button"
                   className="icon-button dashboard-filter-icon-button"
@@ -1464,7 +1510,7 @@ export default function PanelIndicadores({ contexto }) {
                   <RotateCcw size={16} />
                 </button>
               ) : null}
-              {canManageDashboardState ? (
+              {canManageDashboardActions ? (
                 <button
                   type="button"
                   className="icon-button dashboard-filter-icon-button"
@@ -1477,26 +1523,30 @@ export default function PanelIndicadores({ contexto }) {
                   <Zap size={16} />
                 </button>
               ) : null}
-              <button
-                type="button"
-                className="icon-button dashboard-filter-icon-button"
-                onClick={exportDashboardToPdf}
-                disabled={isExportingPdf}
-                title={isExportingPdf ? "Exportando PDF de datos" : "Exportar PDF"}
-                aria-label={isExportingPdf ? "Exportando PDF de datos" : "Exportar PDF"}
-              >
-                <Download size={16} />
-              </button>
-              <button
-                type="button"
-                className="icon-button dashboard-filter-icon-button"
-                onClick={exportDashboardToCopmec}
-                disabled={isExportingCopmec}
-                title={isExportingCopmec ? "Exportando .copmec" : "Descargar .copmec"}
-                aria-label={isExportingCopmec ? "Exportando .copmec" : "Descargar .copmec"}
-              >
-                <span style={{ fontSize: 11, fontWeight: 700 }}>.C</span>
-              </button>
+              {canExportDashboardActions ? (
+                <button
+                  type="button"
+                  className="icon-button dashboard-filter-icon-button"
+                  onClick={exportDashboardToPdf}
+                  disabled={isExportingPdf}
+                  title={isExportingPdf ? "Exportando PDF de datos" : "Exportar PDF"}
+                  aria-label={isExportingPdf ? "Exportando PDF de datos" : "Exportar PDF"}
+                >
+                  <Download size={16} />
+                </button>
+              ) : null}
+              {canExportDashboardActions ? (
+                <button
+                  type="button"
+                  className="icon-button dashboard-filter-icon-button"
+                  onClick={exportDashboardToCopmec}
+                  disabled={isExportingCopmec}
+                  title={isExportingCopmec ? "Exportando .copmec" : "Descargar .copmec"}
+                  aria-label={isExportingCopmec ? "Exportando .copmec" : "Descargar .copmec"}
+                >
+                  <span style={{ fontSize: 11, fontWeight: 700 }}>.C</span>
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="icon-button dashboard-filter-icon-button"
@@ -1516,21 +1566,6 @@ export default function PanelIndicadores({ contexto }) {
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="dashboard-area-tabs" role="tablist" aria-label="Dashboard por área">
-        {dashboardAreaTabOptions.map((item) => (
-          <button
-            key={item.value}
-            type="button"
-            role="tab"
-            aria-selected={dashboardFilters.area === item.value}
-            className={dashboardFilters.area === item.value ? "dashboard-area-tab active" : "dashboard-area-tab"}
-            onClick={() => setDashboardFilters((current) => ({ ...current, area: item.value, responsibleId: "all" }))}
-          >
-            {item.label}
-          </button>
-        ))}
       </div>
 
       <DashboardSection title="Resumen ejecutivo" subtitle="KPIs principales para una lectura rápida del periodo filtrado." summary={`${dashboardMetrics.total} registros · ${dashboardMetrics.completed} cerrados · ${dashboardMetrics.areaCount} áreas`} icon={Gauge} open={dashboardSectionsOpen.executive} onToggle={() => setDashboardSectionsOpen((current) => ({ ...current, executive: !current.executive }))}>
@@ -1617,7 +1652,7 @@ export default function PanelIndicadores({ contexto }) {
                   {
                     key: "totalRecords",
                     label: "Total registros",
-                    color: "#14b8a6",
+                    color: "#405db0",
                     data: dashboardResponsibleRows.map((item) => ({ label: item.label.split(" ")[0], y: item.totalRecords })),
                   },
                 ]}
@@ -1725,7 +1760,7 @@ export default function PanelIndicadores({ contexto }) {
                     valueLabel: `${item.value}`,
                     tooltip: `${item.value} actividades ${item.label.toLowerCase()}`,
                     color: item.id === "mandatory"
-                      ? "linear-gradient(180deg, #16a34a 0%, #86efac 100%)"
+                      ? "linear-gradient(180deg, #4f7da9 0%, #b4cde3 100%)"
                       : "linear-gradient(180deg, #f59e0b 0%, #fde68a 100%)",
                   }))}
                   emptyLabel="No hay actividades en catálogo para este análisis."
@@ -1737,7 +1772,7 @@ export default function PanelIndicadores({ contexto }) {
                       label={item.label}
                       valueText={`${item.value} actividades`}
                       percent={dashboardMetrics.catalogActiveCount ? (item.value / dashboardMetrics.catalogActiveCount) * 100 : 0}
-                      color={item.id === "mandatory" ? "linear-gradient(90deg, #16a34a 0%, #86efac 100%)" : "linear-gradient(90deg, #f59e0b 0%, #fde68a 100%)"}
+                      color={item.id === "mandatory" ? "linear-gradient(90deg, #4f7da9 0%, #b4cde3 100%)" : "linear-gradient(90deg, #f59e0b 0%, #fde68a 100%)"}
                     />
                   ))}
                 </div>
@@ -1746,7 +1781,7 @@ export default function PanelIndicadores({ contexto }) {
               <DashboardLineChart
                 series={[{
                   label: "Actividades por tipo",
-                  color: "#16a34a",
+                  color: "#4f7da9",
                   data: dashboardCatalogTypeRows.map((item) => ({ label: item.label, y: item.value })),
                 }]}
                 emptyLabel="No hay actividades en catálogo para este análisis."
@@ -1850,7 +1885,7 @@ export default function PanelIndicadores({ contexto }) {
                   value: item.total,
                   valueLabel: `${item.completed}/${item.total}`,
                   tooltip: `${item.completed}/${item.total} cierres · ${formatMetricNumber(item.totalSeconds / 3600, 1)} h`,
-                  color: "linear-gradient(180deg, #0ea5e9 0%, #34d399 100%)",
+                  color: "linear-gradient(180deg, #0ea5e9 0%, #8eb5d6 100%)",
                 }))}
                 emptyLabel="No hay tendencia disponible para el periodo seleccionado."
               />
@@ -1866,7 +1901,7 @@ export default function PanelIndicadores({ contexto }) {
                   {
                     key: "completed",
                     label: "Cerrados",
-                    color: "#14b8a6",
+                    color: "#405db0",
                     data: dashboardTrendRows.map((item) => ({ label: item.label, y: item.completed })),
                   },
                   {
@@ -1881,7 +1916,7 @@ export default function PanelIndicadores({ contexto }) {
             )}
             <div className="dashboard-progress-list">
               {dashboardTrendRows.map((item) => (
-                <DashboardProgressMetric key={item.key} label={item.label} valueText={`${item.completed}/${item.total} cierres · ${formatMetricNumber(item.totalSeconds / 3600, 1)} h`} percent={item.total ? (item.completed / item.total) * 100 : 0} color="linear-gradient(90deg, #0ea5e9 0%, #34d399 100%)" />
+                <DashboardProgressMetric key={item.key} label={item.label} valueText={`${item.completed}/${item.total} cierres · ${formatMetricNumber(item.totalSeconds / 3600, 1)} h`} percent={item.total ? (item.completed / item.total) * 100 : 0} color="linear-gradient(90deg, #0ea5e9 0%, #8eb5d6 100%)" />
               ))}
             </div>
           </article>
@@ -1920,7 +1955,7 @@ export default function PanelIndicadores({ contexto }) {
                   value: item.total,
                   valueLabel: `${item.total}`,
                   tooltip: `${item.total} registros · ${item.boardCount} tableros`,
-                  color: "linear-gradient(180deg, #14b8a6 0%, #84cc16 100%)",
+                  color: "linear-gradient(180deg, #405db0 0%, #3375af 100%)",
                 }))}
                 emptyLabel="No hay áreas con datos para mostrar."
               />
@@ -1930,13 +1965,13 @@ export default function PanelIndicadores({ contexto }) {
                   {
                     key: "registros",
                     label: "Registros por área",
-                    color: "#14b8a6",
+                    color: "#405db0",
                     data: dashboardAreaRows.slice(0, 8).map((item) => ({ label: item.area.substring(0, 8), y: item.total })),
                   },
                   {
                     key: "tableros",
                     label: "Tableros activos",
-                    color: "#84cc16",
+                    color: "#3375af",
                     data: dashboardAreaRows.slice(0, 8).map((item) => ({ label: item.area.substring(0, 8), y: item.boardCount })),
                   },
                 ]}
@@ -1945,7 +1980,7 @@ export default function PanelIndicadores({ contexto }) {
             )}
             <div className="dashboard-bars-list">
               {dashboardAreaRows.map((item) => (
-                <DashboardBarRow key={item.area} label={item.area} value={item.total} max={Math.max(...dashboardAreaRows.map((row) => row.total), 1)} color="linear-gradient(90deg, #14b8a6 0%, #84cc16 100%)" trailing={`${item.total} reg · ${item.boardCount} tableros`} initial={item.area.charAt(0).toUpperCase()} />
+                <DashboardBarRow key={item.area} label={item.area} value={item.total} max={Math.max(...dashboardAreaRows.map((row) => row.total), 1)} color="linear-gradient(90deg, #405db0 0%, #3375af 100%)" trailing={`${item.total} reg · ${item.boardCount} tableros`} initial={item.area.charAt(0).toUpperCase()} />
               ))}
             </div>
           </article>
@@ -1971,7 +2006,7 @@ export default function PanelIndicadores({ contexto }) {
                 {
                   key: "completed",
                   label: "Cierres",
-                  color: "#22c55e",
+                  color: "#5f8fbe",
                   data: dashboardTrendRows.map((item) => ({ label: item.label, y: item.completed })),
                 },
                 {
@@ -2011,7 +2046,7 @@ export default function PanelIndicadores({ contexto }) {
                 value: item.average,
                 valueLabel: `${formatMetricNumber(item.average, 1)}${item.unit ? ` ${item.unit}` : ""}`,
                 tooltip: `${item.area} · ${item.boardName} · ${item.fieldLabel}: promedio ${formatMetricNumber(item.average, 2)}${item.unit ? ` ${item.unit}` : ""}`,
-                color: "linear-gradient(180deg, #0f766e 0%, #14b8a6 100%)",
+                color: "linear-gradient(180deg, #355f88 0%, #405db0 100%)",
               }))}
               emptyLabel="No hay campos medibles detectados para este filtro."
             />
@@ -2064,7 +2099,7 @@ export default function PanelIndicadores({ contexto }) {
                 <select
                   value={leaderboardBoardFilterSafe}
                   onChange={(e) => setLeaderboardBoardFilter(e.target.value)}
-                  style={{ borderRadius: "0.75rem", border: "1px solid var(--sicfla-border)", padding: "0.35rem 0.7rem", fontSize: "0.84rem", background: "#fff", color: "#032121", cursor: "pointer" }}
+                  style={{ borderRadius: "0.75rem", border: "1px solid var(--sicfla-border)", padding: "0.35rem 0.7rem", fontSize: "0.84rem", background: "#ffffff", color: "#314d69", cursor: "pointer" }}
                 >
                   {leaderboardBoardOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -2090,7 +2125,7 @@ export default function PanelIndicadores({ contexto }) {
                 value: item.totalMinutes,
                 valueLabel: `${formatMetricNumber(item.totalMinutes, 1)} min`,
                 tooltip: `${item.area} · ${item.boardName} · ${item.product}: ${formatMetricNumber(item.totalMinutes, 2)} min totales`,
-                color: "linear-gradient(180deg, #0f766e 0%, #22c55e 100%)",
+                color: "linear-gradient(180deg, #355f88 0%, #5f8fbe 100%)",
               }))}
               emptyLabel="No hay datos suficientes de producto/SKU con tiempo para este filtro."
             />
@@ -2334,8 +2369,8 @@ export default function PanelIndicadores({ contexto }) {
                       <span>{areaItem.visibleBoardCount} tablero(s) visibles</span>
                     </div>
                     <div className="dashboard-progress-list">
-                      <DashboardProgressMetric label="Cumplimiento" valueText={`${formatMetricNumber(areaItem.visibleCompletionPercent, 1)}%`} percent={areaItem.visibleCompletionPercent} color="linear-gradient(90deg, #0ea5e9 0%, #22c55e 100%)" />
-                      <DashboardProgressMetric label="Registros" valueText={`${areaItem.visibleTotalRecords} visibles`} percent={100} color="linear-gradient(90deg, #0f766e 0%, #14b8a6 100%)" />
+                      <DashboardProgressMetric label="Cumplimiento" valueText={`${formatMetricNumber(areaItem.visibleCompletionPercent, 1)}%`} percent={areaItem.visibleCompletionPercent} color="linear-gradient(90deg, #0ea5e9 0%, #5f8fbe 100%)" />
+                      <DashboardProgressMetric label="Registros" valueText={`${areaItem.visibleTotalRecords} visibles`} percent={100} color="linear-gradient(90deg, #355f88 0%, #405db0 100%)" />
                       <DashboardProgressMetric label="Pausas" valueText={`${formatMetricNumber(areaItem.visiblePauseHours, 1)} h`} percent={areaItem.visibleProductionHours > 0 ? Math.min(100, (areaItem.visiblePauseHours / areaItem.visibleProductionHours) * 100) : 0} color="linear-gradient(90deg, #dc2626 0%, #f59e0b 100%)" />
                     </div>
                     <div className="dashboard-table-wrap">
@@ -2563,16 +2598,16 @@ export default function PanelIndicadores({ contexto }) {
       ) : null}
 
       {confirmResetOpen ? createPortal(
-        <div role="dialog" aria-modal="true" aria-labelledby="reset-confirm-title" style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", padding: "1rem" }}>
-          <div style={{ background: "#fff", borderRadius: "1.25rem", padding: "2rem", maxWidth: 420, width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
-            <h3 id="reset-confirm-title" style={{ margin: "0 0 0.5rem", fontSize: "1.1rem", color: "#032121" }}>¿Reiniciar datos del dashboard?</h3>
-            <p style={{ margin: "0 0 1.5rem", color: "#555", fontSize: "0.9rem", lineHeight: 1.5 }}>
+        <div role="dialog" aria-modal="true" aria-labelledby="reset-confirm-title" style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0, 0, 0, 0.45)", padding: "1rem" }}>
+          <div style={{ background: "#ffffff", borderRadius: "1.25rem", padding: "2rem", maxWidth: 420, width: "100%", boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)" }}>
+            <h3 id="reset-confirm-title" style={{ margin: "0 0 0.5rem", fontSize: "1.1rem", color: "#314d69" }}>¿Reiniciar datos del dashboard?</h3>
+            <p style={{ margin: "0 0 1.5rem", color: "#555555", fontSize: "0.9rem", lineHeight: 1.5 }}>
               Este reinicio es global y permanente. Se eliminarán semanas, actividades, pausas y filas operativas del dashboard para todos los usuarios.
             </p>
             <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
               <button
                 type="button"
-                style={{ padding: "0.5rem 1.25rem", borderRadius: "0.75rem", border: "1px solid #ddd", background: "#f3f4f6", cursor: "pointer" }}
+                style={{ padding: "0.5rem 1.25rem", borderRadius: "0.75rem", border: "1px solid #dddddd", background: "#f3f4f6", cursor: "pointer" }}
                 onClick={() => setConfirmResetOpen(false)}
                 disabled={isResetSubmitting}
               >
@@ -2580,7 +2615,7 @@ export default function PanelIndicadores({ contexto }) {
               </button>
               <button
                 type="button"
-                style={{ padding: "0.5rem 1.25rem", borderRadius: "0.75rem", border: "none", background: "#032121", color: "#fff", cursor: "pointer" }}
+                style={{ padding: "0.5rem 1.25rem", borderRadius: "0.75rem", border: "none", background: "#314d69", color: "#ffffff", cursor: "pointer" }}
                 onClick={() => { void confirmHardReset(); }}
                 disabled={isResetSubmitting}
               >

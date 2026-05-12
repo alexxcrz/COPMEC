@@ -36,7 +36,7 @@ function getCheckStatusLabel(status) {
 
 function getCheckStatusColor(status) {
   if (status === "no_ok") return "#b91c1c";
-  if (status === "ok") return "#166534";
+  if (status === "ok") return "#2d4f72";
   if (status === "na") return "#475569";
   return "#9ca3af";
 }
@@ -177,7 +177,7 @@ export default function OperationalInspectionRecordModal({
           ) : null}
 
           {resolvedRecord.template.sections.map((section) => (
-            <article key={section.id} style={{ border: "1px solid rgba(3,33,33,0.14)", borderRadius: "0.9rem", padding: "0.7rem", display: "grid", gap: "0.6rem" }}>
+            <article key={section.id} style={{ border: "1px solid rgba(49, 77, 105, 0.14)", borderRadius: "0.9rem", padding: "0.7rem", display: "grid", gap: "0.6rem" }}>
               <div className="board-meta-inline created-board-card-meta" style={{ margin: 0 }}>
                 <strong>{section.title}</strong>
                 <span>{section.incidenceCategory || "Otro"}</span>
@@ -187,7 +187,7 @@ export default function OperationalInspectionRecordModal({
                   const current = currentDraft?.checks?.[check.id] || { status: "pending", notes: "", severity: "media", photos: [], site: "" };
                   const photos = Array.isArray(current.photos) ? current.photos : [];
                   return (
-                    <div key={check.id} style={{ border: "1px solid rgba(3,33,33,0.08)", borderRadius: "0.75rem", padding: "0.55rem", display: "grid", gap: "0.45rem" }}>
+                    <div key={check.id} style={{ border: "1px solid rgba(49, 77, 105, 0.08)", borderRadius: "0.75rem", padding: "0.55rem", display: "grid", gap: "0.45rem" }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.6rem", flexWrap: "wrap" }}>
                         <span>{check.label}</span>
                         <strong style={{ color: getCheckStatusColor(current.status) }}>{getCheckStatusLabel(current.status)}</strong>
@@ -214,7 +214,7 @@ export default function OperationalInspectionRecordModal({
                               key={photo.id}
                               type="button"
                               onClick={() => setSelectedPhoto(photo)}
-                              style={{ display: "grid", gap: "0.2rem", border: "1px solid rgba(3,33,33,0.14)", borderRadius: "0.6rem", padding: "0.3rem", background: "#fff", cursor: "pointer", textAlign: "left" }}
+                              style={{ display: "grid", gap: "0.2rem", border: "1px solid rgba(49, 77, 105, 0.14)", borderRadius: "0.6rem", padding: "0.3rem", background: "#ffffff", cursor: "pointer", textAlign: "left" }}
                             >
                               <img src={photo.thumbnailUrl || photo.url} alt={photo.name} style={{ width: "100%", height: "80px", objectFit: "cover", borderRadius: "0.45rem" }} />
                               <small style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{photo.name}</small>

@@ -42,7 +42,7 @@
 }
 
 .biblioteca-search:focus {
-  border-color: #154b3e;
+  border-color: #385878;
 }
 
 .biblioteca-search-clear {
@@ -102,13 +102,13 @@
 }
 
 .biblioteca-area-tab:hover {
-  background: rgba(3, 33, 33, 0.06);
+  background: rgba(49, 77, 105, 0.06);
   color: var(--sicfla-text);
 }
 
 .biblioteca-area-tab.active {
-  background: #fff;
-  color: #032121;
+  background: #ffffff;
+  color: #314d69;
   font-weight: 600;
   border-color: var(--sicfla-border);
   position: relative;
@@ -185,8 +185,8 @@
 .biblioteca-area-title span {
   font-size: 0.7rem;
   font-weight: 500;
-  background: rgba(21, 75, 62, 0.1);
-  color: #154b3e;
+  background: rgba(28, 49, 68, 0.1);
+  color: #385878;
   border-radius: 999px;
   padding: 0.1rem 0.45rem;
 }
@@ -255,8 +255,8 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  background: rgba(21, 75, 62, 0.12);
-  color: #154b3e;
+  background: rgba(28, 49, 68, 0.12);
+  color: #385878;
   padding: 0.1rem 0.4rem;
   border-radius: 999px;
 }
@@ -317,7 +317,7 @@
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: rgba(3, 33, 33, 0.55);
+  background: rgba(49, 77, 105, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -325,7 +325,7 @@
 }
 
 .biblioteca-preview-panel {
-  background: #fff;
+  background: #ffffff;
   border-radius: 1.25rem;
   width: min(92vw, 900px);
   max-height: 90dvh;
@@ -391,7 +391,7 @@
   width: 100vw;
   height: 100dvh;
   border: none;
-  background: #111;
+  background: #111111;
   object-fit: contain;
 }
 
@@ -410,9 +410,9 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.45rem 0.9rem;
-  background: rgba(3, 33, 33, 0.82);
-  color: #fff;
-  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(49, 77, 105, 0.82);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 999px;
   font-size: 0.8rem;
   font-weight: 600;
@@ -422,7 +422,7 @@
 }
 
 .biblioteca-fullscreen-close:hover {
-  background: rgba(3, 33, 33, 0.97);
+  background: rgba(49, 77, 105, 0.97);
 }
 
 .biblioteca-preview-unsupported {
@@ -454,13 +454,13 @@
 }
 
 .biblioteca-upload-dropzone:hover {
-  border-color: #154b3e;
-  background: rgba(21, 75, 62, 0.04);
+  border-color: #385878;
+  background: rgba(28, 49, 68, 0.04);
 }
 
 .biblioteca-upload-filename {
   font-size: 0.82rem;
-  color: #154b3e;
+  color: #385878;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -607,7 +607,7 @@
 
 .biblioteca-bulk-bar {
   height: 100%;
-  background: #032121;
+  background: #314d69;
   border-radius: 999px;
   transition: width 200ms;
 }
@@ -654,9 +654,9 @@
 }
 
 .biblioteca-priority-btn.baja.active {
-  background: #dcfce7;
-  border-color: #86efac;
-  color: #166534;
+  background: #e8eff6;
+  border-color: #b4cde3;
+  color: #2d4f72;
   font-weight: 700;
 }
 
@@ -685,7 +685,7 @@
 }
 
 .biblioteca-switch.on {
-  background: #032121;
+  background: #314d69;
 }
 
 .biblioteca-switch::after {
@@ -696,7 +696,7 @@
   width: 1.1rem;
   height: 1.1rem;
   border-radius: 50%;
-  background: #fff;
+  background: #ffffff;
   transition: transform 150ms;
 }
 

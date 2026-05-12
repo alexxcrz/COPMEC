@@ -257,7 +257,7 @@ export default function DashboardDateRangePicker({
           </div>
           <div className="dashboard-date-range-footer">
             <button type="button" className="icon-button" onClick={() => { setDraftStartDate(""); setDraftEndDate(""); }}>Limpiar</button>
-            <button type="button" className="icon-button" onClick={handleYearSelection} style={grouping === "anio" ? { borderColor: "#0f766e", color: "#0f766e" } : undefined}>Año completo</button>
+            <button type="button" className="icon-button" onClick={handleYearSelection} style={grouping === "anio" ? { borderColor: "#355f88", color: "#355f88" } : undefined}>Año completo</button>
             <button type="button" className="icon-button" onClick={applyDraftAndClose}>Confirmar</button>
             <button type="button" className="icon-button" onClick={applyDraftAndClose}>Cerrar</button>
           </div>

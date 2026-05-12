@@ -56,17 +56,22 @@ export function triggerVibration() {
 
 export function showTransportNotification(title, options = {}) {
   try {
-    const shouldPlayAlert = options?.playAlert !== false;
+    const explicitAlertMode = String(options?.alertMode || "").trim().toLowerCase();
+    const resolvedAlertMode = explicitAlertMode
+      || (options?.playAlert === false ? "none" : "sound-vibration");
+    const shouldPlaySound = resolvedAlertMode === "sound-vibration" || resolvedAlertMode === "sound-only";
+    const shouldVibrate = resolvedAlertMode === "sound-vibration" || resolvedAlertMode === "vibration-only";
 
-    // Reproducir sonido y vibración
-    if (shouldPlayAlert) {
+    if (shouldPlaySound) {
       playNotificationSound();
+    }
+    if (shouldVibrate) {
       triggerVibration();
     }
 
     // Mostrar notificación push si tiene permiso
     if ("Notification" in window && Notification.permission === "granted") {
-      const { playAlert, ...notificationOptions } = options || {};
+      const { playAlert, alertMode, ...notificationOptions } = options || {};
       const notification = new Notification(title, {
         icon: "/favicon.ico",
         badge: "/favicon.ico",

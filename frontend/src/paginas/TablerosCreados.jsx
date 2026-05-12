@@ -18,6 +18,18 @@ function loadPersistedChecklistTemplate() {
   }
 }
 
+function resolveBoardAreaLabel(board, userMap) {
+  const directArea = String(board?.settings?.ownerArea || board?.ownerArea || "").trim();
+  if (directArea) return directArea;
+  const ownerArea = String(userMap.get(board?.ownerId)?.area || "").trim();
+  if (ownerArea) return ownerArea;
+  return "Sin area";
+}
+
+function normalizeBoardAreaToken(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
 export default function TablerosCreados({ contexto }) {
   const {
     visibleControlBoards,
@@ -55,12 +67,28 @@ export default function TablerosCreados({ contexto }) {
     skipNextSyncRef,
     setSyncStatus,
     pushAppToast,
+    selectedAreaSectionId,
+    selectedAreaSection,
   } = contexto;
+
+  const selectedSectionAreaScopes = useMemo(() => {
+    if (selectedAreaSectionId === "all") return [];
+    if (!Array.isArray(selectedAreaSection?.scopes)) return [];
+    return Array.from(new Set(selectedAreaSection.scopes
+      .map((scope) => normalizeBoardAreaToken(scope))
+      .filter(Boolean)));
+  }, [selectedAreaSection, selectedAreaSectionId]);
+
+  const scopedVisibleControlBoards = useMemo(() => {
+    if (!selectedSectionAreaScopes.length) return visibleControlBoards;
+    return visibleControlBoards.filter((board) => selectedSectionAreaScopes.includes(normalizeBoardAreaToken(resolveBoardAreaLabel(board, userMap))));
+  }, [selectedSectionAreaScopes, userMap, visibleControlBoards]);
 
   const activeCatalogItems = state.catalog.filter((item) => !item.isDeleted);
   const [creatorTab, setCreatorTab] = useState("boards");
   const [selectedCatalogCategory, setSelectedCatalogCategory] = useState("General");
-  const [selectedBoardCreatorId, setSelectedBoardCreatorId] = useState("all");
+  const [selectedBoardArea, setSelectedBoardArea] = useState("");
+  const [selectedBoardCreatorId, setSelectedBoardCreatorId] = useState("");
   const [createListModal, setCreateListModal] = useState({ open: false, name: "", error: "" });
   const [isImporting, setIsImporting] = useState(false);
   const catalogImportRef = useRef(null);
@@ -81,10 +109,31 @@ export default function TablerosCreados({ contexto }) {
     return activeCatalogItems.filter((item) => (String(item.category || "General").trim() || "General") === selectedCatalogCategory);
   }, [activeCatalogItems, selectedCatalogCategory]);
 
-  const boardCreatorTabs = useMemo(() => {
-    if (!isLeadCreatorView) return [];
+  const boardAreaTabs = useMemo(() => {
     const grouped = new Map();
-    visibleControlBoards.forEach((board) => {
+    scopedVisibleControlBoards.forEach((board) => {
+      const areaLabel = resolveBoardAreaLabel(board, userMap);
+      if (!grouped.has(areaLabel)) {
+        grouped.set(areaLabel, {
+          areaId: areaLabel,
+          areaLabel,
+          total: 0,
+        });
+      }
+      grouped.get(areaLabel).total += 1;
+    });
+
+    return Array.from(grouped.values()).sort((left, right) => left.areaLabel.localeCompare(right.areaLabel, "es-MX"));
+  }, [scopedVisibleControlBoards, userMap]);
+
+  const visibleBoardsByArea = useMemo(() => {
+    if (!selectedBoardArea) return scopedVisibleControlBoards;
+    return scopedVisibleControlBoards.filter((board) => resolveBoardAreaLabel(board, userMap) === selectedBoardArea);
+  }, [scopedVisibleControlBoards, selectedBoardArea, userMap]);
+
+  const boardCreatorTabs = useMemo(() => {
+    const grouped = new Map();
+    visibleBoardsByArea.forEach((board) => {
       const creatorId = board.createdById || "unknown";
       if (!grouped.has(creatorId)) {
         grouped.set(creatorId, {
@@ -96,14 +145,13 @@ export default function TablerosCreados({ contexto }) {
       grouped.get(creatorId).total += 1;
     });
 
-    return [{ creatorId: "all", creatorName: "Todos", total: visibleControlBoards.length }]
-      .concat(Array.from(grouped.values()).sort((left, right) => left.creatorName.localeCompare(right.creatorName, "es-MX")));
-  }, [isLeadCreatorView, userMap, visibleControlBoards]);
+    return Array.from(grouped.values()).sort((left, right) => left.creatorName.localeCompare(right.creatorName, "es-MX"));
+  }, [userMap, visibleBoardsByArea]);
 
   const visibleCreatorBoards = useMemo(() => {
-    if (!isLeadCreatorView || selectedBoardCreatorId === "all") return visibleControlBoards;
-    return visibleControlBoards.filter((board) => (board.createdById || "unknown") === selectedBoardCreatorId);
-  }, [isLeadCreatorView, selectedBoardCreatorId, visibleControlBoards]);
+    if (!selectedBoardCreatorId) return visibleBoardsByArea;
+    return visibleBoardsByArea.filter((board) => (board.createdById || "unknown") === selectedBoardCreatorId);
+  }, [selectedBoardCreatorId, visibleBoardsByArea]);
 
   const checklistBoards = useMemo(() => {
     return visibleCreatorBoards
@@ -163,6 +211,24 @@ export default function TablerosCreados({ contexto }) {
       .sort((left, right) => String(left?.name || "").localeCompare(String(right?.name || ""), "es-MX")),
     [activeCatalogItems],
   );
+
+  function getScopedBoardAssignmentSummary(board) {
+    if (!selectedSectionAreaScopes.length) {
+      return getBoardAssignmentSummary(board, userMap);
+    }
+    const visibilityType = String(board?.visibilityType || "users").trim().toLowerCase();
+    if (visibilityType !== "department") {
+      return getBoardAssignmentSummary(board, userMap);
+    }
+    const scopedDepartments = Array.from(new Set((board?.sharedDepartments || [])
+      .map((department) => normalizeBoardAreaToken(department))
+      .filter((department) => selectedSectionAreaScopes.includes(department))));
+    const safeBoard = {
+      ...board,
+      sharedDepartments: scopedDepartments,
+    };
+    return getBoardAssignmentSummary(safeBoard, userMap);
+  }
 
   function createChecklistToken(prefix) {
     return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -326,11 +392,24 @@ export default function TablerosCreados({ contexto }) {
   }
 
   useEffect(() => {
-    if (!isLeadCreatorView) return;
-    if (!boardCreatorTabs.some((item) => item.creatorId === selectedBoardCreatorId)) {
-      setSelectedBoardCreatorId("all");
+    if (!boardAreaTabs.length) {
+      if (selectedBoardArea) setSelectedBoardArea("");
+      return;
     }
-  }, [boardCreatorTabs, isLeadCreatorView, selectedBoardCreatorId]);
+    if (!selectedBoardArea || !boardAreaTabs.some((item) => item.areaId === selectedBoardArea)) {
+      setSelectedBoardArea(boardAreaTabs[0].areaId);
+    }
+  }, [boardAreaTabs, selectedBoardArea]);
+
+  useEffect(() => {
+    if (!boardCreatorTabs.length) {
+      if (selectedBoardCreatorId) setSelectedBoardCreatorId("");
+      return;
+    }
+    if (!selectedBoardCreatorId || !boardCreatorTabs.some((item) => item.creatorId === selectedBoardCreatorId)) {
+      setSelectedBoardCreatorId(boardCreatorTabs[0].creatorId);
+    }
+  }, [boardCreatorTabs, selectedBoardCreatorId]);
 
   function handleOpenCreateCategoryModal() {
     setCreateListModal({ open: true, name: "", error: "" });
@@ -427,22 +506,38 @@ export default function TablerosCreados({ contexto }) {
 
       {creatorTab === "boards" ? (
         <>
-          {isLeadCreatorView ? (
-            <article className="surface-card full-width compact-surface-card">
-              <div className="saved-board-list board-creator-tabs">
-                {boardCreatorTabs.map((item) => (
-                  <button
-                    key={item.creatorId}
-                    type="button"
-                    className={selectedBoardCreatorId === item.creatorId ? "tab active" : "tab"}
-                    onClick={() => setSelectedBoardCreatorId(item.creatorId)}
-                  >
-                    {item.creatorName} ({item.total})
-                  </button>
-                ))}
-              </div>
-            </article>
-          ) : null}
+          <article className="surface-card full-width compact-surface-card">
+            <div className="saved-board-list board-creator-tabs">
+              {boardAreaTabs.map((item) => (
+                <button
+                  key={item.areaId}
+                  type="button"
+                  className={selectedBoardArea === item.areaId ? "tab active" : "tab"}
+                  onClick={() => {
+                    setSelectedBoardArea(item.areaId);
+                    setSelectedBoardCreatorId("");
+                  }}
+                >
+                  {item.areaLabel} ({item.total})
+                </button>
+              ))}
+            </div>
+          </article>
+
+          <article className="surface-card full-width compact-surface-card">
+            <div className="saved-board-list board-creator-tabs">
+              {boardCreatorTabs.map((item) => (
+                <button
+                  key={item.creatorId}
+                  type="button"
+                  className={selectedBoardCreatorId === item.creatorId ? "tab active" : "tab"}
+                  onClick={() => setSelectedBoardCreatorId(item.creatorId)}
+                >
+                  {item.creatorName} ({item.total})
+                </button>
+              ))}
+            </div>
+          </article>
 
           <div className="created-board-grid full-width">
             {visibleCreatorBoards.length ? visibleCreatorBoards.map((board) => (
@@ -458,9 +553,10 @@ export default function TablerosCreados({ contexto }) {
                   </div>
                 </div>
                 <div className="board-meta-inline created-board-card-meta">
+                  <span>{resolveBoardAreaLabel(board, userMap)}</span>
                   <span>Player principal · {userMap.get(board.ownerId)?.name || "N/A"}</span>
-                  <span>Creó · {userMap.get(board.createdById)?.name || "N/A"}</span>
-                  <span>{getBoardAssignmentSummary(board, userMap)}</span>
+                  <span>{userMap.get(board.createdById)?.name || "N/A"}</span>
+                  <span>{getScopedBoardAssignmentSummary(board)}</span>
                 </div>
                 <div className="toolbar-actions">
                   <button type="button" className="primary-button created-board-open-action" onClick={() => {
@@ -494,7 +590,7 @@ export default function TablerosCreados({ contexto }) {
               <article className="surface-card empty-state full-width">
                 <LayoutDashboard size={44} />
                 <h3>No hay tableros visibles</h3>
-                <p>{isLeadCreatorView && selectedBoardCreatorId !== "all" ? "Ese creador todavía no tiene tableros visibles en esta vista." : "Crea un tablero desde aquí o asigna acceso para empezar."}</p>
+                <p>{isLeadCreatorView && selectedBoardCreatorId ? "Ese creador todavía no tiene tableros visibles en esta vista." : "Crea un tablero desde aquí o asigna acceso para empezar."}</p>
               </article>
             )}
           </div>
@@ -599,7 +695,7 @@ export default function TablerosCreados({ contexto }) {
           </div>
 
           <div className="created-board-grid full-width">
-            <article className="created-board-card surface-card" style={{ border: "1px solid rgba(3, 33, 33, 0.14)", background: "linear-gradient(180deg, rgba(3,33,33,0.02) 0%, rgba(255,255,255,0.98) 100%)", maxWidth: "560px" }}>
+            <article className="created-board-card surface-card" style={{ border: "1px solid rgba(49, 77, 105, 0.14)", background: "linear-gradient(180deg, rgba(49, 77, 105, 0.02) 0%, rgba(255, 255, 255, 0.98) 100%)", maxWidth: "560px" }}>
               <div className="created-board-card-top">
                 <div className="created-board-card-head">
                   <strong>{checklistTemplateDraft.name}</strong>

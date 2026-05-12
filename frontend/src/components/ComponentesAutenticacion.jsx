@@ -21,7 +21,7 @@ export function LoginScreen({ loginForm, onChange, onSubmit, error, demoUsers })
       <section className="login-panel">
         <article className="login-hero-panel">
           <div className="login-brand-block">
-            <CopmecBrand headingTag="h1" tone="light" subtitle="" kicker="Sistema" />
+            <CopmecBrand headingTag="h1" tone="light" subtitle="Sistema de Gestión Operativa." showKicker={false} />
           </div>
 
           <div className="login-visual-scene" aria-hidden="true">
@@ -33,9 +33,9 @@ export function LoginScreen({ loginForm, onChange, onSubmit, error, demoUsers })
               <span className="login-scene-data-line line-c" />
             </div>
             <div className="login-scene-status-board">
-              <span className="login-scene-status-chip live">Inventario</span>
-              <span className="login-scene-status-chip">Players</span>
-              <span className="login-scene-status-chip alert">Alertas</span>
+              <span className="login-scene-status-chip live">Modulos</span>
+              <span className="login-scene-status-chip">Flujos</span>
+              <span className="login-scene-status-chip alert">Control</span>
             </div>
             <span className="login-scene-particle particle-a" />
             <span className="login-scene-particle particle-b" />
@@ -69,9 +69,9 @@ export function LoginScreen({ loginForm, onChange, onSubmit, error, demoUsers })
                 <span className="login-scene-pie-core" />
               </div>
               <div className="login-scene-pie-legend">
-                <span><i className="login-scene-legend-tone tone-green" /> Operación</span>
-                <span><i className="login-scene-legend-tone tone-gold" /> Cumplido</span>
-                <span><i className="login-scene-legend-tone tone-blue" /> Calidad</span>
+                <span><i className="login-scene-legend-tone tone-green" /> Operacion</span>
+                <span><i className="login-scene-legend-tone tone-gold" /> Seguimiento</span>
+                <span><i className="login-scene-legend-tone tone-blue" /> Analitica</span>
               </div>
             </div>
             <div className="login-scene-card login-scene-card-bottom">
@@ -87,14 +87,14 @@ export function LoginScreen({ loginForm, onChange, onSubmit, error, demoUsers })
 
         <article className="login-form-panel">
           <div className="login-form-panel-head">
-            <h2>Ingresar a COPMEC</h2>
+            <h2>Ingresar a AXO</h2>
             <p>Acceso seguro</p>
           </div>
 
           <form className="login-form" onSubmit={onSubmit}>
             <label className="app-modal-field login-field">
               <span>Player de acceso</span>
-              <input value={loginForm.login} onChange={(event) => onChange("login", event.target.value)} placeholder="Tu acceso" />
+              <input value={loginForm.login} onChange={(event) => onChange("login", event.target.value)} placeholder="Player" />
             </label>
             <label className="app-modal-field login-field">
               <span>Contraseña</span>

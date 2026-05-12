@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import DashboardDateRangePicker from "../components/DashboardDateRangePicker";
 
 function resolveDateMs(value) {
   const ms = Date.parse(value || "");
@@ -10,6 +11,47 @@ function isPostponedReady(record, nowMs = Date.now()) {
   const postponedUntilMs = resolveDateMs(record?.postponedUntil || record?.updatedAt);
   if (postponedUntilMs === null) return true;
   return postponedUntilMs <= nowMs;
+}
+
+function toLocalDateKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function parseLocalDateKey(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return null;
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function resolveHistoryDateKey(value) {
+  if (!value) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return String(value);
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return toLocalDateKey(parsed);
+}
+
+function formatHistoryMonthLabel(dateKey) {
+  const parsed = parseLocalDateKey(dateKey);
+  if (!parsed) return dateKey || "Sin fecha";
+  return new Intl.DateTimeFormat("es-MX", { month: "long", year: "numeric" }).format(parsed);
+}
+
+function formatHistoryDayLabel(dateKey) {
+  const parsed = parseLocalDateKey(dateKey);
+  if (!parsed) return dateKey || "Sin fecha";
+  return new Intl.DateTimeFormat("es-MX", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }).format(parsed);
+}
+
+function getCurrentMonthRange() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  return {
+    startDate: toLocalDateKey(start),
+    endDate: toLocalDateKey(end),
+    year: now.getFullYear(),
+  };
 }
 
 /**
@@ -35,7 +77,7 @@ export function TransportAssignmentsTab({
     return () => globalThis.clearInterval(timer);
   }, []);
 
-  // Filtrar registros Pendiente del área seleccionada
+  // Filtrar registros pendientes (incluye historial para no perder envios sin asignar)
   const pendingRecords = useMemo(() => {
     const allAreaIds = (Array.isArray(transportState?.config) ? transportState.config : [])
       .map((area) => area.id)
@@ -54,7 +96,10 @@ export function TransportAssignmentsTab({
         .map((area) => [area.id, area.label || area.id])
     );
 
-    return (Array.isArray(transportState?.activeRecords) ? transportState.activeRecords : [])
+    const activeRecords = Array.isArray(transportState?.activeRecords) ? transportState.activeRecords : [];
+    const historyRecords = Array.isArray(transportState?.historyRecords) ? transportState.historyRecords : [];
+
+    return [...activeRecords, ...historyRecords]
       .filter((record) => {
         const isPending = String(record?.status || "").trim() === "Pendiente";
         const isReadyPostponed = isPostponedReady(record, nowMs);
@@ -65,8 +110,8 @@ export function TransportAssignmentsTab({
         ...record,
         areaLabel: areaLabelById.get(record.areaId) || record.areaId || "-",
       }))
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  }, [canManageTransportArea, nowMs, selectedArea?.id, transportState?.activeRecords, transportState?.config]);
+        .sort((a, b) => new Date(b.createdAt || b.updatedAt || 0) - new Date(a.createdAt || a.updatedAt || 0));
+      }, [canManageTransportArea, nowMs, transportState?.activeRecords, transportState?.config, transportState?.historyRecords]);
 
   const pendingDocRecords = useMemo(() => {
     const dateKey = String(activeDateKey || "").trim();
@@ -160,6 +205,7 @@ export function TransportAssignmentsTab({
           <thead>
             <tr>
               <th>Área</th>
+              <th>Código</th>
               <th>Destino</th>
               <th>Cajas</th>
               <th>Piezas</th>
@@ -174,6 +220,7 @@ export function TransportAssignmentsTab({
             {pendingRecords.map((record) => (
               <tr key={record.id}>
                 <td>{record.areaLabel}</td>
+                <td>{record.shipmentCode || "-"}</td>
                 <td>{record.destination}</td>
                 <td>{record.boxes}</td>
                 <td>{record.pieces}</td>
@@ -198,7 +245,7 @@ export function TransportAssignmentsTab({
             ))}
             {!pendingRecords.length && (
               <tr>
-                <td colSpan="9" className="subtle-line">
+                <td colSpan="10" className="subtle-line">
                   No hay envíos pendientes para asignar en esta área.
                 </td>
               </tr>
@@ -218,6 +265,7 @@ export function TransportAssignmentsTab({
         <table className="inventory-table-clean">
           <thead>
             <tr>
+              <th>Código</th>
               <th>Ubicación</th>
               <th>Área</th>
               <th>Dirigido a</th>
@@ -229,6 +277,7 @@ export function TransportAssignmentsTab({
           <tbody>
             {pendingDocRecords.map((record) => (
               <tr key={record.id}>
+                <td>{record.shipmentCode || "-"}</td>
                 <td>{record.ubicacion || "-"}</td>
                 <td>{record.area || "-"}</td>
                 <td>{record.dirigidoA || "-"}</td>
@@ -249,7 +298,7 @@ export function TransportAssignmentsTab({
             ))}
             {!pendingDocRecords.length && (
               <tr>
-                <td colSpan="6" className="subtle-line">
+                <td colSpan="7" className="subtle-line">
                   No hay registros de documentación pendientes para el día activo.
                 </td>
               </tr>
@@ -428,10 +477,22 @@ export function TransportPostponedTab({
 /**
  * Tab Mis Rutas - muestra rutas asignadas al driver actual
  */
-export function TransportMyRoutesTab({ transportState, documentacionState, currentUser, formatDateTime, requestJson, onStatusUpdated }) {
+export function TransportMyRoutesTab({ transportState, documentacionState, currentUser, canDeleteHistoryTransportRecords = false, formatDateTime, requestJson, onStatusUpdated }) {
+  const initialHistoryRange = getCurrentMonthRange();
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateError, setUpdateError] = useState("");
   const [routesViewTab, setRoutesViewTab] = useState("active");
+  const [historyStartDate, setHistoryStartDate] = useState(initialHistoryRange.startDate);
+  const [historyEndDate, setHistoryEndDate] = useState(initialHistoryRange.endDate);
+  const [historyGrouping, setHistoryGrouping] = useState("mes");
+  const [historyYear, setHistoryYear] = useState(initialHistoryRange.year);
+  const [deleteHistoryModal, setDeleteHistoryModal] = useState({
+    open: false,
+    recordId: "",
+    destination: "",
+    submitting: false,
+    error: "",
+  });
   const [reasonState, setReasonState] = useState({
     open: false,
     routeType: "",
@@ -466,9 +527,8 @@ export function TransportMyRoutesTab({ transportState, documentacionState, curre
     const fromActiveTerminal = (Array.isArray(transportState?.activeRecords) ? transportState.activeRecords : [])
       .filter((record) => terminalStatuses.has(String(record.status || "")));
     return [...fromHistory, ...fromActiveTerminal]
-      .filter((record) => record.assignedTo === currentUser?.id)
       .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
-  }, [currentUser?.id, terminalStatuses, transportState?.activeRecords, transportState?.historyRecords]);
+  }, [terminalStatuses, transportState?.activeRecords, transportState?.historyRecords]);
 
   const historyDocRecords = useMemo(() => {
     return (Array.isArray(documentacionState?.records) ? documentacionState.records : [])
@@ -476,8 +536,105 @@ export function TransportMyRoutesTab({ transportState, documentacionState, curre
       .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
   }, [currentUser?.id, documentacionState?.records, terminalStatuses]);
 
+  const historyYearOptions = useMemo(() => {
+    const years = new Set([Number(historyYear) || new Date().getFullYear()]);
+    [...historyTransportRecords, ...historyDocRecords].forEach((record) => {
+      const closedDateKey = resolveHistoryDateKey(record.deliveredAt || record.updatedAt || record.createdAt);
+      const parsed = parseLocalDateKey(closedDateKey);
+      if (parsed) years.add(parsed.getFullYear());
+    });
+    return Array.from(years).sort((left, right) => right - left);
+  }, [historyDocRecords, historyTransportRecords, historyYear]);
+
+  const filteredHistoryTransportRecords = useMemo(() => {
+    const startMs = parseLocalDateKey(historyStartDate)?.getTime() ?? null;
+    const endMs = parseLocalDateKey(historyEndDate)?.getTime() ?? null;
+    return historyTransportRecords.filter((record) => {
+      const closedDateKey = resolveHistoryDateKey(record.deliveredAt || record.updatedAt || record.createdAt);
+      const closedMs = parseLocalDateKey(closedDateKey)?.getTime() ?? null;
+      if (closedMs === null) return false;
+      if (startMs !== null && closedMs < startMs) return false;
+      if (endMs !== null && closedMs > endMs) return false;
+      return true;
+    });
+  }, [historyEndDate, historyStartDate, historyTransportRecords]);
+
+  const filteredHistoryDocRecords = useMemo(() => {
+    const startMs = parseLocalDateKey(historyStartDate)?.getTime() ?? null;
+    const endMs = parseLocalDateKey(historyEndDate)?.getTime() ?? null;
+    return historyDocRecords.filter((record) => {
+      const closedDateKey = resolveHistoryDateKey(record.deliveredAt || record.updatedAt || record.createdAt);
+      const closedMs = parseLocalDateKey(closedDateKey)?.getTime() ?? null;
+      if (closedMs === null) return false;
+      if (startMs !== null && closedMs < startMs) return false;
+      if (endMs !== null && closedMs > endMs) return false;
+      return true;
+    });
+  }, [historyDocRecords, historyEndDate, historyStartDate]);
+
+  const visibleHistoryRecords = useMemo(() => {
+    const transport = filteredHistoryTransportRecords.map((record) => ({
+      ...record,
+      historyType: "transport",
+      historyTypeLabel: "Transporte",
+      historyDestination: record.destination,
+      historyBoxes: record.boxes,
+      historyPieces: record.pieces,
+      historyDetail: record.returnReason || record.canceledReason || "-",
+      historyClosedAt: record.deliveredAt || record.updatedAt || record.createdAt,
+      historyClosedDateKey: resolveHistoryDateKey(record.deliveredAt || record.updatedAt || record.createdAt),
+    }));
+    const docs = filteredHistoryDocRecords.map((record) => ({
+      ...record,
+      historyType: "documentacion",
+      historyTypeLabel: "Documentación",
+      historyDestination: record.area || "-",
+      historyBoxes: "-",
+      historyPieces: "-",
+      historyDetail: record.returnReason || record.canceledReason || "-",
+      historyClosedAt: record.deliveredAt || record.updatedAt || record.createdAt,
+      historyClosedDateKey: resolveHistoryDateKey(record.deliveredAt || record.updatedAt || record.createdAt),
+    }));
+    return [...transport, ...docs]
+      .sort((left, right) => new Date(right.historyClosedAt || 0) - new Date(left.historyClosedAt || 0));
+  }, [filteredHistoryDocRecords, filteredHistoryTransportRecords]);
+
+  const historyRenderRows = useMemo(() => {
+    let previousMonthKey = "";
+    let previousDayKey = "";
+    const rows = [];
+
+    visibleHistoryRecords.forEach((record) => {
+      const dayKey = record.historyClosedDateKey;
+      const monthKey = dayKey ? String(dayKey).slice(0, 7) : "sin-fecha";
+      if (monthKey !== previousMonthKey) {
+        rows.push({ kind: "month", key: `month-${monthKey}`, label: formatHistoryMonthLabel(`${monthKey}-01`) });
+        previousMonthKey = monthKey;
+        previousDayKey = "";
+      }
+      if (historyGrouping !== "anio" && dayKey !== previousDayKey) {
+        rows.push({ kind: "day", key: `day-${dayKey}`, label: formatHistoryDayLabel(dayKey) });
+        previousDayKey = dayKey;
+      }
+      rows.push({ kind: "record", key: `${record.historyType}-${record.id}`, record });
+    });
+
+    return rows;
+  }, [historyGrouping, visibleHistoryRecords]);
+
   const totalActive = activeTransportRecords.length + activeDocRecords.length;
   const totalHistory = historyTransportRecords.length + historyDocRecords.length;
+  const filteredHistoryTotal = visibleHistoryRecords.length;
+
+  const closeDeleteHistoryModal = () => {
+    setDeleteHistoryModal({
+      open: false,
+      recordId: "",
+      destination: "",
+      submitting: false,
+      error: "",
+    });
+  };
 
   const sendStatusUpdate = async (routeType, recordId, nextStatus, reason = "") => {
     setIsUpdating(true);
@@ -521,6 +678,64 @@ export function TransportMyRoutesTab({ transportState, documentacionState, curre
     sendStatusUpdate(routeType, record.id, nextStatus, "");
   };
 
+  const openDeleteHistoryRecordModal = (record) => {
+    if (!canDeleteHistoryTransportRecords || String(record?.historyType || "") !== "transport") return;
+    setDeleteHistoryModal({
+      open: true,
+      recordId: String(record?.id || "").trim(),
+      destination: String(record?.historyDestination || record?.destination || "").trim() || "Destino",
+      submitting: false,
+      error: "",
+    });
+  };
+
+  const submitDeleteHistoryRecord = async () => {
+    const recordId = String(deleteHistoryModal.recordId || "").trim();
+    if (!recordId || !canDeleteHistoryTransportRecords || deleteHistoryModal.submitting) return;
+
+    setDeleteHistoryModal((current) => ({ ...current, submitting: true, error: "" }));
+    try {
+      const result = await requestJson(`/warehouse/transport/records/${recordId}`, { method: "DELETE" });
+      if (!result?.ok) {
+        setDeleteHistoryModal((current) => ({
+          ...current,
+          submitting: false,
+          error: result?.message || "No fue posible eliminar el registro.",
+        }));
+        return;
+      }
+      closeDeleteHistoryModal();
+      onStatusUpdated?.();
+    } catch (error) {
+      setDeleteHistoryModal((current) => ({
+        ...current,
+        submitting: false,
+        error: error?.message || "No fue posible eliminar el registro.",
+      }));
+    }
+  };
+
+  useEffect(() => {
+    if (!deleteHistoryModal.open) return undefined;
+
+    const handleDeleteHistoryModalKeys = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeDeleteHistoryModal();
+        return;
+      }
+      if (event.key === "Enter") {
+        const targetTag = String(event.target?.tagName || "").toLowerCase();
+        if (targetTag === "textarea") return;
+        event.preventDefault();
+        submitDeleteHistoryRecord();
+      }
+    };
+
+    globalThis.addEventListener("keydown", handleDeleteHistoryModalKeys);
+    return () => globalThis.removeEventListener("keydown", handleDeleteHistoryModalKeys);
+  }, [deleteHistoryModal.open, deleteHistoryModal.recordId, deleteHistoryModal.submitting, canDeleteHistoryTransportRecords]);
+
   const getNextActions = (statusValue = "") => {
     const status = String(statusValue || "").trim();
     if (status === "Asignado") {
@@ -549,7 +764,7 @@ export function TransportMyRoutesTab({ transportState, documentacionState, curre
       Asignado: { bg: "#cfe2ff", color: "#084298" },
       "En camino": { bg: "#d1ecf1", color: "#0c5460" },
       Retorno: { bg: "#ffe8cc", color: "#7a4100" },
-      Entregado: { bg: "#d4edda", color: "#155724" },
+      Entregado: { bg: "#dbe7f2", color: "#1d384f" },
       Devuelto: { bg: "#f8d7da", color: "#842029" },
       Cancelado: { bg: "#e2e3e5", color: "#41464b" },
     };
@@ -573,7 +788,7 @@ export function TransportMyRoutesTab({ transportState, documentacionState, curre
     <div>
       <div className="card-header-row" style={{ marginBottom: "0.5rem" }}>
         <h3 style={{ margin: 0 }}>Mis Rutas Asignadas</h3>
-        <span className="chip" style={{ background: "#e8f5e9", color: "#2e7d32" }}>
+        <span className="chip" style={{ background: "#eaeff3", color: "#385773" }}>
           {totalActive} activa{totalActive !== 1 ? "s" : ""}
         </span>
       </div>
@@ -609,6 +824,44 @@ export function TransportMyRoutesTab({ transportState, documentacionState, curre
         </div>
       )}
 
+      {routesViewTab === "history" ? (
+        <div style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "0.85rem",
+          alignItems: "flex-end",
+          marginBottom: "0.9rem",
+          padding: "0.9rem 1rem",
+          border: "1px solid rgba(49, 77, 105, 0.12)",
+          borderRadius: "1rem",
+          background: "linear-gradient(180deg, rgba(49, 77, 105, 0.04), rgba(49, 77, 105, 0.01))",
+        }}>
+          <label className="dashboard-filter-field dashboard-filter-field-range" style={{ minWidth: "min(100%, 340px)", margin: 0 }}>
+            <span>Calendario del historial</span>
+            <DashboardDateRangePicker
+              startDate={historyStartDate}
+              endDate={historyEndDate}
+              grouping={historyGrouping}
+              onGroupingChange={setHistoryGrouping}
+              selectedYear={historyYear}
+              yearOptions={historyYearOptions}
+              onYearChange={setHistoryYear}
+              onChange={({ startDate, endDate }) => {
+                const nextStart = startDate || historyStartDate;
+                const nextEnd = endDate || startDate || historyEndDate || nextStart;
+                setHistoryStartDate(nextStart);
+                setHistoryEndDate(nextEnd);
+              }}
+            />
+          </label>
+
+          <div className="subtle-line" style={{ display: "grid", gap: "0.2rem", minWidth: "220px" }}>
+            <span>Mostrando {filteredHistoryTotal} registro{filteredHistoryTotal !== 1 ? "s" : ""} en el rango.</span>
+            <span>Agrupación: {historyGrouping === "anio" ? "por meses" : "por fechas"}.</span>
+          </div>
+        </div>
+      ) : null}
+
       <div className="table-wrap">
         <table className="inventory-table-clean">
           <thead>
@@ -624,7 +877,7 @@ export function TransportMyRoutesTab({ transportState, documentacionState, curre
             </tr>
           </thead>
           <tbody>
-            {(routesViewTab === "active" ? activeTransportRecords : historyTransportRecords).map((record) => (
+            {(routesViewTab === "active" ? activeTransportRecords : []).map((record) => (
               <tr key={record.id}>
                 <td>Transporte</td>
                 <td>{record.destination}</td>
@@ -655,7 +908,7 @@ export function TransportMyRoutesTab({ transportState, documentacionState, curre
                 </td>
               </tr>
             ))}
-            {(routesViewTab === "active" ? activeDocRecords : historyDocRecords).map((record) => (
+            {(routesViewTab === "active" ? activeDocRecords : []).map((record) => (
                 <tr key={record.id}>
                   <td>Documentación</td>
                   <td>{record.area || "-"}</td>
@@ -686,6 +939,53 @@ export function TransportMyRoutesTab({ transportState, documentacionState, curre
                   </td>
                 </tr>
               ))}
+            {routesViewTab === "history" ? historyRenderRows.map((entry) => {
+              if (entry.kind === "month") {
+                return (
+                  <tr key={entry.key}>
+                    <td colSpan="8" style={{ background: "rgba(49, 77, 105, 0.08)", color: "#314d69", fontWeight: 700 }}>
+                      {entry.label}
+                    </td>
+                  </tr>
+                );
+              }
+              if (entry.kind === "day") {
+                return (
+                  <tr key={entry.key}>
+                    <td colSpan="8" style={{ background: "rgba(49, 77, 105, 0.04)", color: "#315753", fontWeight: 600 }}>
+                      {entry.label}
+                    </td>
+                  </tr>
+                );
+              }
+
+              const record = entry.record;
+              return (
+                <tr key={entry.key}>
+                  <td>{record.historyTypeLabel}</td>
+                  <td>{record.historyDestination}</td>
+                  <td>{record.historyBoxes}</td>
+                  <td>{record.historyPieces}</td>
+                  <td>{getStatusBadge(record.status)}</td>
+                  <td>{formatDateTime(record.historyClosedAt || record.createdAt)}</td>
+                  <td>{record.historyDetail}</td>
+                  <td>
+                    {canDeleteHistoryTransportRecords && record.historyType === "transport" ? (
+                      <button
+                        type="button"
+                        className="icon-button danger"
+                        onClick={() => openDeleteHistoryRecordModal(record)}
+                        disabled={deleteHistoryModal.submitting}
+                      >
+                        Eliminar registro
+                      </button>
+                    ) : (
+                      <span className="subtle-line">Ciclo cerrado</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            }) : null}
             {routesViewTab === "active" && !totalActive ? (
               <tr>
                 <td colSpan="8" className="subtle-line">
@@ -693,10 +993,10 @@ export function TransportMyRoutesTab({ transportState, documentacionState, curre
                 </td>
               </tr>
             ) : null}
-            {routesViewTab === "history" && !totalHistory ? (
+            {routesViewTab === "history" && !filteredHistoryTotal ? (
               <tr>
                 <td colSpan="8" className="subtle-line">
-                  Aún no tienes rutas cerradas en historial.
+                  No hay rutas cerradas dentro del rango seleccionado.
                 </td>
               </tr>
             ) : null}
@@ -711,18 +1011,18 @@ export function TransportMyRoutesTab({ transportState, documentacionState, curre
           left: 0,
           right: 0,
           bottom: 0,
-          background: "rgba(0,0,0,0.5)",
+          background: "rgba(0, 0, 0, 0.5)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           zIndex: 1000,
         }} onClick={() => setReasonState({ open: false, routeType: "", recordId: "", destination: "", nextStatus: "", reason: "" })}>
           <div className="transport-reason-modal" style={{
-            background: "#fff",
+            background: "#ffffff",
             padding: "1.5rem",
             borderRadius: "1rem",
             width: "min(92vw, 420px)",
-            boxShadow: "0 10px 40px rgba(0,0,0,0.2)",
+            boxShadow: "0 10px 40px rgba(0, 0, 0, 0.2)",
           }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ marginTop: 0 }}>
               Motivo de retorno
@@ -739,7 +1039,7 @@ export function TransportMyRoutesTab({ transportState, documentacionState, curre
                 style={{
                   width: "100%",
                   padding: "0.5rem",
-                  border: "1px solid #ccc",
+                  border: "1px solid #cccccc",
                   borderRadius: "0.25rem",
                   fontSize: "0.9rem",
                 }}
@@ -763,6 +1063,77 @@ export function TransportMyRoutesTab({ transportState, documentacionState, curre
                 disabled={isUpdating || !String(reasonState.reason || "").trim()}
               >
                 {isUpdating ? "Guardando..." : "Guardar motivo"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteHistoryModal.open && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={closeDeleteHistoryModal}
+        >
+          <div
+            className="transport-reason-modal"
+            style={{
+              background: "#ffffff",
+              padding: "1.5rem",
+              borderRadius: "1rem",
+              width: "min(92vw, 420px)",
+              boxShadow: "0 10px 40px rgba(0, 0, 0, 0.2)",
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 style={{ marginTop: 0 }}>Eliminar registro histórico</h3>
+            <p className="subtle-line" style={{ marginBottom: "0.75rem" }}>
+              Vas a eliminar permanentemente la ruta de {deleteHistoryModal.destination}.
+            </p>
+            <p className="subtle-line" style={{ marginBottom: "1rem" }}>
+              Esta acción solo está habilitada para tu cuenta principal Lead. Presiona Enter para confirmar o Esc para cancelar.
+            </p>
+
+            {deleteHistoryModal.error ? (
+              <div style={{
+                padding: "0.75rem",
+                background: "#ffebee",
+                border: "1px solid #ff5252",
+                borderRadius: "0.5rem",
+                color: "#d32f2f",
+                marginBottom: "1rem",
+                fontSize: "0.9rem",
+              }}>
+                {deleteHistoryModal.error}
+              </div>
+            ) : null}
+
+            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={closeDeleteHistoryModal}
+                disabled={deleteHistoryModal.submitting}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="icon-button danger"
+                onClick={submitDeleteHistoryRecord}
+                disabled={deleteHistoryModal.submitting}
+              >
+                {deleteHistoryModal.submitting ? "Eliminando..." : "Eliminar registro"}
               </button>
             </div>
           </div>

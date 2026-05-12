@@ -50,8 +50,8 @@ function InventoryLotBadges({ item, columnKey }) {
           <div style={{ position: "fixed", inset: 0, zIndex: 9100 }} onClick={() => setOpen(false)} />
           <div style={{
             position: "fixed", top: pos.top, left: pos.left, minWidth: pos.width,
-            zIndex: 9200, background: "#fff", border: "1px solid rgba(162,170,181,0.28)",
-            borderRadius: "0.7rem", boxShadow: "0 12px 24px rgba(3,33,33,0.12)",
+            zIndex: 9200, background: "#ffffff", border: "1px solid rgba(162, 170, 181, 0.28)",
+            borderRadius: "0.7rem", boxShadow: "0 12px 24px rgba(49, 77, 105, 0.12)",
             padding: "0.32rem", display: "flex", flexDirection: "column", gap: "0.2rem",
             maxHeight: "12rem", overflowY: "auto",
           }}>
@@ -59,7 +59,7 @@ function InventoryLotBadges({ item, columnKey }) {
               <span key={val} style={{
                 display: "block", padding: "0.3rem 0.5rem", borderRadius: "0.5rem",
                 fontSize: "0.78rem", fontWeight: val === displayValue ? 700 : 500,
-                background: val === displayValue ? "rgba(22,163,74,0.08)" : "#f9fbfb",
+                background: val === displayValue ? "rgba(42, 96, 143, 0.08)" : "#f9fbfb",
                 color: "#244040",
               }}>{val}</span>
             ))}

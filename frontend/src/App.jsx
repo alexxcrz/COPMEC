@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowDown,
@@ -19,6 +19,7 @@ import {
   Package,
   Pause,
   PauseCircle,
+  Palette,
   PanelLeftClose,
   PanelLeftOpen,
   Pencil,
@@ -30,6 +31,7 @@ import {
   Settings,
   Square,
   Trash2,
+  Type,
   Upload,
   Eye,
   EyeOff,
@@ -175,6 +177,8 @@ import {
   BOARD_OPERATIONAL_CONTEXT_CUSTOM, BOARD_OPERATIONAL_CONTEXT_OPTIONS,
 
   NAV_ITEMS, ACTION_DEFINITIONS, BOARD_PERMISSION_ACTION_IDS, BOARD_PERMISSION_ACTIONS,
+
+  getScopedAreaActionPermissionId,
 
   PAGE_ACTION_GROUPS, PERMISSION_PRESETS, RESPONSIBLE_VISUALS,
 
@@ -414,6 +418,8 @@ import {
 
   normalizeRole,
 
+  canCreateRole,
+
   supportsManagedPermissionOverrides,
 
   createUserModalState,
@@ -506,6 +512,66 @@ import { initNotificationService, showTransportNotification, showTransportNotifi
 
 const INITIAL_ROUTE_STATE = getInitialRouteState();
 const HIDDEN_BASE_TEMPLATES_KEY = "copmec-hidden-base-templates";
+const UI_THEME_KEY = "copmec-ui-theme";
+const UI_FONT_KEY = "copmec-ui-font";
+const UI_FONT_SIZE_KEY = "copmec-ui-font-size";
+const getUserUiThemeKey = (userId) => `${UI_THEME_KEY}:${String(userId || "anon")}`;
+const getUserUiFontKey = (userId) => `${UI_FONT_KEY}:${String(userId || "anon")}`;
+const getUserUiFontSizeKey = (userId) => `${UI_FONT_SIZE_KEY}:${String(userId || "anon")}`;
+const UI_THEME_OPTIONS = [
+  { id: "copmec-bosque", label: "Acero AXO", icon: Palette, primary: "#385878", shell: "#22384f" },
+  { id: "copmec-arenisca", label: "Arenisca", icon: Palette, primary: "#6a5a3f", shell: "#3f3526" },
+  { id: "copmec-noche", label: "Grafito", icon: Palette, primary: "#2f3642", shell: "#1f242d" },
+  { id: "copmec-oceano", label: "Oceano", icon: Palette, primary: "#0f4c5c", shell: "#083742" },
+  { id: "copmec-cobre", label: "Cobre", icon: Palette, primary: "#8a4f2d", shell: "#5e341c" },
+  { id: "copmec-vino", label: "Vino", icon: Palette, primary: "#7d2245", shell: "#551731" },
+  { id: "copmec-ceniza", label: "Ceniza", icon: Palette, primary: "#3f4654", shell: "#2b303b" },
+  { id: "copmec-indigo", label: "Indigo", icon: Palette, primary: "#2f3f87", shell: "#202c5f" },
+  { id: "copmec-oliva", label: "Oliva", icon: Palette, primary: "#314658", shell: "#212f3c" },
+  { id: "copmec-coral", label: "Coral", icon: Palette, primary: "#b44b46", shell: "#7f2f2b" },
+  { id: "copmec-menta", label: "Menta", icon: Palette, primary: "#36546f", shell: "#263b4d" },
+  { id: "copmec-solar", label: "Solar", icon: Palette, primary: "#b37a18", shell: "#7e5411" },
+  { id: "copmec-ciruela", label: "Ciruela", icon: Palette, primary: "#6b2f6f", shell: "#48204b" },
+  { id: "copmec-petroleo", label: "Petroleo", icon: Palette, primary: "#245964", shell: "#173b42" },
+  { id: "copmec-aurora", label: "Aurora", icon: Palette, primary: "#2c7a7b", shell: "#553c9a" },
+  { id: "copmec-atardecer", label: "Atardecer", icon: Palette, primary: "#f97316", shell: "#be185d" },
+  { id: "copmec-laguna", label: "Laguna", icon: Palette, primary: "#0ea5e9", shell: "#405db0" },
+  { id: "copmec-flama", label: "Flama", icon: Palette, primary: "#f59e0b", shell: "#ef4444" },
+  { id: "copmec-neon", label: "Neon", icon: Palette, primary: "#5f8fbe", shell: "#0ea5e9" },
+  { id: "copmec-berry", label: "Berry", icon: Palette, primary: "#e11d48", shell: "#7c3aed" },
+];
+const UI_FONT_OPTIONS = [
+  { id: "bahnschrift", label: "Bahnschrift", icon: Type, family: '"Bahnschrift", "Segoe UI", sans-serif' },
+  { id: "trebuchet", label: "Trebuchet", icon: Type, family: '"Trebuchet MS", "Segoe UI", sans-serif' },
+  { id: "serif", label: "Serif Clasica", icon: Type, family: '"Book Antiqua", "Cambria", serif' },
+  { id: "mono", label: "Mono Tecnica", icon: Type, family: '"Consolas", "Cascadia Mono", monospace' },
+  { id: "segoe", label: "Segoe Moderna", icon: Type, family: '"Segoe UI", "Franklin Gothic Medium", sans-serif' },
+  { id: "georgia", label: "Georgia Editorial", icon: Type, family: '"Georgia", "Times New Roman", serif' },
+  { id: "candara", label: "Candara Humana", icon: Type, family: '"Candara", "Gill Sans MT", sans-serif' },
+  { id: "tahoma", label: "Tahoma Compacta", icon: Type, family: '"Tahoma", "Verdana", sans-serif' },
+  { id: "palatino", label: "Palatino Elegante", icon: Type, family: '"Palatino Linotype", "Book Antiqua", serif' },
+  { id: "verdana", label: "Verdana Clara", icon: Type, family: '"Verdana", "Segoe UI", sans-serif' },
+  { id: "calibri", label: "Calibri Fluida", icon: Type, family: '"Calibri", "Segoe UI", sans-serif' },
+  { id: "corbel", label: "Corbel Pro", icon: Type, family: '"Corbel", "Candara", sans-serif' },
+  { id: "garamond", label: "Garamond", icon: Type, family: '"Garamond", "Times New Roman", serif' },
+  { id: "century", label: "Century Gothic", icon: Type, family: '"Century Gothic", "Trebuchet MS", sans-serif' },
+  { id: "lucida", label: "Lucida Sans", icon: Type, family: '"Lucida Sans Unicode", "Lucida Grande", sans-serif' },
+  { id: "arialn", label: "Arial Narrow", icon: Type, family: '"Arial Narrow", "Arial", sans-serif' },
+  { id: "cambria", label: "Cambria", icon: Type, family: '"Cambria", "Georgia", serif' },
+  { id: "franklin", label: "Franklin", icon: Type, family: '"Franklin Gothic Medium", "Arial", sans-serif' },
+  { id: "bookman", label: "Bookman", icon: Type, family: '"Bookman Old Style", "Garamond", serif' },
+  { id: "gill", label: "Gill Sans", icon: Type, family: '"Gill Sans MT", "Trebuchet MS", sans-serif' },
+  { id: "optima", label: "Optima", icon: Type, family: '"Optima", "Segoe UI", sans-serif' },
+  { id: "constantia", label: "Constantia", icon: Type, family: '"Constantia", "Cambria", serif' },
+  { id: "rockwell", label: "Rockwell", icon: Type, family: '"Rockwell", "Georgia", serif' },
+  { id: "futura", label: "Futura", icon: Type, family: '"Futura", "Century Gothic", sans-serif' },
+];
+const UI_FONT_SIZE_OPTIONS = [
+  { id: "compacta", label: "Compacta", scale: 0.94 },
+  { id: "normal", label: "Normal", scale: 1 },
+  { id: "grande", label: "Grande", scale: 1.08 },
+  { id: "gigante", label: "Gigante", scale: 1.16 },
+];
 const CATALOG_WEEKDAY_OPTIONS = [
   { value: 0, short: "L", label: "Lunes" },
   { value: 1, short: "M", label: "Martes" },
@@ -781,6 +847,152 @@ function uint8ArrayEquals(a, b) {
   return true;
 }
 
+const APP_AREA_SECTIONS = [
+  { id: "esto", label: "ESTO", scopes: ["ESTO"] },
+  { id: "transporte", label: "TRANSPORTE", scopes: ["TRANSPORTE"] },
+  { id: "limpieza", label: "LIMPIEZA", scopes: ["LIMPIEZA"] },
+  { id: "regulatorio", label: "REGULATORIO", scopes: ["REGULATORIO"] },
+  { id: "calidad", label: "CALIDAD", scopes: ["CALIDAD"] },
+  { id: "inventario", label: "INVENTARIO", scopes: ["INVENTARIO"] },
+  { id: "recepcion-pedidos", label: "RECEPCION DE PEDIDOS", scopes: ["RECEPCION DE PEDIDOS"] },
+  { id: "operaciones", label: "OPERACIONES", scopes: ["OPERACIONES"] },
+  { id: "mantenimiento", label: "MANTENIMIENTO", scopes: ["MANTENIMIENTO"] },
+  { id: "mayoreo-comercio", label: "MAYOREO / ECOMMERCE / PEDIDOS DETAL", scopes: ["MAYOREO-TELEMARKETING", "ECOMMERCE", "PEDIDOS DETAL"] },
+  { id: "retail", label: "RETAIL", scopes: ["RETAIL"] },
+  { id: "fullfilment", label: "FULLFILMENT", scopes: ["FULLFILMENT"] },
+];
+
+const NAV_AREA_ACTION_BY_SECTION = {
+  "esto": "accessNavEsto",
+  "transporte": "accessNavTransporte",
+  "limpieza": "accessNavLimpieza",
+  "regulatorio": "accessNavRegulatorio",
+  "calidad": "accessNavCalidad",
+  "inventario": "accessNavInventario",
+  "recepcion-pedidos": "accessNavRecepcion",
+  "operaciones": "accessNavOperaciones",
+  "mantenimiento": "accessNavMantenimiento",
+  "mayoreo-comercio": "accessNavMayoreo",
+  "retail": "accessNavRetail",
+  "fullfilment": "accessNavFullfilment",
+};
+
+const NAV_UTILITY_ACTION_BY_GROUP = {
+  "Mejora continua": "accessNavMejoraContinua",
+  "Producción": "accessNavProduccion",
+  "Recursos": "accessNavRecursos",
+  "Admin": "accessNavEquipo",
+};
+
+const AREA_TAB_PERMISSION_ACTIONS = {
+  "esto": {
+    dashboard: "scopeEstoDashboard",
+    board: "scopeEstoBoardBuilder",
+    customBoards: "scopeEstoMyBoards",
+    history: "scopeEstoHistory",
+  },
+  "limpieza": {
+    dashboard: "scopeLimpiezaDashboard",
+    board: "scopeLimpiezaBoardBuilder",
+    customBoards: "scopeLimpiezaMyBoards",
+    history: "scopeLimpiezaHistory",
+  },
+  "regulatorio": {
+    dashboard: "scopeRegulatorioDashboard",
+    board: "scopeRegulatorioBoardBuilder",
+    customBoards: "scopeRegulatorioMyBoards",
+    history: "scopeRegulatorioHistory",
+  },
+  "calidad": {
+    dashboard: "scopeCalidadDashboard",
+    board: "scopeCalidadBoardBuilder",
+    customBoards: "scopeCalidadMyBoards",
+    history: "scopeCalidadHistory",
+  },
+  "inventario": {
+    dashboard: "scopeInventarioDashboard",
+    board: "scopeInventarioBoardBuilder",
+    customBoards: "scopeInventarioMyBoards",
+    history: "scopeInventarioHistory",
+  },
+  "recepcion-pedidos": {
+    dashboard: "scopeRecepcionDashboard",
+    board: "scopeRecepcionBoardBuilder",
+    customBoards: "scopeRecepcionMyBoards",
+    history: "scopeRecepcionHistory",
+  },
+  "operaciones": {
+    dashboard: "scopeOperacionesDashboard",
+    board: "scopeOperacionesBoardBuilder",
+    customBoards: "scopeOperacionesMyBoards",
+    history: "scopeOperacionesHistory",
+  },
+  "mantenimiento": {
+    incidencias: "scopeMantenimientoIncidencias",
+    dashboard: "scopeMantenimientoDashboard",
+    board: "scopeMantenimientoBoardBuilder",
+    customBoards: "scopeMantenimientoMyBoards",
+    history: "scopeMantenimientoHistory",
+  },
+  "mayoreo-comercio": {
+    dashboard: "scopeMayoreoDashboard",
+    board: "scopeMayoreoBoardBuilder",
+    customBoards: "scopeMayoreoMyBoards",
+    history: "scopeMayoreoHistory",
+  },
+  "retail": {
+    dashboard: "scopeRetailDashboard",
+    board: "scopeRetailBoardBuilder",
+    customBoards: "scopeRetailMyBoards",
+    history: "scopeRetailHistory",
+  },
+  "fullfilment": {
+    dashboard: "scopeFullfilmentDashboard",
+    board: "scopeFullfilmentBoardBuilder",
+    customBoards: "scopeFullfilmentMyBoards",
+    history: "scopeFullfilmentHistory",
+  },
+  "transporte": {
+    "registros-envios": "scopeTransporteRegistrosEnvios",
+    "control-transporte": "scopeTransporteControl",
+    "incidencias-transporte": "scopeTransporteIncidencias",
+    "consolidados": "scopeTransporteConsolidados",
+    "dashboard-transporte": "scopeTransporteDashboard",
+    "direcciones-gastos": "scopeTransporteLogistica",
+  },
+};
+
+const TRANSPORT_SECTION_ACTIONS = {
+  "registros-envios": [
+    "viewTransportRetail",
+    "manageTransportRetail",
+    "viewTransportPedidos",
+    "manageTransportPedidos",
+    "viewTransportInventario",
+    "manageTransportInventario",
+  ],
+  "control-transporte": [
+    "viewTransportDocumentacion",
+    "manageTransportDocumentacion",
+    "viewTransportAssignments",
+    "manageTransportAssignments",
+    "viewTransportPostponed",
+    "manageTransportPostponed",
+    "viewTransportMyRoutes",
+  ],
+  "incidencias-transporte": [],
+  "consolidados": ["viewTransportConsolidated"],
+  "dashboard-transporte": [],
+  "direcciones-gastos": ["viewTransportLogistics", "manageTransportLogistics"],
+};
+
+const AREA_TAB_BASE_ACTIONS = {
+  dashboard: ["exportDashboardData", "manageDashboardState"],
+  board: ["createCatalog", "editCatalog", "deleteCatalog", "createBoard", "editBoard", "saveTemplate", "editTemplate", "deleteTemplate", "duplicateBoard", "duplicateBoardWithRows", "deleteBoard", "deleteWeekActivity"],
+  customBoards: ["createBoardRow", "deleteBoardRow", "editFinishedBoardRow", "viewHistoricalBoardScopes", "boardWorkflow", "exportBoardExcel", "previewBoardPdf", "exportBoardPdf"],
+  history: ["editHistoryRecords"],
+};
+
 function App() { // NOSONAR
   const socketRef = useRef(null);
   const [socketConnectCount, setSocketConnectCount] = useState(0);
@@ -796,6 +1008,10 @@ function App() { // NOSONAR
       return urlPage;
     }
   });
+  const [selectedAreaSectionId, setSelectedAreaSectionId] = useState(() => String(INITIAL_ROUTE_STATE.area || "all").trim() || "all");
+  const [navTransportSection, setNavTransportSection] = useState("registros-envios");
+  const [navTransportTab, setNavTransportTab] = useState("");
+  const [auditShortcutPreset, setAuditShortcutPreset] = useState(null);
   const [dashboardSectionsOpen, setDashboardSectionsOpen] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(DASHBOARD_SECTIONS_KEY) || "null");
@@ -839,6 +1055,7 @@ function App() { // NOSONAR
   const [historyPauseActivityId, setHistoryPauseActivityId] = useState(null);
   const [userModal, setUserModal] = useState(() => createUserModalState());
   const [userModalMessage, setUserModalMessage] = useState({ tone: "", text: "" });
+  const [expandedPermissionTabs, setExpandedPermissionTabs] = useState([]);
   const [deleteUserId, setDeleteUserId] = useState(null);
   const [transferLeadTargetId, setTransferLeadTargetId] = useState(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -908,6 +1125,9 @@ function App() { // NOSONAR
   const [selectedCustomBoardId, setSelectedCustomBoardId] = useState(INITIAL_ROUTE_STATE.selectedBoardId);
   const [selectedCustomBoardViewId, setSelectedCustomBoardViewId] = useState("current");
   const [customBoardActionsMenuOpen, setCustomBoardActionsMenuOpen] = useState(false);
+  const [uiTheme, setUiTheme] = useState("copmec-bosque");
+  const [uiFont, setUiFont] = useState("bahnschrift");
+  const [uiFontSize, setUiFontSize] = useState("normal");
   const [selectedPermissionBoardId, setSelectedPermissionBoardId] = useState("");
   const [loginForm, setLoginForm] = useState({ login: "", password: "" });
   const [loginError, setLoginError] = useState("");
@@ -921,6 +1141,15 @@ function App() { // NOSONAR
   const [syncStatus, setSyncStatus] = useState("Conectando");
   const [securityEvents, setSecurityEvents] = useState([]);
   const [securityEventsStatus, setSecurityEventsStatus] = useState("idle");
+
+  const activeAreaScopes = useMemo(
+    () => {
+      const selectedAreaSection = APP_AREA_SECTIONS.find((section) => section.id === selectedAreaSectionId) || null;
+      return selectedAreaSection ? selectedAreaSection.scopes : [];
+    },
+    [selectedAreaSectionId],
+  );
+
   const operationalPauseState = useMemo(() => ({
     areaPauseControls: state?.system?.operational?.pauseControl?.areaPauseControls || EMPTY_OBJECT,
   }), [state?.system?.operational]);
@@ -964,6 +1193,7 @@ function App() { // NOSONAR
   const [isDemoMode, setIsDemoMode] = useState(false);
   const preDemoStateRef = useRef(null);
   const isHydratedRef = useRef(false);
+  const uiPrefsHydratedRef = useRef(false);
   const skipNextSyncRef = useRef(false);
   const contentShellRef = useRef(null);
   const notificationCenterRef = useRef(null);
@@ -1372,7 +1602,83 @@ function App() { // NOSONAR
   }, [hiddenBaseTemplateIds]);
 
   useEffect(() => {
-    document.title = "COPMEC";
+    const root = document.documentElement;
+    if (!root?.dataset) return;
+    delete root.dataset.uiTheme;
+    delete root.dataset.uiFont;
+    delete root.dataset.uiFontSize;
+  }, []);
+
+  useEffect(() => {
+    if (!sessionUserId) {
+      uiPrefsHydratedRef.current = false;
+      setUiTheme("copmec-bosque");
+      setUiFont("bahnschrift");
+      setUiFontSize("normal");
+      return;
+    }
+    uiPrefsHydratedRef.current = false;
+    // Obtener preferencias del servidor
+    (async () => {
+      try {
+        const prefs = await requestJson("/chat/ui-preferences");
+        if (prefs) {
+          setUiTheme(UI_THEME_OPTIONS.some((option) => option.id === prefs.theme) ? prefs.theme : "copmec-bosque");
+          setUiFont(UI_FONT_OPTIONS.some((option) => option.id === prefs.font) ? prefs.font : "bahnschrift");
+          setUiFontSize(UI_FONT_SIZE_OPTIONS.some((option) => option.id === prefs.fontSize) ? prefs.fontSize : "normal");
+          uiPrefsHydratedRef.current = true;
+          return;
+        }
+      } catch {}
+      // Fallback a localStorage si falla el servidor
+      try {
+        const savedTheme = String(localStorage.getItem(getUserUiThemeKey(sessionUserId)) || "").trim();
+        const savedFont = String(localStorage.getItem(getUserUiFontKey(sessionUserId)) || "").trim();
+        const savedFontSize = String(localStorage.getItem(getUserUiFontSizeKey(sessionUserId)) || "").trim();
+        setUiTheme(UI_THEME_OPTIONS.some((option) => option.id === savedTheme) ? savedTheme : "copmec-bosque");
+        setUiFont(UI_FONT_OPTIONS.some((option) => option.id === savedFont) ? savedFont : "bahnschrift");
+        setUiFontSize(UI_FONT_SIZE_OPTIONS.some((option) => option.id === savedFontSize) ? savedFontSize : "normal");
+        uiPrefsHydratedRef.current = true;
+      } catch {
+        setUiTheme("copmec-bosque");
+        setUiFont("bahnschrift");
+        setUiFontSize("normal");
+        uiPrefsHydratedRef.current = true;
+      }
+    })();
+  }, [sessionUserId]);
+
+  useEffect(() => {
+    if (!sessionUserId || !uiPrefsHydratedRef.current) return;
+    const normalizedTheme = UI_THEME_OPTIONS.some((option) => option.id === uiTheme) ? uiTheme : "copmec-bosque";
+    const normalizedFont = UI_FONT_OPTIONS.some((option) => option.id === uiFont) ? uiFont : "bahnschrift";
+    const normalizedFontSize = UI_FONT_SIZE_OPTIONS.some((option) => option.id === uiFontSize) ? uiFontSize : "normal";
+    document.documentElement.dataset.uiTheme = normalizedTheme;
+    document.documentElement.dataset.uiFont = normalizedFont;
+    document.documentElement.dataset.uiFontSize = normalizedFontSize;
+    // Guardar en servidor
+    (async () => {
+      try {
+        await requestJson("/chat/ui-preferences", {
+          method: "POST",
+          body: JSON.stringify({
+            theme: normalizedTheme,
+            font: normalizedFont,
+            fontSize: normalizedFontSize,
+          }),
+        });
+      } catch {}
+      // Fallback a localStorage
+      try {
+        localStorage.setItem(getUserUiThemeKey(sessionUserId), normalizedTheme);
+        localStorage.setItem(getUserUiFontKey(sessionUserId), normalizedFont);
+        localStorage.setItem(getUserUiFontSizeKey(sessionUserId), normalizedFontSize);
+      } catch {}
+    })();
+  }, [sessionUserId, uiTheme, uiFont, uiFontSize]);
+
+  useEffect(() => {
+    document.title = "AXO";
   }, []);
 
   useEffect(() => {
@@ -1384,6 +1690,7 @@ function App() { // NOSONAR
           selectedBoardId: selectedCustomBoardId,
           selectedWeekId,
           selectedHistoryWeekId,
+          area: selectedAreaSectionId,
         })
       : "";
     const nextPath = shouldPersistRoute ? buildRoutePath(page) : "/";
@@ -1400,7 +1707,7 @@ function App() { // NOSONAR
 
     globalThis.history.pushState(null, "", nextUrl);
     routeLastUrlRef.current = nextUrl;
-  }, [adminTab, page, selectedCustomBoardId, selectedHistoryWeekId, selectedWeekId, sessionUserId]);
+  }, [adminTab, page, selectedAreaSectionId, selectedCustomBoardId, selectedHistoryWeekId, selectedWeekId, sessionUserId]);
 
   useEffect(() => {
     function handlePopState() {
@@ -1410,6 +1717,7 @@ function App() { // NOSONAR
       setAdminTab(normalizeAdminTab(routeState.adminTab));
       setSelectedCustomBoardId(routeState.selectedBoardId || "");
       setSelectedHistoryWeekId(routeState.selectedHistoryWeekId || "");
+      setSelectedAreaSectionId(routeState.area || "all");
     }
 
     globalThis.addEventListener("popstate", handlePopState);
@@ -1590,6 +1898,7 @@ function App() { // NOSONAR
       ? state.users.find((user) => user.id === sessionUserId) || null
       : null;
     const sessionPermissions = normalizePermissions(state?.permissions);
+    const isLeadSession = normalizeRole(sessionUser?.role) === ROLE_LEAD;
     const isTransportOperator = Boolean(
       canDoAction(sessionUser, "viewTransportRetail", sessionPermissions)
       || canDoAction(sessionUser, "manageTransportRetail", sessionPermissions)
@@ -1597,17 +1906,21 @@ function App() { // NOSONAR
       || canDoAction(sessionUser, "manageTransportPedidos", sessionPermissions)
       || canDoAction(sessionUser, "viewTransportInventario", sessionPermissions)
       || canDoAction(sessionUser, "manageTransportInventario", sessionPermissions)
+      || canDoAction(sessionUser, "viewTransportDocumentacion", sessionPermissions)
+      || canDoAction(sessionUser, "manageTransportDocumentacion", sessionPermissions)
+      || canDoAction(sessionUser, "viewTransportAssignments", sessionPermissions)
+      || canDoAction(sessionUser, "manageTransportAssignments", sessionPermissions)
     );
-    const shouldReceiveOperationalNotification = (record) => {
-      const creatorId = String(record?.createdById || "").trim();
-      return isTransportOperator || (creatorId && creatorId === sessionUserId);
-    };
+    const canReceiveTransportBellNotifications = isTransportOperator || isLeadSession;
+    const shouldShowTransportDeviceNotification = isTransportOperator && !isLeadSession;
 
     const handleTransportRecordCreated = async (data) => {
       if (ignoreResponse) return;
       // Mostrar notificación de nuevo envío
-      if (data?.record && shouldReceiveOperationalNotification(data.record)) {
-        showTransportNotificationForNewRecord(data.record, { playAlert: isTransportOperator });
+      if (data?.record && canReceiveTransportBellNotifications) {
+        if (shouldShowTransportDeviceNotification) {
+          showTransportNotificationForNewRecord(data.record, { playAlert: false });
+        }
         pushNotificationToInbox({
           id: `transport-created-${data.record.id}-${data.ts || Date.now()}`,
           title: "Nuevo envío registrado",
@@ -1630,8 +1943,10 @@ function App() { // NOSONAR
     const handleTransportRouteAssigned = async (data) => {
       if (ignoreResponse) return;
       // Mostrar notificación de asignación
-      if (data?.record && data?.driver && shouldReceiveOperationalNotification(data.record)) {
-        showTransportNotificationForAssignment(data.record, data.driver?.name || "Conductor", { playAlert: false });
+      if (data?.record && data?.driver && canReceiveTransportBellNotifications) {
+        if (shouldShowTransportDeviceNotification) {
+          showTransportNotificationForAssignment(data.record, data.driver?.name || "Conductor", { playAlert: false });
+        }
         pushNotificationToInbox({
           id: `transport-assigned-${data.record.id}-${data.ts || Date.now()}`,
           title: "Ruta asignada",
@@ -1654,8 +1969,10 @@ function App() { // NOSONAR
     const handleTransportStatusUpdated = async (data) => {
       if (ignoreResponse) return;
       // Mostrar notificación de cambio de estado
-      if (data?.record && shouldReceiveOperationalNotification(data.record)) {
-        showTransportNotificationForStatusUpdate(data.record, data.record?.status, { playAlert: false });
+      if (data?.record && canReceiveTransportBellNotifications) {
+        if (shouldShowTransportDeviceNotification) {
+          showTransportNotificationForStatusUpdate(data.record, data.record?.status, { alertMode: "vibration-only" });
+        }
         pushNotificationToInbox({
           id: `transport-status-${data.record.id}-${data.ts || Date.now()}`,
           title: "Estado de ruta actualizado",
@@ -1677,12 +1994,14 @@ function App() { // NOSONAR
 
     const handleTransportRecordPostponed = async (data) => {
       if (ignoreResponse) return;
-      if (data?.record && shouldReceiveOperationalNotification(data.record)) {
-        showTransportNotification("🗓️ Envío pospuesto", {
-          body: `${data.record.destination || "Destino"} reprogramado para ${formatDateTime(data.record.postponedUntil || data.record.updatedAt)}`,
-          tag: `transport-postponed-${data.record.id || Date.now()}`,
-          playAlert: false,
-        });
+      if (data?.record && canReceiveTransportBellNotifications) {
+        if (shouldShowTransportDeviceNotification) {
+          showTransportNotification("🗓️ Envío pospuesto", {
+            body: `${data.record.destination || "Destino"} reprogramado para ${formatDateTime(data.record.postponedUntil || data.record.updatedAt)}`,
+            tag: `transport-postponed-${data.record.id || Date.now()}`,
+            playAlert: false,
+          });
+        }
         pushNotificationToInbox({
           id: `transport-postponed-${data.record.id}-${data.ts || Date.now()}`,
           title: "Envío pospuesto",
@@ -1713,12 +2032,14 @@ function App() { // NOSONAR
 
     const handleDocumentacionRecordCreated = async (data) => {
       if (ignoreResponse) return;
-      if (data?.record && shouldReceiveOperationalNotification(data.record)) {
-        showTransportNotification("📄 Nuevo registro de documentación", {
-          body: `${data.record.area || "Área"} · Dirigido a: ${data.record.dirigidoA || "-"}`,
-          tag: `documentacion-record-${data.record.id || Date.now()}`,
-          playAlert: false,
-        });
+      if (data?.record && canReceiveTransportBellNotifications) {
+        if (shouldShowTransportDeviceNotification) {
+          showTransportNotification("📄 Nuevo registro de documentación", {
+            body: `${data.record.area || "Área"} · Dirigido a: ${data.record.dirigidoA || "-"}`,
+            tag: `documentacion-record-${data.record.id || Date.now()}`,
+            playAlert: false,
+          });
+        }
         pushNotificationToInbox({
           id: `documentacion-created-${data.record.id}-${data.ts || Date.now()}`,
           title: "Nuevo registro en Documentación",
@@ -1739,12 +2060,14 @@ function App() { // NOSONAR
 
     const handleDocumentacionRecordUpdated = async (data) => {
       if (ignoreResponse) return;
-      if (data?.record && shouldReceiveOperationalNotification(data.record)) {
-        showTransportNotification("📝 Registro de documentación actualizado", {
-          body: `${data.record.area || "Área"} · Dirigido a: ${data.record.dirigidoA || "-"}`,
-          tag: `documentacion-record-updated-${data.record.id || Date.now()}`,
-          playAlert: false,
-        });
+      if (data?.record && canReceiveTransportBellNotifications) {
+        if (shouldShowTransportDeviceNotification) {
+          showTransportNotification("📝 Registro de documentación actualizado", {
+            body: `${data.record.area || "Área"} · Dirigido a: ${data.record.dirigidoA || "-"}`,
+            tag: `documentacion-record-updated-${data.record.id || Date.now()}`,
+            playAlert: false,
+          });
+        }
         pushNotificationToInbox({
           id: `documentacion-updated-${data.record.id}-${data.ts || Date.now()}`,
           title: "Documentación actualizada",
@@ -1765,12 +2088,14 @@ function App() { // NOSONAR
 
     const handleDocumentacionRouteAssigned = async (data) => {
       if (ignoreResponse) return;
-      if (data?.record && data?.driver && shouldReceiveOperationalNotification(data.record)) {
-        showTransportNotification("📄 Ruta de documentación asignada", {
-          body: `${data.record.area || "Área"} fue asignada a ${data.driver?.name || "Conductor"}.`,
-          tag: `documentacion-route-assigned-${data.record.id || Date.now()}`,
-          playAlert: false,
-        });
+      if (data?.record && data?.driver && canReceiveTransportBellNotifications) {
+        if (shouldShowTransportDeviceNotification) {
+          showTransportNotification("📄 Ruta de documentación asignada", {
+            body: `${data.record.area || "Área"} fue asignada a ${data.driver?.name || "Conductor"}.`,
+            tag: `documentacion-route-assigned-${data.record.id || Date.now()}`,
+            playAlert: false,
+          });
+        }
         pushNotificationToInbox({
           id: `documentacion-assigned-${data.record.id}-${data.ts || Date.now()}`,
           title: "Ruta de documentación asignada",
@@ -1791,12 +2116,14 @@ function App() { // NOSONAR
 
     const handleDocumentacionStatusUpdated = async (data) => {
       if (ignoreResponse) return;
-      if (data?.record && shouldReceiveOperationalNotification(data.record)) {
-        showTransportNotification("🧾 Estado de documentación actualizado", {
-          body: `${data.record.area || "Área"} ahora está en "${data.record.status || "Pendiente"}".`,
-          tag: `documentacion-status-updated-${data.record.id || Date.now()}`,
-          playAlert: false,
-        });
+      if (data?.record && canReceiveTransportBellNotifications) {
+        if (shouldShowTransportDeviceNotification) {
+          showTransportNotification("🧾 Estado de documentación actualizado", {
+            body: `${data.record.area || "Área"} ahora está en "${data.record.status || "Pendiente"}".`,
+            tag: `documentacion-status-updated-${data.record.id || Date.now()}`,
+            alertMode: "vibration-only",
+          });
+        }
         pushNotificationToInbox({
           id: `documentacion-status-${data.record.id}-${data.ts || Date.now()}`,
           title: "Estado de documentación actualizado",
@@ -1846,6 +2173,7 @@ function App() { // NOSONAR
       ? state.users.find((user) => user.id === sessionUserId) || null
       : null;
     const sessionPermissions = normalizePermissions(state?.permissions);
+    const isLeadSession = normalizeRole(sessionUser?.role) === ROLE_LEAD;
     const isTransportOperator = Boolean(
       canDoAction(sessionUser, "viewTransportRetail", sessionPermissions)
       || canDoAction(sessionUser, "manageTransportRetail", sessionPermissions)
@@ -1853,10 +2181,19 @@ function App() { // NOSONAR
       || canDoAction(sessionUser, "manageTransportPedidos", sessionPermissions)
       || canDoAction(sessionUser, "viewTransportInventario", sessionPermissions)
       || canDoAction(sessionUser, "manageTransportInventario", sessionPermissions)
+      || canDoAction(sessionUser, "viewTransportDocumentacion", sessionPermissions)
+      || canDoAction(sessionUser, "manageTransportDocumentacion", sessionPermissions)
+      || canDoAction(sessionUser, "viewTransportAssignments", sessionPermissions)
+      || canDoAction(sessionUser, "manageTransportAssignments", sessionPermissions)
     );
-    if (!isTransportOperator) return;
+    const canReceiveTransportBellNotifications = isTransportOperator || isLeadSession;
+    const shouldShowTransportDeviceNotification = isTransportOperator && !isLeadSession;
+    if (!canReceiveTransportBellNotifications) return;
 
-    const reminderStorageKey = `transport-postpone-reminders-${sessionUserId}`;
+    const REMINDER_INTERVAL_MS = 15 * 60 * 1000;
+    const toLocalDateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+    const reminderStorageKey = `transport-unassigned-reminders-${sessionUserId}`;
     const loadSent = () => {
       try {
         const raw = localStorage.getItem(reminderStorageKey);
@@ -1876,47 +2213,70 @@ function App() { // NOSONAR
 
     const tick = () => {
       const now = Date.now();
+      const todayDateKey = toLocalDateKey(new Date(now));
+      const activeDateKey = String(state?.transport?.activeDateKey || "").trim();
       const sentMap = loadSent();
-      const records = Array.isArray(state?.transport?.activeRecords) ? state.transport.activeRecords : [];
+      const activeRecords = Array.isArray(state?.transport?.activeRecords) ? state.transport.activeRecords : [];
+      const historyRecords = Array.isArray(state?.transport?.historyRecords) ? state.transport.historyRecords : [];
+      const records = [...activeRecords, ...historyRecords];
       let hasChanges = false;
+      const activeReminderIds = new Set();
 
       records
-        .filter((record) => String(record?.status || "").trim() === "Pospuesto")
+        .filter((record) => String(record?.status || "").trim() === "Pendiente")
         .forEach((record) => {
-          const remindAt = new Date(record?.postponedRemindAt || record?.postponedUntil || 0).getTime();
-          if (!Number.isFinite(remindAt) || remindAt > now) return;
+          const recordId = String(record?.id || "").trim();
+          if (!recordId) return;
 
-          const reminderKey = `${record.id}:${record.postponedRemindAt || record.postponedUntil || ""}`;
-          if (sentMap[reminderKey]) return;
+          const assignedTo = String(record?.assignedTo || "").trim();
+          if (assignedTo) return;
 
-          showTransportNotification("⏰ Recordatorio de envío pospuesto", {
-            body: `${record.destination || "Destino"} programado para ${formatDateTime(record.postponedUntil || record.updatedAt)}`,
-            tag: `transport-postpone-reminder-${record.id || Date.now()}`,
-            playAlert: false,
-          });
+          const recordDateKey = String(record?.dateKey || "").trim();
+          if (recordDateKey && recordDateKey !== todayDateKey) return;
+          if (!recordDateKey && activeDateKey && activeDateKey !== todayDateKey) return;
+
+          activeReminderIds.add(recordId);
+          const lastSentAt = Number(sentMap[recordId] || 0);
+          if (Number.isFinite(lastSentAt) && lastSentAt > 0 && (now - lastSentAt) < REMINDER_INTERVAL_MS) {
+            return;
+          }
+
+          if (shouldShowTransportDeviceNotification) {
+            showTransportNotification("⏰ Ruta pendiente de tomar", {
+              body: `${record.destination || "Destino"} sigue sin conductor asignado.`,
+              tag: `transport-pending-reminder-${recordId}`,
+              alertMode: "sound-only",
+            });
+          }
           pushNotificationToInbox({
-            id: `transport-postpone-reminder-${record.id}-${Date.now()}`,
-            title: "Recordatorio de envío pospuesto",
-            message: `${record.destination || "Destino"} ya está cerca de su hora programada.`,
-            meta: `Programado: ${formatDateTime(record.postponedUntil || record.updatedAt)}`,
+            id: `transport-pending-reminder-${recordId}-${Date.now()}`,
+            title: "Ruta pendiente por tomar",
+            message: `${record.destination || "Destino"} sigue esperando asignación de conductor.`,
+            meta: `Área: ${record.areaId || "Transporte"}`,
             tone: "warning",
             timestamp: new Date().toISOString(),
             targetPage: PAGE_TRANSPORT,
           });
 
-          sentMap[reminderKey] = new Date().toISOString();
+          sentMap[recordId] = now;
           hasChanges = true;
         });
+
+      Object.keys(sentMap).forEach((recordId) => {
+        if (activeReminderIds.has(recordId)) return;
+        delete sentMap[recordId];
+        hasChanges = true;
+      });
 
       if (hasChanges) saveSent(sentMap);
     };
 
     tick();
-    const timer = window.setInterval(tick, 30000);
+    const timer = window.setInterval(tick, 60000);
     return () => {
       window.clearInterval(timer);
     };
-  }, [formatDateTime, sessionUserId, state?.permissions, state?.users, state?.transport?.activeRecords]);
+  }, [sessionUserId, state?.permissions, state?.users, state?.transport?.activeDateKey, state?.transport?.activeRecords, state?.transport?.historyRecords]);
 
   // ── Sincronización al volver a la pestaña (visibilitychange) ─────────────────
   useEffect(() => {
@@ -2433,7 +2793,9 @@ function App() { // NOSONAR
       };
     }));
 
-    return activityRecords.concat(boardRecords, historicalBoardRecords).filter((record) => Boolean(record.occurredAt));
+    return activityRecords
+      .concat(boardRecords, historicalBoardRecords)
+      .filter((record) => Boolean(record.occurredAt));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activityPauseSummaryMap, catalogMap, dashboardVisibleBoardHistorySnapshots, dashboardVisibleControlBoards, now, operationalPauseState, state.activities, userMap, visibleDashboardActivities]);
 
@@ -2469,6 +2831,10 @@ function App() { // NOSONAR
     );
   }, [dashboardFilters.periodType, dateFilteredDashboardRecords]);
 
+  const dashboardEffectiveAreaFilter = useMemo(() => {
+    return dashboardFilters.area;
+  }, [dashboardFilters.area]);
+
   useEffect(() => {
     if (dashboardFilters.periodKey === "all") return;
     if (!dashboardPeriodOptions.some((option) => option.value === dashboardFilters.periodKey)) {
@@ -2487,12 +2853,13 @@ function App() { // NOSONAR
 
     function areaMatchesFilter(scopedAreas, areaFilter) {
       if (areaFilter === "all") return true;
-      const normalizedFilter = normalizeAreaMatch(areaFilter);
-      if (!normalizedFilter) return true;
+      const filters = Array.isArray(areaFilter) ? areaFilter : [areaFilter];
+      const normalizedFilters = filters.map((value) => normalizeAreaMatch(value)).filter(Boolean);
+      if (!normalizedFilters.length) return true;
 
       return scopedAreas.some((area) => {
         const rootArea = normalizeAreaMatch(getAreaRoot(area) || area);
-        return rootArea === normalizedFilter;
+        return normalizedFilters.some((filter) => rootArea === filter || rootArea.includes(filter) || filter.includes(rootArea));
       });
     }
 
@@ -2500,11 +2867,11 @@ function App() { // NOSONAR
       const periodOk = dashboardFilters.periodKey === "all" || getDashboardPeriodKey(record.occurredAt, dashboardFilters.periodType) === dashboardFilters.periodKey;
       const responsibleOk = dashboardFilters.responsibleId === "all" || record.responsibleId === dashboardFilters.responsibleId;
       const scopedAreas = Array.isArray(record.areaScopes) && record.areaScopes.length ? record.areaScopes : [record.area];
-      const areaOk = areaMatchesFilter(scopedAreas, dashboardFilters.area);
+      const areaOk = areaMatchesFilter(scopedAreas, dashboardEffectiveAreaFilter);
       const sourceOk = dashboardFilters.source === "all" || record.source === dashboardFilters.source;
       return periodOk && responsibleOk && areaOk && sourceOk;
     });
-  }, [dashboardFilters, dateFilteredDashboardRecords]);
+  }, [dashboardEffectiveAreaFilter, dashboardFilters, dateFilteredDashboardRecords]);
 
   const filteredDashboardActivities = useMemo(
     () => filteredDashboardRecords.filter((record) => record.source === "activity"),
@@ -2523,13 +2890,14 @@ function App() { // NOSONAR
 
   const dashboardMetrics = useMemo(() => {
     const activeCatalogSnapshot = (state.catalog || []).filter((item) => !item.isDeleted);
-    const catalogItemsSnapshot = dashboardFilters.area === "all"
+    const catalogItemsSnapshot = dashboardEffectiveAreaFilter === "all"
       ? activeCatalogSnapshot
       : activeCatalogSnapshot.filter((item) => {
         const itemArea = normalizeCatalogArea(item?.area, item?.category);
         const itemRoot = normalizeAreaOption(getAreaRoot(itemArea));
-        const selectedRoot = normalizeAreaOption(getAreaRoot(dashboardFilters.area));
-        return Boolean(selectedRoot) && selectedRoot !== "Sin área" && itemRoot === selectedRoot;
+        const areaFilters = Array.isArray(dashboardEffectiveAreaFilter) ? dashboardEffectiveAreaFilter : [dashboardEffectiveAreaFilter];
+        const normalizedFilters = areaFilters.map((value) => normalizeAreaOption(getAreaRoot(value) || value)).filter(Boolean);
+        return normalizedFilters.some((selectedRoot) => selectedRoot !== "Sin área" && itemRoot === selectedRoot);
       });
     const total = filteredDashboardRecords.length;
     const activityRecords = filteredDashboardRecords.filter((record) => record.source === "activity").length;
@@ -2580,7 +2948,7 @@ function App() { // NOSONAR
       catalogFrequencyTypes,
     };
   }, [
-    dashboardFilters.area,
+    dashboardEffectiveAreaFilter,
     dashboardPauseLogs,
     filteredDashboardCompleted,
     filteredDashboardRecords,
@@ -2671,12 +3039,50 @@ function App() { // NOSONAR
     if (!boardRecords.length) return [];
 
     const boardMap = new Map((dashboardVisibleControlBoards || []).map((board) => [board.id, board]));
-    const measurableTypes = new Set(["number", "currency", "percentage", "progress", "counter", "rating", "time", "formula"]);
+    const measurableTypes = new Set([
+      "number",
+      "currency",
+      "percentage",
+      "progress",
+      "counter",
+      "rating",
+      "score",
+      "time",
+      "duration",
+      "formula",
+      "weight",
+      "temperature",
+    ]);
     const ignoredMetricLabelTokens = ["hora inicio", "hora fin", "fecha inicio", "fecha fin"];
     const metricMap = new Map();
 
+    function parseNumericValue(rawValue) {
+      if (typeof rawValue === "number") return Number.isFinite(rawValue) ? rawValue : null;
+      const rawText = String(rawValue || "").trim();
+      if (!rawText) return null;
+
+      let cleaned = rawText.replace(/\s+/g, "");
+      cleaned = cleaned.replace(/[^\d,.-]/g, "");
+      if (!cleaned) return null;
+
+      const hasComma = cleaned.includes(",");
+      const hasDot = cleaned.includes(".");
+      if (hasComma && hasDot) {
+        if (cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".")) {
+          cleaned = cleaned.replaceAll(".", "").replace(",", ".");
+        } else {
+          cleaned = cleaned.replaceAll(",", "");
+        }
+      } else if (hasComma && !hasDot) {
+        cleaned = cleaned.replace(",", ".");
+      }
+
+      const parsed = Number(cleaned);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
     function parseMetricValue(rawValue, fieldType) {
-      if (fieldType === "time") {
+      if (fieldType === "time" || fieldType === "duration") {
         const normalized = String(rawValue || "").trim();
         if (!normalized) return null;
 
@@ -2697,13 +3103,11 @@ function App() { // NOSONAR
           return hours * 60 + minutes;
         }
 
-        const numericMinutes = Number(normalized);
+        const numericMinutes = parseNumericValue(normalized);
         return Number.isFinite(numericMinutes) ? numericMinutes : null;
       }
 
-      const parsed = Number(rawValue);
-      if (!Number.isFinite(parsed)) return null;
-      return parsed;
+      return parseNumericValue(rawValue);
     }
 
     boardRecords.forEach((record) => {
@@ -2738,7 +3142,19 @@ function App() { // NOSONAR
             fieldId: field.id,
             fieldLabel: String(field.label || "Métrica"),
             fieldType,
-            unit: fieldType === "time" ? "min" : fieldType === "percentage" || fieldType === "progress" ? "%" : fieldType === "currency" ? "$" : "",
+            unit: (fieldType === "time" || fieldType === "duration")
+              ? "min"
+              : (fieldType === "percentage" || fieldType === "progress")
+                ? "%"
+                : fieldType === "currency"
+                  ? "$"
+                  : fieldType === "weight"
+                    ? "kg"
+                    : fieldType === "temperature"
+                      ? "°C"
+                      : fieldType === "score"
+                        ? "pts"
+                        : "",
             count: 0,
             sum: 0,
             min: Number.POSITIVE_INFINITY,
@@ -3312,9 +3728,13 @@ function App() { // NOSONAR
 
     function areaMatchesFilter(scopedAreas, areaFilter) {
       if (areaFilter === "all") return true;
-      const normalizedFilter = normalizeAreaMatch(areaFilter);
-      if (!normalizedFilter) return true;
-      return scopedAreas.some((area) => normalizeAreaMatch(getAreaRoot(area) || area) === normalizedFilter);
+      const filters = Array.isArray(areaFilter) ? areaFilter : [areaFilter];
+      const normalizedFilters = filters.map((value) => normalizeAreaMatch(value)).filter(Boolean);
+      if (!normalizedFilters.length) return true;
+      return scopedAreas.some((area) => {
+        const root = normalizeAreaMatch(getAreaRoot(area) || area);
+        return normalizedFilters.some((filter) => root === filter || root.includes(filter) || filter.includes(root));
+      });
     }
 
     const groups = new Map();
@@ -3322,7 +3742,7 @@ function App() { // NOSONAR
       .filter((record) => {
         const responsibleOk = dashboardFilters.responsibleId === "all" || record.responsibleId === dashboardFilters.responsibleId;
         const scopedAreas = Array.isArray(record.areaScopes) && record.areaScopes.length ? record.areaScopes : [record.area];
-        const areaOk = areaMatchesFilter(scopedAreas, dashboardFilters.area);
+        const areaOk = areaMatchesFilter(scopedAreas, dashboardEffectiveAreaFilter);
         const sourceOk = dashboardFilters.source === "all" || record.source === dashboardFilters.source;
         return responsibleOk && areaOk && sourceOk;
       })
@@ -3343,7 +3763,7 @@ function App() { // NOSONAR
       .sort((a, b) => b.sortTime - a.sortTime)
       .slice(0, 6)
       .reverse();
-  }, [dashboardFilters.area, dashboardFilters.periodType, dashboardFilters.responsibleId, dashboardFilters.source, dashboardRecords]);
+  }, [dashboardEffectiveAreaFilter, dashboardFilters.periodType, dashboardFilters.responsibleId, dashboardFilters.source, dashboardRecords]);
 
   const dashboardParetoRows = useMemo(() => {
     const reasonMap = new Map();
@@ -3431,7 +3851,10 @@ function App() { // NOSONAR
     ...(state.customRoles || []).map((r) => r.name),
   ], [state.customRoles]);
 
-  const creatableRoles = useMemo(() => currentUser ? allRoles : [], [currentUser, allRoles]);
+  const creatableRoles = useMemo(
+    () => currentUser ? allRoles.filter((role) => canCreateRole(currentUser.role, role)) : [],
+    [allRoles, currentUser],
+  );
 
   const filteredUsers = useMemo(() => {
     return visibleUsers.filter((user) => {
@@ -3774,15 +4197,16 @@ function App() { // NOSONAR
   );
 
   const dashboardScopedCatalogItems = useMemo(() => {
-    if (dashboardFilters.area === "all") return activeCatalogItems;
-    const selectedRoot = normalizeAreaOption(getAreaRoot(dashboardFilters.area));
-    if (!selectedRoot || selectedRoot === "Sin área") return [];
+    if (dashboardEffectiveAreaFilter === "all") return activeCatalogItems;
+    const areaFilters = Array.isArray(dashboardEffectiveAreaFilter) ? dashboardEffectiveAreaFilter : [dashboardEffectiveAreaFilter];
+    const selectedRoots = areaFilters.map((value) => normalizeAreaOption(getAreaRoot(value) || value)).filter(Boolean);
+    if (!selectedRoots.length) return [];
     return activeCatalogItems.filter((item) => {
       const itemArea = normalizeCatalogArea(item?.area, item?.category);
       const itemRoot = normalizeAreaOption(getAreaRoot(itemArea));
-      return itemRoot === selectedRoot;
+      return selectedRoots.some((selectedRoot) => selectedRoot !== "Sin área" && itemRoot === selectedRoot);
     });
-  }, [activeCatalogItems, dashboardFilters.area]);
+  }, [activeCatalogItems, dashboardEffectiveAreaFilter]);
 
   const dashboardCatalogTypeRows = useMemo(() => {
     const mandatory = dashboardScopedCatalogItems.filter((item) => item.isMandatory).length;
@@ -3894,7 +4318,7 @@ function App() { // NOSONAR
 
   // ── Dashboard hard-reset (solo Lead) ─────────────────────────────────────
   async function hardResetDashboard() {
-    if (!canManageDashboardState) return;
+    if (!canManageDashboardControls) return;
     const result = await requestJson("/warehouse/dashboard/reset-data", { method: "POST" });
     applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
     setDashboardFilters({ periodType: "week", periodKey: "all", responsibleId: "all", area: "all", source: "all", startDate: "", endDate: "" });
@@ -3904,13 +4328,13 @@ function App() { // NOSONAR
 
   // ── Demo Mode (solo Lead) ─────────────────────────────────────────────────
   function activateDemoMode() {
-    if (!canManageDashboardState || isDemoMode) return;
+    if (!canManageDashboardControls || isDemoMode) return;
     preDemoStateRef.current = JSON.parse(JSON.stringify(state));
     setIsDemoMode(true);
   }
 
   async function deactivateDemoMode() {
-    if (!canManageDashboardState || !isDemoMode) return;
+    if (!canManageDashboardControls || !isDemoMode) return;
     const snapshot = preDemoStateRef.current;
     preDemoStateRef.current = null;
     setIsDemoMode(false);
@@ -4036,10 +4460,59 @@ function App() { // NOSONAR
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id, currentUser?.role]);
 
-  const actionPermissions = useMemo(
+  const baseActionPermissions = useMemo(
     () => Object.fromEntries(ACTION_DEFINITIONS.map((item) => [item.id, canDoAction(currentUser, item.id, normalizedPermissions)])),
     [currentUser, normalizedPermissions],
   );
+
+  const activeAreaScopePermission = useMemo(() => {
+    if (!currentUser || selectedAreaSectionId === "all") return null;
+    if (selectedAreaSectionId === "transporte") {
+      const scopeActionId = AREA_TAB_PERMISSION_ACTIONS.transporte[navTransportSection] || "";
+      const baseActionIds = TRANSPORT_SECTION_ACTIONS[navTransportSection] || [];
+      return scopeActionId
+        ? {
+          scopeActionId,
+          baseActionIds,
+          scopedActionIdByBase: Object.fromEntries(baseActionIds.map((actionId) => [actionId, getScopedAreaActionPermissionId(scopeActionId, actionId)])),
+        }
+        : null;
+    }
+    const pageKeyById = {
+      [PAGE_DASHBOARD]: "dashboard",
+      [PAGE_BOARD]: "board",
+      [PAGE_CUSTOM_BOARDS]: "customBoards",
+      [PAGE_HISTORY]: "history",
+    };
+    const tabKey = pageKeyById[page];
+    if (!tabKey) return null;
+    const scopeActionId = AREA_TAB_PERMISSION_ACTIONS[selectedAreaSectionId]?.[tabKey] || "";
+    if (!scopeActionId) return null;
+    const baseActionIds = AREA_TAB_BASE_ACTIONS[tabKey] || [];
+    return {
+      scopeActionId,
+      baseActionIds,
+      scopedActionIdByBase: Object.fromEntries(baseActionIds.map((actionId) => [actionId, getScopedAreaActionPermissionId(scopeActionId, actionId)])),
+    };
+  }, [currentUser, navTransportSection, page, selectedAreaSectionId]);
+
+  const actionPermissions = useMemo(() => {
+    if (!activeAreaScopePermission) return baseActionPermissions;
+    const next = { ...baseActionPermissions };
+    const isScopeEnabled = Boolean(baseActionPermissions[activeAreaScopePermission.scopeActionId]);
+    (activeAreaScopePermission.baseActionIds || []).forEach((actionId) => {
+      if (!isScopeEnabled) {
+        next[actionId] = false;
+        return;
+      }
+      const scopedActionId = activeAreaScopePermission.scopedActionIdByBase?.[actionId];
+      if (!scopedActionId) return;
+      next[actionId] = Boolean(baseActionPermissions[actionId] && baseActionPermissions[scopedActionId]);
+    });
+    return next;
+  }, [activeAreaScopePermission, baseActionPermissions]);
+  const canManageDashboardControls = Boolean(actionPermissions.manageDashboardState);
+  const canExportDashboardData = Boolean(actionPermissions.exportDashboardData);
 
   const currentInventoryManagePermission = actionPermissions[getInventoryManageActionId(inventoryTab)];
   const currentInventoryDeletePermission = actionPermissions[getInventoryDeleteActionId(inventoryTab)];
@@ -4266,8 +4739,21 @@ function App() { // NOSONAR
   const visibleControlBoards = useMemo(() => {
     if (!currentUser) return [];
     const canViewHistoricalBoardScopes = canDoAction(currentUser, "viewHistoricalBoardScopes", normalizedPermissions);
-    return (state.controlBoards || []).filter((board) => canViewHistoricalBoardScopes || getBoardVisibleToUser(board, currentUser));
-  }, [currentUser, normalizedPermissions, state.controlBoards]);
+    return (state.controlBoards || []).filter((board) => {
+      // Simple area matching based on shared departments or owner area
+      if (activeAreaScopes.length > 0) {
+        const boardAreas = [
+          ...(board?.settings?.ownerArea ? [board.settings.ownerArea] : []),
+          ...(board?.sharedDepartments || []),
+        ];
+        const hasMatchingArea = boardAreas.some((area) => 
+          activeAreaScopes.some((selectedArea) => normalizeAreaOption(area) === normalizeAreaOption(selectedArea))
+        );
+        if (!hasMatchingArea) return false;
+      }
+      return canViewHistoricalBoardScopes || getBoardVisibleToUser(board, currentUser);
+    });
+  }, [activeAreaScopes, currentUser, normalizedPermissions, state.controlBoards]);
 
   const filteredVisibleControlBoards = useMemo(() => {
     const term = customBoardSearch.trim().toLowerCase();
@@ -4283,8 +4769,21 @@ function App() { // NOSONAR
   const visibleBoardHistorySnapshots = useMemo(() => {
     if (!currentUser) return [];
     const canViewHistoricalBoardScopes = canDoAction(currentUser, "viewHistoricalBoardScopes", normalizedPermissions);
-    return (state.boardWeekHistory || []).filter((snapshot) => canViewHistoricalBoardScopes || getBoardVisibleToUser(snapshot, currentUser));
-  }, [currentUser, normalizedPermissions, state.boardWeekHistory]);
+    return (state.boardWeekHistory || []).filter((snapshot) => {
+      // Simple area matching based on shared departments or owner area
+      if (activeAreaScopes.length > 0) {
+        const snapshotAreas = [
+          ...(snapshot?.settings?.ownerArea ? [snapshot.settings.ownerArea] : []),
+          ...(snapshot?.sharedDepartments || []),
+        ];
+        const hasMatchingArea = snapshotAreas.some((area) => 
+          activeAreaScopes.some((selectedArea) => normalizeAreaOption(area) === normalizeAreaOption(selectedArea))
+        );
+        if (!hasMatchingArea) return false;
+      }
+      return canViewHistoricalBoardScopes || getBoardVisibleToUser(snapshot, currentUser);
+    });
+  }, [activeAreaScopes, currentUser, normalizedPermissions, state.boardWeekHistory]);
 
   const selectedCustomBoardHistoryOptions = useMemo(() => {
     if (!selectedCustomBoard) return [];
@@ -4497,6 +4996,64 @@ function App() { // NOSONAR
     [currentUser, normalizedPermissions],
   );
 
+  const utilityNavItems = useMemo(
+    () => allowedNavItems.filter((item) => {
+      if ([PAGE_CUSTOM_BOARDS, PAGE_BOARD, PAGE_TRANSPORT, PAGE_INCIDENCIAS].includes(item.id)) return false;
+      const requiredActionId = NAV_UTILITY_ACTION_BY_GROUP[item.group] || "";
+      if (!requiredActionId) return true;
+      return canDoAction(currentUser, requiredActionId, normalizedPermissions);
+    }),
+    [allowedNavItems, currentUser, normalizedPermissions],
+  );
+
+  const selectedAreaSection = useMemo(
+    () => APP_AREA_SECTIONS.find((section) => section.id === selectedAreaSectionId) || null,
+    [selectedAreaSectionId],
+  );
+
+  const areaNavSections = useMemo(
+    () => APP_AREA_SECTIONS.map((section) => ({
+      ...section,
+      items: (
+        section.id === "transporte"
+          ? [
+            { pageId: PAGE_TRANSPORT, label: "Registros de envíos", shortLabel: "Registros de envíos", transportSection: "registros-envios", transportTab: "area-retail", requiredActionId: AREA_TAB_PERMISSION_ACTIONS.transporte["registros-envios"] },
+            { pageId: PAGE_TRANSPORT, label: "Control transporte", shortLabel: "Control transporte", transportSection: "control-transporte", transportTab: "asignaciones", requiredActionId: AREA_TAB_PERMISSION_ACTIONS.transporte["control-transporte"] },
+            { pageId: PAGE_TRANSPORT, label: "Incidencias transporte", shortLabel: "Incidencias", transportSection: "incidencias-transporte", transportTab: "incidencias-transporte", requiredActionId: AREA_TAB_PERMISSION_ACTIONS.transporte["incidencias-transporte"] },
+            { pageId: PAGE_TRANSPORT, label: "Consolidados", shortLabel: "Consolidados", transportSection: "consolidados", transportTab: "consolidado", requiredActionId: AREA_TAB_PERMISSION_ACTIONS.transporte["consolidados"] },
+            { pageId: PAGE_TRANSPORT, label: "Dashboard", shortLabel: "Dashboard", transportSection: "dashboard-transporte", transportTab: "dashboard-transporte", requiredActionId: AREA_TAB_PERMISSION_ACTIONS.transporte["dashboard-transporte"] },
+            { pageId: PAGE_TRANSPORT, label: "Direcciones y gastos", shortLabel: "Dir./Gts.", transportSection: "direcciones-gastos", transportTab: "logistica", requiredActionId: AREA_TAB_PERMISSION_ACTIONS.transporte["direcciones-gastos"] },
+          ]
+          : section.id === "mantenimiento"
+            ? [
+              { pageId: PAGE_INCIDENCIAS, label: "Incidencias", shortLabel: "Incidencias", requiredActionId: AREA_TAB_PERMISSION_ACTIONS.mantenimiento.incidencias },
+              { pageId: PAGE_DASHBOARD, label: "Dashboard", shortLabel: "Dash", requiredActionId: AREA_TAB_PERMISSION_ACTIONS.mantenimiento.dashboard },
+              { pageId: PAGE_BOARD, label: "Creador de tableros", shortLabel: "Creador", requiredActionId: AREA_TAB_PERMISSION_ACTIONS.mantenimiento.board },
+              { pageId: PAGE_CUSTOM_BOARDS, label: "Mis tableros", shortLabel: "Tableros", requiredActionId: AREA_TAB_PERMISSION_ACTIONS.mantenimiento.customBoards },
+            ]
+          : [
+            { pageId: PAGE_DASHBOARD, label: "Dashboard", shortLabel: "Dash", requiredActionId: AREA_TAB_PERMISSION_ACTIONS[section.id]?.dashboard || "" },
+            { pageId: PAGE_BOARD, label: "Creador de tableros", shortLabel: "Creador", requiredActionId: AREA_TAB_PERMISSION_ACTIONS[section.id]?.board || "" },
+            { pageId: PAGE_CUSTOM_BOARDS, label: "Mis tableros", shortLabel: "Tableros", requiredActionId: AREA_TAB_PERMISSION_ACTIONS[section.id]?.customBoards || "" },
+            { pageId: PAGE_HISTORY, label: "Historial", shortLabel: "Hist.", requiredActionId: AREA_TAB_PERMISSION_ACTIONS[section.id]?.history || "" },
+          ]
+      ).filter((item) => canAccessPage(currentUser, item.pageId, normalizedPermissions) && (!item.requiredActionId || canDoAction(currentUser, item.requiredActionId, normalizedPermissions))),
+    })).filter((section) => {
+      if (!section.items.length) return false;
+      const requiredActionId = NAV_AREA_ACTION_BY_SECTION[section.id] || "";
+      if (!requiredActionId) return true;
+      return canDoAction(currentUser, requiredActionId, normalizedPermissions);
+    }),
+    [currentUser, normalizedPermissions],
+  );
+
+  useEffect(() => {
+    if (selectedAreaSectionId === "all") return;
+    if (!areaNavSections.some((section) => section.id === selectedAreaSectionId)) {
+      setSelectedAreaSectionId("all");
+    }
+  }, [areaNavSections, selectedAreaSectionId]);
+
   const permissionManagedUsers = useMemo(
     () => visibleUsers.filter((user) => user.isActive),
     [visibleUsers],
@@ -4504,13 +5061,90 @@ function App() { // NOSONAR
 
   const permissionPages = useMemo(() => NAV_ITEMS, []);
 
+  const menuPermissionSections = useMemo(() => {
+    const actionLabelById = new Map(ACTION_DEFINITIONS.map((item) => [item.id, item.label]));
+    const buildScopedActionPermissions = (scopeActionId, baseActionIds = []) => baseActionIds
+      .map((actionId) => ({
+        id: getScopedAreaActionPermissionId(scopeActionId, actionId),
+        label: actionLabelById.get(actionId) || actionId,
+        kind: "actions",
+      }))
+      .filter((item) => item.id && item.label);
+
+    const mainDashboardSection = {
+      id: "main-dashboard",
+      label: "DASHBOARD PRINCIPAL",
+      navVisibilityActionId: PAGE_DASHBOARD,
+      navVisibilityKind: "pages",
+      itemPermissions: [
+        {
+          id: PAGE_DASHBOARD,
+          label: "Dashboard principal (todas las áreas)",
+          kind: "pages",
+          actionPermissions: [
+            { id: "exportDashboardData", label: actionLabelById.get("exportDashboardData") || "Exportar dashboard", kind: "actions" },
+            { id: "manageDashboardState", label: actionLabelById.get("manageDashboardState") || "Administrar dashboard", kind: "actions" },
+          ],
+        },
+      ],
+    };
+
+    const areaSections = APP_AREA_SECTIONS.map((section) => {
+      const navVisibilityActionId = NAV_AREA_ACTION_BY_SECTION[section.id] || "";
+      const itemPermissions = section.id === "transporte"
+        ? [
+          { id: AREA_TAB_PERMISSION_ACTIONS.transporte["registros-envios"], label: "Registros de envíos", kind: "actions", actionPermissions: buildScopedActionPermissions(AREA_TAB_PERMISSION_ACTIONS.transporte["registros-envios"], TRANSPORT_SECTION_ACTIONS["registros-envios"]) },
+          { id: AREA_TAB_PERMISSION_ACTIONS.transporte["control-transporte"], label: "Control transporte", kind: "actions", actionPermissions: buildScopedActionPermissions(AREA_TAB_PERMISSION_ACTIONS.transporte["control-transporte"], TRANSPORT_SECTION_ACTIONS["control-transporte"]) },
+          { id: AREA_TAB_PERMISSION_ACTIONS.transporte["incidencias-transporte"], label: "Incidencias transporte", kind: "actions", actionPermissions: buildScopedActionPermissions(AREA_TAB_PERMISSION_ACTIONS.transporte["incidencias-transporte"], TRANSPORT_SECTION_ACTIONS["incidencias-transporte"]) },
+          { id: AREA_TAB_PERMISSION_ACTIONS.transporte["consolidados"], label: "Consolidados", kind: "actions", actionPermissions: buildScopedActionPermissions(AREA_TAB_PERMISSION_ACTIONS.transporte["consolidados"], TRANSPORT_SECTION_ACTIONS["consolidados"]) },
+          { id: AREA_TAB_PERMISSION_ACTIONS.transporte["dashboard-transporte"], label: "Dashboard", kind: "actions", actionPermissions: buildScopedActionPermissions(AREA_TAB_PERMISSION_ACTIONS.transporte["dashboard-transporte"], TRANSPORT_SECTION_ACTIONS["dashboard-transporte"]) },
+          { id: AREA_TAB_PERMISSION_ACTIONS.transporte["direcciones-gastos"], label: "Direcciones y gastos", kind: "actions", actionPermissions: buildScopedActionPermissions(AREA_TAB_PERMISSION_ACTIONS.transporte["direcciones-gastos"], TRANSPORT_SECTION_ACTIONS["direcciones-gastos"]) },
+        ]
+        : section.id === "mantenimiento"
+          ? [
+            { id: AREA_TAB_PERMISSION_ACTIONS.mantenimiento.incidencias, label: "Incidencias", kind: "actions", actionPermissions: buildScopedActionPermissions(AREA_TAB_PERMISSION_ACTIONS.mantenimiento.incidencias, ["createIncidencia", "editIncidencia", "deleteIncidencia"]) },
+            { id: AREA_TAB_PERMISSION_ACTIONS.mantenimiento.dashboard, label: "Dashboard", kind: "actions", actionPermissions: buildScopedActionPermissions(AREA_TAB_PERMISSION_ACTIONS.mantenimiento.dashboard, AREA_TAB_BASE_ACTIONS.dashboard) },
+            { id: AREA_TAB_PERMISSION_ACTIONS.mantenimiento.board, label: "Creador de tableros", kind: "actions", actionPermissions: buildScopedActionPermissions(AREA_TAB_PERMISSION_ACTIONS.mantenimiento.board, AREA_TAB_BASE_ACTIONS.board) },
+            { id: AREA_TAB_PERMISSION_ACTIONS.mantenimiento.customBoards, label: "Mis tableros", kind: "actions", actionPermissions: buildScopedActionPermissions(AREA_TAB_PERMISSION_ACTIONS.mantenimiento.customBoards, AREA_TAB_BASE_ACTIONS.customBoards) },
+          ]
+        : [
+          { id: AREA_TAB_PERMISSION_ACTIONS[section.id]?.dashboard || "", label: "Dashboard", kind: "actions", actionPermissions: buildScopedActionPermissions(AREA_TAB_PERMISSION_ACTIONS[section.id]?.dashboard || "", AREA_TAB_BASE_ACTIONS.dashboard) },
+          { id: AREA_TAB_PERMISSION_ACTIONS[section.id]?.board || "", label: "Creador de tableros", kind: "actions", actionPermissions: buildScopedActionPermissions(AREA_TAB_PERMISSION_ACTIONS[section.id]?.board || "", AREA_TAB_BASE_ACTIONS.board) },
+          { id: AREA_TAB_PERMISSION_ACTIONS[section.id]?.customBoards || "", label: "Mis tableros", kind: "actions", actionPermissions: buildScopedActionPermissions(AREA_TAB_PERMISSION_ACTIONS[section.id]?.customBoards || "", AREA_TAB_BASE_ACTIONS.customBoards) },
+          { id: AREA_TAB_PERMISSION_ACTIONS[section.id]?.history || "", label: "Historial", kind: "actions", actionPermissions: buildScopedActionPermissions(AREA_TAB_PERMISSION_ACTIONS[section.id]?.history || "", AREA_TAB_BASE_ACTIONS.history) },
+        ];
+      return {
+        id: section.id,
+        label: section.label,
+        navVisibilityActionId,
+        navVisibilityKind: "actions",
+        itemPermissions: itemPermissions.filter((item) => item.id),
+      };
+    });
+
+    const utilitySections = Object.entries(NAV_UTILITY_ACTION_BY_GROUP).map(([groupLabel, actionId]) => {
+      const itemPermissions = permissionPages
+        .filter((item) => item.group === groupLabel)
+        .filter((item) => ![PAGE_DASHBOARD, PAGE_CUSTOM_BOARDS, PAGE_BOARD, PAGE_HISTORY, PAGE_TRANSPORT].includes(item.id))
+        .map((item) => ({ id: item.id, label: item.label, kind: "pages" }));
+      return {
+        id: `utility-${groupLabel.toLowerCase()}`,
+        label: groupLabel.toUpperCase(),
+        navVisibilityActionId: actionId,
+        navVisibilityKind: "actions",
+        itemPermissions,
+      };
+    }).filter((section) => section.itemPermissions.length > 0);
+
+    return [mainDashboardSection].concat(areaSections, utilitySections);
+  }, [permissionPages]);
+
   const userModalRoleOptions = useMemo(() => {
     if (!currentUser) return [];
-    // Siempre muestra todos los roles; el control real es el permiso manageUsers
-    const options = new Set(allRoles);
+    const options = new Set(creatableRoles);
     if (userModal.mode === "edit" && userModal.role) options.add(userModal.role);
     return Array.from(options);
-  }, [allRoles, currentUser, userModal.mode, userModal.role]);
+  }, [creatableRoles, currentUser, userModal.mode, userModal.role]);
 
   const templateCategories = useMemo(() => {
     const categories = availableBoardTemplates.map((template) => getBoardTemplateCategory(template));
@@ -4651,7 +5285,7 @@ function App() { // NOSONAR
       const exceeded = item.limitMinutes > 0 && item.averageMinutes > item.limitMinutes;
       const color = exceeded
         ? "linear-gradient(90deg, #fbbf24 0%, #ef4444 100%)"
-        : "linear-gradient(90deg, #4ade80 0%, #34c759 100%)";
+        : "linear-gradient(90deg, #8fb4d6 0%, #6f98bf 100%)";
       return {
         ...item,
         label,
@@ -5128,16 +5762,42 @@ function App() { // NOSONAR
     };
   }
 
-  function buildPermissionSelectionFromModalDraft(draft, permissionsModel = normalizedPermissions) {
+  const currentUserGrantablePermissions = currentUser
+    ? buildPermissionSelectionForUser(currentUser)
+    : { pages: {}, actions: {} };
+
+  function canGrantManagedPermission(kind, key) {
+    return Boolean(currentUserGrantablePermissions?.[kind]?.[key]);
+  }
+
+  function clampPermissionSelectionToGrantable(selection, preserveDisabled = false) {
+    return {
+      pages: Object.fromEntries(permissionPages.map((item) => {
+        const currentValue = Boolean(selection?.pages?.[item.id]);
+        return [item.id, canGrantManagedPermission("pages", item.id) ? currentValue : (preserveDisabled ? currentValue : false)];
+      })),
+      actions: Object.fromEntries(ACTION_DEFINITIONS.map((item) => {
+        const currentValue = Boolean(selection?.actions?.[item.id]);
+        return [item.id, canGrantManagedPermission("actions", item.id) ? currentValue : (preserveDisabled ? currentValue : false)];
+      })),
+    };
+  }
+
+  function buildPermissionSelectionFromModalDraft(draft, permissionsModel = normalizedPermissions, options = {}) {
     if (!supportsManagedPermissionOverrides(draft.role)) {
       return { pages: {}, actions: {} };
     }
-    return buildPermissionSelectionForUser(buildUserRecordFromModalDraft(draft), permissionsModel);
+    const effectiveSelection = buildPermissionSelectionForUser(buildUserRecordFromModalDraft(draft), permissionsModel);
+    if (options.limitToGrantable) {
+      return clampPermissionSelectionToGrantable(effectiveSelection, options.preserveDisabled === true);
+    }
+    return effectiveSelection;
   }
 
   function closeUserModal() {
     setShowUserModalPassword(false);
     setUserModalMessage({ tone: "", text: "" });
+    setExpandedPermissionTabs([]);
     setUserModal(createUserModalState());
   }
 
@@ -5148,7 +5808,14 @@ function App() { // NOSONAR
     }));
   }
 
+  function toggleUserModalPermissionTab(tabId) {
+    setExpandedPermissionTabs((current) => (current.includes(tabId)
+      ? current.filter((item) => item !== tabId)
+      : [...current, tabId]));
+  }
+
   function toggleUserModalPermission(kind, key) {
+    if (!canGrantManagedPermission(kind, key)) return;
     setUserModal((current) => ({
       ...current,
       permissionOverrides: {
@@ -5172,17 +5839,14 @@ function App() { // NOSONAR
       };
 
       if (current.mode === "create") {
-        const isLead = normalizeRole(nextRole) === ROLE_LEAD;
         return {
           ...nextDraft,
-          permissionOverrides: isLead
-            ? { pages: Object.fromEntries(permissionPages.map((item) => [item.id, true])), actions: Object.fromEntries(ACTION_DEFINITIONS.map((item) => [item.id, true])) }
-            : { pages: {}, actions: {} },
+          permissionOverrides: buildPermissionSelectionFromModalDraft(nextDraft, normalizedPermissions, { limitToGrantable: true }),
         };
       }
       return {
         ...nextDraft,
-        permissionOverrides: buildPermissionSelectionFromModalDraft(nextDraft),
+        permissionOverrides: buildPermissionSelectionFromModalDraft(nextDraft, normalizedPermissions, { preserveDisabled: true }),
       };
     });
   }
@@ -5197,6 +5861,7 @@ function App() { // NOSONAR
   function openCreateUser() {
     if (!actionPermissions.createUsers) return;
     setUserModalMessage({ tone: "", text: "" });
+    setExpandedPermissionTabs([]);
     const defaultRole = creatableRoles[0] || ROLE_JR;
     const currentUserAreaFull = getUserArea(currentUser);
     const { area: currentRootArea, subArea: currentSubArea } = splitAreaAndSubArea(currentUserAreaFull);
@@ -5216,13 +5881,14 @@ function App() { // NOSONAR
     });
     setUserModal({
       ...nextModal,
-      permissionOverrides: normalizeRole(defaultRole) === ROLE_LEAD ? buildAllPermissionsOn() : { pages: {}, actions: {} },
+      permissionOverrides: buildPermissionSelectionFromModalDraft(nextModal, normalizedPermissions, { limitToGrantable: true }),
     });
   }
 
   function openEditUser(user) {
     if (!actionPermissions.editUsers) return;
     setUserModalMessage({ tone: "", text: "" });
+    setExpandedPermissionTabs([]);
     const fullArea = getUserArea(user);
     const { area: rootArea, subArea } = splitAreaAndSubArea(fullArea);
     const nextModal = createUserModalState({
@@ -5241,7 +5907,7 @@ function App() { // NOSONAR
     });
     setUserModal({
       ...nextModal,
-      permissionOverrides: buildPermissionSelectionFromModalDraft(nextModal),
+      permissionOverrides: buildPermissionSelectionFromModalDraft(nextModal, normalizedPermissions, { preserveDisabled: true }),
     });
   }
 
@@ -5250,6 +5916,12 @@ function App() { // NOSONAR
     if (!currentUser || !requiredPermission) {
       setUserModalMessage({ tone: "danger", text: "No tienes permiso para guardar este player." });
       pushAppToast("No tienes permiso para guardar este player.", "danger");
+      return;
+    }
+    if (!canCreateRole(currentUser.role, userModal.role)) {
+      const message = "Solo puedes crear o editar players de tu mismo nivel o inferiores.";
+      setUserModalMessage({ tone: "danger", text: message });
+      pushAppToast(message, "danger");
       return;
     }
     const trimmedPassword = userModal.password.trim();
@@ -5347,6 +6019,8 @@ function App() { // NOSONAR
       telefono: String(identityPatch.telefono || "").trim(),
       telefono_visible: Boolean(identityPatch.telefono_visible),
       birthday: String(identityPatch.birthday || "").trim(),
+      photo: String(identityPatch.photo ?? currentUser.photo ?? "").trim(),
+      photoThumbnailUrl: String(identityPatch.photoThumbnailUrl ?? currentUser.photoThumbnailUrl ?? "").trim(),
       copmecHistoryFiles: Array.isArray(identityPatch.copmecHistoryFiles)
         ? identityPatch.copmecHistoryFiles
         : (Array.isArray(currentUser?.copmecHistoryFiles) ? currentUser.copmecHistoryFiles : []),
@@ -5363,8 +6037,12 @@ function App() { // NOSONAR
       trimmedPatch.telefono_visible !== Boolean(currentUser.telefono_visible),
       trimmedPatch.birthday !== String(currentUser.birthday || "").trim(),
     ].some(Boolean);
+    const photoChanges = [
+      trimmedPatch.photo !== String(currentUser.photo || "").trim(),
+      trimmedPatch.photoThumbnailUrl !== String(currentUser.photoThumbnailUrl || "").trim(),
+    ].some(Boolean);
     const copmecHistoryChanged = JSON.stringify(trimmedPatch.copmecHistoryFiles || []) !== JSON.stringify(currentUser?.copmecHistoryFiles || []);
-    const hasChanges = profileChanges || copmecHistoryChanged;
+    const hasChanges = profileChanges || photoChanges || copmecHistoryChanged;
     if (!hasChanges) {
       return { ok: false, message: "No hay cambios nuevos por guardar." };
     }
@@ -5724,6 +6402,28 @@ function App() { // NOSONAR
   }
 
   function getPermissionActionGroups(pageId, actions = []) {
+    if (pageId === PAGE_DASHBOARD) {
+      const groups = [
+        {
+          id: "dashboard-core",
+          label: "Dashboard AXO",
+          accent: "#355f88",
+          actions: actions.filter((action) => (
+            action.id === "exportDashboardData"
+            || action.id === "manageDashboardState"
+          )),
+        },
+        {
+          id: "dashboard-nav",
+          label: "Navegación lateral",
+          accent: "#334155",
+          actions: actions.filter((action) => action.category === "Navegación lateral"),
+        },
+      ].filter((group) => group.actions.length > 0);
+
+      return groups.length ? groups : [{ id: "dashboard-default", label: "Acciones disponibles", accent: getPermissionSectionTone(pageId, "").accent, actions }];
+    }
+
     if (pageId !== PAGE_TRANSPORT) {
       return [{ id: `${pageId}-default`, label: "Acciones disponibles", accent: getPermissionSectionTone(pageId, "").accent, actions }];
     }
@@ -5742,7 +6442,7 @@ function App() { // NOSONAR
       {
         id: "transport-ops",
         label: "Solo transporte",
-        accent: "#0f766e",
+        accent: "#355f88",
         actions: actions.filter((action) => (
           action.id.includes("Documentacion")
           || action.id.includes("Assignments")
@@ -5761,7 +6461,7 @@ function App() { // NOSONAR
     const normalizedActionId = String(actionId || "").trim();
     if (pageId === PAGE_INVENTORY) {
       if (normalizedActionId.includes("BaseInventory") || normalizedActionId.includes("manageInventory") || normalizedActionId.includes("deleteInventory") || normalizedActionId.includes("importInventory")) {
-        return { accent: "#0f766e", soft: "rgba(15, 118, 110, 0.1)" };
+        return { accent: "#355f88", soft: "rgba(15, 118, 110, 0.1)" };
       }
       if (normalizedActionId.includes("CleaningInventory")) {
         return { accent: "#2563eb", soft: "rgba(37, 99, 235, 0.1)" };
@@ -5769,7 +6469,7 @@ function App() { // NOSONAR
       if (normalizedActionId.includes("OrderInventory")) {
         return { accent: "#b45309", soft: "rgba(180, 83, 9, 0.1)" };
       }
-      return { accent: "#0f766e", soft: "rgba(15, 118, 110, 0.1)" };
+      return { accent: "#355f88", soft: "rgba(15, 118, 110, 0.1)" };
     }
 
     if (pageId === PAGE_TRANSPORT) {
@@ -5792,10 +6492,10 @@ function App() { // NOSONAR
         return { accent: "#b45309", soft: "rgba(180, 83, 9, 0.1)" };
       }
       if (normalizedActionId.includes("MyRoutes")) {
-        return { accent: "#15803d", soft: "rgba(21, 128, 61, 0.1)" };
+        return { accent: "#3f678f", soft: "rgba(34, 77, 115, 0.1)" };
       }
       if (normalizedActionId.includes("Consolidated")) {
-        return { accent: "#0f766e", soft: "rgba(15, 118, 110, 0.1)" };
+        return { accent: "#355f88", soft: "rgba(15, 118, 110, 0.1)" };
       }
       if (normalizedActionId === "deleteTransportRecord") {
         return { accent: "#b91c1c", soft: "rgba(185, 28, 28, 0.1)" };
@@ -5804,11 +6504,11 @@ function App() { // NOSONAR
     }
 
     const pageToneMap = {
-      [PAGE_BOARD]: { accent: "#166534", soft: "rgba(22, 101, 52, 0.1)" },
-      [PAGE_CUSTOM_BOARDS]: { accent: "#047857", soft: "rgba(4, 120, 87, 0.1)" },
+      [PAGE_BOARD]: { accent: "#2d4f72", soft: "rgba(32, 63, 91, 0.1)" },
+      [PAGE_CUSTOM_BOARDS]: { accent: "#3b6288", soft: "rgba(28, 64, 96, 0.1)" },
       [PAGE_HISTORY]: { accent: "#1d4ed8", soft: "rgba(29, 78, 216, 0.1)" },
       [PAGE_PROCESS_AUDITS]: { accent: "#6d28d9", soft: "rgba(109, 40, 217, 0.1)" },
-      [PAGE_BIBLIOTECA]: { accent: "#0f766e", soft: "rgba(15, 118, 110, 0.1)" },
+      [PAGE_BIBLIOTECA]: { accent: "#355f88", soft: "rgba(15, 118, 110, 0.1)" },
       [PAGE_INCIDENCIAS]: { accent: "#b91c1c", soft: "rgba(185, 28, 28, 0.1)" },
       [PAGE_USERS]: { accent: "#374151", soft: "rgba(55, 65, 81, 0.1)" },
       [PAGE_SYSTEM_SETTINGS]: { accent: "#9a3412", soft: "rgba(154, 52, 18, 0.1)" },
@@ -6106,6 +6806,12 @@ function App() { // NOSONAR
   }
 
   function resolveBoardOwnerAreaByUserId(userId) {
+    const sectionScopes = Array.isArray(selectedAreaSection?.scopes)
+      ? selectedAreaSection.scopes.map((scope) => normalizeAreaOption(scope)).filter((scope) => scope && scope !== "SIN AREA")
+      : [];
+    if (selectedAreaSectionId !== "all" && sectionScopes.length) {
+      return sectionScopes[0];
+    }
     const responsibleUser = userMap.get(userId) || null;
     const normalizedArea = normalizeAreaOption(getAreaRoot(getUserArea(responsibleUser)) || getUserArea(responsibleUser));
     return normalizedArea && normalizedArea !== "SIN AREA" ? normalizedArea : "";
@@ -6120,7 +6826,11 @@ function App() { // NOSONAR
       return;
     }
 
-    const selectedBoardArea = normalizeAreaOption(controlBoardDraft.settings?.ownerArea || "");
+    const sectionScopedBoardAreas = selectedAreaSectionId !== "all" && Array.isArray(selectedAreaSection?.scopes)
+      ? selectedAreaSection.scopes.map((scope) => normalizeAreaOption(scope)).filter((scope) => scope && scope !== "SIN AREA")
+      : [];
+    const forcedBoardArea = sectionScopedBoardAreas[0] || "";
+    const selectedBoardArea = forcedBoardArea || normalizeAreaOption(controlBoardDraft.settings?.ownerArea || "");
     if (!selectedBoardArea || selectedBoardArea === "SIN AREA") {
       setControlBoardFeedback("Selecciona el area duena del tablero para evitar cruces de datos en indicadores.");
       return;
@@ -6135,6 +6845,15 @@ function App() { // NOSONAR
         systemBoardTemplateId: protectedTemplate.id,
         systemBoardLocked: true,
       };
+    }
+    if (forcedBoardArea) {
+      payload.settings = {
+        ...payload.settings,
+        ownerArea: forcedBoardArea,
+      };
+      payload.visibilityType = "department";
+      payload.sharedDepartments = normalizeBoardSharedDepartments(sectionScopedBoardAreas);
+      payload.accessUserIds = [];
     }
     setIsBoardSaveSubmitting(true);
     setControlBoardFeedback("");
@@ -8125,6 +8844,7 @@ function App() { // NOSONAR
     currentInventoryManagePermission,
     currentInventoryMovements,
     currentUser,
+    activeAreaScopes,
     customBoardActionsMenuOpen,
     customBoardActionsMenuRef,
     customBoardMetrics,
@@ -8207,11 +8927,22 @@ function App() { // NOSONAR
     inventoryLinkedCleaningRows,
     inventoryMovementSavedDestinations,
     inventoryMovementSavedLocations,
+    state,
+    setState,
+    setLoginDirectory,
+    skipNextSyncRef,
+    setSyncStatus,
     transportState: state.transport || { config: [], activeDateKey: "", activeRecords: [], historyRecords: [] },
     users: Array.isArray(state.users) ? state.users : [],
     createTransportRecord,
     updateTransportRecord,
     canManageTransport: Boolean(actionPermissions.manageTransport),
+    navTransportSection,
+    setNavTransportSection,
+    navTransportTab,
+    setNavTransportTab,
+    auditShortcutPreset,
+    setAuditShortcutPreset,
     documentacionState: state.documentacion || { records: [], customAreas: [] },
     createDocumentacionRecord,
     updateDocumentacionRecord,
@@ -8384,6 +9115,8 @@ function App() { // NOSONAR
     hardResetDashboard,
     isRootLead,
     canManageDashboardState,
+    canManageDashboardControls,
+    canExportDashboardData,
     isDemoMode,
     activateDemoMode,
     deactivateDemoMode,
@@ -8403,6 +9136,8 @@ function App() { // NOSONAR
     selectedCustomBoardSnapshot,
     selectedCustomBoardViewId,
     selectedCustomBoardSections,
+    selectedAreaSectionId,
+    selectedAreaSection,
     canChangeSelectedBoardOperationalContext,
     selectedPermissionBoard,
     setAdminTab,
@@ -8428,6 +9163,7 @@ function App() { // NOSONAR
     setLoginDirectory,
     setPage,
     setSelectedCustomBoardId,
+    setSelectedAreaSectionId,
     updateBoardOperationalContext,
     setSelectedHistoryWeekId,
     setSelectedPermissionBoardId,
@@ -8532,7 +9268,7 @@ function App() { // NOSONAR
     });
 
     socket.on("connect", () => {
-      socket.emit("login_chat", { nickname: userName, photo: null });
+      socket.emit("login_chat", { nickname: userName, photo: currentUser?.photo || null });
       setSocketConnectCount((c) => c + 1);
     });
 
@@ -8568,13 +9304,23 @@ function App() { // NOSONAR
       <Sidebar
         currentUser={currentUser}
         page={page}
-        onPageChange={setPage}
+        onPageChange={(nextPage, nextAreaSectionId = "all", transportSection, transportTab, auditPreset) => {
+          setSelectedAreaSectionId(nextAreaSectionId || "all");
+          setPage(nextPage);
+          if (transportSection) setNavTransportSection(transportSection);
+          setNavTransportTab(transportTab || "");
+          setAuditShortcutPreset(auditPreset || null);
+        }}
         isOpen={isSidebarOpen}
         isCollapsed={isSidebarCollapsed}
         onClose={() => setIsSidebarOpen(false)}
         onOpenProfile={() => setProfileModalOpen(true)}
         onToggleCollapsed={() => setIsSidebarCollapsed((current) => !current)}
-        allowedNavItems={allowedNavItems}
+        areaSections={areaNavSections}
+        utilityNavItems={utilityNavItems}
+        selectedAreaSectionId={selectedAreaSectionId}
+        navTransportSection={navTransportSection}
+        navTransportTab={navTransportTab}
         canUseAI={!!actionPermissions.useCopmecAI}
         onOpenAI={() => setAiOpen((v) => !v)}
       />
@@ -8596,27 +9342,35 @@ function App() { // NOSONAR
             <h2>{page === PAGE_DASHBOARD ? "Dashboard" : pageTitle}</h2>
           </div>
           <div className="header-tools">
-            <div ref={notificationCenterRef}>
-              <AppNotificationCenter
-                unreadNotifications={unreadNotifications}
-                readNotifications={readNotifications}
-                unreadCount={unreadNotificationsCount}
-                attentionTick={notificationAttentionTick}
-                activeTab={notificationPanelTab}
-                isOpen={notificationPanelOpen}
-                onToggle={handleToggleNotificationPanel}
-                onTabChange={setNotificationPanelTab}
-                onDeleteAllRead={handleDeleteAllReadNotifications}
-                onMarkAllRead={() => markNotificationIdsAsRead(unreadNotifications.map((n) => n.id))}
-                onDeleteNotification={handleDeleteNotification}
-                onOpenNotification={handleOpenNotification}
-              />
-            </div>
             <div className="header-meta">
               <span>{new Intl.DateTimeFormat("es-MX", { dateStyle: "medium" }).format(new Date(now))}</span>
-              <span>{syncStatus}</span>
-              <strong>{currentUser.role}</strong>
+              <span className="header-clock">{new Intl.DateTimeFormat("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(new Date(now))}</span>
             </div>
+            <span
+              className={`header-sync-dot ${
+                syncStatus === "Sincronizado" ? "sync-ok" :
+                syncStatus === "Reconectando" ? "sync-warn" :
+                syncStatus === "Modo local" ? "sync-offline" : "sync-connecting"
+              }`}
+              title={syncStatus}
+              aria-label={`Estado: ${syncStatus}`}
+            />
+          </div>
+          <div ref={notificationCenterRef} className="header-notification-wrap header-bell-right">
+            <AppNotificationCenter
+              unreadNotifications={unreadNotifications}
+              readNotifications={readNotifications}
+              unreadCount={unreadNotificationsCount}
+              attentionTick={notificationAttentionTick}
+              activeTab={notificationPanelTab}
+              isOpen={notificationPanelOpen}
+              onToggle={handleToggleNotificationPanel}
+              onTabChange={setNotificationPanelTab}
+              onDeleteAllRead={handleDeleteAllReadNotifications}
+              onMarkAllRead={() => markNotificationIdsAsRead(unreadNotifications.map((n) => n.id))}
+              onDeleteNotification={handleDeleteNotification}
+              onOpenNotification={handleOpenNotification}
+            />
           </div>
         </header>
 
@@ -9088,79 +9842,131 @@ function App() { // NOSONAR
             </fieldset>
           </div>
 
-          {actionPermissions.managePermissions && supportsManagedPermissionOverrides(userModal.role) ? (
+          {(userModal.mode === "create" ? actionPermissions.createUsers : actionPermissions.editUsers) && supportsManagedPermissionOverrides(userModal.role) ? (
             <section className="user-modal-permissions">
               <div className="builder-section-head">
                 <div>
-                  <h4>Permisos directos</h4>
-                  <p>Configura aquí los accesos puntuales de este player sin salir del modal.</p>
+                  <h4>Permisos del menú lateral</h4>
+                  <p>Un único mapeo 1:1 con el menú lateral: sección y pestañas por cada área o grupo.</p>
                 </div>
-                <span className="chip primary">{permissionPages.filter((item) => userModal.permissionOverrides.pages?.[item.id]).length} pestañas activas</span>
+                <span className="chip primary">{menuPermissionSections.length} secciones</span>
               </div>
 
               <div className="permissions-accordion-list user-modal-permission-list">
-                {permissionPages.map((item) => {
-                  const isOpen = userModal.permissionPageId === item.id;
-                  const pageActions = getPagePermissionActions(item.id);
-                  const permissionGroups = getPermissionActionGroups(item.id, pageActions);
-                  const pageTone = getPermissionSectionTone(item.id, "");
+                {menuPermissionSections.map((section) => {
+                  const sectionPanelId = `area-${section.id}`;
+                  const isOpen = userModal.permissionPageId === sectionPanelId;
+                  const navEnabled = section.navVisibilityKind === "pages"
+                    ? Boolean(userModal.permissionOverrides.pages?.[section.navVisibilityActionId])
+                    : Boolean(userModal.permissionOverrides.actions?.[section.navVisibilityActionId]);
+                  const enabledTabCount = section.itemPermissions.filter((tab) => {
+                    return tab.kind === "pages"
+                      ? Boolean(userModal.permissionOverrides.pages?.[tab.id])
+                      : Boolean(userModal.permissionOverrides.actions?.[tab.id]);
+                  }).length;
                   return (
-                    <article key={item.id} className={`permission-accordion-card ${isOpen ? "open" : ""}`}>
-                      <button type="button" className="permission-accordion-toggle" onClick={() => toggleUserModalPermissionSection(item.id)}>
+                    <article key={section.id} className={`permission-accordion-card ${isOpen ? "open" : ""}`}>
+                      <button type="button" className="permission-accordion-toggle" onClick={() => toggleUserModalPermissionSection(sectionPanelId)}>
                         <div>
-                          <strong>{item.label}</strong>
-                          <span>{pageActions.length ? `${pageActions.length} permiso(s) de acción` : "Solo acceso a la pestaña"}</span>
+                          <strong>{section.label}</strong>
+                          <span>{`${navEnabled ? "Acceso lateral activo" : "Acceso lateral bloqueado"} · ${enabledTabCount}/${section.itemPermissions.length} pestañas/items activos`}</span>
                         </div>
                         <span className="chip">{isOpen ? "Abierto" : "Abrir"}</span>
                       </button>
 
                       {isOpen ? (
                         <div className="permission-accordion-body user-modal-permission-body">
-                          <div
-                            className="permission-switch-row permission-switch-row-primary permission-switch-row-toned"
-                            style={{ "--permission-accent": pageTone.accent, "--permission-soft": pageTone.soft }}
-                          >
+                          <div className="permission-switch-row permission-switch-row-primary permission-switch-row-toned" style={{ "--permission-accent": "#355f88", "--permission-soft": "rgba(15, 118, 110, 0.1)" }}>
                             <div>
-                              <strong>Ver pestaña</strong>
-                              <span>Permite entrar a {item.label}.</span>
+                              <strong>Ver sección lateral</strong>
+                              <span>{canGrantManagedPermission(section.navVisibilityKind, section.navVisibilityActionId) ? `Permite mostrar ${section.label} en la barra lateral.` : "No puedes delegar esta sección lateral porque tú no la tienes activa."}</span>
                             </div>
-                            <button type="button" className={`switch-button ${userModal.permissionOverrides.pages?.[item.id] ? "on" : ""}`} onClick={() => toggleUserModalPermission("pages", item.id)} aria-pressed={userModal.permissionOverrides.pages?.[item.id]}>
+                            <button
+                              type="button"
+                              disabled={!canGrantManagedPermission(section.navVisibilityKind, section.navVisibilityActionId)}
+                              className={`switch-button ${navEnabled ? "on" : ""}`}
+                              onClick={() => toggleUserModalPermission(section.navVisibilityKind, section.navVisibilityActionId)}
+                              aria-pressed={navEnabled}
+                            >
                               <span className="switch-thumb" />
                             </button>
                           </div>
 
-                          {pageActions.length ? (
-                            <div className="permission-group-stack">
-                              {permissionGroups.map((group) => (
-                                <section key={group.id} className="permission-group-block">
-                                  <div className="permission-group-head" style={{ "--permission-group-accent": group.accent }}>
-                                    <strong>{group.label}</strong>
-                                    <span>{group.actions.length} permiso(s)</span>
-                                  </div>
-                                  <div className="permission-switch-list">
-                                    {group.actions.map((action) => (
-                                      <div
-                                        key={action.id}
-                                        className="permission-switch-row permission-switch-row-toned"
-                                        style={{
-                                          "--permission-accent": getPermissionSectionTone(item.id, action.id).accent,
-                                          "--permission-soft": getPermissionSectionTone(item.id, action.id).soft,
-                                        }}
-                                      >
-                                        <div>
-                                          <strong>{action.label}</strong>
-                                          <span>{action.category}</span>
+                          <div className="permission-group-stack">
+                            <section className="permission-group-block">
+                              <div className="permission-group-head" style={{ "--permission-group-accent": "#334155" }}>
+                                <strong>Pestañas del área</strong>
+                                <span>{section.itemPermissions.length} permiso(s)</span>
+                              </div>
+                              <div className="permission-switch-list permission-tab-grid">
+                                {section.itemPermissions.map((tab) => {
+                                  const tabPanelId = `${section.id}::${tab.id}`;
+                                  const isTabExpanded = expandedPermissionTabs.includes(tabPanelId);
+                                  const enabled = tab.kind === "pages"
+                                    ? Boolean(userModal.permissionOverrides.pages?.[tab.id])
+                                    : Boolean(userModal.permissionOverrides.actions?.[tab.id]);
+                                  const delegable = canGrantManagedPermission(tab.kind, tab.id);
+                                  const nestedActions = tab.actionPermissions || [];
+                                  return (
+                                    <div key={tab.id} className="permission-switch-row permission-switch-row-toned permission-tab-card" style={{ "--permission-accent": "#475569", "--permission-soft": "rgba(71, 85, 105, 0.1)" }}>
+                                      <div className="permission-tab-header">
+                                        <div className="permission-tab-copy">
+                                          <strong>{tab.label}</strong>
+                                          <span>{delegable ? "Habilita la pestaña y sus acciones operativas dentro de esta área." : "No delegable"}</span>
                                         </div>
-                                        <button type="button" className={`switch-button ${userModal.permissionOverrides.actions?.[action.id] ? "on" : ""}`} onClick={() => toggleUserModalPermission("actions", action.id)} aria-pressed={userModal.permissionOverrides.actions?.[action.id]}>
-                                          <span className="switch-thumb" />
-                                        </button>
+                                        <div className="permission-tab-actions">
+                                          {nestedActions.length ? (
+                                            <button
+                                              type="button"
+                                              className={`permission-tab-collapse-toggle ${isTabExpanded ? "open" : ""}`}
+                                              onClick={() => toggleUserModalPermissionTab(tabPanelId)}
+                                              aria-expanded={isTabExpanded}
+                                            >
+                                              {isTabExpanded ? "Ocultar acciones" : `Ver acciones (${nestedActions.length})`}
+                                            </button>
+                                          ) : null}
+                                          <button
+                                            type="button"
+                                            disabled={!delegable}
+                                            className={`switch-button ${enabled ? "on" : ""}`}
+                                            onClick={() => toggleUserModalPermission(tab.kind, tab.id)}
+                                            aria-pressed={enabled}
+                                          >
+                                            <span className="switch-thumb" />
+                                          </button>
+                                        </div>
                                       </div>
-                                    ))}
-                                  </div>
-                                </section>
-                              ))}
-                            </div>
-                          ) : null}
+                                      {nestedActions.length && isTabExpanded ? (
+                                        <div className="permission-subaction-list">
+                                          {nestedActions.map((actionItem) => {
+                                            const actionEnabled = Boolean(userModal.permissionOverrides.actions?.[actionItem.id]);
+                                            const actionDelegable = canGrantManagedPermission("actions", actionItem.id);
+                                            return (
+                                              <div key={actionItem.id} className="permission-switch-row permission-subaction-row" style={{ "--permission-accent": "#64748b", "--permission-soft": "rgba(100, 116, 139, 0.08)" }}>
+                                                <div className="permission-subaction-copy">
+                                                  <strong>{actionItem.label}</strong>
+                                                  <span>{actionDelegable ? "Permiso puntual dentro de esta pestaña." : "No delegable"}</span>
+                                                </div>
+                                                <button
+                                                  type="button"
+                                                  disabled={!actionDelegable}
+                                                  className={`switch-button ${actionEnabled ? "on" : ""}`}
+                                                  onClick={() => toggleUserModalPermission("actions", actionItem.id)}
+                                                  aria-pressed={actionEnabled}
+                                                >
+                                                  <span className="switch-thumb" />
+                                                </button>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </section>
+                          </div>
                         </div>
                       ) : null}
                     </article>
@@ -9278,6 +10084,8 @@ function App() { // NOSONAR
       <BoardBuilderModal
         open={boardBuilderModal.open}
         mode={boardBuilderModal.mode}
+        selectedAreaSectionId={selectedAreaSectionId}
+        selectedAreaSection={selectedAreaSection}
         draft={controlBoardDraft}
         onChange={setControlBoardDraft}
         onClose={closeBoardBuilderModal}
@@ -9338,9 +10146,9 @@ function App() { // NOSONAR
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.25rem" }}>
                 <strong>{item.targetLabel}</strong>
                 {item.fromMemory ? (
-                  <span style={{ fontSize: "0.7rem", background: "#032121", color: "#fff", borderRadius: "999px", padding: "0.1rem 0.55rem", fontWeight: 600 }}>Desde memoria</span>
+                  <span style={{ fontSize: "0.7rem", background: "#314d69", color: "#ffffff", borderRadius: "999px", padding: "0.1rem 0.55rem", fontWeight: 600 }}>Desde memoria</span>
                 ) : item.fromClassification ? (
-                  <span style={{ fontSize: "0.7rem", background: "#1d4ed8", color: "#fff", borderRadius: "999px", padding: "0.1rem 0.55rem", fontWeight: 600 }}>Auto-detectado</span>
+                  <span style={{ fontSize: "0.7rem", background: "#1d4ed8", color: "#ffffff", borderRadius: "999px", padding: "0.1rem 0.55rem", fontWeight: 600 }}>Auto-detectado</span>
                 ) : null}
                 {item.classification?.label ? (
                   <span style={{ fontSize: "0.7rem", background: "#f3f4f6", color: "#374151", borderRadius: "999px", padding: "0.1rem 0.55rem" }}>{item.classification.label}</span>
@@ -9378,7 +10186,7 @@ function App() { // NOSONAR
               </label>
 
               {(item.targetType === "inventoryLookup") ? (
-                <p className="modal-footnote" style={{ color: "#065f46", background: "#d1fae5", borderRadius: "8px", padding: "0.4rem 0.6rem" }}>
+                <p className="modal-footnote" style={{ color: "#2c4b6b", background: "#dfe9f4", borderRadius: "8px", padding: "0.4rem 0.6rem" }}>
                   Este campo se configurará como Buscador de inventario. Los operadores podrán buscar y vincular artículos del inventario del sistema.
                 </p>
               ) : (item.targetType === "text" || item.targetType === "number" || item.targetType === "select") ? (
@@ -9420,7 +10228,7 @@ function App() { // NOSONAR
         </AlertModalProvider>
       ) : null}
 
-      {profileModalOpen ? <EmployeeProfileModal currentUser={currentUser} passwordForm={passwordForm} onPasswordChange={setPasswordForm} onSubmit={submitPasswordReset} onUpdateIdentity={updateCurrentUserIdentity} onClose={() => { setProfileModalOpen(false); setPasswordForm({ password: "", confirmPassword: "", message: "" }); }} onLogout={() => { setProfileModalOpen(false); setPasswordForm({ password: "", confirmPassword: "", message: "" }); handleLogout(); }} /> : null}
+      {profileModalOpen ? <EmployeeProfileModal currentUser={currentUser} passwordForm={passwordForm} onPasswordChange={setPasswordForm} onSubmit={submitPasswordReset} onUpdateIdentity={updateCurrentUserIdentity} currentTheme={uiTheme} themeOptions={UI_THEME_OPTIONS} onThemeChange={setUiTheme} currentFont={uiFont} fontOptions={UI_FONT_OPTIONS} onFontChange={setUiFont} currentFontSize={uiFontSize} fontSizeOptions={UI_FONT_SIZE_OPTIONS} onFontSizeChange={setUiFontSize} onClose={() => { setProfileModalOpen(false); setPasswordForm({ password: "", confirmPassword: "", message: "" }); }} onLogout={() => { setProfileModalOpen(false); setPasswordForm({ password: "", confirmPassword: "", message: "" }); handleLogout(); }} /> : null}
 
       <Modal
         open={excelSheetSelector.open}
@@ -9450,8 +10258,8 @@ function App() { // NOSONAR
                   gap: "0.75rem",
                   padding: "0.75rem 1rem",
                   borderRadius: "12px",
-                  border: `2px solid ${sheet._selected ? "#032121" : "#e5e7eb"}`,
-                  background: sheet._selected ? "#f0fdf4" : "#fff",
+                  border: `2px solid ${sheet._selected ? "#314d69" : "#e5e7eb"}`,
+                  background: sheet._selected ? "#f2f6fb" : "#ffffff",
                   cursor: "pointer",
                   textAlign: "left",
                   transition: "border-color 0.15s",
@@ -9463,11 +10271,11 @@ function App() { // NOSONAR
               >
                 <span style={{
                   width: "20px", height: "20px", borderRadius: "4px", flexShrink: 0,
-                  border: `2px solid ${sheet._selected ? "#032121" : "#d1d5db"}`,
-                  background: sheet._selected ? "#032121" : "#fff",
+                  border: `2px solid ${sheet._selected ? "#314d69" : "#d1d5db"}`,
+                  background: sheet._selected ? "#314d69" : "#ffffff",
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}>
-                  {sheet._selected ? <span style={{ color: "#fff", fontSize: "12px", fontWeight: 700 }}>✓</span> : null}
+                  {sheet._selected ? <span style={{ color: "#ffffff", fontSize: "12px", fontWeight: 700 }}>✓</span> : null}
                 </span>
                 <div>
                   <strong style={{ fontSize: "0.95rem" }}>{sheet.name}</strong>

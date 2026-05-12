@@ -1401,6 +1401,102 @@ function TemplateQuestionEditor({
   );
 }
 
+const AUDIT_CHART_PALETTE = ["#0ea5e9", "#405db0", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#64748b", "#3375af"];
+
+function AuditHBarChart({ data, maxValue }) {
+  if (!data || !data.length) return <p style={{ color: "#94a3b8", fontSize: "13px" }}>Sin datos.</p>;
+  const barH = 26;
+  const labelW = 86;
+  const chartW = 196;
+  const gap = 7;
+  const totalH = data.length * (barH + gap);
+  const maxV = maxValue || Math.max(...data.map((d) => d.value), 1);
+  return (
+    <svg viewBox={`0 0 ${labelW + chartW + 48} ${totalH}`} style={{ width: "100%", maxHeight: `${totalH + 4}px`, display: "block", overflow: "visible" }}>
+      {data.map((d, i) => {
+        const barW = Math.max(4, (d.value / maxV) * chartW);
+        const y = i * (barH + gap);
+        const color = AUDIT_CHART_PALETTE[i % AUDIT_CHART_PALETTE.length];
+        return (
+          <g key={d.label || i}>
+            <text x={labelW - 6} y={y + barH / 2 + 5} textAnchor="end" fontSize="11" fill="#64748b" fontFamily="inherit">
+              {String(d.label || "").length > 11 ? String(d.label).slice(0, 11) + "\u2026" : d.label}
+            </text>
+            <rect x={labelW} y={y + 2} width={barW} height={barH - 4} rx="5" fill={color} opacity="0.85" />
+            <text x={labelW + barW + 5} y={y + barH / 2 + 5} fontSize="12" fill="#1e293b" fontWeight="700" fontFamily="inherit">
+              {d.value}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function AuditDonutChart({ segments }) {
+  if (!segments || !segments.length) return null;
+  const total = segments.reduce((s, d) => s + d.value, 0);
+  if (total === 0) return <p style={{ color: "#94a3b8", fontSize: "13px", textAlign: "center" }}>Sin datos.</p>;
+  const r = 48;
+  const cx = 56;
+  const cy = 56;
+  const ir = r * 0.6;
+  let angle = -Math.PI / 2;
+  const paths = [];
+  segments.forEach((seg, i) => {
+    if (!seg.value) return;
+    const sweep = (seg.value / total) * 2 * Math.PI;
+    const endAngle = angle + sweep;
+    const x1 = cx + r * Math.cos(angle);
+    const y1 = cy + r * Math.sin(angle);
+    const x2 = cx + r * Math.cos(endAngle);
+    const y2 = cy + r * Math.sin(endAngle);
+    const ix1 = cx + ir * Math.cos(angle);
+    const iy1 = cy + ir * Math.sin(angle);
+    const ix2 = cx + ir * Math.cos(endAngle);
+    const iy2 = cy + ir * Math.sin(endAngle);
+    const large = sweep > Math.PI ? 1 : 0;
+    const d = `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} L ${ix2.toFixed(2)} ${iy2.toFixed(2)} A ${ir} ${ir} 0 ${large} 0 ${ix1.toFixed(2)} ${iy1.toFixed(2)} Z`;
+    paths.push({ d, color: seg.color || AUDIT_CHART_PALETTE[i], pct: Math.round((seg.value / total) * 100) });
+    angle = endAngle;
+  });
+  return (
+    <svg viewBox="0 0 112 112" style={{ width: "100%", maxWidth: "112px", display: "block" }}>
+      {paths.map((p, i) => <path key={i} d={p.d} fill={p.color} />)}
+      <text x={cx} y={cy - 7} textAnchor="middle" fontSize="17" fontWeight="700" fill="#1e293b" fontFamily="inherit">{total}</text>
+      <text x={cx} y={cy + 9} textAnchor="middle" fontSize="10" fill="#64748b" fontFamily="inherit">auditorías</text>
+    </svg>
+  );
+}
+
+function AuditMiniLineChart({ data }) {
+  if (!data || data.length < 2) return null;
+  const W = 260, H = 80, padL = 22, padR = 10, padT = 12, padB = 22;
+  const cW = W - padL - padR;
+  const cH = H - padT - padB;
+  const maxV = Math.max(...data.map((d) => d.count), 1);
+  const pts = data.map((d, i) => ({
+    x: padL + (i / (data.length - 1)) * cW,
+    y: padT + cH - (d.count / maxV) * cH,
+    ...d,
+  }));
+  const linePath = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+  const areaPath = `${linePath} L ${pts[pts.length - 1].x.toFixed(1)} ${(padT + cH).toFixed(1)} L ${pts[0].x.toFixed(1)} ${(padT + cH).toFixed(1)} Z`;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", display: "block" }}>
+      <path d={areaPath} fill="#0ea5e9" opacity="0.10" />
+      <path d={linePath} fill="none" stroke="#0ea5e9" strokeWidth="2" strokeLinejoin="round" />
+      {pts.map((p, i) => (
+        <g key={i}>
+          <circle cx={p.x} cy={p.y} r="3.5" fill="#0ea5e9" />
+          <text x={p.x} y={H - 4} textAnchor="middle" fontSize="9" fill="#94a3b8" fontFamily="inherit">{p.label}</text>
+          {p.count > 0 ? <text x={p.x} y={p.y - 6} textAnchor="middle" fontSize="10" fontWeight="600" fill="#0369a1" fontFamily="inherit">{p.count}</text> : null}
+        </g>
+      ))}
+    </svg>
+  );
+}
+
 export default function AuditoriasProcesosCompact({ contexto }) {
   const {
     rootAreaOptions,
@@ -1417,6 +1513,7 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     addProcessAuditEvidence,
     removeProcessAuditEvidence,
     pushAppToast,
+    auditShortcutPreset,
   } = contexto;
 
   const canManageAudits = Boolean(actionPermissions?.manageProcessAudits);
@@ -1594,6 +1691,57 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     };
   }, [sortedAudits]);
 
+  const extendedDashboardStats = useMemo(() => {
+    const now = new Date();
+    const byMonth = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+      return {
+        key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+        label: d.toLocaleDateString("es-MX", { month: "short" }),
+        count: 0,
+      };
+    });
+    sortedAudits.forEach((audit) => {
+      const ms = Date.parse(audit.startedAt || audit.updatedAt || "");
+      if (!Number.isFinite(ms)) return;
+      const d = new Date(ms);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const bucket = byMonth.find((m) => m.key === key);
+      if (bucket) bucket.count += 1;
+    });
+
+    const areaScoreMap = new Map();
+    sortedAudits.forEach((audit) => {
+      const area = audit.area || "Sin área";
+      const scoring = buildAuditScoring(audit.questions || []);
+      if (scoring.global.total === 0) return;
+      if (!areaScoreMap.has(area)) areaScoreMap.set(area, { sum: 0, count: 0 });
+      const e = areaScoreMap.get(area);
+      e.sum += scoring.global.scorePercent ?? 0;
+      e.count += 1;
+    });
+    const areaCompliance = Array.from(areaScoreMap.entries())
+      .map(([area, { sum, count }]) => ({ label: area, value: Math.round(sum / count) }))
+      .sort((a, b) => b.value - a.value);
+
+    const lcMap = new Map();
+    sortedAudits.forEach((audit) => {
+      const lc = normalizeLifecycleStatus(audit.lifecycleStatus || "pending");
+      lcMap.set(lc, (lcMap.get(lc) || 0) + 1);
+    });
+    const LIFECYCLE_LABELS_MAP = { pending: "Pendiente", in_review: "En revisión", proposal_sent: "Propuesta enviada", accepted: "Aceptada", in_implementation: "En implementación", in_validation: "En validación", closed: "Cerrada" };
+    const lifecycleDist = ["in_review", "proposal_sent", "accepted", "in_implementation", "in_validation", "closed", "pending"]
+      .filter((k) => lcMap.has(k))
+      .map((k) => ({ status: k, label: LIFECYCLE_LABELS_MAP[k] || k, count: lcMap.get(k) || 0 }));
+
+    let totalProposals = 0;
+    sortedAudits.forEach((audit) => {
+      totalProposals += (audit.proposals || []).length;
+    });
+
+    return { byMonth, areaCompliance, lifecycleDist, totalProposals };
+  }, [sortedAudits]);
+
   const quickStats = useMemo(() => {
     return [
       buildQuickStat("Plantillas", resolvedTemplates.length),
@@ -1617,6 +1765,39 @@ export default function AuditoriasProcesosCompact({ contexto }) {
     });
     return Array.from(values).sort((a, b) => a.localeCompare(b, "es-MX"));
   }, [newAuditArea, resolvedTemplates, sortedAudits]);
+
+  useEffect(() => {
+    if (!auditShortcutPreset || typeof auditShortcutPreset !== "object") return;
+
+    const requestedTab = String(auditShortcutPreset.tab || "").trim();
+    const requestedHistoryTab = String(auditShortcutPreset.historyTab || "").trim();
+    const presetArea = String(auditShortcutPreset.area || "").trim();
+    const presetProcess = String(auditShortcutPreset.process || "").trim();
+
+    if (requestedTab === "capture" || requestedTab === "auditoria") {
+      setActiveTab("capture");
+    } else if (requestedTab === "history" || requestedTab === "problemas" || requestedTab === "propuestas") {
+      setActiveTab("history");
+      if (requestedHistoryTab === "proposals" || requestedTab === "propuestas") {
+        setHistoryActiveTab("proposals");
+      } else {
+        setHistoryActiveTab("problems");
+      }
+    } else if (requestedTab === "dashboard") {
+      setActiveTab("dashboard");
+    } else if (requestedTab === "seguimiento") {
+      setActiveTab("seguimiento");
+    }
+
+    if (presetArea) {
+      setNewAuditArea(presetArea);
+    }
+    if (presetProcess) {
+      setNewAuditSubArea("");
+      setNewAuditProcess(presetProcess);
+      setNewAuditTemplateId("");
+    }
+  }, [auditShortcutPreset]);
 
   const activeAuditQuestions = useMemo(() => {
     if (!auditDraft) return [];
@@ -2536,38 +2717,40 @@ export default function AuditoriasProcesosCompact({ contexto }) {
 
   return (
     <section className="page-grid audit-shell">
-      <article className="surface-card full-width table-card audit-topbar-card">
-        <div className="card-header-row">
-          <div>
-            <h3>Auditorías</h3>
-            <p>Captura rápida, plantillas editables y seguimiento por proceso.</p>
+      {activeTab !== "dashboard" ? (
+        <article className="surface-card full-width table-card audit-topbar-card">
+          <div className="card-header-row">
+            <div>
+              <h3>Auditorías</h3>
+              <p>Captura rápida, plantillas editables y seguimiento por proceso.</p>
+            </div>
+            <div className="audit-topbar-actions">
+              {quickStats.map((item) => (
+                <span key={item.label} className="chip primary">{item.label}: {item.value}</span>
+              ))}
+              <button
+                type="button"
+                className="icon-button"
+                onClick={() => {
+                  setTemplateFilterArea(newAuditArea || "");
+                  setTemplateFilterProcess(newAuditProcess || "");
+                  setTemplateDraft(emptyTemplateDraft(newAuditArea || "", newAuditProcess || ""));
+                  setTemplateManagerTab("library");
+                  setTemplateManagerOpen(true);
+                }}
+                disabled={!canManageTemplates}
+              >
+                <Settings size={15} /> Plantillas
+              </button>
+            </div>
           </div>
-          <div className="audit-topbar-actions">
-            {quickStats.map((item) => (
-              <span key={item.label} className="chip primary">{item.label}: {item.value}</span>
-            ))}
-            <button
-              type="button"
-              className="icon-button"
-              onClick={() => {
-                setTemplateFilterArea(newAuditArea || "");
-                setTemplateFilterProcess(newAuditProcess || "");
-                setTemplateDraft(emptyTemplateDraft(newAuditArea || "", newAuditProcess || ""));
-                setTemplateManagerTab("library");
-                setTemplateManagerOpen(true);
-              }}
-              disabled={!canManageTemplates}
-            >
-              <Settings size={15} /> Plantillas
-            </button>
+          <div className="tab-strip">
+            <button type="button" className={activeTab === "capture" ? "tab active" : "tab"} onClick={() => setActiveTab("capture")}>Auditoría</button>
+            <button type="button" className={activeTab === "history" ? "tab active" : "tab"} onClick={() => { setActiveTab("history"); setHistoryActiveTab("problems"); }}>Problemas / Propuestas</button>
+            <button type="button" className={activeTab === "seguimiento" ? "tab active" : "tab"} onClick={() => setActiveTab("seguimiento")}>Seguimiento</button>
           </div>
-        </div>
-        <div className="tab-strip">
-          <button type="button" className={activeTab === "capture" ? "tab active" : "tab"} onClick={() => setActiveTab("capture")}>Captura</button>
-          <button type="button" className={activeTab === "history" ? "tab active" : "tab"} onClick={() => setActiveTab("history")}>Historial</button>
-          <button type="button" className={activeTab === "dashboard" ? "tab active" : "tab"} onClick={() => setActiveTab("dashboard")}>Dashboard</button>
-        </div>
-      </article>
+        </article>
+      ) : null}
 
       {activeTab === "capture" ? (
         <>
@@ -3112,428 +3295,44 @@ export default function AuditoriasProcesosCompact({ contexto }) {
         <article className="surface-card table-card full-width audit-surface-compact">
           <div className="card-header-row">
             <div>
-              <h3>Historial de auditorías</h3>
-              <p>Ordenadas por paso pendiente. Expande para continuar el ciclo.</p>
+              <h3>Historial de auditorías cerradas</h3>
+              <p>Solo auditorías completamente cerradas, sin acceso adicional a problemas o propuestas.</p>
             </div>
           </div>
-          <div className="saved-board-list permissions-preset-list">
+          <div className="saved-board-list permissions-preset-list audit-history-overview-grid">
             {closedAudits.map((audit) => {
-              const lc = normalizeLifecycleStatus(audit.lifecycleStatus);
-              const isExpanded = historyExpandedId === audit.id;
-              const isCycleDone = lc === "closed";
-              const NEXT_LABELS = { in_review: "Revisar problemas detectados", proposal_sent: "Elaborar propuestas de mejora", accepted: "Planificar implementación", in_implementation: "Seguimiento de implementación", in_validation: "Validar y cerrar ciclo", closed: "Ciclo completo ✓" };
-              const LC_CHIP = { in_review: "danger", proposal_sent: "warning", accepted: "warning", in_implementation: "primary", in_validation: "primary", closed: "success" };
-              const hProblems = isExpanded && historyDraft?.id === audit.id ? buildDetectedProblems(historyDraft.questions || []) : buildDetectedProblems(audit.questions || []);
-              const hLc = isExpanded && historyDraft ? normalizeLifecycleStatus(historyDraft.lifecycleStatus) : lc;
-              const hProposalCoverage = (() => {
-                const src = isExpanded && historyDraft ? historyDraft : audit;
-                const pids = new Set(hProblems.map((p) => p.id));
-                const linked = (src.proposals || []).filter((p) => pids.has(p.problemId));
-                return { withoutProposal: Math.max(0, hProblems.length - linked.length) };
-              })();
+              const closureDate = audit.implementationPlan?.closureDate || audit.endedAt || audit.updatedAt || "-";
+              const problemsCount = buildDetectedProblems(audit.questions || []).length;
+              const proposalsCount = (audit.proposals || []).length;
+              const followUps = audit.followUp || [];
+              const verifiedCount = followUps.filter((entry) => entry.verificationStatus === "ok").length;
+              const lifecycleLabel = PROCESS_AUDIT_STATUS_OPTIONS.find((o) => o.value === "closed")?.label || "Cerrada";
               return (
-                <article key={audit.id} className="surface-card audit-history-card">
+                <article key={audit.id} className="surface-card audit-history-card audit-history-closed-card">
                   <div className="card-header-row">
                     <div>
                       <strong>{audit.area} · {audit.process}</strong>
-                      <p className="subtle-line">{audit.subArea || "-"} · {audit.auditorName || currentUser?.name || "Sin auditor"} · {formatDateTime(audit.startedAt)}</p>
+                      <p className="subtle-line">{audit.subArea || "-"} · {audit.auditorName || currentUser?.name || "Sin auditor"}</p>
                     </div>
                     <div className="audit-inline-actions">
-                      <span className={`chip ${LC_CHIP[lc] || "primary"}`}>{PROCESS_AUDIT_STATUS_OPTIONS.find((o) => o.value === lc)?.label || lc}</span>
-                      <button
-                        type="button"
-                        className="icon-button"
-                        onClick={() => {
-                          if (isExpanded) { setHistoryExpandedId(null); }
-                          else {
-                            setHistoryExpandedId(audit.id);
-                            setHistoryActiveTab(isCycleDone ? "problems" : lc === "in_review" ? "problems" : (lc === "proposal_sent" || lc === "accepted") ? "proposals" : "followup");
-                          }
-                        }}
-                      >
-                        {isExpanded ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
-                        {isExpanded ? "Contraer" : "Expandir"}
-                      </button>
+                      <span className="chip success">{lifecycleLabel}</span>
                     </div>
                   </div>
-                  {!isExpanded ? (
-                    <p className="subtle-line" style={{ marginTop: "0.2rem", fontStyle: "italic" }}>
-                      {!isCycleDone ? "📌 " : ""}{NEXT_LABELS[lc] || "-"}
-                    </p>
-                  ) : null}
-
-                  {isExpanded && historyDraft?.id === audit.id ? (
-                    <>
-                      <div className="audit-cycle-tabs">
-                        {[
-                          { key: "problems", label: "📋 Problemas", show: true },
-                          { key: "proposals", label: "💡 Propuestas", show: ["proposal_sent","accepted","in_implementation","in_validation","closed"].includes(hLc) },
-                          { key: "followup", label: "🔧 Seguimiento", show: ["in_implementation","in_validation","closed"].includes(hLc) },
-                          { key: "close", label: "✅ Cierre", show: !isCycleDone },
-                        ].filter((t) => t.show).map((t) => (
-                          <button key={t.key} type="button" className={`audit-cycle-tab-btn${historyActiveTab === t.key ? " active" : ""}`} onClick={() => setHistoryActiveTab(t.key)}>
-                            {t.label}
-                          </button>
-                        ))}
-                      </div>
-
-                      {historyActiveTab === "problems" ? (
-                        <div className="audit-cycle-tab-content">
-                          <div className="card-header-row" style={{ marginBottom: "0.4rem" }}>
-                            <strong>Problemas detectados</strong>
-                            <span className="chip primary">{hProblems.length}</span>
-                          </div>
-                          {!hProblems.length ? <p className="subtle-line">Sin problemas detectados en esta auditoría.</p> : null}
-                          <div className="saved-board-list permissions-preset-list">
-                            {hProblems.map((problem) => (
-                              <article key={problem.id} className="surface-card audit-history-card">
-                                <div className="card-header-row">
-                                  <strong>{problem.problem}</strong>
-                                  <span className={`chip ${problem.impactLevel === "high" ? "danger" : problem.impactLevel === "medium" ? "warning" : "success"}`}>{problem.impactLevel === "high" ? "Alto" : problem.impactLevel === "medium" ? "Medio" : "Bajo"}</span>
-                                </div>
-                                <p className="subtle-line">Categoría: {problem.category}</p>
-                                {problem.observations ? <p className="subtle-line">{problem.observations}</p> : null}
-                              </article>
-                            ))}
-                          </div>
-                          {/* Problemas por persona (sub-respuestas) */}
-                          {((isExpanded && historyDraft?.id === audit.id ? historyDraft.subResponses : audit.subResponses) || []).map((sr) => {
-                            const srProblems = (auditDraft?.questions || audit.questions || []).filter((q) => {
-                              const ans = sr.answers?.[q.id];
-                              return ans?.issueDetected === true;
-                            }).map((q) => {
-                              const ans = sr.answers[q.id];
-                              return { id: `${sr.id}-${q.id}`, problem: q.text, category: q.category || "General", impactLevel: ans.impactLevel || "medium", observations: ans.observations || "" };
-                            });
-                            if (!srProblems.length) return null;
-                            return (
-                              <div key={sr.id} style={{ marginTop: "0.75rem" }}>
-                                <p className="subtle-line" style={{ fontWeight: 600 }}>Persona: {sr.personName || "—"}{sr.personRole ? ` (${sr.personRole})` : ""}</p>
-                                <div className="saved-board-list permissions-preset-list">
-                                  {srProblems.map((problem) => (
-                                    <article key={problem.id} className="surface-card audit-history-card">
-                                      <div className="card-header-row">
-                                        <strong>{problem.problem}</strong>
-                                        <span className={`chip ${problem.impactLevel === "high" ? "danger" : problem.impactLevel === "medium" ? "warning" : "success"}`}>{problem.impactLevel === "high" ? "Alto" : problem.impactLevel === "medium" ? "Medio" : "Bajo"}</span>
-                                      </div>
-                                      <p className="subtle-line">Categoría: {problem.category}</p>
-                                      {problem.observations ? <p className="subtle-line">{problem.observations}</p> : null}
-                                    </article>
-                                  ))}
-                                </div>
-                              </div>
-                            );
-                          })}
-                          {!isCycleDone && hLc === "in_review" ? (
-                            <div className="audit-inline-actions" style={{ marginTop: "0.75rem" }}>
-                              <button type="button" className="primary-button" onClick={() => handleHistoryAdvanceStep("proposal_sent")} disabled={!canManageAudits}>Continuar a Propuestas →</button>
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : null}
-
-                      {historyActiveTab === "proposals" ? (
-                        <div className="audit-cycle-tab-content">
-                          <div className="card-header-row" style={{ marginBottom: "0.4rem" }}>
-                            <strong>Propuestas de mejora</strong>
-                            <div className="audit-inline-actions">
-                              <span className="chip">Sin propuesta: {hProposalCoverage.withoutProposal}</span>
-                              {!isCycleDone ? (
-                                <button type="button" className="icon-button" onClick={() => { const firstUnlinked = hProblems.find((p) => !(historyDraft.proposals || []).some((pr) => pr.problemId === p.id)); setHistoryDraft((c) => ({ ...c, proposals: [...(c.proposals || []), buildDefaultProposal(firstUnlinked || {})] })); setHistoryDirty(true); }} disabled={!canManageAudits}>
-                                  <Plus size={14} /> Agregar
-                                </button>
-                              ) : null}
-                            </div>
-                          </div>
-                          <div className="saved-board-list permissions-preset-list">
-                            {(historyDraft.proposals || []).map((proposal) => (
-                              <article key={proposal.id} className="surface-card audit-history-card">
-                                <div className="audit-form-grid">
-                                  <label className="app-modal-field audit-field-span-2">
-                                    <span>Problema asociado</span>
-                                    <select value={proposal.problemId || ""} onChange={(e) => { setHistoryDraft((c) => ({ ...c, proposals: (c.proposals || []).map((it) => it.id === proposal.id ? { ...it, problemId: e.target.value, problem: hProblems.find((p) => p.id === e.target.value)?.problem || it.problem || "" } : it) })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone}>
-                                      <option value="">Sin vínculo</option>
-                                      {hProblems.map((p) => <option key={p.id} value={p.id}>{p.problem}</option>)}
-                                    </select>
-                                  </label>
-                                  <label className="app-modal-field">
-                                    <span>Tipo</span>
-                                    <select value={proposal.type || "improvement"} onChange={(e) => { setHistoryDraft((c) => ({ ...c, proposals: (c.proposals || []).map((it) => it.id === proposal.id ? { ...it, type: e.target.value } : it) })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone}>
-                                      {PROPOSAL_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                                    </select>
-                                  </label>
-                                  <label className="app-modal-field">
-                                    <span>Esfuerzo</span>
-                                    <select value={proposal.effort || "medium"} onChange={(e) => { setHistoryDraft((c) => ({ ...c, proposals: (c.proposals || []).map((it) => it.id === proposal.id ? { ...it, effort: e.target.value } : it) })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone}>
-                                      {EFFORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                                    </select>
-                                  </label>
-                                  <label className="app-modal-field">
-                                    <span>Responsable</span>
-                                    <input type="text" value={proposal.responsible || ""} placeholder="Nombre del responsable" onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, proposals: (c.proposals || []).map((it) => it.id === proposal.id ? { ...it, responsible: v } : it) })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone} />
-                                  </label>
-                                  <label className="app-modal-field audit-field-span-2">
-                                    <span>Causa raíz</span>
-                                    <textarea rows={2} value={proposal.rootCause || ""} placeholder="Describe la causa raíz" onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, proposals: (c.proposals || []).map((it) => it.id === proposal.id ? { ...it, rootCause: v } : it) })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone} style={{ resize: "vertical" }} />
-                                  </label>
-                                  <label className="app-modal-field audit-field-span-2">
-                                    <span>Propuesta</span>
-                                    <textarea rows={2} value={proposal.proposal || ""} placeholder="Mejora / corrección / rediseño" onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, proposals: (c.proposals || []).map((it) => it.id === proposal.id ? { ...it, proposal: v } : it) })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone} style={{ resize: "vertical" }} />
-                                  </label>
-                                  <label className="app-modal-field audit-field-span-2">
-                                    <span>Impacto esperado</span>
-                                    <textarea rows={2} value={proposal.expectedImpact || ""} placeholder="Qué mejora se espera y cómo se medirá" onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, proposals: (c.proposals || []).map((it) => it.id === proposal.id ? { ...it, expectedImpact: v } : it) })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone} style={{ resize: "vertical" }} />
-                                  </label>
-                                  {!isCycleDone ? (
-                                    <button type="button" className="icon-button danger" onClick={() => { setHistoryDraft((c) => ({ ...c, proposals: (c.proposals || []).filter((it) => it.id !== proposal.id) })); setHistoryDirty(true); }} disabled={!canManageAudits}>
-                                      <Trash2 size={14} /> Eliminar
-                                    </button>
-                                  ) : null}
-                                </div>
-                              </article>
-                            ))}
-                            {!(historyDraft.proposals || []).length ? <p className="subtle-line">Aún no hay propuestas.</p> : null}
-                          </div>
-                          {!isCycleDone && (hLc === "proposal_sent" || hLc === "accepted") ? (
-                            <div className="audit-inline-actions" style={{ marginTop: "0.75rem" }}>
-                              <button type="button" className="primary-button" onClick={() => handleHistoryAdvanceStep("in_implementation")} disabled={!canManageAudits}>Continuar a Seguimiento →</button>
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : null}
-
-                      {historyActiveTab === "followup" ? (
-                        <div className="audit-cycle-tab-content">
-                          <div className="card-header-row" style={{ marginBottom: "0.4rem" }}>
-                            <strong>Plan de implementación</strong>
-                            {historyDraft.implementationPlan?.deadline ? (
-                              <span className={`chip ${new Date(historyDraft.implementationPlan.deadline) < new Date() && hLc !== "closed" ? "danger" : "success"}`}>
-                                Límite: {historyDraft.implementationPlan.deadline}{new Date(historyDraft.implementationPlan.deadline) < new Date() && hLc !== "closed" ? " ⚠ Vencido" : ""}
-                              </span>
-                            ) : null}
-                          </div>
-                          <div className="audit-form-grid">
-                            <label className="app-modal-field">
-                              <span>Fecha límite</span>
-                              <input type="date" value={historyDraft.implementationPlan?.deadline || ""} onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, implementationPlan: { ...(c.implementationPlan || {}), deadline: v } })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone} />
-                            </label>
-                            <label className="app-modal-field audit-field-span-2">
-                              <span>Resumen ejecutivo</span>
-                              <textarea rows={3} value={historyDraft.executiveSummary || ""} placeholder="Resumen ejecutivo curado" onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, executiveSummary: v })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone} style={{ resize: "vertical" }} />
-                            </label>
-                            <label className="app-modal-field audit-field-span-2">
-                              <span>Nuevo proceso definido</span>
-                              <textarea rows={3} value={historyDraft.implementationPlan?.processDefinition || ""} placeholder="Describe el proceso objetivo" onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, implementationPlan: { ...(c.implementationPlan || {}), processDefinition: v } })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone} style={{ resize: "vertical" }} />
-                            </label>
-                            <label className="app-modal-field audit-field-span-2">
-                              <span>Instrucciones de implementación</span>
-                              <textarea rows={3} value={historyDraft.implementationPlan?.instructions || ""} placeholder="Pasos claros de ejecución" onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, implementationPlan: { ...(c.implementationPlan || {}), instructions: v } })); setHistoryDirty(true); }} disabled={!canManageAudits || isCycleDone} style={{ resize: "vertical" }} />
-                            </label>
-                          </div>
-
-                          {/* Verificaciones de proceso */}
-                          <div className="card-header-row" style={{ marginTop: "1rem", marginBottom: "0.4rem" }}>
-                            <strong>Verificaciones de proceso</strong>
-                            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                              <span className="chip">{(historyDraft.followUp || []).length}</span>
-                              {!isCycleDone ? (
-                                <button
-                                  type="button"
-                                  className="icon-button"
-                                  onClick={() => {
-                                    const newEntry = {
-                                      id: crypto.randomUUID(),
-                                      verificationStatus: "ok",
-                                      verifiedBy: currentUser?.name || "",
-                                      note: "",
-                                      evidences: [],
-                                      dueDate: new Date().toISOString().slice(0, 10),
-                                      createdAt: new Date().toISOString(),
-                                    };
-                                    setHistoryDraft((c) => ({ ...c, followUp: [...(c.followUp || []), newEntry] }));
-                                    setHistoryDirty(true);
-                                  }}
-                                  disabled={!canManageAudits}
-                                >
-                                  <Plus size={14} /> Nueva verificación
-                                </button>
-                              ) : null}
-                            </div>
-                          </div>
-                          {!(historyDraft.followUp || []).length ? (
-                            <p className="subtle-line">Sin verificaciones registradas. Agrega una para documentar el avance.</p>
-                          ) : null}
-                          <div style={{ display: "grid", gap: "0.65rem" }}>
-                            {(historyDraft.followUp || []).map((entry) => (
-                              <article key={entry.id} className="surface-card audit-history-card" style={{ display: "grid", gap: "0.6rem" }}>
-                                <div className="card-header-row">
-                                  <span className={`chip ${entry.verificationStatus === "ok" ? "success" : entry.verificationStatus === "partial" ? "warning" : "danger"}`}>
-                                    {entry.verificationStatus === "ok" ? "✔ Conforme" : entry.verificationStatus === "partial" ? "⚠ Parcial" : "✘ No conforme"}
-                                  </span>
-                                  {!isCycleDone ? (
-                                    <button
-                                      type="button"
-                                      className="icon-button danger"
-                                      onClick={() => { setHistoryDraft((c) => ({ ...c, followUp: (c.followUp || []).filter((e) => e.id !== entry.id) })); setHistoryDirty(true); }}
-                                      disabled={!canManageAudits}
-                                    >
-                                      <Trash2 size={13} />
-                                    </button>
-                                  ) : null}
-                                </div>
-                                <div className="audit-form-grid">
-                                  <label className="app-modal-field">
-                                    <span>Fecha</span>
-                                    <input type="date" value={entry.dueDate || ""} disabled={!canManageAudits || isCycleDone}
-                                      onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, followUp: (c.followUp || []).map((en) => en.id === entry.id ? { ...en, dueDate: v } : en) })); setHistoryDirty(true); }} />
-                                  </label>
-                                  <label className="app-modal-field">
-                                    <span>Estado</span>
-                                    <select value={entry.verificationStatus || "ok"} disabled={!canManageAudits || isCycleDone}
-                                      onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, followUp: (c.followUp || []).map((en) => en.id === entry.id ? { ...en, verificationStatus: v } : en) })); setHistoryDirty(true); }}>
-                                      <option value="ok">Conforme</option>
-                                      <option value="partial">Parcial</option>
-                                      <option value="issue">No conforme</option>
-                                    </select>
-                                  </label>
-                                  <label className="app-modal-field">
-                                    <span>Verificado por</span>
-                                    <input type="text" value={entry.verifiedBy || ""} placeholder="Nombre" disabled={!canManageAudits || isCycleDone}
-                                      onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, followUp: (c.followUp || []).map((en) => en.id === entry.id ? { ...en, verifiedBy: v } : en) })); setHistoryDirty(true); }} />
-                                  </label>
-                                  <label className="app-modal-field audit-field-span-full">
-                                    <span>Observaciones</span>
-                                    <textarea rows={2} value={entry.note || ""} placeholder="Describe lo observado durante la verificación" disabled={!canManageAudits || isCycleDone} style={{ resize: "vertical" }}
-                                      onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, followUp: (c.followUp || []).map((en) => en.id === entry.id ? { ...en, note: v } : en) })); setHistoryDirty(true); }} />
-                                  </label>
-                                </div>
-                                {/* Evidencias de verificación */}
-                                {!isCycleDone ? (
-                                  <div>
-                                    <input
-                                      type="file"
-                                      accept="image/*,video/*,application/pdf"
-                                      multiple
-                                      style={{ display: "none" }}
-                                      id={`fu-file-${entry.id}`}
-                                      onChange={(e) => { uploadFollowUpEvidence(entry.id, e.target.files); e.target.value = ""; }}
-                                      disabled={historyFollowUpUploading || !canManageAudits}
-                                    />
-                                    <label htmlFor={`fu-file-${entry.id}`} className="icon-button" style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
-                                      <Upload size={13} /> {historyFollowUpUploading ? "Subiendo…" : "Subir evidencia"}
-                                    </label>
-                                  </div>
-                                ) : null}
-                                {(entry.evidences || []).length > 0 ? (
-                                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.25rem" }}>
-                                    {(entry.evidences || []).map((ev, i) => (
-                                      <a key={i} href={ev.url} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.78rem", color: "#0f766e", borderRadius: "0.65rem", background: "rgba(15,118,110,0.07)", padding: "0.2rem 0.55rem" }}>
-                                        {ev.mimeType?.startsWith("image/") ? "🖼" : ev.mimeType?.startsWith("video/") ? "🎥" : "📄"} {ev.name || `Archivo ${i + 1}`}
-                                      </a>
-                                    ))}
-                                  </div>
-                                ) : null}
-                              </article>
-                            ))}
-                          </div>
-
-                          {!isCycleDone && (hLc === "in_implementation" || hLc === "in_validation") ? (
-                            <div className="audit-inline-actions" style={{ marginTop: "0.75rem" }}>
-                              <button type="button" className="primary-button" onClick={() => setHistoryActiveTab("close")} disabled={!canManageAudits}>Ir a Cierre →</button>
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : null}
-
-                      {historyActiveTab === "close" && !isCycleDone ? (
-                        <div className="audit-cycle-tab-content">
-                          <p className="subtle-line" style={{ marginBottom: "0.75rem" }}>
-                            Documenta el resultado final y cierra el ciclo. Esta acción es permanente.
-                          </p>
-                          <div className="audit-form-grid" style={{ marginBottom: "0.75rem" }}>
-                            <label className="app-modal-field audit-field-span-full">
-                              <span>Observaciones de cierre</span>
-                              <textarea rows={3} value={historyDraft.implementationPlan?.closureNotes || ""} placeholder="¿Qué quedó resuelto? ¿Qué queda pendiente?" style={{ resize: "vertical" }}
-                                onChange={(e) => { const v = e.target.value; setHistoryDraft((c) => ({ ...c, implementationPlan: { ...(c.implementationPlan || {}), closureNotes: v } })); setHistoryDirty(true); }}
-                                disabled={!canManageAudits} />
-                            </label>
-                          </div>
-                          {/* Evidencias de cierre */}
-                          <div style={{ marginBottom: "0.75rem" }}>
-                            <div className="card-header-row" style={{ marginBottom: "0.4rem" }}>
-                              <strong style={{ fontSize: "0.88rem" }}>Evidencias / reporte de cierre</strong>
-                              <div>
-                                <input
-                                  ref={historyClosureFileRef}
-                                  type="file"
-                                  accept="image/*,video/*,application/pdf"
-                                  multiple
-                                  style={{ display: "none" }}
-                                  onChange={(e) => { uploadClosureEvidence(e.target.files); e.target.value = ""; }}
-                                  disabled={historyFollowUpUploading || !canManageAudits}
-                                />
-                                <button
-                                  type="button"
-                                  className="icon-button"
-                                  onClick={() => historyClosureFileRef.current?.click()}
-                                  disabled={historyFollowUpUploading || !canManageAudits}
-                                >
-                                  <Upload size={14} /> {historyFollowUpUploading ? "Subiendo…" : "Subir reporte / evidencia"}
-                                </button>
-                              </div>
-                            </div>
-                            {(historyDraft.implementationPlan?.closureEvidences || []).length > 0 ? (
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                                {(historyDraft.implementationPlan.closureEvidences).map((ev, i) => (
-                                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.4rem", background: "rgba(3,33,33,0.05)", borderRadius: "0.75rem", padding: "0.3rem 0.65rem" }}>
-                                    <a href={ev.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: "0.78rem", color: "#032121" }}>
-                                      {ev.mimeType?.startsWith("image/") ? "🖼" : ev.mimeType?.startsWith("video/") ? "🎥" : "📄"} {ev.name || `Archivo ${i + 1}`}
-                                    </a>
-                                    <button type="button" className="icon-button danger" style={{ minHeight: "unset", padding: "0.1rem 0.2rem" }}
-                                      onClick={() => { setHistoryDraft((c) => ({ ...c, implementationPlan: { ...(c.implementationPlan || {}), closureEvidences: (c.implementationPlan?.closureEvidences || []).filter((_, idx) => idx !== i) } })); setHistoryDirty(true); }}>
-                                      <Trash2 size={11} />
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="subtle-line">Sin evidencias de cierre todavía.</p>
-                            )}
-                          </div>
-                          <div className="audit-inline-actions">
-                            {historyDirty && canManageAudits ? (
-                              <button type="button" className="icon-button" onClick={handleSaveHistoryAudit} disabled={historySaving}>
-                                {historySaving ? "Guardando…" : "Guardar borrador"}
-                              </button>
-                            ) : null}
-                            <button type="button" className="primary-button" onClick={() => handleHistoryAdvanceStep("closed")} disabled={!canManageAudits}>
-                              ✅ Cerrar ciclo completo
-                            </button>
-                          </div>
-                        </div>
-                      ) : null}
-
-                      <div className="audit-inline-actions" style={{ marginTop: "0.75rem", borderTop: "1px solid rgba(0,0,0,0.07)", paddingTop: "0.6rem" }}>
-                        {historyDirty && canManageAudits ? (
-                          <button type="button" className="primary-button" onClick={handleSaveHistoryAudit} disabled={historySaving}>
-                            {historySaving ? "Guardando…" : "Guardar cambios"}
-                          </button>
-                        ) : null}
-                        <button type="button" className="icon-button" onClick={() => handleExportAuditPdf(historyDraft)} disabled={isExportingPdf} title="Exportar PDF">
-                          <Upload size={14} /> {isExportingPdf ? "Generando…" : "PDF"}
-                        </button>
-                        <button type="button" className="icon-button" onClick={() => handleExportAuditCopmec(historyDraft)} title="Exportar .cop">
-                          <ExternalLink size={14} /> .cop
-                        </button>
-                        <button type="button" className="icon-button" onClick={() => openAuditViewer(audit)}>
-                          <Eye size={14} /> Detalle
-                        </button>
-                        <button type="button" className="icon-button danger" onClick={() => openDeleteAuditModal(audit)} disabled={!canManageAudits}>
-                          <Trash2 size={14} /> Eliminar
-                        </button>
-                      </div>
-                    </>
-                  ) : null}
+                  <div className="audit-history-closed-summary">
+                    <span className="chip">Problemas: {problemsCount}</span>
+                    <span className="chip">Propuestas: {proposalsCount}</span>
+                    <span className="chip">Verif. {verifiedCount}/{followUps.length}</span>
+                    <span className="chip">Cierre: {closureDate}</span>
+                  </div>
+                  <div className="audit-history-closed-note">
+                    <p className="subtle-line">{audit.notes ? audit.notes.slice(0, 120) + (audit.notes.length > 120 ? "..." : "") : "Sin notas adicionales."}</p>
+                  </div>
+                  <div className="audit-inline-actions audit-history-closed-actions" style={{ justifyContent: "space-between", gap: "0.6rem" }}>
+                    <button type="button" className="primary-button" onClick={() => openAuditViewer(audit)}>
+                      Ver detalle
+                    </button>
+                    <span className="subtle-line">{formatDateTime(audit.startedAt)} → {closureDate}</span>
+                  </div>
                 </article>
               );
             })}
@@ -3542,68 +3341,314 @@ export default function AuditoriasProcesosCompact({ contexto }) {
         </article>
       ) : null}
 
-      {activeTab === "dashboard" ? (
-        <article className="surface-card table-card full-width audit-surface-compact">
-          <div className="card-header-row">
-            <div>
-              <h3>Dashboard</h3>
-              <p>Vista general de auditorías por área.</p>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              {currentUser?.role === "Lead" && (
-                <button
-                  type="button"
-                  className="icon-button danger"
-                  onClick={() => setResetStatsModal({ open: true, submitting: false })}
-                  title="Reiniciar todos los contadores"
-                >
-                  <RotateCcw size={15} /> Reiniciar
-                </button>
-              )}
-              <BarChart3 size={18} />
-            </div>
-          </div>
-          <div className="inventory-stat-grid inventory-stat-grid-collapsed">
-            <article className="surface-card audit-mini-stat"><strong>{dashboardStats.total}</strong><p>Total</p></article>
-            <article className="surface-card audit-mini-stat"><strong>{dashboardStats.closed}</strong><p>Cerradas</p></article>
-            <article className="surface-card audit-mini-stat"><strong>{dashboardStats.open}</strong><p>Abiertas</p></article>
-            <article className="surface-card audit-mini-stat"><strong>{formatDuration(dashboardStats.avgDuration)}</strong><p>Promedio</p></article>
-            <article className="surface-card audit-mini-stat"><strong>{dashboardStats.severity.red}</strong><p>🔴 Críticas</p></article>
-            <article className="surface-card audit-mini-stat"><strong>{dashboardStats.severity.yellow}</strong><p>🟡 Riesgo</p></article>
-            <article className="surface-card audit-mini-stat"><strong>{dashboardStats.severity.green}</strong><p>🟢 Controladas</p></article>
-          </div>
-          <div className="saved-board-list permissions-preset-list">
-            <article className="surface-card audit-area-stat-card">
+      {activeTab === "dashboard" ? (() => {
+        const cycleStatusOrder = ["in_review", "proposal_sent", "accepted", "in_implementation", "in_validation"];
+        const activeCycleAudits = sortedAudits.filter((audit) => cycleStatusOrder.includes(normalizeLifecycleStatus(audit.lifecycleStatus)));
+
+        let overdueCycles = 0;
+        let totalFollowUps = 0;
+        let okFollowUps = 0;
+        const responsibleMap = new Map();
+        const processMap = new Map();
+
+        sortedAudits.forEach((audit) => {
+          const lifecycle = normalizeLifecycleStatus(audit.lifecycleStatus);
+          const deadlineRaw = audit.implementationPlan?.deadline;
+          if (deadlineRaw && lifecycle !== "closed") {
+            const deadline = new Date(deadlineRaw);
+            if (Number.isFinite(deadline.getTime()) && deadline < new Date()) {
+              overdueCycles += 1;
+            }
+          }
+
+          const followUpList = audit.followUp || [];
+          totalFollowUps += followUpList.length;
+          okFollowUps += followUpList.filter((entry) => entry.verificationStatus === "ok").length;
+
+          (audit.proposals || []).forEach((proposal) => {
+            const person = String(proposal.responsible || "").trim();
+            if (person) responsibleMap.set(person, (responsibleMap.get(person) || 0) + 1);
+          });
+
+          const processKey = `${audit.area || "Sin área"} · ${audit.process || "Sin proceso"}`;
+          const current = processMap.get(processKey) || { total: 0, red: 0, yellow: 0 };
+          current.total += 1;
+          const color = audit?.scoring?.global?.color || buildAuditScoring(audit?.questions || []).global.color;
+          if (color === "red") current.red += 1;
+          if (color === "yellow") current.yellow += 1;
+          processMap.set(processKey, current);
+        });
+
+        const closeRate = dashboardStats.total > 0 ? Math.round((dashboardStats.closed / dashboardStats.total) * 100) : 0;
+        const followUpOkRate = totalFollowUps > 0 ? Math.round((okFollowUps / totalFollowUps) * 100) : 0;
+        const proposalsPerAudit = dashboardStats.total > 0 ? (extendedDashboardStats.totalProposals / dashboardStats.total) : 0;
+        const topResponsibles = Array.from(responsibleMap.entries())
+          .map(([name, count]) => ({ name, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 5);
+
+        const riskyProcesses = Array.from(processMap.entries())
+          .map(([label, value]) => ({ label, value: value.red * 2 + value.yellow, red: value.red, yellow: value.yellow, total: value.total }))
+          .sort((a, b) => b.value - a.value)
+          .slice(0, 6);
+
+        return (
+          <>
+            <article className="surface-card table-card full-width audit-surface-compact">
               <div className="card-header-row">
-                <strong>Áreas críticas</strong>
-                <span className="chip warning">{dashboardStats.criticalAreas.length}</span>
+                <div>
+                  <h3>Dashboard · Mejora Continua</h3>
+                  <p>Métricas reales de auditorías, propuestas, cumplimiento y ejecución de ciclo.</p>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  {currentUser?.role === "Lead" && (
+                    <button type="button" className="icon-button danger" onClick={() => setResetStatsModal({ open: true, submitting: false })} title="Reiniciar contadores"><RotateCcw size={15} /> Reiniciar</button>
+                  )}
+                  <BarChart3 size={18} />
+                </div>
               </div>
-              {!dashboardStats.criticalAreas.length ? <p className="subtle-line">Sin áreas críticas activas.</p> : null}
-              {dashboardStats.criticalAreas.map((row) => (
-                <p key={row.label} className="subtle-line" style={{ margin: 0 }}>{row.label}: {row.value}</p>
-              ))}
+              <div className="inventory-stat-grid inventory-stat-grid-collapsed">
+                <article className="surface-card audit-mini-stat"><strong>{dashboardStats.total}</strong><p>Total auditorías</p></article>
+                <article className="surface-card audit-mini-stat"><strong>{dashboardStats.closed}</strong><p>Cerradas</p></article>
+                <article className="surface-card audit-mini-stat"><strong>{dashboardStats.open}</strong><p>Abiertas</p></article>
+                <article className="surface-card audit-mini-stat"><strong>{closeRate}%</strong><p>Tasa de cierre</p></article>
+                <article className="surface-card audit-mini-stat"><strong>{extendedDashboardStats.totalProposals}</strong><p>Propuestas</p></article>
+                <article className="surface-card audit-mini-stat"><strong>{proposalsPerAudit.toFixed(1)}</strong><p>Propuestas/auditoría</p></article>
+                <article className="surface-card audit-mini-stat"><strong>{followUpOkRate}%</strong><p>Verificación conforme</p></article>
+                <article className="surface-card audit-mini-stat"><strong>{overdueCycles}</strong><p>Ciclos vencidos</p></article>
+                <article className="surface-card audit-mini-stat"><strong>{formatDuration(dashboardStats.avgDuration)}</strong><p>Duración prom.</p></article>
+                <article className="surface-card audit-mini-stat"><strong>{activeCycleAudits.length}</strong><p>En seguimiento</p></article>
+              </div>
             </article>
-          </div>
-          <div className="saved-board-list permissions-preset-list">
-            {dashboardStats.byArea.map((row) => {
-              const pct = dashboardStats.total > 0 ? Math.round((row.value / dashboardStats.total) * 100) : 0;
-              return (
-                <article key={row.label} className="surface-card audit-area-stat-card">
-                  <div className="card-header-row">
-                    <strong>{row.label}</strong>
-                    <span className="chip primary">{row.value}</span>
+
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(220px,1fr) minmax(300px,2fr)", gap: "1rem" }}>
+              <article className="surface-card audit-surface-compact" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                <strong style={{ fontSize: "14px" }}>Severidad global</strong>
+                <AuditDonutChart segments={[
+                  { label: "Crítica", value: dashboardStats.severity.red, color: "#ef4444" },
+                  { label: "Riesgo", value: dashboardStats.severity.yellow, color: "#f59e0b" },
+                  { label: "Controlada", value: dashboardStats.severity.green, color: "#22c55e" },
+                ]} />
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", justifyContent: "center", fontSize: "12px" }}>
+                  <span className="chip danger">Crítica: {dashboardStats.severity.red}</span>
+                  <span className="chip warning">Riesgo: {dashboardStats.severity.yellow}</span>
+                  <span className="chip success">Controlada: {dashboardStats.severity.green}</span>
+                </div>
+              </article>
+
+              <article className="surface-card audit-surface-compact" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <strong style={{ fontSize: "14px" }}>Tendencia mensual</strong>
+                  <span style={{ fontSize: "11px", color: "#94a3b8" }}>Últimos 6 meses</span>
+                </div>
+                <AuditMiniLineChart data={extendedDashboardStats.byMonth} />
+              </article>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <article className="surface-card audit-surface-compact" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                <strong style={{ fontSize: "14px" }}>Auditorías por área</strong>
+                <AuditHBarChart data={dashboardStats.byArea.slice(0, 8)} />
+                {!dashboardStats.byArea.length ? <p className="subtle-line">Sin datos.</p> : null}
+              </article>
+
+              <article className="surface-card audit-surface-compact" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <strong style={{ fontSize: "14px" }}>Cumplimiento promedio</strong>
+                  <span style={{ fontSize: "11px", color: "#94a3b8" }}>% respuestas OK</span>
+                </div>
+                <AuditHBarChart data={extendedDashboardStats.areaCompliance.slice(0, 8)} maxValue={100} />
+                {!extendedDashboardStats.areaCompliance.length ? <p className="subtle-line">Sin datos de respuestas.</p> : null}
+              </article>
+            </div>
+
+            <article className="surface-card table-card full-width audit-surface-compact">
+              <strong style={{ fontSize: "14px" }}>Pipeline por etapa de ciclo</strong>
+              {!extendedDashboardStats.lifecycleDist.length ? (
+                <p className="subtle-line">Sin auditorías registradas.</p>
+              ) : (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.65rem", marginTop: "0.5rem" }}>
+                  {extendedDashboardStats.lifecycleDist.map((item, index) => {
+                    const pct = dashboardStats.total > 0 ? Math.round((item.count / dashboardStats.total) * 100) : 0;
+                    const color = AUDIT_CHART_PALETTE[index % AUDIT_CHART_PALETTE.length];
+                    return (
+                      <article key={item.status} className="surface-card" style={{ minWidth: "150px", flex: "1 1 170px" }}>
+                        <div className="card-header-row">
+                          <span style={{ fontSize: "12px", color: "#64748b" }}>{item.label}</span>
+                          <span className="chip primary">{item.count}</span>
+                        </div>
+                        <div style={{ background: "#f1f5f9", borderRadius: "6px", height: "6px", overflow: "hidden", margin: "0.2rem 0" }}>
+                          <div style={{ background: color, width: `${pct}%`, height: "100%", borderRadius: "6px" }} />
+                        </div>
+                        <p className="subtle-line" style={{ margin: 0, fontSize: "11px" }}>{pct}% del total</p>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </article>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <article className="surface-card table-card audit-surface-compact">
+                <div className="card-header-row">
+                  <strong style={{ fontSize: "14px" }}>Procesos con mayor riesgo</strong>
+                </div>
+                {!riskyProcesses.length ? (
+                  <p className="subtle-line">Sin datos de riesgo.</p>
+                ) : (
+                  <div style={{ display: "grid", gap: "0.5rem", marginTop: "0.45rem" }}>
+                    {riskyProcesses.map((item) => (
+                      <article key={item.label} className="surface-card" style={{ padding: "0.55rem 0.65rem" }}>
+                        <div className="card-header-row">
+                          <strong style={{ fontSize: "12px" }}>{item.label}</strong>
+                          <span className="chip warning">Índice: {item.value}</span>
+                        </div>
+                        <p className="subtle-line" style={{ margin: "0.2rem 0 0" }}>Críticas: {item.red} · Riesgo: {item.yellow} · Auditorías: {item.total}</p>
+                      </article>
+                    ))}
                   </div>
-                  <div className="inventory-stock-bar">
-                    <div className="inventory-stock-bar-fill" style={{ width: `${pct}%` }} />
+                )}
+              </article>
+
+              <article className="surface-card table-card audit-surface-compact">
+                <div className="card-header-row">
+                  <strong style={{ fontSize: "14px" }}>Responsables con más propuestas</strong>
+                </div>
+                {!topResponsibles.length ? (
+                  <p className="subtle-line">Sin responsables asignados todavía.</p>
+                ) : (
+                  <div style={{ display: "grid", gap: "0.4rem", marginTop: "0.45rem" }}>
+                    {topResponsibles.map((person, index) => (
+                      <div key={person.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.45rem 0.55rem", borderRadius: "12px", background: "#f8fafc" }}>
+                        <span style={{ fontSize: "13px", color: "#1e293b" }}>{index + 1}. {person.name}</span>
+                        <span className="chip primary">{person.count}</span>
+                      </div>
+                    ))}
                   </div>
-                  <p className="subtle-line">{pct}% del total</p>
-                </article>
-              );
-            })}
-            {!dashboardStats.byArea.length ? <p className="subtle-line">No hay datos para mostrar.</p> : null}
-          </div>
-        </article>
-      ) : null}
+                )}
+              </article>
+            </div>
+
+            {dashboardStats.criticalAreas.length > 0 ? (
+              <article className="surface-card table-card full-width audit-surface-compact">
+                <div className="card-header-row">
+                  <strong style={{ fontSize: "14px" }}>Áreas críticas activas</strong>
+                  <span className="chip warning">{dashboardStats.criticalAreas.length}</span>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.25rem" }}>
+                  {dashboardStats.criticalAreas.map((row) => (
+                    <span key={row.label} className="chip danger" style={{ fontSize: "13px" }}>{row.label}: {row.value}</span>
+                  ))}
+                </div>
+              </article>
+            ) : (
+              <article className="surface-card table-card full-width audit-surface-compact">
+                <p style={{ color: "#22c55e", fontWeight: 600, fontSize: "14px", margin: 0 }}>Sin áreas críticas activas.</p>
+              </article>
+            )}
+          </>
+        );
+      })() : null}
+
+      {activeTab === "seguimiento" ? (() => {
+        const cycleStatusOrder = ["in_review", "proposal_sent", "accepted", "in_implementation", "in_validation"];
+        const statusLabel = {
+          in_review: "En revisión",
+          proposal_sent: "Propuesta enviada",
+          accepted: "Aceptada",
+          in_implementation: "En implementación",
+          in_validation: "En validación",
+        };
+        const activeAuditsInCycle = sortedAudits
+          .filter((audit) => cycleStatusOrder.includes(normalizeLifecycleStatus(audit.lifecycleStatus)))
+          .sort((a, b) => {
+            const statusDiff = cycleStatusOrder.indexOf(normalizeLifecycleStatus(a.lifecycleStatus)) - cycleStatusOrder.indexOf(normalizeLifecycleStatus(b.lifecycleStatus));
+            if (statusDiff !== 0) return statusDiff;
+            const aDeadline = a.implementationPlan?.deadline ? new Date(a.implementationPlan.deadline).getTime() : Number.POSITIVE_INFINITY;
+            const bDeadline = b.implementationPlan?.deadline ? new Date(b.implementationPlan.deadline).getTime() : Number.POSITIVE_INFINITY;
+            return aDeadline - bDeadline;
+          });
+
+        return (
+          <>
+            <article className="surface-card table-card full-width audit-surface-compact">
+              <div className="card-header-row">
+                <div>
+                  <h3>Seguimiento de auditorías</h3>
+                  <p>Vista operativa de ciclos activos con responsable, vencimiento y avance de verificación.</p>
+                </div>
+                <span className="chip primary">Activos: {activeAuditsInCycle.length}</span>
+              </div>
+            </article>
+
+            <article className="surface-card table-card full-width audit-surface-compact">
+              <div className="audit-history-table-wrap" style={{ overflowX: "auto" }}>
+                <table className="compact-table">
+                  <thead>
+                    <tr>
+                      <th>Auditoría</th>
+                      <th>Etapa</th>
+                      <th>Responsable</th>
+                      <th>Vencimiento</th>
+                      <th>Propuestas</th>
+                      <th>Verificación</th>
+                      <th>Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeAuditsInCycle.map((audit) => {
+                      const proposals = audit.proposals || [];
+                      const followUps = audit.followUp || [];
+                      const doneFollowUps = followUps.filter((entry) => entry.verificationStatus === "ok").length;
+                      const deadline = audit.implementationPlan?.deadline || "-";
+                      const overdue = deadline !== "-" && new Date(deadline) < new Date();
+                      const owner = proposals.find((proposal) => proposal.responsible)?.responsible || audit.auditorName || "Sin asignar";
+                      const lifecycle = normalizeLifecycleStatus(audit.lifecycleStatus);
+
+                      return (
+                        <tr key={audit.id}>
+                          <td>
+                            <strong>{audit.area}</strong>
+                            <div className="subtle-line">{audit.process}{audit.subArea ? ` · ${audit.subArea}` : ""}</div>
+                          </td>
+                          <td>
+                            <span className="chip primary">{statusLabel[lifecycle] || lifecycle}</span>
+                          </td>
+                          <td>{owner}</td>
+                          <td>
+                            <span className={overdue ? "chip danger" : "chip"}>{deadline}</span>
+                          </td>
+                          <td>{proposals.length}</td>
+                          <td>{doneFollowUps}/{followUps.length}</td>
+                          <td>
+                            <button
+                              type="button"
+                              className="icon-button"
+                              onClick={() => {
+                                setActiveTab("history");
+                                setHistoryExpandedId(audit.id);
+                                setHistoryActiveTab("followup");
+                              }}
+                            >
+                              Abrir
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {!activeAuditsInCycle.length ? (
+                <p className="subtle-line" style={{ marginTop: "0.75rem" }}>
+                  No hay auditorías en seguimiento activo.
+                </p>
+              ) : null}
+            </article>
+          </>
+        );
+      })() : null}
 
       <Modal
         open={auditViewerModal.open}

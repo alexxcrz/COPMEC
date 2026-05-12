@@ -1,8 +1,9 @@
 // ── Perfil de Empleado ───────────────────────────────────────────────────────
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Modal } from "./Modal";
+import { uploadFileToCloudinary } from "../services/upload.service";
 
 // ── Constantes y utilidades ───────────────────────────────────────────────────
 
@@ -28,10 +29,10 @@ const DEFAULT_JOB_TITLE_BY_ROLE = {
 };
 
 const ROLE_COLORS = {
-  [ROLE_LEAD]: { bg: "#032121", color: "#fff" },
-  [ROLE_SR]:   { bg: "#0f4f3a", color: "#fff" },
-  [ROLE_SSR]:  { bg: "#1a7a5a", color: "#fff" },
-  [ROLE_JR]:   { bg: "#e8f5ee", color: "#032121" },
+  [ROLE_LEAD]: { bg: "#314d69", color: "#ffffff" },
+  [ROLE_SR]:   { bg: "#4a6987", color: "#ffffff" },
+  [ROLE_SSR]:  { bg: "#264c6e", color: "#ffffff" },
+  [ROLE_JR]:   { bg: "#e8eef6", color: "#314d69" },
 };
 
 function normalizeKeyLocal(value) {
@@ -80,6 +81,8 @@ export function createIdentityFormFromUser(currentUser) {
     telefono:         currentUser?.telefono         || "",
     telefono_visible: currentUser?.telefono_visible ?? false,
     birthday:         currentUser?.birthday         || "",
+    photo:            currentUser?.photo            || "",
+    photoThumbnailUrl: currentUser?.photoThumbnailUrl || "",
   };
 }
 
@@ -102,30 +105,145 @@ function InfoField({ label, value, placeholder = "No definido", wide, children }
 
 // ── Modal principal ───────────────────────────────────────────────────────────
 
-export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChange, onSubmit, onClose, onLogout, onUpdateIdentity }) {
+export function EmployeeProfileModal({
+  currentUser,
+  passwordForm,
+  onPasswordChange,
+  onSubmit,
+  onClose,
+  onLogout,
+  onUpdateIdentity,
+  currentTheme,
+  themeOptions = [],
+  onThemeChange,
+  currentFont,
+  fontOptions = [],
+  onFontChange,
+  currentFontSize,
+  fontSizeOptions = [],
+  onFontSizeChange,
+}) {
+  const THEME_FALLBACK = {
+    "copmec-bosque": { primary: "#385878", shell: "#22384f" },
+    "copmec-arenisca": { primary: "#6a5a3f", shell: "#3f3526" },
+    "copmec-noche": { primary: "#2f3642", shell: "#1f242d" },
+    "copmec-oceano": { primary: "#0f4c5c", shell: "#083742" },
+    "copmec-cobre": { primary: "#8a4f2d", shell: "#5e341c" },
+    "copmec-vino": { primary: "#7d2245", shell: "#551731" },
+    "copmec-ceniza": { primary: "#3f4654", shell: "#2b303b" },
+    "copmec-indigo": { primary: "#2f3f87", shell: "#202c5f" },
+    "copmec-oliva": { primary: "#314658", shell: "#212f3c" },
+    "copmec-coral": { primary: "#b44b46", shell: "#7f2f2b" },
+    "copmec-menta": { primary: "#36546f", shell: "#263b4d" },
+    "copmec-solar": { primary: "#b37a18", shell: "#7e5411" },
+    "copmec-ciruela": { primary: "#6b2f6f", shell: "#48204b" },
+    "copmec-petroleo": { primary: "#245964", shell: "#173b42" },
+    "copmec-aurora": { primary: "#2c7a7b", shell: "#553c9a" },
+    "copmec-atardecer": { primary: "#f97316", shell: "#be185d" },
+    "copmec-laguna": { primary: "#0ea5e9", shell: "#405db0" },
+    "copmec-flama": { primary: "#f59e0b", shell: "#ef4444" },
+    "copmec-neon": { primary: "#5f8fbe", shell: "#0ea5e9" },
+    "copmec-berry": { primary: "#e11d48", shell: "#7c3aed" },
+  };
+  const FONT_FALLBACK = {
+    bahnschrift: '"Bahnschrift", "Segoe UI", sans-serif',
+    trebuchet: '"Trebuchet MS", "Segoe UI", sans-serif',
+    serif: '"Book Antiqua", "Cambria", serif',
+    mono: '"Consolas", "Cascadia Mono", monospace',
+    segoe: '"Segoe UI", "Franklin Gothic Medium", sans-serif',
+    georgia: '"Georgia", "Times New Roman", serif',
+    candara: '"Candara", "Gill Sans MT", sans-serif',
+    tahoma: '"Tahoma", "Verdana", sans-serif',
+    palatino: '"Palatino Linotype", "Book Antiqua", serif',
+    verdana: '"Verdana", "Segoe UI", sans-serif',
+    calibri: '"Calibri", "Segoe UI", sans-serif',
+    corbel: '"Corbel", "Candara", sans-serif',
+    garamond: '"Garamond", "Times New Roman", serif',
+    century: '"Century Gothic", "Trebuchet MS", sans-serif',
+    lucida: '"Lucida Sans Unicode", "Lucida Grande", sans-serif',
+    arialn: '"Arial Narrow", "Arial", sans-serif',
+    cambria: '"Cambria", "Georgia", serif',
+    franklin: '"Franklin Gothic Medium", "Arial", sans-serif',
+    bookman: '"Bookman Old Style", "Garamond", serif',
+    gill: '"Gill Sans MT", "Trebuchet MS", sans-serif',
+    optima: '"Optima", "Segoe UI", sans-serif',
+    constantia: '"Constantia", "Cambria", serif',
+    rockwell: '"Rockwell", "Georgia", serif',
+    futura: '"Futura", "Century Gothic", sans-serif',
+  };
+
   const [isEditMode, setIsEditMode]   = useState(false);
+  const [activeTab, setActiveTab]     = useState("perfil");
+  const [personalTab, setPersonalTab] = useState("colores");
   const [form, setForm]               = useState(() => createIdentityFormFromUser(currentUser));
   const [message, setMessage]         = useState("");
   const [pwOpen, setPwOpen]           = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [saving, setSaving]           = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoMessage, setPhotoMessage] = useState("");
+  const fileInputRef = useRef(null);
 
   const canBypass      = canBypassSelfProfileEditLimit(currentUser);
   const selfEditCount  = Number(currentUser?.selfIdentityEditCount ?? 0);
   const canEdit        = canBypass || selfEditCount < PROFILE_SELF_EDIT_LIMIT;
   const roleStyle      = ROLE_COLORS[normalizeRole(currentUser?.role)] || ROLE_COLORS[ROLE_JR];
+  const avatarUrl      = String((form.photoThumbnailUrl || form.photo || currentUser?.photoThumbnailUrl || currentUser?.photo) || "").trim();
   const initials       = getInitialsAvatar(currentUser?.name);
 
   useEffect(() => {
     setForm(createIdentityFormFromUser(currentUser));
     setMessage("");
+    setPhotoMessage("");
     setIsEditMode(false);
-  }, [currentUser]);
+    setActiveTab("perfil");
+    setPersonalTab("colores");
+  }, [currentUser?.id]);
 
   function field(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
     setMessage("");
+    if (key === "photo" || key === "photoThumbnailUrl") {
+      setPhotoMessage("");
+    }
+  }
+
+  async function handlePhotoSelection(event) {
+    const selectedFile = event.target.files?.[0];
+    if (!selectedFile) return;
+
+    if (!selectedFile.type.startsWith("image/")) {
+      setPhotoMessage("Solo puedes subir imagenes para la foto de perfil.");
+      event.target.value = "";
+      return;
+    }
+
+    if (selectedFile.size > 6 * 1024 * 1024) {
+      setPhotoMessage("La imagen debe ser menor a 6 MB.");
+      event.target.value = "";
+      return;
+    }
+
+    setUploadingPhoto(true);
+    setPhotoMessage("Subiendo foto...");
+
+    try {
+      const uploaded = await uploadFileToCloudinary(selectedFile);
+      const nextPhoto = String(uploaded?.url || "").trim();
+      const nextThumb = String(uploaded?.thumbnailUrl || uploaded?.url || "").trim();
+      if (!nextPhoto) {
+        throw new Error("No se recibio URL de la imagen subida.");
+      }
+      field("photo", nextPhoto);
+      field("photoThumbnailUrl", nextThumb || nextPhoto);
+      setPhotoMessage("Foto cargada correctamente.");
+    } catch (error) {
+      setPhotoMessage(error?.message || "No fue posible subir la foto.");
+    } finally {
+      setUploadingPhoto(false);
+      event.target.value = "";
+    }
   }
 
   function startEdit() {
@@ -152,11 +270,32 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
       telefono:         form.telefono.trim(),
       telefono_visible: form.telefono_visible,
       birthday:         form.birthday.trim(),
+      photo:            form.photo,
+      photoThumbnailUrl: form.photoThumbnailUrl,
     });
     setSaving(false);
     setMessage(result?.message || "");
     if (result?.ok) setIsEditMode(false);
   }
+
+  const selectedThemeOption = themeOptions.find((theme) => theme.id === (currentTheme || "copmec-bosque"));
+  const selectedFontOption = fontOptions.find((font) => font.id === (currentFont || "bahnschrift"));
+  const selectedThemePreview = selectedThemeOption || { id: "copmec-bosque", label: "Bosque COPMEC", ...THEME_FALLBACK["copmec-bosque"] };
+  const selectedThemePrimary = String(selectedThemePreview.primary || THEME_FALLBACK[selectedThemePreview.id]?.primary || "#385878");
+  const selectedThemeShell = String(selectedThemePreview.shell || THEME_FALLBACK[selectedThemePreview.id]?.shell || "#22384f");
+  const selectedFontFamily = String(selectedFontOption?.family || FONT_FALLBACK[selectedFontOption?.id] || FONT_FALLBACK.bahnschrift);
+  const normalizedThemeId = String(currentTheme || "copmec-bosque").trim() || "copmec-bosque";
+  const normalizedFontId = String(currentFont || "bahnschrift").trim() || "bahnschrift";
+  const normalizedFontSizeId = String(currentFontSize || "normal").trim() || "normal";
+  const selectedFontSizeOption = fontSizeOptions.find((size) => size.id === normalizedFontSizeId) || { id: "normal", label: "Normal", scale: 1 };
+  const profileThemeVars = {
+    "--ep-primary": selectedThemePrimary,
+    "--ep-shell": selectedThemeShell,
+    "--ep-primary-soft": `${selectedThemePrimary}22`,
+    "--ep-primary-strong": `${selectedThemePrimary}3d`,
+    "--ep-font-family": selectedFontFamily,
+    "--ep-font-scale": String(selectedFontSizeOption.scale || 1),
+  };
 
   return (
     <>
@@ -169,7 +308,7 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
       onClose={onClose}
       footerActions={isEditMode
         ? [
-            <button key="save"   type="button" className="ep-btn ep-btn--primary" onClick={save} disabled={saving}>{saving ? "Guardando…" : "Guardar cambios"}</button>,
+            <button key="save"   type="button" className="ep-btn ep-btn--primary" onClick={save} disabled={saving || uploadingPhoto}>{saving ? "Guardando…" : uploadingPhoto ? "Espera carga" : "Guardar cambios"}</button>,
             <button key="cancel" type="button" className="ep-btn ep-btn--ghost"   onClick={() => { setIsEditMode(false); setMessage(""); }}>Cancelar</button>,
             <button key="out"    type="button" className="ep-btn ep-btn--danger"  onClick={onLogout}>Cerrar sesión</button>,
           ]
@@ -179,11 +318,13 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
           ]
       }
     >
-      <div className="ep-body">
+      <div className="ep-body ep-theme-scope" data-ui-theme={normalizedThemeId} data-ui-font={normalizedFontId} data-ui-font-size={normalizedFontSizeId} style={profileThemeVars}>
 
         {/* ── HERO ─────────────────────────────────────────────────────────── */}
         <div className="ep-hero">
-          <div className="ep-hero__avatar">{initials}</div>
+          <div className="ep-hero__avatar">
+            {avatarUrl ? <img src={avatarUrl} alt={`Avatar de ${currentUser.name}`} className="ep-hero__avatar-image" /> : initials}
+          </div>
           <div className="ep-hero__info">
             <div className="ep-hero__name">{currentUser.name}</div>
             <div className="ep-hero__meta">
@@ -194,12 +335,64 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
               <span className={`ep-status-dot ${currentUser.isActive ? "ep-status-dot--active" : "ep-status-dot--inactive"}`} />
               <span className="ep-hero__status">{currentUser.isActive ? "Activo" : "Inactivo"}</span>
             </div>
+            {isEditMode ? (
+              <div className="ep-avatar-actions">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="ep-hidden-file-input"
+                  onChange={handlePhotoSelection}
+                />
+                <button type="button" className="ep-btn ep-btn--ghost" onClick={() => fileInputRef.current?.click()} disabled={uploadingPhoto}>
+                  {uploadingPhoto ? "Subiendo..." : "Subir foto"}
+                </button>
+                {form.photo ? (
+                  <button
+                    type="button"
+                    className="ep-btn ep-btn--ghost"
+                    onClick={() => {
+                      field("photo", "");
+                      field("photoThumbnailUrl", "");
+                      setPhotoMessage("Foto eliminada del perfil.");
+                    }}
+                    disabled={uploadingPhoto}
+                  >
+                    Quitar
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
             {!isEditMode && (
               <div className="ep-hero__job">{getUserJobTitle(currentUser) || "Sin cargo asignado"} · {getUserArea(currentUser) || "Sin área"}</div>
             )}
+            {photoMessage ? <p className="ep-hero__photo-msg">{photoMessage}</p> : null}
           </div>
         </div>
 
+        <div className="ep-tabs" role="tablist" aria-label="Secciones del perfil">
+          <button
+            type="button"
+            className={`ep-tab-btn${activeTab === "perfil" ? " ep-tab-btn--active" : ""}`}
+            onClick={() => setActiveTab("perfil")}
+            role="tab"
+            aria-selected={activeTab === "perfil"}
+          >
+            Perfil
+          </button>
+          <button
+            type="button"
+            className={`ep-tab-btn${activeTab === "personalizacion" ? " ep-tab-btn--active" : ""}`}
+            onClick={() => setActiveTab("personalizacion")}
+            role="tab"
+            aria-selected={activeTab === "personalizacion"}
+          >
+            Personalización
+          </button>
+        </div>
+
+        {activeTab === "perfil" ? (
+          <>
         {/* ── IDENTIDAD ────────────────────────────────────────────────────── */}
         <div className="ep-section">
           <div className="ep-section__title">Identidad</div>
@@ -270,7 +463,7 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
                     id="ep-tel-visible"
                     checked={form.telefono_visible}
                     onChange={(e) => field("telefono_visible", e.target.checked)}
-                    style={{ accentColor: "#032121", width: 16, height: 16 }}
+                    style={{ accentColor: "#314d69", width: 16, height: 16 }}
                   />
                   <label htmlFor="ep-tel-visible" className="ep-field__label" style={{ cursor: "pointer", margin: 0 }}>
                     Mostrar teléfono en mi perfil del chat
@@ -332,6 +525,123 @@ export function EmployeeProfileModal({ currentUser, passwordForm, onPasswordChan
             </div>
           )}
         </div>
+
+          </>
+        ) : null}
+
+        {activeTab === "personalizacion" ? (
+          <>
+            <div className="ep-section">
+              <div className="ep-section__title">Vista previa</div>
+              <div className="ep-personal-preview" style={{ borderColor: `${selectedThemePrimary}33` }}>
+                <div className="ep-personal-preview__header" style={{ background: `linear-gradient(135deg, ${selectedThemeShell} 0%, ${selectedThemePrimary} 100%)` }}>
+                  <span style={{ fontFamily: selectedFontFamily }}>Tema actual</span>
+                </div>
+                <div className="ep-personal-preview__body" style={{ fontFamily: selectedFontFamily }}>
+                  <div className="ep-personal-preview__line" style={{ fontSize: `${0.84 * Number(selectedFontSizeOption.scale || 1)}rem` }}>Texto de ejemplo con tu fuente seleccionada</div>
+                  <div className="ep-personal-preview__chips">
+                    <span className="ep-personal-chip" style={{ background: selectedThemePrimary, color: "#ffffff" }}>Principal {selectedThemePrimary}</span>
+                    <span className="ep-personal-chip" style={{ background: selectedThemeShell, color: "#ffffff" }}>Base {selectedThemeShell}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="ep-personal-subtabs" role="tablist" aria-label="Subsecciones de personalización">
+              <button
+                type="button"
+                className={`ep-personal-subtab${personalTab === "colores" ? " ep-personal-subtab--active" : ""}`}
+                onClick={() => setPersonalTab("colores")}
+                role="tab"
+                aria-selected={personalTab === "colores"}
+              >
+                Colores
+              </button>
+              <button
+                type="button"
+                className={`ep-personal-subtab${personalTab === "fuentes" ? " ep-personal-subtab--active" : ""}`}
+                onClick={() => setPersonalTab("fuentes")}
+                role="tab"
+                aria-selected={personalTab === "fuentes"}
+              >
+                Fuentes
+              </button>
+            </div>
+
+            {personalTab === "colores" ? (
+              <div className="ep-section">
+                <div className="ep-section__title">Temas ({themeOptions.length})</div>
+                <div className="ep-theme-grid">
+                  {themeOptions.map((theme) => {
+                    const preview = {
+                      primary: String(theme.primary || THEME_FALLBACK[theme.id]?.primary || "#385878"),
+                      shell: String(theme.shell || THEME_FALLBACK[theme.id]?.shell || "#22384f"),
+                    };
+                    const active = (currentTheme || "copmec-bosque") === theme.id;
+                    return (
+                      <button
+                        key={theme.id}
+                        type="button"
+                        className={`ep-theme-card${active ? " ep-theme-card--active" : ""}`}
+                        onClick={() => onThemeChange?.(theme.id)}
+                      >
+                        <span className="ep-theme-card__swatches" style={{ background: `linear-gradient(135deg, ${preview.shell} 0%, ${preview.primary} 100%)` }} />
+                        <span className="ep-theme-card__copy">
+                          <strong>{theme.label}</strong>
+                          <small>{preview.shell} / {preview.primary}</small>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            {personalTab === "fuentes" ? (
+              <div className="ep-section">
+                <div className="ep-section__title">Tipografías ({fontOptions.length})</div>
+                <div className="ep-section__title">Tamaño de texto ({fontSizeOptions.length})</div>
+                <div className="ep-font-size-grid">
+                  {fontSizeOptions.map((sizeOption) => {
+                    const active = normalizedFontSizeId === sizeOption.id;
+                    return (
+                      <button
+                        key={sizeOption.id}
+                        type="button"
+                        className={`ep-font-size-card${active ? " ep-font-size-card--active" : ""}`}
+                        onClick={() => onFontSizeChange?.(sizeOption.id)}
+                      >
+                        <span className="ep-font-size-card__name">{sizeOption.label}</span>
+                        <span className="ep-font-size-card__sample" style={{ fontSize: `${0.92 * Number(sizeOption.scale || 1)}rem` }}>
+                          Aa 123
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="ep-font-grid">
+                  {fontOptions.map((font) => {
+                    const previewFamily = String(font.family || FONT_FALLBACK[font.id] || FONT_FALLBACK.bahnschrift);
+                    const active = (currentFont || "bahnschrift") === font.id;
+                    return (
+                      <button
+                        key={font.id}
+                        type="button"
+                        className={`ep-font-card${active ? " ep-font-card--active" : ""}`}
+                        onClick={() => onFontChange?.(font.id)}
+                      >
+                        <span className="ep-font-card__name">{font.label}</span>
+                        <span className="ep-font-card__sample" style={{ fontFamily: previewFamily }}>
+                          ABC abc 123
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </>
+        ) : null}
 
         {/* ── MENSAJES ─────────────────────────────────────────────────────── */}
         {message && (

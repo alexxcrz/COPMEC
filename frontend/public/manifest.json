@@ -1,20 +1,26 @@
 {
-  "name": "COPMEC",
-  "short_name": "COPMEC",
-  "description": "Sistema de gestión operativa COPMEC",
+  "name": "AXO",
+  "short_name": "AXO",
+  "description": "Sistema de Gestión Operativa.",
   "start_url": "/",
   "id": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#032121",
-  "theme_color": "#12352d",
+  "background_color": "#314d69",
+  "theme_color": "#314d69",
   "lang": "es",
   "icons": [
     {
-      "src": "/logocopmec.png",
+      "src": "/android-chrome-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any"
+      "purpose": "any maskable"
     }
   ],
   "categories": ["productivity", "business"],

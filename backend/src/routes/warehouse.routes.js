@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAuth, requireWarehouseAction, requireWarehouseStateWriteAccess } from "../middleware/auth.middleware.js";
 import { auditSecurityEvent } from "../services/security-events.service.js";
 import { buildOperationalAnalyticsFromLocalState } from "../services/warehouse.analytics.local.js";
+import { getRoadNewsForMexico } from "../services/transport-news.service.js";
 import {
   addWarehouseArea,
   createWarehouseCatalogItem,
@@ -39,6 +40,7 @@ import {
   updateWarehouseInventoryLotHistory,
   createWarehouseTransportRecord,
   updateWarehouseTransportRecord,
+  updateWarehouseTransportLogistics,
   deleteWarehouseTransportRecord,
   postponeTransportRecord,
   reactivatePostponedTransportRecord,
@@ -635,6 +637,39 @@ warehouseRouter.get("/transport/records/pending", requireAuth, (req, res) => {
   }
 
   res.json({ ok: true, data: { records: result.records } });
+});
+
+warehouseRouter.get("/transport/news", requireAuth, async (req, res) => {
+  try {
+    const data = await getRoadNewsForMexico({
+      topic: req.query?.topic,
+      region: req.query?.region,
+      q: req.query?.q,
+      hours: req.query?.hours,
+      limit: req.query?.limit,
+    });
+
+    res.json({ ok: true, data });
+  } catch (error) {
+    auditSecurityEvent("warehouse_transport_news_fetch_failed", req, {
+      message: String(error?.message || "transport_news_error"),
+    });
+    res.status(502).json({ ok: false, message: "No fue posible consultar noticias viales por el momento." });
+  }
+});
+
+warehouseRouter.patch("/transport/logistics", requireAuth, (req, res) => {
+  const result = updateWarehouseTransportLogistics(req.auth, req.body || {});
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "forbidden" ? 403 : 400;
+    res.status(status).json({ ok: false, message: "No fue posible guardar la logística de transporte." });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_transport_logistics_updated", req, {
+    revision: result.state?.revision,
+  });
+  res.json({ ok: true, data: { state: result.state } });
 });
 
 // ─── Documentación ───────────────────────────────────────────────────────────

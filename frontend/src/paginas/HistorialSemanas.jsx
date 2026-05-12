@@ -79,6 +79,29 @@ function getMonthKeyFromWeek(week) {
   return toDateParts(baseDate)?.month || "";
 }
 
+function normalizeHistoryAreaText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+const SECTION_AREA_SCOPE_MAP = {
+  esto: ["ESTO"],
+  transporte: ["TRANSPORTE"],
+  limpieza: ["LIMPIEZA"],
+  regulatorio: ["REGULATORIO"],
+  calidad: ["CALIDAD"],
+  inventario: ["INVENTARIO"],
+  "recepcion-pedidos": ["RECEPCION DE PEDIDOS", "PEDIDOS"],
+  operaciones: ["OPERACIONES"],
+  mantenimiento: ["MANTENIMIENTO"],
+  "mayoreo-comercio": ["MAYOREO-TELEMARKETING", "ECOMMERCE", "PEDIDOS DETAL", "PEDIDOS"],
+  retail: ["RETAIL"],
+  fullfilment: ["FULLFILMENT"],
+};
+
 function getBoardRowHistoryDateValue(snapshot, row) {
   const dateField = (snapshot?.fields || []).find((field) => field?.type === "date");
   const fieldValue = dateField ? String(row?.values?.[dateField.id] || "").trim() : "";
@@ -360,6 +383,8 @@ export default function HistorialSemanas({ contexto }) {
     Trash2,
     saveCopmecFileToProfile,
     operationalWorkWeek,
+    selectedAreaSectionId,
+    selectedAreaSection,
   } = contexto;
 
   const normalizedOperationalWorkWeek = useMemo(() => ({
@@ -627,28 +652,57 @@ export default function HistorialSemanas({ contexto }) {
       });
   }, [catalogMap, effectiveHistoryWeek, getUserArea, resolveBoardHistoryAreaLabel, resolveBoardHistoryAreaRoot, state, useBoardHistoryFallback, userMap]);
 
+  const selectedSectionAreaScopes = useMemo(() => {
+    const sectionScopes = Array.isArray(selectedAreaSection?.scopes)
+      ? selectedAreaSection.scopes.map((area) => String(area || "").trim()).filter(Boolean)
+      : [];
+    if (sectionScopes.length) return sectionScopes;
+
+    const normalizedSectionId = String(selectedAreaSectionId || "").trim().toLowerCase();
+    if (!normalizedSectionId || normalizedSectionId === "all") return [];
+    return SECTION_AREA_SCOPE_MAP[normalizedSectionId] || [];
+  }, [selectedAreaSection, selectedAreaSectionId]);
+
+  const scopedHistoryActivities = useMemo(() => {
+    if (!selectedSectionAreaScopes.length) return historyActivities;
+    const normalizedScopes = selectedSectionAreaScopes.map((area) => normalizeHistoryAreaText(area)).filter(Boolean);
+    if (!normalizedScopes.length) return historyActivities;
+    return historyActivities.filter((activity) => {
+      const areaRoot = normalizeHistoryAreaText(activity.areaRoot);
+      return normalizedScopes.some((scope) => areaRoot === scope || areaRoot.includes(scope) || scope.includes(areaRoot));
+    });
+  }, [historyActivities, selectedSectionAreaScopes]);
+
   const areaTabs = useMemo(() => {
     const grouped = new Map();
 
-    (state.areaCatalog || []).forEach((areaEntry) => {
-      const areaRoot = String(areaEntry || "").split("/")[0]?.trim();
-      if (!areaRoot) return;
-      if (!grouped.has(areaRoot)) grouped.set(areaRoot, 0);
-    });
+    if (selectedSectionAreaScopes.length) {
+      selectedSectionAreaScopes.forEach((areaScope) => {
+        const areaRoot = String(areaScope || "").split("/")[0]?.trim();
+        if (!areaRoot) return;
+        if (!grouped.has(areaRoot)) grouped.set(areaRoot, 0);
+      });
+    } else {
+      (state.areaCatalog || []).forEach((areaEntry) => {
+        const areaRoot = String(areaEntry || "").split("/")[0]?.trim();
+        if (!areaRoot) return;
+        if (!grouped.has(areaRoot)) grouped.set(areaRoot, 0);
+      });
+    }
 
-    historyActivities.forEach((activity) => {
+    scopedHistoryActivities.forEach((activity) => {
       grouped.set(activity.areaRoot, (grouped.get(activity.areaRoot) || 0) + 1);
     });
 
     return Array.from(grouped.entries())
       .map(([area, total]) => ({ value: area, label: area, total }))
       .sort((left, right) => left.label.localeCompare(right.label, "es-MX"));
-  }, [historyActivities, state.areaCatalog]);
+  }, [scopedHistoryActivities, selectedSectionAreaScopes, state.areaCatalog]);
 
   const areaScopedActivities = useMemo(() => {
     if (!selectedAreaTab) return [];
-    return historyActivities.filter((activity) => activity.areaRoot === selectedAreaTab);
-  }, [historyActivities, selectedAreaTab]);
+    return scopedHistoryActivities.filter((activity) => activity.areaRoot === selectedAreaTab);
+  }, [scopedHistoryActivities, selectedAreaTab]);
 
   const boardTabs = useMemo(() => {
     const grouped = new Map();
@@ -773,18 +827,26 @@ export default function HistorialSemanas({ contexto }) {
   }, [exportWindow, playerScopedActivities]);
 
   const checklistActivities = useMemo(
-    () => historyActivities.filter((activity) => activity?.operationalInspectionRecord),
-    [historyActivities],
+    () => scopedHistoryActivities.filter((activity) => activity?.operationalInspectionRecord),
+    [scopedHistoryActivities],
   );
 
   const checklistAreaTabs = useMemo(() => {
     const grouped = new Map();
 
-    (state.areaCatalog || []).forEach((areaEntry) => {
-      const areaRoot = String(areaEntry || "").split("/")[0]?.trim();
-      if (!areaRoot) return;
-      if (!grouped.has(areaRoot)) grouped.set(areaRoot, 0);
-    });
+    if (selectedSectionAreaScopes.length) {
+      selectedSectionAreaScopes.forEach((areaScope) => {
+        const areaRoot = String(areaScope || "").split("/")[0]?.trim();
+        if (!areaRoot) return;
+        if (!grouped.has(areaRoot)) grouped.set(areaRoot, 0);
+      });
+    } else {
+      (state.areaCatalog || []).forEach((areaEntry) => {
+        const areaRoot = String(areaEntry || "").split("/")[0]?.trim();
+        if (!areaRoot) return;
+        if (!grouped.has(areaRoot)) grouped.set(areaRoot, 0);
+      });
+    }
 
     checklistActivities.forEach((activity) => {
       grouped.set(activity.areaRoot, (grouped.get(activity.areaRoot) || 0) + 1);
@@ -793,7 +855,7 @@ export default function HistorialSemanas({ contexto }) {
     return Array.from(grouped.entries())
       .map(([area, total]) => ({ value: area, label: area, total }))
       .sort((left, right) => left.label.localeCompare(right.label, "es-MX"));
-  }, [checklistActivities, state.areaCatalog]);
+  }, [checklistActivities, selectedSectionAreaScopes, state.areaCatalog]);
 
   const checklistAreaScopedActivities = useMemo(() => {
     if (!selectedChecklistAreaTab) return [];
@@ -1338,7 +1400,7 @@ export default function HistorialSemanas({ contexto }) {
       <div className="history-stat-strip">
         <StatTile label="Semanas activas" value={effectiveWeeks.filter((week) => week.isActive).length} />
         <StatTile label="Semanas cerradas" value={effectiveWeeks.filter((week) => !week.isActive).length} tone="soft" />
-        <StatTile label="Actividades históricas" value={historyActivities.length} tone="success" />
+        <StatTile label="Actividades históricas" value={scopedHistoryActivities.length} tone="success" />
       </div>
 
       <article className="surface-card table-card history-detail-card" style={{ display: "grid", gap: "1rem" }}>
@@ -1456,7 +1518,7 @@ export default function HistorialSemanas({ contexto }) {
                       }}
                     >
                       <div>
-                        <h3 style={{ margin: 0, color: "#032121", fontSize: "1rem" }}>{monthLabel(monthEntry.monthKey)}</h3>
+                        <h3 style={{ margin: 0, color: "#314d69", fontSize: "1rem" }}>{monthLabel(monthEntry.monthKey)}</h3>
                         <p className="subtle-line" style={{ margin: "0.25rem 0 0" }}>{monthEntry.weeks.length} semanas registradas</p>
                       </div>
                       <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -1567,7 +1629,7 @@ export default function HistorialSemanas({ contexto }) {
                                   }}
                                 >
                                   <div>
-                                    <h3 style={{ margin: 0, color: "#032121", fontSize: "1rem" }}>{weekdayLabel}</h3>
+                                    <h3 style={{ margin: 0, color: "#314d69", fontSize: "1rem" }}>{weekdayLabel}</h3>
                                     <p className="subtle-line" style={{ margin: "0.25rem 0 0" }}>{dayDate ? formatDate(dayDate) : dayEntry.dayKey}</p>
                                   </div>
                                   <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -1640,7 +1702,7 @@ export default function HistorialSemanas({ contexto }) {
                                   }}
                                 >
                                   <div>
-                                    <h3 style={{ margin: 0, color: "#032121", fontSize: "1rem" }}>{weekdayLabel}</h3>
+                                    <h3 style={{ margin: 0, color: "#314d69", fontSize: "1rem" }}>{weekdayLabel}</h3>
                                     <p className="subtle-line" style={{ margin: "0.25rem 0 0" }}>{dayDate ? formatDate(dayDate) : dayEntry.dayKey}</p>
                                   </div>
                                   <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -1713,16 +1775,16 @@ export default function HistorialSemanas({ contexto }) {
       </article>
 
       {deleteWeekModal.open ? createPortal(
-        <div role="dialog" aria-modal="true" aria-labelledby="delete-week-title" style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", padding: "1rem" }}>
-          <div style={{ background: "#fff", borderRadius: "1.25rem", padding: "1.5rem", maxWidth: 460, width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
-            <h3 id="delete-week-title" style={{ margin: "0 0 0.5rem", fontSize: "1.1rem", color: "#032121" }}>¿Borrar semana completa?</h3>
-            <p style={{ margin: "0 0 1.2rem", color: "#555", fontSize: "0.92rem", lineHeight: 1.5 }}>
+        <div role="dialog" aria-modal="true" aria-labelledby="delete-week-title" style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0, 0, 0, 0.45)", padding: "1rem" }}>
+          <div style={{ background: "#ffffff", borderRadius: "1.25rem", padding: "1.5rem", maxWidth: 460, width: "100%", boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)" }}>
+            <h3 id="delete-week-title" style={{ margin: "0 0 0.5rem", fontSize: "1.1rem", color: "#314d69" }}>¿Borrar semana completa?</h3>
+            <p style={{ margin: "0 0 1.2rem", color: "#555555", fontSize: "0.92rem", lineHeight: 1.5 }}>
               Se eliminará {deleteWeekModal.weekName || "esta semana"} junto con todas sus actividades y pausas asociadas.
             </p>
             <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
               <button
                 type="button"
-                style={{ padding: "0.5rem 1rem", borderRadius: "0.75rem", border: "1px solid #ddd", background: "#f3f4f6", cursor: "pointer" }}
+                style={{ padding: "0.5rem 1rem", borderRadius: "0.75rem", border: "1px solid #dddddd", background: "#f3f4f6", cursor: "pointer" }}
                 onClick={() => setDeleteWeekModal({ open: false, weekId: "", weekName: "", isSubmitting: false })}
                 disabled={deleteWeekModal.isSubmitting}
               >
@@ -1730,7 +1792,7 @@ export default function HistorialSemanas({ contexto }) {
               </button>
               <button
                 type="button"
-                style={{ padding: "0.5rem 1rem", borderRadius: "0.75rem", border: "none", background: "#7f1d1d", color: "#fff", cursor: "pointer" }}
+                style={{ padding: "0.5rem 1rem", borderRadius: "0.75rem", border: "none", background: "#7f1d1d", color: "#ffffff", cursor: "pointer" }}
                 onClick={() => { void confirmDeleteWeek(); }}
                 disabled={deleteWeekModal.isSubmitting}
               >

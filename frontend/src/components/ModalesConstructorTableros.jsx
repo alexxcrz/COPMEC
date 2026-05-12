@@ -735,6 +735,8 @@ export function BoardComponentStudioModal({
 export function BoardBuilderModal({
   open,
   mode,
+  selectedAreaSectionId = "all",
+  selectedAreaSection = null,
   draft,
   onChange,
   onClose,
@@ -829,14 +831,22 @@ export function BoardBuilderModal({
     .map((option) => normalizeArea(getAreaRootSafe(option) || option))
     .filter(Boolean)))
     .sort((a, b) => a.localeCompare(b));
+  const sectionScopedBoardAreas = selectedAreaSectionId !== "all" && Array.isArray(selectedAreaSection?.scopes)
+    ? Array.from(new Set(selectedAreaSection.scopes.map((scope) => normalizeArea(scope)).filter(Boolean)))
+    : [];
+  const isSectionScoped = selectedAreaSectionId !== "all" && sectionScopedBoardAreas.length > 0;
+  const effectiveBoardAreaOptions = isSectionScoped ? sectionScopedBoardAreas : boardAreaOptions;
   const filteredOperationalUsers = availableOperationalUsers.filter((user) => user.name.toLowerCase().includes(accessSearch.trim().toLowerCase()));
   const visibilityType = String(draft.visibilityType || "users");
+  const effectiveVisibilityType = isSectionScoped ? "department" : (visibilityType === "all" ? "department" : visibilityType);
   const ownerAreaByUserId = (userId) => {
     const areaValue = userMap.get(userId)?.area || userMap.get(userId)?.department || "";
     return normalizeArea(getAreaRootSafe(areaValue) || areaValue);
   };
   const selectedBoardArea = normalizeArea(draft.settings?.ownerArea || "");
-  const fallbackBoardArea = ownerAreaByUserId(draft.ownerId || currentUser?.id || "") || boardAreaOptions[0] || "";
+  const fallbackBoardArea = isSectionScoped
+    ? sectionScopedBoardAreas[0] || ""
+    : ownerAreaByUserId(draft.ownerId || currentUser?.id || "") || effectiveBoardAreaOptions[0] || "";
   const ownerName = userMap.get(draft.ownerId)?.name || currentUser?.name || "Sin player";
   const selectedPlayersLabel = draft.accessUserIds?.length
     ? `${draft.accessUserIds.length + 1} players con acceso`
@@ -995,6 +1005,33 @@ export function BoardBuilderModal({
     }));
   }, [fallbackBoardArea, onChange, open, selectedBoardArea]);
 
+  useEffect(() => {
+    if (!open || !isSectionScoped) return;
+    onChange((current) => {
+      const nextOwnerArea = normalizeArea(current.settings?.ownerArea || "") || sectionScopedBoardAreas[0] || "";
+      const nextSharedDepartments = sectionScopedBoardAreas;
+      const ownerAreaChanged = normalizeArea(current.settings?.ownerArea || "") !== nextOwnerArea;
+      const visibilityChanged = current.visibilityType !== "department";
+      const sharedDepartmentsChanged = JSON.stringify(current.sharedDepartments || []) !== JSON.stringify(nextSharedDepartments);
+      const accessChanged = Array.isArray(current.accessUserIds) && current.accessUserIds.length > 0;
+
+      if (!ownerAreaChanged && !visibilityChanged && !sharedDepartmentsChanged && !accessChanged) {
+        return current;
+      }
+
+      return {
+        ...current,
+        visibilityType: "department",
+        sharedDepartments: nextSharedDepartments,
+        accessUserIds: [],
+        settings: {
+          ...current.settings,
+          ownerArea: nextOwnerArea,
+        },
+      };
+    });
+  }, [isSectionScoped, onChange, open, sectionScopedBoardAreas]);
+
   function handleTogglePendingAccess(userId) {
     setPendingAccessUserIds((current) => current.includes(userId)
       ? current.filter((item) => item !== userId)
@@ -1017,13 +1054,16 @@ export function BoardBuilderModal({
       accessUserIds: (current.accessUserIds || []).filter((userId) => userId !== nextOwnerId),
       settings: {
         ...current.settings,
-        ownerArea: normalizeArea(current.settings?.ownerArea || "") || nextOwnerArea,
+        ownerArea: isSectionScoped
+          ? sectionScopedBoardAreas[0] || ""
+          : (normalizeArea(current.settings?.ownerArea || "") || nextOwnerArea),
       },
     }));
   }
 
   function handleVisibilityTypeChange(nextVisibilityType) {
     onChange((current) => {
+      const resolvedVisibilityType = isSectionScoped ? "department" : nextVisibilityType;
       const ownerArea = userMap.get(current.ownerId)?.area || userMap.get(current.ownerId)?.department || currentUser?.area || currentUser?.department || "";
       const seededDepartments = current.sharedDepartments?.length
         ? current.sharedDepartments
@@ -1032,8 +1072,11 @@ export function BoardBuilderModal({
           : [];
       return {
         ...current,
-        visibilityType: nextVisibilityType,
-        sharedDepartments: nextVisibilityType === "department" ? seededDepartments : current.sharedDepartments || [],
+        visibilityType: resolvedVisibilityType,
+        sharedDepartments: resolvedVisibilityType === "department"
+          ? (isSectionScoped ? sectionScopedBoardAreas : seededDepartments)
+          : current.sharedDepartments || [],
+        accessUserIds: resolvedVisibilityType === "department" && isSectionScoped ? [] : (current.accessUserIds || []),
       };
     });
   }
@@ -1422,6 +1465,7 @@ export function BoardBuilderModal({
                 <span>Area duena del tablero<span className="required-mark" aria-hidden="true"> *</span></span>
                 <select
                   value={selectedBoardArea}
+                  disabled={isSectionScoped}
                   onChange={(event) => onChange((current) => ({
                     ...current,
                     settings: {
@@ -1430,21 +1474,20 @@ export function BoardBuilderModal({
                     },
                   }))}
                 >
-                  <option value="">Selecciona un area</option>
-                  {boardAreaOptions.map((area) => <option key={area} value={area}>{area}</option>)}
+                  {!isSectionScoped ? <option value="">Selecciona un area</option> : null}
+                  {effectiveBoardAreaOptions.map((area) => <option key={area} value={area}>{area}</option>)}
                 </select>
               </label>
               <section className="board-preview-assignment-panel">
                 <label className="app-modal-field board-preview-edit-field">
                   <span>Compartir tablero con</span>
-                  <select value={visibilityType} onChange={(event) => handleVisibilityTypeChange(event.target.value)}>
+                  <select value={effectiveVisibilityType} onChange={(event) => handleVisibilityTypeChange(event.target.value)} disabled={isSectionScoped}>
                     <option value="users">Player o players específicos</option>
                     <option value="department">Área o grupo</option>
-                    <option value="all">Todos</option>
                   </select>
                 </label>
 
-                {visibilityType === "users" ? (
+                {effectiveVisibilityType === "users" ? (
                   <div className="board-access-selector" ref={accessMenuRef}>
                     <button type="button" className="board-access-trigger" onClick={() => setAccessMenuOpen((current) => !current)} aria-expanded={accessMenuOpen}>
                       <span>{selectedPlayersLabel}</span>
@@ -1480,19 +1523,18 @@ export function BoardBuilderModal({
                   </div>
                 ) : null}
 
-                {visibilityType === "department" ? (
+                {effectiveVisibilityType === "department" ? (
                   <label className="app-modal-field board-preview-edit-field board-preview-department-field">
                     <span>Áreas con acceso</span>
-                    <select multiple value={draft.sharedDepartments || []} onChange={(event) => onChange((current) => ({ ...current, sharedDepartments: Array.from(event.target.selectedOptions).map((option) => option.value) }))}>
-                      {normalizedDepartmentOptions.map((department) => <option key={department} value={department}>{department}</option>)}
+                    <select multiple value={draft.sharedDepartments || []} disabled={isSectionScoped} onChange={(event) => onChange((current) => ({ ...current, sharedDepartments: Array.from(event.target.selectedOptions).map((option) => option.value) }))}>
+                      {(isSectionScoped ? sectionScopedBoardAreas : normalizedDepartmentOptions).map((department) => <option key={department} value={department}>{department}</option>)}
                     </select>
                   </label>
                 ) : null}
 
-                {visibilityType === "all" ? <p className="board-assignment-hint">Todos los players con permisos de tableros podrán ver este tablero.</p> : null}
-                {visibilityType === "users" ? <p className="board-assignment-hint">Usa un solo player si quieres asignarlo individualmente o varios para compartir un mismo tablero sin duplicarlo.</p> : null}
-                {visibilityType === "department" ? <p className="board-assignment-hint">Solo los players cuyas áreas coincidan con las seleccionadas verán este tablero.</p> : null}
-                {visibilityType === "department" ? <span className="chip soft board-assignment-chip">{selectedDepartmentsLabel}</span> : null}
+                {effectiveVisibilityType === "users" ? <p className="board-assignment-hint">Usa un solo player si quieres asignarlo individualmente o varios para compartir un mismo tablero sin duplicarlo.</p> : null}
+                {effectiveVisibilityType === "department" ? <p className="board-assignment-hint">Solo los players cuyas áreas coincidan con las seleccionadas verán este tablero.</p> : null}
+                {effectiveVisibilityType === "department" ? <span className="chip soft board-assignment-chip">{selectedDepartmentsLabel}</span> : null}
               </section>
 
               <div className="builder-settings-grid board-builder-settings-grid board-builder-short-select-grid">
@@ -1862,10 +1904,10 @@ export function BoardBuilderModal({
                             ...(column.kind === "field" ? getPreviewCellStyle(column.field) : getPreviewAuxCellStyle(column.id)),
                             cursor: resizingToken ? "col-resize" : draggingColumnToken ? "grabbing" : "grab",
                             opacity: draggingColumnToken === column.token ? 0.5 : 1,
-                            background: draggingColumnToken && draggingColumnToken !== column.token ? "rgba(3, 33, 33, 0.06)" : undefined,
+                            background: draggingColumnToken && draggingColumnToken !== column.token ? "rgba(49, 77, 105, 0.06)" : undefined,
                             zIndex: draggingColumnToken === column.token ? 2 : 1,
                             position: draggingColumnToken ? "relative" : undefined,
-                            boxShadow: draggingColumnToken === column.token ? "0 4px 24px 0 rgba(3,33,33,0.10)" : undefined,
+                            boxShadow: draggingColumnToken === column.token ? "0 4px 24px 0 rgba(49, 77, 105, 0.10)" : undefined,
                             transition: "background 0.15s, opacity 0.15s, box-shadow 0.2s, transform 0.25s cubic-bezier(.4,1.6,.6,1)",
                             transform: draggingColumnToken === column.token ? "scale(1.04) translateY(-2px)" : "none"
                           }}
@@ -1913,7 +1955,7 @@ export function BoardBuilderModal({
                           if (column.id === "status") return <td key={`${row.id}-${column.token}`} style={getPreviewAuxCellStyle(column.id)}><span className="chip">{row.status || STATUS_PENDING}</span></td>;
                           if (column.id === "time") return <td key={`${row.id}-${column.token}`} style={getPreviewAuxCellStyle(column.id)}>{row.accumulatedSeconds ? `${Math.round(row.accumulatedSeconds / 60)} min` : "0 min"}</td>;
                           if (column.id === "totalTime") return <td key={`${row.id}-${column.token}`} style={getPreviewAuxCellStyle(column.id)}>{"00:00:00"}</td>;
-                          if (column.id === "efficiency") return <td key={`${row.id}-${column.token}`} style={getPreviewAuxCellStyle(column.id)}><span style={{ color: "#16a34a", fontWeight: 600 }}>{"—"}</span></td>;
+                          if (column.id === "efficiency") return <td key={`${row.id}-${column.token}`} style={getPreviewAuxCellStyle(column.id)}><span style={{ color: "#4f7da9", fontWeight: 600 }}>{"—"}</span></td>;
                           return <td key={`${row.id}-${column.token}`} style={getPreviewAuxCellStyle(column.id)}><span className={row.status === STATUS_RUNNING ? "chip success" : "chip"}>Inicia · Pausa · Fin</span></td>;
                         })}
                         <td className="board-preview-add-col-td" />

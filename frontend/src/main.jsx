@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import './components/modals.css'
 import App from './App.jsx'
-import copmecLogo from './assets/copmec-logo.jpeg'
+import copmecLogo from './assets/axo-logo.png'
 
 function isStandaloneApp() {
   return globalThis.matchMedia?.('(display-mode: standalone)').matches || globalThis.navigator?.standalone === true;
@@ -49,7 +49,6 @@ if ('serviceWorker' in navigator) {
   (async () => {
     try {
       const registration = await navigator.serviceWorker.register('/service-worker.js');
-      console.log('✓ Service Worker registrado:', registration);
       // Solicitar permisos de notificación
       if ('Notification' in globalThis && Notification.permission === 'default') {
         const permission = await Notification.requestPermission();

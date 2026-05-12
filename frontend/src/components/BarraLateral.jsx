@@ -3,10 +3,42 @@
 // InventoryActivityConsumptionEditor: editor de consumos por actividad.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  BadgeCheck,
+  Boxes,
+  Building2,
+  ChevronDown,
+  ChevronRight,
+  ClipboardCheck,
+  ClipboardList,
+  CircleGauge,
+  Cog,
+  Factory,
+  FileText,
+  HardHat,
+  Hammer,
+  LayoutDashboard,
+  Layers3,
+  OctagonAlert,
+  PackageSearch,
+  PanelLeftClose,
+  PanelLeftOpen,
+  ScanSearch,
+  Settings2,
+  Sparkles,
+  Store,
+  Target,
+  Truck,
+  Users,
+  Warehouse,
+  X,
+} from "lucide-react";
 import { CopmecBrand } from "./ComponentesDashboard";
-import logoIA from "../assets/logo-ia.jpeg";
-import { PAGE_ROUTE_SLUGS } from "../utils/constantes";
+import logoIA from "../assets/AXOIA.png";
+import { PAGE_DASHBOARD, PAGE_PROCESS_AUDITS, PAGE_ROUTE_SLUGS } from "../utils/constantes";
+
+// No hay atajos dentro de Mejora continua. Auditoría e Historial son entradas separadas en NAV_ITEMS.
 
 const DEFAULT_JOB_TITLE_BY_ROLE = {
   "Lead":              "Líder de Operaciones",
@@ -24,7 +56,185 @@ function getPageHref(pageId) {
   return slug ? `/${slug}` : "/";
 }
 
-export function Sidebar({ currentUser, page, onPageChange, isOpen, isCollapsed, onClose, onOpenProfile, onToggleCollapsed, allowedNavItems, canUseAI, onOpenAI }) {
+function getUserAvatarUrl(user) {
+  return String((user?.photoThumbnailUrl || user?.photo) || "").trim();
+}
+
+function getUserInitial(name) {
+  return String(name || "?").trim().charAt(0).toUpperCase() || "?";
+}
+
+const SECTION_ICON_BY_ID = {
+  dashboard: LayoutDashboard,
+  esto: ScanSearch,
+  transporte: Truck,
+  limpieza: Sparkles,
+  regulatorio: FileText,
+  calidad: BadgeCheck,
+  inventario: Boxes,
+  "recepcion-pedidos": PackageSearch,
+  operaciones: Settings2,
+  mantenimiento: Factory,
+  "mayoreo-comercio": Store,
+  retail: ClipboardList,
+  fullfilment: Warehouse,
+  admin: Users,
+  "mejora-continua": Target,
+  "produccion": Hammer,
+  "recursos": Building2,
+};
+
+const TAB_ICON_BY_KEY = {
+  dashboard: LayoutDashboard,
+  board: Layers3,
+  customboards: ClipboardList,
+  historial: ClipboardList,
+  incidencias: OctagonAlert,
+  "registros-envios": Truck,
+  "control-transporte": ClipboardCheck,
+  "incidencias-transporte": OctagonAlert,
+  consolidados: CircleGauge,
+  "dashboard-transporte": LayoutDashboard,
+  "direcciones-gastos": Building2,
+};
+
+function normalizeSidebarKey(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replaceAll(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replaceAll(/[\s/]+/g, "-")
+    .trim();
+}
+
+function getSidebarSectionIcon(sectionId) {
+  return SECTION_ICON_BY_ID[normalizeSidebarKey(sectionId)] || LayoutDashboard;
+}
+
+function getSidebarTabIcon(item = {}) {
+  const candidates = [item.transportTab, item.transportSection, item.pageId, item.shortLabel, item.label];
+  for (const candidate of candidates) {
+    const normalized = normalizeSidebarKey(candidate).replaceAll(/\s+/g, "");
+    if (TAB_ICON_BY_KEY[normalized]) return TAB_ICON_BY_KEY[normalized];
+    if (normalized.includes("dashboard")) return LayoutDashboard;
+    if (normalized.includes("board") || normalized.includes("creador")) return Layers3;
+    if (normalized.includes("incidencias")) return OctagonAlert;
+    if (normalized.includes("hist")) return ClipboardList;
+  }
+  return LayoutDashboard;
+}
+
+function SidebarIcon({ icon: Icon, className = "" }) {
+  if (!Icon) return null;
+  return (
+    <span className={`sidebar-nav-icon ${className}`.trim()} aria-hidden="true">
+      <Icon size={15} strokeWidth={2} />
+    </span>
+  );
+}
+
+export function Sidebar({ currentUser, page, onPageChange, isOpen, isCollapsed, onClose, onOpenProfile, onToggleCollapsed, areaSections, utilityNavItems, selectedAreaSectionId, navTransportSection, navTransportTab, canUseAI, onOpenAI }) {
+  const avatarUrl = getUserAvatarUrl(currentUser);
+  const globalDashboardItem = (Array.isArray(utilityNavItems) ? utilityNavItems : []).find((item) => item.id === PAGE_DASHBOARD) || null;
+  const sortedAreaSections = (Array.isArray(areaSections) ? areaSections : [])
+    .map((section) => ({
+      ...section,
+      items: [...(Array.isArray(section.items) ? section.items : [])].sort((left, right) => String(left?.label || "").localeCompare(String(right?.label || ""), "es-MX")),
+    }))
+    .sort((left, right) => String(left?.label || "").localeCompare(String(right?.label || ""), "es-MX"));
+
+  const [collapsedAreaSections, setCollapsedAreaSections] = useState(() => Object.fromEntries(
+    sortedAreaSections.map((section) => [section.id, true]),
+  ));
+
+  const utilityGroups = (() => {
+    const groups = [];
+    const groupMap = {};
+    (Array.isArray(utilityNavItems) ? utilityNavItems : []).forEach((item) => {
+      if (item.id === PAGE_DASHBOARD) return;
+      const g = item.group || "";
+      if (!groupMap[g]) {
+        groupMap[g] = { label: g, items: [] };
+        groups.push(groupMap[g]);
+      }
+      groupMap[g].items.push(item);
+    });
+    return groups
+      .map((group) => ({
+        ...group,
+        items: [...group.items].sort((left, right) => String(left?.label || "").localeCompare(String(right?.label || ""), "es-MX")),
+      }))
+      .sort((left, right) => String(left?.label || "").localeCompare(String(right?.label || ""), "es-MX"));
+  })();
+
+  const sortedSidebarSections = [
+    ...sortedAreaSections.map((section) => ({ type: "area", id: section.id, label: section.label, section })),
+    ...utilityGroups.map((group) => ({ type: "utility", id: `util-${group.label}`, label: group.label, group })),
+  ].sort((left, right) => String(left?.label || "").localeCompare(String(right?.label || ""), "es-MX", { sensitivity: "base" }));
+
+  const [collapsedUtilityGroups, setCollapsedUtilityGroups] = useState(() =>
+    Object.fromEntries(utilityGroups.map((g) => [g.label, true])),
+  );
+
+  function toggleUtilityGroup(label) {
+    setCollapsedUtilityGroups((current) => ({ ...current, [label]: !current[label] }));
+  }
+
+  useEffect(() => {
+    setCollapsedUtilityGroups((current) => {
+      const next = { ...current };
+      const knownGroupLabels = new Set(utilityGroups.map((group) => group.label));
+      let changed = false;
+
+      utilityGroups.forEach((group) => {
+        if (!(group.label in next)) {
+          next[group.label] = true;
+          changed = true;
+        }
+      });
+
+      Object.keys(next).forEach((groupLabel) => {
+        if (!knownGroupLabels.has(groupLabel)) {
+          delete next[groupLabel];
+          changed = true;
+        }
+      });
+
+      return changed ? next : current;
+    });
+  }, [utilityGroups]);
+
+  useEffect(() => {
+    setCollapsedAreaSections((current) => {
+      const next = { ...current };
+      const knownSectionIds = new Set(sortedAreaSections.map((section) => section.id));
+      let changed = false;
+
+      sortedAreaSections.forEach((section) => {
+        if (!(section.id in next)) {
+          next[section.id] = true;
+          changed = true;
+        }
+      });
+
+      Object.keys(next).forEach((sectionId) => {
+        if (!knownSectionIds.has(sectionId)) {
+          delete next[sectionId];
+          changed = true;
+        }
+      });
+
+      return changed ? next : current;
+    });
+  }, [sortedAreaSections]);
+
+  function toggleAreaSection(sectionId) {
+    setCollapsedAreaSections((current) => ({
+      ...current,
+      [sectionId]: !current[sectionId],
+    }));
+  }
+
   return (
     <aside className={`sidebar-shell ${isOpen ? "open" : ""} ${isCollapsed && !isOpen ? "collapsed" : ""}`}>
       <div className="sidebar-mobile-actions">
@@ -42,36 +252,124 @@ export function Sidebar({ currentUser, page, onPageChange, isOpen, isCollapsed, 
       </div>
 
       <nav className="sidebar-nav">
+        {globalDashboardItem ? (
+          <a
+            className={`nav-item nav-item-dashboard-global ${page === PAGE_DASHBOARD && selectedAreaSectionId === "all" ? "active" : ""}`}
+            href={getPageHref(globalDashboardItem.id)}
+            title={globalDashboardItem.label}
+            aria-label={globalDashboardItem.label}
+            onClick={(event) => {
+              event.preventDefault();
+              onPageChange(globalDashboardItem.id, "all");
+              onClose?.();
+            }}
+          >
+            <SidebarIcon icon={getSidebarTabIcon(globalDashboardItem)} />
+            <span>{globalDashboardItem.shortLabel || globalDashboardItem.label}</span>
+          </a>
+        ) : null}
         {(() => {
-          let lastGroup = null;
           const elements = [];
-          allowedNavItems.forEach((item) => {
-            const Icon = item.icon;
-            const showGroupLabel = item.group && item.group !== lastGroup;
-            if (showGroupLabel) {
-              lastGroup = item.group;
+          sortedSidebarSections.forEach((entry) => {
+            if (entry.type === "area") {
+              const section = entry.section;
+              const activeInSection = selectedAreaSectionId === section.id;
+              const sectionCollapsed = Boolean(collapsedAreaSections[section.id]);
               elements.push(
-                <div key={`group-${item.group}`} className="nav-group-separator">
-                  <span className="nav-group-label">{item.group}</span>
-                </div>,
+                <section key={`area-group-${section.id}`} className={`nav-section ${sectionCollapsed ? "collapsed" : "expanded"} ${activeInSection ? "active" : ""}`}>
+                  <button
+                    type="button"
+                    className="nav-section-toggle"
+                    onClick={() => toggleAreaSection(section.id)}
+                    aria-expanded={!sectionCollapsed}
+                    aria-controls={`nav-section-panel-${section.id}`}
+                  >
+                    <SidebarIcon icon={getSidebarSectionIcon(section.id)} className="nav-section-toggle-icon" />
+                    <span className="nav-section-toggle-label">{section.label}</span>
+                    <span className="nav-section-toggle-chevron" aria-hidden="true">
+                      {sectionCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                    </span>
+                  </button>
+                  <div id={`nav-section-panel-${section.id}`} className="nav-section-items" hidden={sectionCollapsed}>
+                    {section.items.map((item) => {
+                      const itemActive = page === item.pageId && activeInSection && (
+                        !item.transportSection || navTransportSection === item.transportSection
+                      ) && (!item.transportTab || navTransportTab === item.transportTab);
+                      return (
+                        <a
+                          key={`${section.id}-${item.pageId}-${item.transportSection || ""}-${item.transportTab || ""}`}
+                          className={`nav-item nav-area-item ${itemActive ? "active" : ""}`}
+                          href={getPageHref(item.pageId)}
+                          title={item.label}
+                          aria-label={`${section.label} · ${item.label}`}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            onPageChange(item.pageId, section.id, item.transportSection, item.transportTab);
+                            onClose?.();
+                          }}
+                        >
+                          <SidebarIcon icon={getSidebarTabIcon(item)} className="nav-item-icon" />
+                          <span>{item.shortLabel || item.label}</span>
+                        </a>
+                      );
+                    })}
+                  </div>
+                </section>,
               );
+              return;
             }
+
+            const group = entry.group;
+            const groupCollapsed = Boolean(collapsedUtilityGroups[group.label]);
             elements.push(
-              <a
-                key={item.id}
-                className={`nav-item ${page === item.id ? "active" : ""}`}
-                href={getPageHref(item.id)}
-                title={item.label}
-                aria-label={item.label}
-                onClick={(event) => {
-                  event.preventDefault();
-                  onPageChange(item.id);
-                  onClose?.();
-                }}
-              >
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </a>,
+              <section key={`util-group-${group.label}`} className={`nav-section ${groupCollapsed ? "collapsed" : "expanded"}`}>
+                <button
+                  type="button"
+                  className="nav-section-toggle"
+                  onClick={() => toggleUtilityGroup(group.label)}
+                  aria-expanded={!groupCollapsed}
+                  aria-controls={`nav-util-panel-${group.label}`}
+                >
+                  <SidebarIcon icon={getSidebarSectionIcon(group.label)} className="nav-section-toggle-icon" />
+                  <span className="nav-section-toggle-label">{group.label}</span>
+                  <span className="nav-section-toggle-chevron" aria-hidden="true">
+                    {groupCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                  </span>
+                </button>
+                <div id={`nav-util-panel-${group.label}`} className="nav-section-items" hidden={groupCollapsed}>
+                  {group.items.map((item) => {
+                    const Icon = item.icon;
+                    const isAuditHistory = item.id === "auditHistory";
+                    const isAuditCapture = item.id === PAGE_PROCESS_AUDITS;
+                    const isAuditDashboard = item.id === "auditDashboard";
+                    return (
+                      <a
+                        key={item.id}
+                        className={`nav-item ${page === PAGE_PROCESS_AUDITS ? "active" : ""}`}
+                        href={getPageHref(isAuditHistory || isAuditDashboard ? PAGE_PROCESS_AUDITS : item.id)}
+                        title={item.label}
+                        aria-label={item.label}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          if (isAuditHistory) {
+                            onPageChange(PAGE_PROCESS_AUDITS, "all", undefined, undefined, { tab: "history" });
+                          } else if (isAuditDashboard) {
+                            onPageChange(PAGE_PROCESS_AUDITS, "all", undefined, undefined, { tab: "dashboard" });
+                          } else if (isAuditCapture) {
+                            onPageChange(PAGE_PROCESS_AUDITS, "all", undefined, undefined, { tab: "capture" });
+                          } else {
+                            onPageChange(item.id, "all");
+                          }
+                          onClose?.();
+                        }}
+                      >
+                        <SidebarIcon icon={Icon || getSidebarTabIcon(item)} className="nav-item-icon" />
+                        <span>{item.shortLabel || item.label}</span>
+                      </a>
+                    );
+                  })}
+                </div>
+              </section>,
             );
           });
           return elements;
@@ -83,15 +381,19 @@ export function Sidebar({ currentUser, page, onPageChange, isOpen, isCollapsed, 
           type="button"
           className="sidebar-ai-btn"
           onClick={onOpenAI}
-          title="COPMEC AI — Cerebro Operativo"
+          title="AXO AI — Cerebro Operativo"
         >
           <img src={logoIA} alt="AI" className="sidebar-ai-logo" />
-          <span className="sidebar-ai-label">COPMEC AI</span>
+          <span className="sidebar-ai-label">AXO AI</span>
         </button>
       )}
 
       <button type="button" className="sidebar-profile-card" onClick={onOpenProfile} title={currentUser.name}>
-        <span className="avatar-circle sidebar-profile-avatar">{currentUser.name.charAt(0).toUpperCase()}</span>
+        <span className="avatar-circle sidebar-profile-avatar">
+          {avatarUrl
+            ? <img src={avatarUrl} alt={`Avatar de ${currentUser.name}`} className="sidebar-profile-avatar-image" />
+            : getUserInitial(currentUser.name)}
+        </span>
         <div className="sidebar-profile-meta">
           <strong>{currentUser.name}</strong>
           <span>{getUserJobTitle(currentUser) || currentUser.role}</span>

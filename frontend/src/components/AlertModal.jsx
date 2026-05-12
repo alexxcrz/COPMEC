@@ -39,7 +39,7 @@ export function AlertModalProvider({ children }) {
   }, [modal]);
 
   const TYPE_META = {
-    success: { icon: "✓", accent: "#16a34a", light: "#f0fdf4" },
+    success: { icon: "✓", accent: "#4f7da9", light: "#f2f6fb" },
     warning: { icon: "!", accent: "#d97706", light: "#fffbeb" },
     error:   { icon: "✕", accent: "#dc2626", light: "#fef2f2" },
     info:    { icon: "i", accent: "#0369a1", light: "#f0f9ff" },
@@ -49,7 +49,7 @@ export function AlertModalProvider({ children }) {
     overlay: {
       position: "fixed", inset: 0, zIndex: 99999,
       display: "flex", alignItems: "center", justifyContent: "center",
-      background: "rgba(3,33,33,0.35)", backdropFilter: "blur(4px)",
+      background: "rgba(49, 77, 105, 0.35)", backdropFilter: "blur(4px)",
     },
     box: {
       background: "#ffffff",
@@ -57,12 +57,12 @@ export function AlertModalProvider({ children }) {
       padding: "2rem",
       maxWidth: "420px",
       width: "90vw",
-      boxShadow: "0 8px 40px rgba(3,33,33,0.18)",
+      boxShadow: "0 8px 40px rgba(49, 77, 105, 0.18)",
       display: "flex", flexDirection: "column", gap: "1.25rem",
     },
     title: {
       margin: 0, fontSize: "1.05rem", fontWeight: 700,
-      color: "#032121", lineHeight: 1.3,
+      color: "#314d69", lineHeight: 1.3,
     },
     body: {
       margin: 0, fontSize: "0.9rem", color: "#475569", lineHeight: 1.6,
@@ -78,7 +78,7 @@ export function AlertModalProvider({ children }) {
       transition: "background 0.15s",
     },
     btnConfirm: {
-      background: "#032121", color: "#ffffff",
+      background: "#314d69", color: "#ffffff",
       border: "none", borderRadius: "0.875rem",
       padding: "0.6rem 1.4rem", cursor: "pointer",
       fontWeight: 600, fontSize: "0.875rem",
