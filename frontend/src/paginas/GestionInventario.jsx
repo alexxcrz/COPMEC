@@ -132,6 +132,26 @@ export default function GestionInventario({ contexto }) {
 
   const [newColumnLabel, setNewColumnLabel] = useState("");
 
+  const canViewBaseInventory = Boolean(actionPermissions.viewBaseInventory || actionPermissions.manageInventory || actionPermissions.deleteInventory || actionPermissions.importInventory);
+  const canViewCleaningInventory = Boolean(actionPermissions.viewCleaningInventory || actionPermissions.manageCleaningInventory || actionPermissions.deleteCleaningInventory || actionPermissions.importCleaningInventory);
+  const canViewOrderInventory = Boolean(actionPermissions.viewOrderInventory || actionPermissions.manageOrderInventory || actionPermissions.deleteOrderInventory || actionPermissions.importOrderInventory);
+  const hasInventoryTabAccess = canViewBaseInventory || canViewCleaningInventory || canViewOrderInventory;
+
+  if (!hasInventoryTabAccess) {
+    return (
+      <section className="inventory-page-layout">
+        <article className="surface-card admin-tabs full-width admin-tabs-shell">
+          <div className="card-header-row">
+            <div>
+              <h3>Inventario</h3>
+              <p>No tienes permiso para ver ninguna pestaña de inventario.</p>
+            </div>
+          </div>
+        </article>
+      </section>
+    );
+  }
+
   const getTransferredUnits = (item) => (item?.transferTargets || []).reduce((sum, target) => sum + Number(target?.availableUnits || 0), 0);
   const getAvailableTransferUnits = (item) => Math.max(0, Number(item?.stockUnits || 0));
   const getTransferBarTargetUnits = (item) => Math.max(getAvailableTransferUnits(item) + getTransferredUnits(item), Number(item?.minStockUnits || 0), 1);

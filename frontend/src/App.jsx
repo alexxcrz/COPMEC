@@ -4518,6 +4518,27 @@ function App() { // NOSONAR
   const currentInventoryDeletePermission = actionPermissions[getInventoryDeleteActionId(inventoryTab)];
   const currentInventoryImportPermission = actionPermissions[getInventoryImportActionId(inventoryTab)];
 
+  const allowedInventoryDomains = useMemo(() => {
+    const visibleDomains = [];
+    if (actionPermissions.viewBaseInventory || actionPermissions.manageInventory || actionPermissions.deleteInventory || actionPermissions.importInventory) {
+      visibleDomains.push(INVENTORY_DOMAIN_BASE);
+    }
+    if (actionPermissions.viewCleaningInventory || actionPermissions.manageCleaningInventory || actionPermissions.deleteCleaningInventory || actionPermissions.importCleaningInventory) {
+      visibleDomains.push(INVENTORY_DOMAIN_CLEANING);
+    }
+    if (actionPermissions.viewOrderInventory || actionPermissions.manageOrderInventory || actionPermissions.deleteOrderInventory || actionPermissions.importOrderInventory) {
+      visibleDomains.push(INVENTORY_DOMAIN_ORDERS);
+    }
+    return visibleDomains;
+  }, [actionPermissions]);
+
+  useEffect(() => {
+    if (!allowedInventoryDomains.length) return;
+    if (!allowedInventoryDomains.includes(inventoryTab)) {
+      setInventoryTab(allowedInventoryDomains[0]);
+    }
+  }, [allowedInventoryDomains, inventoryTab]);
+
   const canResetOtherPasswords = actionPermissions.resetPasswords;
 
   const derivedNotifications = useMemo(() => {
@@ -5123,10 +5144,46 @@ function App() { // NOSONAR
     });
 
     const utilitySections = Object.entries(NAV_UTILITY_ACTION_BY_GROUP).map(([groupLabel, actionId]) => {
-      const itemPermissions = permissionPages
+      const pageItemPermissions = permissionPages
         .filter((item) => item.group === groupLabel)
         .filter((item) => ![PAGE_DASHBOARD, PAGE_CUSTOM_BOARDS, PAGE_BOARD, PAGE_HISTORY, PAGE_TRANSPORT].includes(item.id))
         .map((item) => ({ id: item.id, label: item.label, kind: "pages" }));
+
+      const inventoryTabPermissions = groupLabel === "Producción" ? [
+        {
+          id: "viewBaseInventory",
+          label: actionLabelById.get("viewBaseInventory") || "Ver pestaña Productos",
+          kind: "actions",
+          actionPermissions: [
+            { id: "manageInventory", label: actionLabelById.get("manageInventory") || "Crear y editar inventario base", kind: "actions" },
+            { id: "deleteInventory", label: actionLabelById.get("deleteInventory") || "Eliminar artículos de inventario base", kind: "actions" },
+            { id: "importInventory", label: actionLabelById.get("importInventory") || "Importar inventario base", kind: "actions" },
+          ],
+        },
+        {
+          id: "viewCleaningInventory",
+          label: actionLabelById.get("viewCleaningInventory") || "Ver pestaña Insumos de limpieza",
+          kind: "actions",
+          actionPermissions: [
+            { id: "manageCleaningInventory", label: actionLabelById.get("manageCleaningInventory") || "Crear y editar insumos de limpieza", kind: "actions" },
+            { id: "deleteCleaningInventory", label: actionLabelById.get("deleteCleaningInventory") || "Eliminar insumos de limpieza", kind: "actions" },
+            { id: "importCleaningInventory", label: actionLabelById.get("importCleaningInventory") || "Importar insumos de limpieza", kind: "actions" },
+          ],
+        },
+        {
+          id: "viewOrderInventory",
+          label: actionLabelById.get("viewOrderInventory") || "Ver pestaña Insumos para pedidos",
+          kind: "actions",
+          actionPermissions: [
+            { id: "manageOrderInventory", label: actionLabelById.get("manageOrderInventory") || "Crear y editar insumos para pedidos", kind: "actions" },
+            { id: "deleteOrderInventory", label: actionLabelById.get("deleteOrderInventory") || "Eliminar insumos para pedidos", kind: "actions" },
+            { id: "importOrderInventory", label: actionLabelById.get("importOrderInventory") || "Importar insumos para pedidos", kind: "actions" },
+          ],
+        },
+      ] : [];
+
+      const itemPermissions = [...pageItemPermissions, ...inventoryTabPermissions];
+
       return {
         id: `utility-${groupLabel.toLowerCase()}`,
         label: groupLabel.toUpperCase(),
