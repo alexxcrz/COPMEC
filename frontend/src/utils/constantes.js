@@ -99,6 +99,7 @@ export const STATUS_FINISHED = "Terminado";
 export const INVENTORY_DOMAIN_BASE = "base";
 export const INVENTORY_DOMAIN_CLEANING = "cleaning";
 export const INVENTORY_DOMAIN_ORDERS = "orders";
+export const INVENTORY_DOMAIN_DESTINATIONS = "destinations";
 export const INVENTORY_MOVEMENT_RESTOCK = "restock";
 export const INVENTORY_MOVEMENT_CONSUME = "consume";
 export const INVENTORY_MOVEMENT_TRANSFER = "transfer";
@@ -583,6 +584,7 @@ export const INVENTORY_DOMAIN_OPTIONS = [
   { value: INVENTORY_DOMAIN_BASE, label: "Base" },
   { value: INVENTORY_DOMAIN_CLEANING, label: "Insumos de limpieza" },
   { value: INVENTORY_DOMAIN_ORDERS, label: "Insumos para pedidos" },
+  { value: INVENTORY_DOMAIN_DESTINATIONS, label: "Naves de destino" },
 ];
 
 export const INVENTORY_MOVEMENT_OPTIONS = [

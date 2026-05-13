@@ -1031,7 +1031,7 @@ function applyAutomatedBoardDailyRows(state, referenceDate = new Date()) {
 function normalizeInventoryDomain(value) {
   const key = String(value || "").trim().toLowerCase();
   if (["cleaning", "limpieza", "clean"].includes(key)) return "cleaning";
-  if (["orders", "order", "pedidos", "pedido"].includes(key)) return "orders";
+  if (["orders", "order", "pedidos", "pedido", "insumos para pedidos"].includes(key)) return "orders";
   return "base";
 }
 
@@ -1315,6 +1315,27 @@ function normalizeInventoryItemRecord(item, fallbackId = null) {
     activityConsumptions,
     consumptionPerStart: fallbackConsumptionPerStart,
     customFields,
+  };
+}
+
+function normalizeInventoryDestination(destination = EMPTY_OBJECT, fallbackId = null) {
+  const warehouse = String(destination?.warehouse || "").trim();
+  const storageLocation = String(destination?.storageLocation || "").trim();
+  if (!warehouse || !storageLocation) return null;
+
+  const recipientName = String(destination?.recipientName || "").trim();
+  const nowIso = new Date().toISOString();
+  const createdAt = String(destination?.createdAt || nowIso).trim() || nowIso;
+  const updatedAt = String(destination?.updatedAt || nowIso).trim() || nowIso;
+
+  return {
+    id: fallbackId || String(destination?.id || "").trim() || makeId("invdest"),
+    warehouse,
+    storageLocation,
+    recipientName,
+    destinationKey: buildInventoryTransferTargetKey(warehouse, storageLocation),
+    createdAt,
+    updatedAt,
   };
 }
 
@@ -1828,6 +1849,9 @@ function normalizeState(state, previousState = null) {
     inventoryItems: Array.isArray(state.inventoryItems) ? state.inventoryItems.map((item) => normalizeInventoryItemRecord(item, item?.id)) : getDefaultInventoryItems(),
     inventoryColumns: withSystemInventoryColumns(state.inventoryColumns),
     inventoryMovements: Array.isArray(state.inventoryMovements) ? state.inventoryMovements.map((movement) => normalizeInventoryMovementRecord(movement, null, movement?.id)) : [],
+    inventoryDestinations: Array.isArray(state.inventoryDestinations)
+      ? state.inventoryDestinations.map((destination) => normalizeInventoryDestination(destination)).filter(Boolean)
+      : [],
     catalog: Array.isArray(state.catalog) && state.catalog.length
       ? state.catalog.map((item) => sanitizeCatalogItemDraft(item, item?.id))
       : fallbackCatalog.map((item) => sanitizeCatalogItemDraft(item, item.id)),
@@ -4855,6 +4879,114 @@ export function updateWarehouseInventoryLotHistory(auth, itemId, payload = {}) {
   return { ok: true, state: replaceWarehouseState(nextState), itemId: nextItem.id, itemCode: nextItem.code };
 }
 
+export function createWarehouseInventoryDestination(auth, payload = {}) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const currentState = getRawWarehouseState();
+  if (!canUserDoWarehouseAction(currentUser, "manageOrderInventory", currentState.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const destination = normalizeInventoryDestination(payload);
+  if (!destination) return { ok: false, reason: "invalid_payload" };
+
+  const duplicate = (currentState.inventoryDestinations || []).some((entry) => entry?.destinationKey === destination.destinationKey);
+  if (duplicate) return { ok: false, reason: "duplicate_destination" };
+
+  const nextState = {
+    ...currentState,
+    inventoryDestinations: [...(currentState.inventoryDestinations || []), destination],
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState), destinationId: destination.id };
+}
+
+export function updateWarehouseInventoryDestination(auth, destinationId, payload = {}) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const currentState = getRawWarehouseState();
+  if (!canUserDoWarehouseAction(currentUser, "manageOrderInventory", currentState.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const targetId = String(destinationId || "").trim();
+  if (!targetId) return { ok: false, reason: "destination_not_found" };
+
+  const currentDestination = (currentState.inventoryDestinations || []).find((entry) => entry.id === targetId);
+  if (!currentDestination) return { ok: false, reason: "destination_not_found" };
+
+  const nextDestination = normalizeInventoryDestination({ ...currentDestination, ...payload }, targetId);
+  if (!nextDestination) return { ok: false, reason: "invalid_payload" };
+
+  const duplicate = (currentState.inventoryDestinations || []).some((entry) =>
+    entry.id !== targetId && entry.destinationKey === nextDestination.destinationKey,
+  );
+  if (duplicate) return { ok: false, reason: "duplicate_destination" };
+
+  const nextInventoryItems = (currentState.inventoryItems || []).map((item) => {
+    if (normalizeInventoryDomain(item.domain) !== "orders") return item;
+    const nextTargets = (item.transferTargets || []).map((target) => {
+      if (target.destinationKey !== currentDestination.destinationKey) return target;
+      return {
+        ...target,
+        warehouse: nextDestination.warehouse,
+        storageLocation: nextDestination.storageLocation,
+        recipientName: nextDestination.recipientName,
+        destinationKey: nextDestination.destinationKey,
+      };
+    });
+    return {
+      ...item,
+      transferTargets: normalizeInventoryTransferTargets(nextTargets, item.unitLabel || "pzas"),
+    };
+  });
+
+  const nextState = {
+    ...currentState,
+    inventoryDestinations: (currentState.inventoryDestinations || []).map((entry) => (entry.id === targetId ? nextDestination : entry)),
+    inventoryItems: nextInventoryItems,
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState), destinationId: targetId };
+}
+
+export function deleteWarehouseInventoryDestination(auth, destinationId) {
+  const currentUser = findWarehouseUserById(auth?.userId);
+  if (!currentUser?.isActive) return { ok: false, reason: "auth_required" };
+
+  const currentState = getRawWarehouseState();
+  if (!canUserDoWarehouseAction(currentUser, "manageOrderInventory", currentState.permissions)) {
+    return { ok: false, reason: "forbidden" };
+  }
+
+  const targetId = String(destinationId || "").trim();
+  if (!targetId) return { ok: false, reason: "destination_not_found" };
+
+  const currentDestination = (currentState.inventoryDestinations || []).find((entry) => entry.id === targetId);
+  if (!currentDestination) return { ok: false, reason: "destination_not_found" };
+
+  const nextInventoryItems = (currentState.inventoryItems || []).map((item) => {
+    if (normalizeInventoryDomain(item.domain) !== "orders") return item;
+    return {
+      ...item,
+      transferTargets: normalizeInventoryTransferTargets(
+        (item.transferTargets || []).filter((target) => target.destinationKey !== currentDestination.destinationKey),
+        item.unitLabel || "pzas",
+      ),
+    };
+  });
+
+  const nextState = {
+    ...currentState,
+    inventoryDestinations: (currentState.inventoryDestinations || []).filter((entry) => entry.id !== targetId),
+    inventoryItems: nextInventoryItems,
+  };
+
+  return { ok: true, state: replaceWarehouseState(nextState), destinationId: targetId };
+}
+
 function parseWarehouseInventoryLotHistory(rawValue) {
   if (!rawValue) return [];
   if (Array.isArray(rawValue)) return rawValue;
@@ -5010,7 +5142,14 @@ export function importWarehouseInventoryItems(auth, items) {
     return { ok: false, reason: "forbidden" };
   }
 
-  const mergedByCode = new Map((currentState.inventoryItems || []).map((item) => [normalizeKey(item.code), item]));
+  // Create a map keyed by both domain and code to prevent mixing items of different domains
+  const mergedByDomainAndCode = new Map(
+    (currentState.inventoryItems || []).map((item) => [
+      `${normalizeInventoryDomain(item.domain)}::${normalizeKey(item.code)}`,
+      item,
+    ])
+  );
+  
   let createdCount = 0;
   let updatedCount = 0;
 
@@ -5020,20 +5159,22 @@ export function importWarehouseInventoryItems(auth, items) {
       return { ok: false, reason: "invalid_payload" };
     }
 
-    const key = normalizeKey(sanitized.code);
-    const currentItem = mergedByCode.get(key);
+    const domain = normalizeInventoryDomain(sanitized.domain);
+    const key = `${domain}::${normalizeKey(sanitized.code)}`;
+    const currentItem = mergedByDomainAndCode.get(key);
+    
     if (currentItem) {
       updatedCount += 1;
-      mergedByCode.set(key, normalizeInventoryItemRecord(mergeInventoryItemTransferTargets(currentItem, { ...currentItem, ...sanitized }), currentItem.id));
+      mergedByDomainAndCode.set(key, normalizeInventoryItemRecord(mergeInventoryItemTransferTargets(currentItem, { ...currentItem, ...sanitized, domain }), currentItem.id));
     } else {
       createdCount += 1;
-      mergedByCode.set(key, normalizeInventoryItemRecord(sanitized, makeId("inv")));
+      mergedByDomainAndCode.set(key, normalizeInventoryItemRecord({ ...sanitized, domain }, makeId("inv")));
     }
   }
 
   const nextState = {
     ...currentState,
-    inventoryItems: Array.from(mergedByCode.values()),
+    inventoryItems: Array.from(mergedByDomainAndCode.values()),
   };
 
   return {

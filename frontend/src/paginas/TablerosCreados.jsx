@@ -84,7 +84,24 @@ export default function TablerosCreados({ contexto }) {
     return visibleControlBoards.filter((board) => selectedSectionAreaScopes.includes(normalizeBoardAreaToken(resolveBoardAreaLabel(board, userMap))));
   }, [selectedSectionAreaScopes, userMap, visibleControlBoards]);
 
-  const activeCatalogItems = state.catalog.filter((item) => !item.isDeleted);
+  const allCatalogItems = state.catalog.filter((item) => !item.isDeleted);
+  
+  // Filtrar catálogo solo por el área actual
+  const activeCatalogItems = useMemo(() => {
+    if (selectedAreaSectionId === "all" || !selectedAreaSection?.scopes?.length) {
+      return allCatalogItems;
+    }
+    const areaScopes = selectedAreaSection.scopes.map((scope) => String(scope || "").trim().toUpperCase()).filter(Boolean);
+    if (!areaScopes.length) return allCatalogItems;
+    return allCatalogItems.filter((item) => {
+      const itemArea = String(item.area || item.category || "General").trim().toUpperCase();
+      return areaScopes.some((scope) => {
+        const scopeArea = String(scope || "").split("/")[0].trim().toUpperCase();
+        return itemArea === scopeArea || itemArea === String(scope || "").trim().toUpperCase();
+      });
+    });
+  }, [allCatalogItems, selectedAreaSection, selectedAreaSectionId]);
+  
   const [creatorTab, setCreatorTab] = useState("boards");
   const [selectedCatalogCategory, setSelectedCatalogCategory] = useState("General");
   const [selectedBoardArea, setSelectedBoardArea] = useState("");
@@ -497,7 +514,7 @@ export default function TablerosCreados({ contexto }) {
             ) : null}
             {creatorTab === "checklists" ? (
               <button type="button" className="primary-button" onClick={openChecklistLinkModal} disabled={!actionPermissions.editCatalog || !activeCatalogItems.length}>
-                <Plus size={16} /> Vincular checklist a actividad
+                <Plus size={16} /> Crear checklist
               </button>
             ) : null}
           </div>

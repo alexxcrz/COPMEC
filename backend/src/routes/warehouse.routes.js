@@ -38,6 +38,9 @@ import {
   updateWarehouseCatalogItem,
   updateWarehouseInventoryItem,
   updateWarehouseInventoryLotHistory,
+  createWarehouseInventoryDestination,
+  updateWarehouseInventoryDestination,
+  deleteWarehouseInventoryDestination,
   createWarehouseTransportRecord,
   updateWarehouseTransportRecord,
   updateWarehouseTransportLogistics,
@@ -371,6 +374,60 @@ warehouseRouter.patch("/inventory/:itemId/lot-history", requireAuth, (req, res) 
     revision: result.state?.revision,
   });
   res.json({ ok: true, data: { state: result.state, itemId: result.itemId, itemCode: result.itemCode } });
+});
+
+warehouseRouter.post("/inventory/destinations", requireAuth, (req, res) => {
+  const result = createWarehouseInventoryDestination(req.auth, req.body || {});
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "forbidden" ? 403 : result.reason === "duplicate_destination" ? 409 : 400;
+    const messages = {
+      duplicate_destination: "Ya existe una nave destino con los mismos datos.",
+      invalid_payload: "La nave destino no es válida.",
+    };
+    res.status(status).json({ ok: false, message: messages[result.reason] || "No fue posible guardar la nave destino." });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_inventory_destination_created", req, {
+    destinationId: result.destinationId,
+    revision: result.state?.revision,
+  });
+  res.status(201).json({ ok: true, data: { state: result.state, destinationId: result.destinationId } });
+});
+
+warehouseRouter.patch("/inventory/destinations/:destinationId", requireAuth, (req, res) => {
+  const result = updateWarehouseInventoryDestination(req.auth, req.params.destinationId, req.body || {});
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "destination_not_found" ? 404 : result.reason === "forbidden" ? 403 : result.reason === "duplicate_destination" ? 409 : 400;
+    const messages = {
+      destination_not_found: "No se encontró la nave destino.",
+      duplicate_destination: "Ya existe una nave destino con los mismos datos.",
+      invalid_payload: "La nave destino no es válida.",
+    };
+    res.status(status).json({ ok: false, message: messages[result.reason] || "No fue posible actualizar la nave destino." });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_inventory_destination_updated", req, {
+    destinationId: result.destinationId,
+    revision: result.state?.revision,
+  });
+  res.json({ ok: true, data: { state: result.state, destinationId: result.destinationId } });
+});
+
+warehouseRouter.delete("/inventory/destinations/:destinationId", requireAuth, (req, res) => {
+  const result = deleteWarehouseInventoryDestination(req.auth, req.params.destinationId);
+  if (!result.ok) {
+    const status = result.reason === "auth_required" ? 401 : result.reason === "destination_not_found" ? 404 : result.reason === "forbidden" ? 403 : 400;
+    res.status(status).json({ ok: false, message: "No fue posible eliminar la nave destino." });
+    return;
+  }
+
+  auditSecurityEvent("warehouse_inventory_destination_deleted", req, {
+    destinationId: result.destinationId,
+    revision: result.state?.revision,
+  });
+  res.json({ ok: true, data: { state: result.state, destinationId: result.destinationId } });
 });
 
 warehouseRouter.post("/transport/records", requireAuth, (req, res) => {

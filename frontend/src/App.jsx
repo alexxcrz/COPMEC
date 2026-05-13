@@ -142,7 +142,7 @@ import {
 
   STATUS_PENDING, STATUS_RUNNING, STATUS_PAUSED, STATUS_FINISHED,
 
-  INVENTORY_DOMAIN_BASE, INVENTORY_DOMAIN_CLEANING, INVENTORY_DOMAIN_ORDERS,
+  INVENTORY_DOMAIN_BASE, INVENTORY_DOMAIN_CLEANING, INVENTORY_DOMAIN_ORDERS, INVENTORY_DOMAIN_DESTINATIONS,
 
   INVENTORY_MOVEMENT_RESTOCK, INVENTORY_MOVEMENT_CONSUME, INVENTORY_MOVEMENT_TRANSFER,
 
@@ -222,11 +222,10 @@ import {
 
   normalizeBoardOperationalContextValue,
 
-  buildInventoryTransferTargetKey,
-
   normalizeInventoryItemRecord,
 
   normalizeInventoryMovementRecord,
+  normalizeInventoryTransferTargetRecord,
 
   findInventoryTransferTarget,
 
@@ -238,13 +237,13 @@ import {
 
   getComparableDateMs,
 
-  formatInventoryTransferDestinationLabel,
-
   getInventorySavedStorageLocations,
 
   getInventorySavedTransferDestinations,
 
   getInventoryDefaultTransferDestination,
+
+  formatInventoryTransferDestinationLabel,
 
   getInventoryDeleteActionId,
 
@@ -255,6 +254,8 @@ import {
   createInventoryModalState,
 
   createInventoryMovementModalState,
+
+  createInventoryDestinationModalState,
 
   createInventoryTransferConfirmModalState,
 
@@ -638,6 +639,7 @@ function createEmptyCatalogModalState() {
     scheduledDaysBySite: {},
     cleaningSites: [],
     siteMode: "general",
+    submitting: false,
   };
 }
 
@@ -993,6 +995,21 @@ const AREA_TAB_BASE_ACTIONS = {
   history: ["editHistoryRecords"],
 };
 
+function normalizeAreaSectionId(areaValue) {
+  const normalized = String(areaValue || "").trim().toLowerCase();
+  if (!normalized) return "";
+  return `area-${normalized.replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`;
+}
+
+function findAreaSectionByLabel(areaValue, sections = []) {
+  const normalized = String(areaValue || "").trim().toLowerCase();
+  if (!normalized) return null;
+  return sections.find((section) => {
+    const label = String(section.label || "").trim().toLowerCase();
+    return label === normalized || section.id === normalized || section.id === normalizeAreaSectionId(normalized);
+  }) || null;
+}
+
 function App() { // NOSONAR
   const socketRef = useRef(null);
   const [socketConnectCount, setSocketConnectCount] = useState(0);
@@ -1032,6 +1049,8 @@ function App() { // NOSONAR
   });
   const [inventoryTab, setInventoryTab] = useState(INVENTORY_DOMAIN_BASE);
   const [inventoryCleaningSite, setInventoryCleaningSite] = useState(DEFAULT_CLEANING_SITE);
+  const [inventoryDestinationWarehouse, setInventoryDestinationWarehouse] = useState("");
+  const [inventoryDestinationWarehouseAutoSet, setInventoryDestinationWarehouseAutoSet] = useState(false);
   const [inventoryActionsMenuOpen, setInventoryActionsMenuOpen] = useState(false);
   const [inventorySearch, setInventorySearch] = useState("");
   const [dashboardFilters, setDashboardFilters] = useState({ periodType: "week", periodKey: "all", responsibleId: "all", area: "all", source: "all", startDate: "", endDate: "" });
@@ -1060,7 +1079,7 @@ function App() { // NOSONAR
   const [transferLeadTargetId, setTransferLeadTargetId] = useState(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
-  const [resetUserPasswordModal, setResetUserPasswordModal] = useState({ open: false, userId: null, userName: "", password: "", message: "" });
+  const [resetUserPasswordModal, setResetUserPasswordModal] = useState({ open: false, userId: null, userName: "", password: "", message: "", submitting: false });
   const [showUserModalPassword, setShowUserModalPassword] = useState(false);
   const [showResetUserPassword, setShowResetUserPassword] = useState(false);
   const [userSearch, setUserSearch] = useState("");
@@ -1079,7 +1098,7 @@ function App() { // NOSONAR
   const [customBoardSearch, setCustomBoardSearch] = useState("");
   const [templateSearch, setTemplateSearch] = useState("");
   const [templateCategoryFilter, setTemplateCategoryFilter] = useState("Todas");
-  const [templateEditorModal, setTemplateEditorModal] = useState({ open: false, id: null, name: "", description: "", category: "", visibilityType: "department", sharedDepartments: [], sharedUserIds: [] });
+  const [templateEditorModal, setTemplateEditorModal] = useState({ open: false, id: null, name: "", description: "", category: "", visibilityType: "department", sharedDepartments: [], sharedUserIds: [], submitting: false });
   const [templateDeleteModal, setTemplateDeleteModal] = useState({ open: false, id: null, name: "" });
   const [hiddenBaseTemplateIds, setHiddenBaseTemplateIds] = useState(() => {
     try {
@@ -1107,6 +1126,7 @@ function App() { // NOSONAR
   const [inventoryTransferViewerState, setInventoryTransferViewerState] = useState({ open: false, itemId: null });
   const [inventoryTransferConfirmModal, setInventoryTransferConfirmModal] = useState(() => createInventoryTransferConfirmModalState());
   const [inventoryRestockModal, setInventoryRestockModal] = useState(() => createInventoryRestockModalState());
+  const [inventoryDestinationModal, setInventoryDestinationModal] = useState(() => createInventoryDestinationModalState());
   const [inventoryImportFeedback, setInventoryImportFeedback] = useState({ tone: "", message: "" });
   const [permissionsFeedback, setPermissionsFeedback] = useState({ tone: "", message: "" });
   const [appToasts, setAppToasts] = useState([]);
@@ -3958,19 +3978,27 @@ function App() { // NOSONAR
 
   const currentInventoryDomainItems = useMemo(() => {
     const items = allInventoryItemsByDomain[inventoryTab] || [];
-    if (inventoryTab !== INVENTORY_DOMAIN_CLEANING) {
-      return items;
+    if (inventoryTab === INVENTORY_DOMAIN_CLEANING) {
+      return items.filter((item) => item.cleaningSite === inventoryCleaningSite);
     }
-    return items.filter((item) => item.cleaningSite === inventoryCleaningSite);
-  }, [allInventoryItemsByDomain, inventoryCleaningSite, inventoryTab]);
+    if (inventoryTab === INVENTORY_DOMAIN_ORDERS && inventoryDestinationWarehouse) {
+      const normalizedWarehouse = String(inventoryDestinationWarehouse || "").trim().toLowerCase();
+      return items.filter((item) => (item.transferTargets || []).some((target) => String(target.warehouse || "Sin nave").trim().toLowerCase() === normalizedWarehouse));
+    }
+    return items;
+  }, [allInventoryItemsByDomain, inventoryCleaningSite, inventoryDestinationWarehouse, inventoryTab]);
 
   const currentInventoryItems = useMemo(() => {
     const items = inventoryItemsByDomain[inventoryTab] || [];
-    if (inventoryTab !== INVENTORY_DOMAIN_CLEANING) {
-      return items;
+    if (inventoryTab === INVENTORY_DOMAIN_CLEANING) {
+      return items.filter((item) => item.cleaningSite === inventoryCleaningSite);
     }
-    return items.filter((item) => item.cleaningSite === inventoryCleaningSite);
-  }, [inventoryItemsByDomain, inventoryCleaningSite, inventoryTab]);
+    if (inventoryTab === INVENTORY_DOMAIN_ORDERS && inventoryDestinationWarehouse) {
+      const normalizedWarehouse = String(inventoryDestinationWarehouse || "").trim().toLowerCase();
+      return items.filter((item) => (item.transferTargets || []).some((target) => String(target.warehouse || "Sin nave").trim().toLowerCase() === normalizedWarehouse));
+    }
+    return items;
+  }, [inventoryCleaningSite, inventoryDestinationWarehouse, inventoryItemsByDomain, inventoryTab]);
 
   const inventoryMovements = useMemo(
     () => (state.inventoryMovements || []).map((movement) => normalizeInventoryMovementRecord(movement)).sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt)),
@@ -4044,19 +4072,42 @@ function App() { // NOSONAR
     [inventoryMovementSelectedItem, inventoryMovements],
   );
 
+  const inventoryDestinations = useMemo(
+    () => Array.isArray(state.inventoryDestinations)
+      ? state.inventoryDestinations
+          .map((destination) => normalizeInventoryTransferTargetRecord(destination, "pzas"))
+          .filter((destination) => destination.warehouse || destination.storageLocation)
+      : [],
+    [state.inventoryDestinations],
+  );
+
+  const inventoryTransferDefaultWarehouse = useMemo(() => {
+    const counts = new Map();
+    const rememberWarehouse = (warehouse) => {
+      const normalized = String(warehouse || "Sin nave").trim();
+      if (!normalized) return;
+      counts.set(normalized, (counts.get(normalized) || 0) + 1);
+    };
+
+    inventoryDestinations.forEach((destination) => rememberWarehouse(destination.warehouse));
+    orderInventoryTransferSummary.forEach((item) => {
+      (item.transferTargets || []).forEach((target) => rememberWarehouse(target.warehouse));
+    });
+
+    const sorted = Array.from(counts.entries()).sort(([warehouseA, countA], [warehouseB, countB]) => {
+      if (countA !== countB) return countB - countA;
+      return warehouseA.localeCompare(warehouseB, "es-MX");
+    });
+
+    return sorted[0]?.[0] || "";
+  }, [inventoryDestinations, orderInventoryTransferSummary]);
+
   const inventoryMovementSelectedSavedLocation = useMemo(() => {
     const normalizedStorageLocation = normalizeKey(inventoryMovementModal.storageLocation);
     return inventoryMovementSavedLocations.some((entry) => entry.key === normalizedStorageLocation)
       ? normalizedStorageLocation
       : "";
   }, [inventoryMovementModal.storageLocation, inventoryMovementSavedLocations]);
-
-  const inventoryMovementSelectedSavedDestinationKey = useMemo(() => {
-    const destinationKey = buildInventoryTransferTargetKey(inventoryMovementModal.warehouse, inventoryMovementModal.storageLocation);
-    return inventoryMovementSavedDestinations.some((destination) => destination.destinationKey === destinationKey)
-      ? destinationKey
-      : "";
-  }, [inventoryMovementModal.storageLocation, inventoryMovementModal.warehouse, inventoryMovementSavedDestinations]);
 
   const inventoryMovementTransferTarget = useMemo(
     () => inventoryMovementModal.movementType === INVENTORY_MOVEMENT_TRANSFER && inventoryMovementSelectedItem?.domain === INVENTORY_DOMAIN_ORDERS
@@ -4075,6 +4126,49 @@ function App() { // NOSONAR
       : 0,
     [inventoryMovementModal.remainingUnits, inventoryMovementSelectedItem, inventoryMovementTransferTarget],
   );
+
+  const inventoryTransferDestinationsByWarehouse = useMemo(() => {
+    const grouped = {};
+    const addDestination = (destination) => {
+      const normalized = normalizeInventoryTransferTargetRecord(destination, inventoryMovementSelectedItem?.unitLabel || "pzas");
+      if (!normalized.warehouse && !normalized.storageLocation) return;
+      const warehouse = normalized.warehouse || "Sin nave";
+      if (!grouped[warehouse]) grouped[warehouse] = [];
+      if (!grouped[warehouse].some((entry) => entry.destinationKey === normalized.destinationKey)) {
+        grouped[warehouse].push(normalized);
+      }
+    };
+
+    inventoryDestinations.forEach(addDestination);
+    if (inventoryMovementSelectedItem?.transferTargets) {
+      inventoryMovementSelectedItem.transferTargets.forEach(addDestination);
+    }
+
+    Object.values(grouped).forEach((list) => {
+      list.sort((left, right) => formatInventoryTransferDestinationLabel(left).localeCompare(formatInventoryTransferDestinationLabel(right), "es-MX"));
+    });
+    return grouped;
+  }, [inventoryDestinations, inventoryMovementSelectedItem]);
+
+  const inventoryTransferAvailableWarehouses = useMemo(() => {
+    const warehouses = new Set();
+    inventoryDestinations.forEach((destination) => {
+      warehouses.add(String(destination.warehouse || "Sin nave"));
+    });
+    orderInventoryTransferSummary.forEach((item) => {
+      (item.transferTargets || []).forEach((target) => {
+        warehouses.add(String(target.warehouse || "Sin nave"));
+      });
+    });
+    return [...warehouses].sort((left, right) => left.localeCompare(right, "es-MX"));
+  }, [inventoryDestinations, orderInventoryTransferSummary]);
+
+  useEffect(() => {
+    if (!inventoryDestinationWarehouse && !inventoryDestinationWarehouseAutoSet && inventoryTransferAvailableWarehouses.length) {
+      setInventoryDestinationWarehouse(inventoryTransferDefaultWarehouse || inventoryTransferAvailableWarehouses[0]);
+      setInventoryDestinationWarehouseAutoSet(true);
+    }
+  }, [inventoryDestinationWarehouse, inventoryDestinationWarehouseAutoSet, inventoryTransferAvailableWarehouses, inventoryTransferDefaultWarehouse]);
 
   const isOrderTransferMovementModal = inventoryMovementModal.movementType === INVENTORY_MOVEMENT_TRANSFER && inventoryMovementModal.domain === INVENTORY_DOMAIN_ORDERS;
   const inventoryMovementModalTitle = isOrderTransferMovementModal ? "Registrar transferencia" : "Registrar movimiento";
@@ -4152,16 +4246,30 @@ function App() { // NOSONAR
     movementCount: currentInventoryMovements.length,
   }), [currentInventoryItems, currentInventoryMovements.length, lowStockInventoryItems.length]);
 
-  const departmentOptions = useMemo(
-    () => buildAreaCatalog(state.users, state.areaCatalog),
-    [state.areaCatalog, state.users],
-  );
+  const departmentOptions = useMemo(() => {
+    const builtOptions = buildAreaCatalog(state.users, state.areaCatalog);
+    const defaultSectionAreas = APP_AREA_SECTIONS.flatMap((section) => section.scopes || [])
+      .map((area) => normalizeAreaOption(area))
+      .filter(Boolean);
+    return Array.from(new Set([...builtOptions, ...defaultSectionAreas])).sort((a, b) => a.localeCompare(b));
+  }, [state.areaCatalog, state.users]);
 
   // Root areas (no slash) for the first-level selector in the user modal
   const rootAreaOptions = useMemo(
     () => Array.from(new Set(departmentOptions.map((area) => getAreaRoot(area) || area))).filter(Boolean).sort((a, b) => a.localeCompare(b)),
     [departmentOptions],
   );
+
+  const dynamicAreaSectionRoots = useMemo(() => {
+    const staticRoots = new Set(APP_AREA_SECTIONS
+      .flatMap((section) => section.scopes || [])
+      .map((scope) => normalizeAreaOption(scope))
+      .filter(Boolean));
+
+    return rootAreaOptions
+      .map((rootArea) => normalizeAreaOption(rootArea))
+      .filter((rootArea) => rootArea && !staticRoots.has(rootArea));
+  }, [rootAreaOptions]);
 
   // Sub-areas for a given root area
   const getSubAreaOptions = (rootArea) => {
@@ -4499,15 +4607,12 @@ function App() { // NOSONAR
   const actionPermissions = useMemo(() => {
     if (!activeAreaScopePermission) return baseActionPermissions;
     const next = { ...baseActionPermissions };
-    const isScopeEnabled = Boolean(baseActionPermissions[activeAreaScopePermission.scopeActionId]);
     (activeAreaScopePermission.baseActionIds || []).forEach((actionId) => {
-      if (!isScopeEnabled) {
-        next[actionId] = false;
-        return;
-      }
       const scopedActionId = activeAreaScopePermission.scopedActionIdByBase?.[actionId];
       if (!scopedActionId) return;
-      next[actionId] = Boolean(baseActionPermissions[actionId] && baseActionPermissions[scopedActionId]);
+      // Permitir si tiene permiso base O permiso scoped específico para esta área
+      const hasScopedPermission = Boolean(baseActionPermissions[scopedActionId]);
+      next[actionId] = Boolean(baseActionPermissions[actionId] || hasScopedPermission);
     });
     return next;
   }, [activeAreaScopePermission, baseActionPermissions]);
@@ -5027,13 +5132,8 @@ function App() { // NOSONAR
     [allowedNavItems, currentUser, normalizedPermissions],
   );
 
-  const selectedAreaSection = useMemo(
-    () => APP_AREA_SECTIONS.find((section) => section.id === selectedAreaSectionId) || null,
-    [selectedAreaSectionId],
-  );
-
-  const areaNavSections = useMemo(
-    () => APP_AREA_SECTIONS.map((section) => ({
+  const areaNavSections = useMemo(() => {
+    const staticSections = APP_AREA_SECTIONS.map((section) => ({
       ...section,
       items: (
         section.id === "transporte"
@@ -5058,21 +5158,50 @@ function App() { // NOSONAR
             { pageId: PAGE_CUSTOM_BOARDS, label: "Mis tableros", shortLabel: "Tableros", requiredActionId: AREA_TAB_PERMISSION_ACTIONS[section.id]?.customBoards || "" },
             { pageId: PAGE_HISTORY, label: "Historial", shortLabel: "Hist.", requiredActionId: AREA_TAB_PERMISSION_ACTIONS[section.id]?.history || "" },
           ]
-      ).filter((item) => canAccessPage(currentUser, item.pageId, normalizedPermissions) && (!item.requiredActionId || canDoAction(currentUser, item.requiredActionId, normalizedPermissions))),
-    })).filter((section) => {
-      if (!section.items.length) return false;
-      const requiredActionId = NAV_AREA_ACTION_BY_SECTION[section.id] || "";
-      if (!requiredActionId) return true;
-      return canDoAction(currentUser, requiredActionId, normalizedPermissions);
-    }),
-    [currentUser, normalizedPermissions],
+      ),
+    }));
+
+    const dynamicSections = dynamicAreaSectionRoots.map((rootArea) => ({
+      id: normalizeAreaSectionId(rootArea),
+      label: String(rootArea || "").toUpperCase(),
+      scopes: [rootArea],
+      items: [
+        { pageId: PAGE_DASHBOARD, label: "Dashboard", shortLabel: "Dash", requiredActionId: "" },
+        { pageId: PAGE_BOARD, label: "Creador de tableros", shortLabel: "Creador", requiredActionId: "" },
+        { pageId: PAGE_CUSTOM_BOARDS, label: "Mis tableros", shortLabel: "Tableros", requiredActionId: "" },
+        { pageId: PAGE_HISTORY, label: "Historial", shortLabel: "Hist.", requiredActionId: "" },
+      ],
+    }));
+
+    return [...staticSections, ...dynamicSections]
+      .map((section) => ({
+        ...section,
+        items: (section.items || []).filter((item) => canAccessPage(currentUser, item.pageId, normalizedPermissions) && (!item.requiredActionId || canDoAction(currentUser, item.requiredActionId, normalizedPermissions))),
+      }))
+      .filter((section) => {
+        if (!section.items.length) return false;
+        const requiredActionId = NAV_AREA_ACTION_BY_SECTION[section.id] || "";
+        if (!requiredActionId) return true;
+        return canDoAction(currentUser, requiredActionId, normalizedPermissions);
+      });
+  }, [currentUser, normalizedPermissions, dynamicAreaSectionRoots]);
+
+  const selectedAreaSection = useMemo(
+    () => areaNavSections.find((section) => section.id === selectedAreaSectionId) || null,
+    [areaNavSections, selectedAreaSectionId],
   );
 
   useEffect(() => {
     if (selectedAreaSectionId === "all") return;
-    if (!areaNavSections.some((section) => section.id === selectedAreaSectionId)) {
-      setSelectedAreaSectionId("all");
+    if (areaNavSections.some((section) => section.id === selectedAreaSectionId)) return;
+
+    const matchedSection = findAreaSectionByLabel(selectedAreaSectionId, areaNavSections);
+    if (matchedSection) {
+      setSelectedAreaSectionId(matchedSection.id);
+      return;
     }
+
+    setSelectedAreaSectionId("all");
   }, [areaNavSections, selectedAreaSectionId]);
 
   const permissionManagedUsers = useMemo(
@@ -5722,6 +5851,7 @@ function App() { // NOSONAR
   }
 
   async function submitCatalogModal() {
+    setCatalogModal((current) => ({ ...current, submitting: true }));
     const siteMode = catalogModal.siteMode === "bySite" ? "bySite" : "general";
     const normalizedCleaningSites = siteMode === "bySite"
       ? normalizeCatalogCleaningSites(catalogModal.cleaningSites)
@@ -5742,7 +5872,10 @@ function App() { // NOSONAR
       isDeleted: false,
     };
 
-    if (!payload.name || payload.timeLimitMinutes <= 0) return;
+    if (!payload.name || payload.timeLimitMinutes <= 0) {
+      setCatalogModal((current) => ({ ...current, submitting: false }));
+      return;
+    }
 
     try {
       const result = await requestJson(
@@ -5755,6 +5888,7 @@ function App() { // NOSONAR
       applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
       setCatalogModal(createEmptyCatalogModalState());
     } catch {
+      setCatalogModal((current) => ({ ...current, submitting: false }));
       // Keep modal open if the save fails.
     }
   }
@@ -6038,6 +6172,8 @@ function App() { // NOSONAR
       payload.password = trimmedPassword;
     }
 
+    setUserModal((current) => ({ ...current, submitting: true }));
+
     try {
       const result = await requestJson(
         userModal.mode === "create" ? "/warehouse/users" : `/warehouse/users/${userModal.id}`,
@@ -6056,6 +6192,7 @@ function App() { // NOSONAR
       setUserModalMessage({ tone: "success", text: userModal.mode === "create" ? `Player ${payload.name} creado correctamente.` : `Cambios de ${payload.name} guardados correctamente.` });
       closeUserModal();
     } catch (error) {
+      setUserModal((current) => ({ ...current, submitting: false }));
       setUserModalMessage({ tone: "danger", text: error?.message || "No se pudieron guardar los cambios. Intenta de nuevo." });
       pushAppToast(error?.message || "No se pudieron guardar los cambios. Intenta de nuevo.", "danger");
     }
@@ -6776,7 +6913,9 @@ function App() { // NOSONAR
   }
 
   async function submitBoardTemplateEdit() {
+    setTemplateEditorModal((current) => ({ ...current, submitting: true }));
     if (!templateEditorModal.id || !templateEditorModal.name.trim() || !actionPermissions.editTemplate) {
+      setTemplateEditorModal((current) => ({ ...current, submitting: false }));
       setControlBoardFeedback("La plantilla debe tener nombre para guardar los cambios.");
       return;
     }
@@ -6794,9 +6933,10 @@ function App() { // NOSONAR
         }),
       });
       applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
-      setTemplateEditorModal({ open: false, id: null, name: "", description: "", category: "", visibilityType: "department", sharedDepartments: [], sharedUserIds: [] });
+      setTemplateEditorModal({ open: false, id: null, name: "", description: "", category: "", visibilityType: "department", sharedDepartments: [], sharedUserIds: [], submitting: false });
       setControlBoardFeedback("Plantilla actualizada correctamente.");
     } catch (error) {
+      setTemplateEditorModal((current) => ({ ...current, submitting: false }));
       setControlBoardFeedback(error?.message || "No se pudo actualizar la plantilla.");
     }
   }
@@ -7195,14 +7335,21 @@ function App() { // NOSONAR
     const defaultTransferDestination = movementType === INVENTORY_MOVEMENT_TRANSFER && item?.domain === INVENTORY_DOMAIN_ORDERS
       ? getInventoryDefaultTransferDestination(item, inventoryMovements)
       : null;
-    setInventoryMovementModal({ ...createInventoryMovementModalState(item, movementType, item?.domain || inventoryTab, { defaultDestination: defaultTransferDestination }), open: true });
+    setInventoryMovementModal({
+      ...createInventoryMovementModalState(item, movementType, item?.domain || inventoryTab, { defaultDestination: defaultTransferDestination }),
+      selectedTransferDestinationTab: inventoryTransferDefaultWarehouse || defaultTransferDestination?.warehouse || "",
+      open: true,
+    });
   }
 
   function openOrderInventoryTransfer(item = null) {
     if (!actionPermissions[getInventoryManageActionId(INVENTORY_DOMAIN_ORDERS)]) return;
     setInventoryImportFeedback({ tone: "", message: "" });
-    const defaultTransferDestination = item ? getInventoryDefaultTransferDestination(item, inventoryMovements) : null;
-    setInventoryMovementModal({ ...createInventoryMovementModalState(item, INVENTORY_MOVEMENT_TRANSFER, INVENTORY_DOMAIN_ORDERS, { defaultDestination: defaultTransferDestination }), open: true });
+    setInventoryMovementModal({
+      ...createInventoryMovementModalState(item, INVENTORY_MOVEMENT_TRANSFER, INVENTORY_DOMAIN_ORDERS),
+      selectedTransferDestinationTab: inventoryTransferDefaultWarehouse || "",
+      open: true,
+    });
   }
 
   function openInventoryTransferViewer() {
@@ -7258,24 +7405,6 @@ function App() { // NOSONAR
     const selectedLocation = inventoryMovementSavedLocations.find((entry) => entry.key === locationKey);
     if (!selectedLocation) return;
     updateInventoryMovementModal({ storageLocation: selectedLocation.label });
-  }
-
-  function applySavedInventoryDestination(destinationKey) {
-    if (!destinationKey) {
-      updateInventoryMovementModal({
-        warehouse: "",
-        storageLocation: "",
-        recipientName: "",
-      });
-      return;
-    }
-    const selectedDestination = inventoryMovementSavedDestinations.find((entry) => entry.destinationKey === destinationKey);
-    if (!selectedDestination) return;
-    updateInventoryMovementModal({
-      warehouse: selectedDestination.warehouse,
-      storageLocation: selectedDestination.storageLocation,
-      recipientName: selectedDestination.recipientName,
-    });
   }
 
   async function requestInventoryMovement(payload) {
@@ -7342,7 +7471,11 @@ function App() { // NOSONAR
   }
 
   async function submitInventoryModal() {
-    if (!actionPermissions[getInventoryManageActionId(inventoryModal.domain)]) return;
+    setInventoryModal((current) => ({ ...current, submitting: true }));
+    if (!actionPermissions[getInventoryManageActionId(inventoryModal.domain)]) {
+      setInventoryModal((current) => ({ ...current, submitting: false }));
+      return;
+    }
     const usesPresentation = inventoryDomainUsesPresentation(inventoryModal.domain);
     const usesPackagingMetrics = inventoryDomainUsesPackagingMetrics(inventoryModal.domain);
     const normalizedActivityConsumptions = inventoryModal.domain === INVENTORY_DOMAIN_CLEANING
@@ -7375,7 +7508,10 @@ function App() { // NOSONAR
       ),
     };
 
-    if (!payload.code || !payload.name) return;
+    if (!payload.code || !payload.name) {
+      setInventoryModal((current) => ({ ...current, submitting: false }));
+      return;
+    }
 
     try {
       const result = await requestJson(
@@ -7389,6 +7525,7 @@ function App() { // NOSONAR
       setInventoryModal(createInventoryModalState());
       setInventoryImportFeedback({ tone: "success", message: inventoryModal.mode === "create" ? "Artículo agregado al inventario." : "Artículo actualizado correctamente." });
     } catch (error) {
+      setInventoryModal((current) => ({ ...current, submitting: false }));
       setInventoryImportFeedback({ tone: "danger", message: error?.message || "No se pudo guardar el artículo de inventario." });
     }
   }
@@ -7416,6 +7553,8 @@ function App() { // NOSONAR
       }
     }
 
+    setInventoryMovementModal((current) => ({ ...current, submitting: true }));
+
     const payload = {
       itemId: selectedItem.id,
       movementType: inventoryMovementModal.movementType,
@@ -7429,6 +7568,7 @@ function App() { // NOSONAR
     };
 
     if (isOrderTransfer && inventoryMovementTransferTarget && !hasInventoryBalanceInput(inventoryMovementModal.remainingUnits)) {
+      setInventoryMovementModal((current) => ({ ...current, submitting: false }));
       setInventoryTransferConfirmModal({
         open: true,
         itemId: selectedItem.id,
@@ -7447,7 +7587,11 @@ function App() { // NOSONAR
       return;
     }
 
-    await persistInventoryMovement(payload, isOrderTransfer ? "Transferencia registrada." : "Movimiento de inventario registrado.");
+    try {
+      await persistInventoryMovement(payload, isOrderTransfer ? "Transferencia registrada." : "Movimiento de inventario registrado.");
+    } catch (_error) {
+      setInventoryMovementModal((current) => ({ ...current, submitting: false }));
+    }
   }
 
   async function submitInventoryTransferConfirmModal() {
@@ -7468,6 +7612,64 @@ function App() { // NOSONAR
       ...inventoryTransferConfirmModal.pendingPayload,
       remainingUnits,
     }, "Transferencia registrada y saldo destino actualizado.");
+  }
+
+  function openInventoryDestinationModal(mode = "create", destination = {}) {
+    if (!actionPermissions.manageOrderInventory) return;
+    setInventoryImportFeedback({ tone: "", message: "" });
+    setInventoryDestinationModal({ ...createInventoryDestinationModalState(mode, destination), open: true });
+  }
+
+  function closeInventoryDestinationModal() {
+    setInventoryDestinationModal(createInventoryDestinationModalState());
+  }
+
+  async function submitInventoryDestinationModal() {
+    if (!actionPermissions.manageOrderInventory) return;
+
+    const { mode, warehouse, storageLocation, recipientName } = inventoryDestinationModal;
+    if (!warehouse.trim() || !storageLocation.trim()) {
+      setInventoryImportFeedback({ tone: "danger", message: "Define la nave y punto de entrega para continuar." });
+      return;
+    }
+
+    setInventoryDestinationModal((current) => ({ ...current, submitting: true }));
+
+    try {
+      const payload = {
+        warehouse: warehouse.trim(),
+        storageLocation: storageLocation.trim(),
+        recipientName: recipientName.trim(),
+      };
+
+      const result = await requestJson(
+        mode === "create" ? "/warehouse/inventory/destinations" : `/warehouse/inventory/destinations/${inventoryDestinationModal.id}`,
+        {
+          method: mode === "create" ? "POST" : "PATCH",
+          body: JSON.stringify(payload),
+        },
+      );
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setInventoryDestinationModal(createInventoryDestinationModalState());
+      setInventoryImportFeedback({ tone: "success", message: mode === "create" ? "Nave destino agregada." : "Nave destino actualizada." });
+    } catch (error) {
+      setInventoryDestinationModal((current) => ({ ...current, submitting: false }));
+      setInventoryImportFeedback({ tone: "danger", message: error?.message || "No se pudo guardar la nave destino." });
+    }
+  }
+
+  async function deleteInventoryDestination(destinationId) {
+    if (!actionPermissions.manageOrderInventory || !destinationId) return;
+
+    try {
+      const result = await requestJson(`/warehouse/inventory/destinations/${destinationId}`, {
+        method: "DELETE",
+      });
+      applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      setInventoryImportFeedback({ tone: "success", message: "Nave destino eliminada." });
+    } catch (error) {
+      setInventoryImportFeedback({ tone: "danger", message: error?.message || "No se pudo eliminar la nave destino." });
+    }
   }
 
   async function createTransportRecord(payload = {}) {
@@ -7551,7 +7753,7 @@ function App() { // NOSONAR
     if (!file) return;
 
     try {
-      const importedItems = await parseInventoryImportFile(file);
+      const importedItems = await parseInventoryImportFile(file, inventoryTab);
 
       if (!importedItems.length) {
         setInventoryImportFeedback({ tone: "danger", message: "No se encontraron filas válidas. Usa columnas como codigo, dominio, nombre, stock_actual y stock_minimo." });
@@ -8736,6 +8938,8 @@ function App() { // NOSONAR
       return;
     }
 
+    setResetUserPasswordModal((current) => ({ ...current, submitting: true }));
+
     try {
       const result = await requestJson(`/auth/users/${resetUserPasswordModal.userId}/password`, {
         method: "PATCH",
@@ -8743,9 +8947,9 @@ function App() { // NOSONAR
       });
       applyRemoteWarehouseState(result.data.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
       setShowResetUserPassword(false);
-      setResetUserPasswordModal({ open: false, userId: null, userName: "", password: "", message: "" });
+      setResetUserPasswordModal({ open: false, userId: null, userName: "", password: "", message: "", submitting: false });
     } catch (error) {
-      setResetUserPasswordModal((current) => ({ ...current, message: error?.message || "No se pudo restablecer la contraseña." }));
+      setResetUserPasswordModal((current) => ({ ...current, submitting: false, message: error?.message || "No se pudo restablecer la contraseña." }));
     }
   }
 
@@ -9007,6 +9211,8 @@ function App() { // NOSONAR
     deleteDocumentacionArea,
     currentInventorySupplyableCount: currentInventorySupplyableItems.length,
     inventoryCleaningSite,
+    inventoryDestinationWarehouse,
+    setInventoryDestinationWarehouse,
     inventorySearch,
     inventoryStats,
     inventoryTab,
@@ -9016,6 +9222,13 @@ function App() { // NOSONAR
     openInventoryTransferHistory,
     openInventoryTransferViewer,
     openOrderInventoryTransfer,
+    openInventoryDestinationModal,
+    closeInventoryDestinationModal,
+    submitInventoryDestinationModal,
+    deleteInventoryDestination,
+    inventoryDestinationModal,
+    inventoryTransferAvailableWarehouses,
+    inventoryTransferDestinationsByWarehouse,
     orderInventoryTransferMovements,
     orderInventoryTransferSummary,
     InventoryLookupInput,
@@ -9589,7 +9802,7 @@ function App() { // NOSONAR
         </div>
       </Modal>
 
-      <Modal className="modal-wide catalog-activity-modal" open={catalogModal.open} title={catalogModal.mode === "create" ? "Nueva actividad" : "Editar actividad"} confirmLabel={catalogModal.mode === "create" ? "Guardar" : "Guardar cambios"} cancelLabel="Cancelar" onClose={() => setCatalogModal(createEmptyCatalogModalState())} onConfirm={submitCatalogModal}>
+      <Modal className="modal-wide catalog-activity-modal" open={catalogModal.open} title={catalogModal.mode === "create" ? "Nueva actividad" : "Editar actividad"} confirmLabel={catalogModal.mode === "create" ? "Guardar" : "Guardar cambios"} cancelLabel="Cancelar" onClose={() => setCatalogModal(createEmptyCatalogModalState())} onConfirm={submitCatalogModal} confirmDisabled={catalogModal.submitting}>
         <div className="modal-form-grid catalog-activity-modal-grid">
           <label className="app-modal-field">
             <span>Area propietaria</span>
@@ -9786,7 +9999,7 @@ function App() { // NOSONAR
         </div>
       </Modal>
 
-      <Modal open={userModal.open} className="user-management-modal" title={userModal.mode === "create" ? "Crear nuevo player" : "Editar player"} confirmLabel={userModal.mode === "create" ? "Guardar player" : "Guardar cambios"} cancelLabel="Cancelar" onClose={closeUserModal} onConfirm={submitUserModal}>
+      <Modal open={userModal.open} className="user-management-modal" title={userModal.mode === "create" ? "Crear nuevo player" : "Editar player"} confirmLabel={userModal.mode === "create" ? "Guardar player" : "Guardar cambios"} cancelLabel="Cancelar" onClose={closeUserModal} onConfirm={submitUserModal} confirmDisabled={userModal.submitting}>
         <div className="modal-form-grid">
           {userModalMessage.text ? (
             <p className={`validation-text ${userModalMessage.tone === "success" ? "success" : ""}`.trim()} style={{ margin: 0 }}>
@@ -10081,7 +10294,7 @@ function App() { // NOSONAR
         </div>
       </Modal>
 
-      <Modal open={templateEditorModal.open} title="Editar plantilla guardada" confirmLabel="Guardar cambios" cancelLabel="Cancelar" onClose={() => setTemplateEditorModal({ open: false, id: null, name: "", description: "", category: "", visibilityType: "department", sharedDepartments: [], sharedUserIds: [] })} onConfirm={submitBoardTemplateEdit}>
+      <Modal open={templateEditorModal.open} title="Editar plantilla guardada" confirmLabel="Guardar cambios" cancelLabel="Cancelar" onClose={() => setTemplateEditorModal({ open: false, id: null, name: "", description: "", category: "", visibilityType: "department", sharedDepartments: [], sharedUserIds: [], submitting: false })} onConfirm={submitBoardTemplateEdit} confirmDisabled={templateEditorModal.submitting}>
         <div className="modal-form-grid">
           <label className="app-modal-field">
             <span>Nombre de plantilla</span>
@@ -10356,9 +10569,10 @@ function App() { // NOSONAR
         cancelLabel="Cancelar"
         onClose={() => {
           setShowResetUserPassword(false);
-          setResetUserPasswordModal({ open: false, userId: null, userName: "", password: "", message: "" });
+          setResetUserPasswordModal({ open: false, userId: null, userName: "", password: "", message: "", submitting: false });
         }}
         onConfirm={submitUserPasswordReset}
+        confirmDisabled={resetUserPasswordModal.submitting}
       >
         <div className="modal-form-grid">
           <p className="modal-footnote">La sesión activa de {resetUserPasswordModal.userName || "este player"} se cerrará y en su siguiente acceso deberá capturar una contraseña nueva.</p>
@@ -10385,7 +10599,7 @@ function App() { // NOSONAR
         </div>
       </Modal>
 
-      <Modal className="inventory-item-modal" open={inventoryModal.open} title={inventoryModal.mode === "create" ? `Agregar ${inventoryEntityLabel}` : `Editar ${inventoryEntityLabel}`} confirmLabel={inventoryModal.mode === "create" ? `Guardar ${inventoryEntityLabel}` : "Guardar cambios"} cancelLabel="Cancelar" onClose={() => setInventoryModal(createInventoryModalState())} onConfirm={submitInventoryModal}>
+      <Modal className="inventory-item-modal" open={inventoryModal.open} title={inventoryModal.mode === "create" ? `Agregar ${inventoryEntityLabel}` : `Editar ${inventoryEntityLabel}`} confirmLabel={inventoryModal.mode === "create" ? `Guardar ${inventoryEntityLabel}` : "Guardar cambios"} cancelLabel="Cancelar" onClose={() => setInventoryModal(createInventoryModalState())} onConfirm={submitInventoryModal} confirmDisabled={inventoryModal.submitting}>
         <div className="modal-form-grid">
           <label className="app-modal-field">
             <span>Dominio</span>
@@ -10535,7 +10749,7 @@ function App() { // NOSONAR
         </div>
       </Modal>
 
-      <Modal open={inventoryMovementModal.open} title={inventoryMovementModalTitle} confirmLabel={isOrderTransferMovementModal ? "Guardar transferencia" : "Guardar movimiento"} cancelLabel="Cancelar" onClose={closeInventoryMovementModal} onConfirm={submitInventoryMovementModal}>
+      <Modal open={inventoryMovementModal.open} title={inventoryMovementModalTitle} confirmLabel={isOrderTransferMovementModal ? "Guardar transferencia" : "Guardar movimiento"} cancelLabel="Cancelar" onClose={closeInventoryMovementModal} onConfirm={submitInventoryMovementModal} confirmDisabled={inventoryMovementModal.submitting}>
         <div className="modal-form-grid">
           {isOrderTransferMovementModal ? (
             <label className="app-modal-field">
@@ -10586,31 +10800,38 @@ function App() { // NOSONAR
                 <span>Resguardo actual del insumo</span>
                 <input value={inventoryMovementSelectedItem?.storageLocation || "Sin resguardo asignado"} readOnly />
               </label>
-              {inventoryMovementSavedDestinations.length ? (
-                <label className="app-modal-field">
-                  <span>Destino guardado</span>
-                  <select value={inventoryMovementSelectedSavedDestinationKey} onChange={(event) => applySavedInventoryDestination(event.target.value)}>
-                    <option value="">Agregar nuevo destino</option>
-                    {inventoryMovementSavedDestinations.map((destination) => <option key={destination.destinationKey} value={destination.destinationKey}>{formatInventoryTransferDestinationLabel(destination)}</option>)}
-                  </select>
-                </label>
-              ) : null}
-              {!inventoryMovementSavedDestinations.length || !inventoryMovementSelectedSavedDestinationKey ? (
-                <>
-                  <label className="app-modal-field">
-                    <span>Punto de entrega destino</span>
-                    <input value={inventoryMovementModal.storageLocation} onChange={(event) => updateInventoryMovementModal({ storageLocation: event.target.value })} placeholder="Ej: Estación de empaque A" />
-                  </label>
-                  <label className="app-modal-field">
-                    <span>Nave destino</span>
-                    <input value={inventoryMovementModal.warehouse} onChange={(event) => updateInventoryMovementModal({ warehouse: event.target.value })} placeholder="Ej: Nave 1" />
-                  </label>
-                  <label className="app-modal-field">
-                    <span>Quién recibe el material</span>
-                    <input value={inventoryMovementModal.recipientName} onChange={(event) => updateInventoryMovementModal({ recipientName: event.target.value })} placeholder="Nombre del responsable destino" />
-                  </label>
-                </>
-              ) : null}
+
+              <div className="app-modal-field app-modal-field-full">
+                <span>Nave destino</span>
+                <div className="inventory-transfer-warehouse-tabs">
+                  {inventoryTransferAvailableWarehouses.map((warehouse) => (
+                    <button key={warehouse} type="button" className={`warehouse-tab ${inventoryMovementModal.selectedTransferDestinationTab === warehouse ? "active" : ""}`} onClick={() => updateInventoryMovementModal({ selectedTransferDestinationTab: warehouse })}>
+                      {warehouse}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {inventoryMovementModal.selectedTransferDestinationTab && (
+                <div className="app-modal-field app-modal-field-full">
+                  <span>Punto de entrega en {inventoryMovementModal.selectedTransferDestinationTab}</span>
+                  <div className="inventory-transfer-destinations-list">
+                    {(inventoryTransferDestinationsByWarehouse[inventoryMovementModal.selectedTransferDestinationTab] || []).map((destination) => (
+                      <button key={destination.destinationKey} type="button" className={`destination-button ${inventoryMovementModal.transferTargetKey === destination.destinationKey ? "selected" : ""}`} onClick={() => updateInventoryMovementModal({ warehouse: destination.warehouse, storageLocation: destination.storageLocation, recipientName: destination.recipientName, transferTargetKey: destination.destinationKey })}>
+                        <div className="destination-name">{destination.storageLocation || "Sin nombre"}</div>
+                        {destination.recipientName && <div className="destination-recipient">{destination.recipientName}</div>}
+                        <div className="destination-stock">{destination.availableUnits} {destination.unitLabel || "pzas"}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <label className="app-modal-field">
+                <span>Quién recibe el material</span>
+                <input value={inventoryMovementModal.recipientName} onChange={(event) => updateInventoryMovementModal({ recipientName: event.target.value })} placeholder="Nombre del responsable destino" />
+              </label>
+
               <div className="app-modal-field app-modal-field-full inventory-transfer-modal-summary">
                 <span>Resumen actual</span>
                 <div className="inventory-transfer-modal-summary-grid">
@@ -10628,6 +10849,23 @@ function App() { // NOSONAR
           <label className="app-modal-field">
             <span>Notas</span>
             <input value={inventoryMovementModal.notes} onChange={(event) => updateInventoryMovementModal({ notes: event.target.value })} placeholder="Detalle del movimiento" />
+          </label>
+        </div>
+      </Modal>
+
+      <Modal open={inventoryDestinationModal.open} title={inventoryDestinationModal.mode === "create" ? "Agregar nueva nave" : "Editar nave"} confirmLabel={inventoryDestinationModal.mode === "create" ? "Guardar nave" : "Guardar cambios"} cancelLabel="Cancelar" onClose={closeInventoryDestinationModal} onConfirm={submitInventoryDestinationModal} confirmDisabled={inventoryDestinationModal.submitting}>
+        <div className="modal-form-grid">
+          <label className="app-modal-field">
+            <span>Nave</span>
+            <input value={inventoryDestinationModal.warehouse} onChange={(event) => setInventoryDestinationModal((current) => ({ ...current, warehouse: event.target.value }))} placeholder="Ej: Nave 1" />
+          </label>
+          <label className="app-modal-field">
+            <span>Punto de entrega</span>
+            <input value={inventoryDestinationModal.storageLocation} onChange={(event) => setInventoryDestinationModal((current) => ({ ...current, storageLocation: event.target.value }))} placeholder="Ej: Estante 4 / Área de empaque" />
+          </label>
+          <label className="app-modal-field">
+            <span>Quién recibe el material</span>
+            <input value={inventoryDestinationModal.recipientName} onChange={(event) => setInventoryDestinationModal((current) => ({ ...current, recipientName: event.target.value }))} placeholder="Nombre del responsable destino" />
           </label>
         </div>
       </Modal>

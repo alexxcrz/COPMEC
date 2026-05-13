@@ -607,6 +607,7 @@ export function createInventoryModalState(mode = "create", item = {}, fallbackDo
       quantity: entry.quantity ? String(entry.quantity) : "",
     })),
     customFields: { ...(normalized.customFields || {}) },
+    submitting: false,
   };
 }
 
@@ -629,6 +630,8 @@ export function createInventoryMovementModalState(item = null, movementType = IN
     remainingUnits: "",
     transferTargetKey: defaultDestination?.destinationKey || "",
     unitLabel: normalizedItem?.unitLabel || "pzas",
+    submitting: false,
+    selectedTransferDestinationTab: "",
   };
 }
 
@@ -646,6 +649,18 @@ export function createInventoryTransferConfirmModalState() {
     lastKnownUnits: null,
     pendingPayload: null,
     draftMovementModal: null,
+  };
+}
+
+export function createInventoryDestinationModalState(mode = "create", destination = {}) {
+  return {
+    open: false,
+    mode,
+    id: destination?.id || null,
+    warehouse: destination?.warehouse || "",
+    storageLocation: destination?.storageLocation || "",
+    recipientName: destination?.recipientName || "",
+    submitting: false,
   };
 }
 
@@ -2897,7 +2912,7 @@ export function sanitizeImportedText(value) {
   return value;
 }
 
-export function mapInventoryImportRow(row, index) {
+export function mapInventoryImportRow(row, index, defaultDomain = "base") {
   const normalizedRow = Object.entries(row ?? EMPTY_OBJECT).reduce((accumulator, [key, value]) => {
     const alias = INVENTORY_IMPORT_FIELD_ALIASES[normalizeImportHeader(key)];
     if (alias) accumulator[alias] = sanitizeImportedText(value);
@@ -2906,7 +2921,8 @@ export function mapInventoryImportRow(row, index) {
 
   const code = String(normalizedRow.code || "").trim();
   const name = String(normalizedRow.name || "").trim();
-  const domain = normalizeInventoryDomain(normalizedRow.domain);
+  // Use domain from file if specified, otherwise use defaultDomain (the current tab)
+  const domain = normalizedRow.domain ? normalizeInventoryDomain(normalizedRow.domain) : defaultDomain;
   const usesPresentation = inventoryDomainUsesPresentation(domain);
   const usesPackagingMetrics = inventoryDomainUsesPackagingMetrics(domain);
 
@@ -2931,7 +2947,7 @@ export function mapInventoryImportRow(row, index) {
   };
 }
 
-export async function parseInventoryImportFile(file) {
+export async function parseInventoryImportFile(file, defaultDomain = "base") {
   const buffer = await file.arrayBuffer();
   const isCsv = /\.csv$/i.test(file.name);
   let rows = [];
@@ -2971,7 +2987,7 @@ export async function parseInventoryImportFile(file) {
   }
 
   return rows
-    .map((row, index) => mapInventoryImportRow(row, index))
+    .map((row, index) => mapInventoryImportRow(row, index, defaultDomain))
     .filter(Boolean);
 }
 
@@ -3253,6 +3269,7 @@ export function createUserModalState(overrides = {}) {
     password: "",
     managerId: "",
     permissionPageId: "",
+    submitting: false,
     ...overrides,
     permissionOverrides: {
       pages: { ...(permissionOverrides.pages ?? EMPTY_OBJECT) },

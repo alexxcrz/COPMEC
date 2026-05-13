@@ -79,9 +79,12 @@ export default function GestionInventario({ contexto }) {
     setInventoryTab,
     inventoryCleaningSite,
     setInventoryCleaningSite,
+    inventoryDestinationWarehouse,
+    setInventoryDestinationWarehouse,
     INVENTORY_DOMAIN_BASE,
     INVENTORY_DOMAIN_CLEANING,
     INVENTORY_DOMAIN_ORDERS,
+    INVENTORY_DOMAIN_DESTINATIONS,
     CLEANING_SITE_OPTIONS,
     inventoryActionsMenuRef,
     openCreateInventoryItem,
@@ -119,6 +122,9 @@ export default function GestionInventario({ contexto }) {
     openInventoryTransferViewer,
     openInventoryTransferHistory,
     openOrderInventoryTransfer,
+    openInventoryDestinationModal,
+    inventoryTransferAvailableWarehouses,
+    inventoryTransferDestinationsByWarehouse,
     orderInventoryTransferMovements,
     orderInventoryTransferSummary,
     actionPermissions,
@@ -159,6 +165,7 @@ export default function GestionInventario({ contexto }) {
   const isBaseInventoryTab = inventoryTab === INVENTORY_DOMAIN_BASE;
   const isCleaningInventoryTab = inventoryTab === INVENTORY_DOMAIN_CLEANING;
   const isOrderInventoryTab = inventoryTab === INVENTORY_DOMAIN_ORDERS;
+  const isDestinationsInventoryTab = inventoryTab === INVENTORY_DOMAIN_DESTINATIONS;
   const showPresentationColumn = isBaseInventoryTab || isCleaningInventoryTab;
   const currentInventoryColumns = useMemo(
     () => (inventoryColumns || []).filter((column) => column.domain === inventoryTab),
@@ -259,6 +266,24 @@ export default function GestionInventario({ contexto }) {
                     {option.label}
                   </button>
                 ))}
+              </div>
+            ) : null}
+            {isOrderInventoryTab ? (
+              <div className="tab-strip inventory-subtab-strip">
+                <button type="button" className="icon-button" title="Agregar nave de destino" onClick={() => openInventoryDestinationModal("create")} disabled={!currentInventoryManagePermission}>
+                  <Plus size={14} /> Nueva nave
+                </button>
+                {inventoryTransferAvailableWarehouses.map((warehouse) => (
+                  <button
+                    key={warehouse}
+                    type="button"
+                    className={inventoryDestinationWarehouse === warehouse ? "tab active" : "tab"}
+                    onClick={() => setInventoryDestinationWarehouse(inventoryDestinationWarehouse === warehouse ? "" : warehouse)}
+                  >
+                    {warehouse}
+                  </button>
+                ))}
+                {!inventoryTransferAvailableWarehouses.length ? <span className="subtle-line">Sin naves registradas</span> : null}
               </div>
             ) : null}
           </div>
@@ -431,11 +456,6 @@ export default function GestionInventario({ contexto }) {
             <div>
               <h3>{inventoryTitle}</h3>
             </div>
-            {!isBaseInventoryTab ? (
-              <button type="button" className="icon-button" onClick={() => openInventoryBulkRestockModal(inventoryTab)} disabled={!currentInventoryManagePermission || !currentInventorySupplyableCount}>
-                <Plus size={15} /> Surtido general
-              </button>
-            ) : null}
             <label className="users-search-field inventory-search-field">
               <span>Buscar</span>
               <div className="users-search-input-wrap">

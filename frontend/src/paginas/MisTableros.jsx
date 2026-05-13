@@ -869,6 +869,31 @@ export default function MisTableros({ contexto }) {
     });
   }
 
+  function openManualChecklistModal(rowRecord) {
+    if (!rowRecord?.id) return;
+    // Abrir el inspection modal para crear un checklist manual sin actividad vinculada
+    const defaultChecklistTemplate = {
+      name: "Checklist manual",
+      siteOptions: [],
+      sections: [
+        {
+          id: `section-${Date.now()}`,
+          title: "Verificaciones",
+          checks: [],
+        },
+      ],
+    };
+    setInspectionModalState({
+      open: true,
+      rowId: rowRecord.id,
+      activityLabel: `Checklist manual - ${rowRecord.id}`,
+      checklistTemplate: defaultChecklistTemplate,
+      existingInspectionRecord: getRowInspectionRecord(rowRecord),
+      requireIncidentSiteSelection: false,
+      incidentSiteOptions: [],
+    });
+  }
+
   async function handleStartRow(rowRecord) {
     if (!selectedCustomBoard || !rowRecord?.id) return;
     const activityLabel = getRowActivityLabel(rowRecord);
@@ -1562,6 +1587,11 @@ export default function MisTableros({ contexto }) {
                                   {canOpenChecklistWhileRunning ? (
                                     <button type="button" className="board-action-button pause icon-only" title="Abrir checklist" aria-label="Abrir checklist" onClick={() => { void handleStartRow(row); }} disabled={!rowWorkflowEnabled}>
                                       <ClipboardList size={13} />
+                                    </button>
+                                  ) : null}
+                                  {row.status !== STATUS_FINISHED ? (
+                                    <button type="button" className="board-action-button icon-only" title="Crear checklist manual" aria-label="Crear checklist manual" onClick={() => openManualChecklistModal(row)} disabled={!rowWorkflowEnabled}>
+                                      <Plus size={13} />
                                     </button>
                                   ) : null}
                                   {canPauseRow ? (
