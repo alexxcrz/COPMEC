@@ -75,6 +75,7 @@ const COMPONENT_TYPE_CATEGORIES = [
     icon: "📦",
     types: [
       { value: "inventoryLookup", emoji: "🔍", label: "Buscador de inventario" },
+      { value: "maintenanceInventoryLookup", emoji: "🛠️", label: "Buscador de insumos de mantenimiento" },
       { value: "inventoryLookupLogistics", emoji: "📦", label: "Buscador + empaque" },
       { value: "inventoryProperty", emoji: "📄", label: "Dato derivado" },
     ],
@@ -204,7 +205,7 @@ export function BoardComponentStudioModal({
   }, [open, mode]);
 
   const isLastStep = currentStep === studioSteps.length - 1;
-  const inventorySourceFields = (draft.columns || []).filter((column) => ["inventoryLookup", INVENTORY_LOOKUP_LOGISTICS_FIELD].includes(column.type));
+  const inventorySourceFields = (draft.columns || []).filter((column) => ["inventoryLookup", "maintenanceInventoryLookup", INVENTORY_LOOKUP_LOGISTICS_FIELD].includes(column.type));
   const resolvedInventorySourceFieldId = inventorySourceFields.some((column) => column.id === draft.sourceFieldId)
     ? draft.sourceFieldId
     : inventorySourceFields[inventorySourceFields.length - 1]?.id || "";
@@ -285,7 +286,7 @@ export function BoardComponentStudioModal({
         return nextDraft;
       }
       if (nextType === "inventoryProperty") {
-        const sourceFields = (current.columns || []).filter((column) => ["inventoryLookup", INVENTORY_LOOKUP_LOGISTICS_FIELD].includes(column.type));
+        const sourceFields = (current.columns || []).filter((column) => ["inventoryLookup", "maintenanceInventoryLookup", INVENTORY_LOOKUP_LOGISTICS_FIELD].includes(column.type));
         const fallbackSourceFieldId = sourceFields.some((column) => column.id === current.sourceFieldId)
           ? current.sourceFieldId
           : sourceFields[sourceFields.length - 1]?.id || "";
@@ -397,6 +398,7 @@ export function BoardComponentStudioModal({
                 const categoryTypes = category.types.map((t) => {
                   let actualValue = t.value;
                   if (t.value === "inventoryLookupLogistics") actualValue = contextoConstructor.INVENTORY_LOOKUP_LOGISTICS_FIELD || "inventoryLookupLogistics";
+                  if (t.value === "maintenanceInventoryLookup") actualValue = contextoConstructor.MAINTENANCE_INVENTORY_LOOKUP_FIELD || "maintenanceInventoryLookup";
                   if (t.value === "activityList") actualValue = contextoConstructor.BOARD_ACTIVITY_LIST_FIELD || "activityList";
                   return { ...t, actualValue };
                 });

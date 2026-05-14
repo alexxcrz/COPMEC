@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import MantenimientoInsumosForm from "../components/MantenimientoInsumosForm";
 
 function InventoryLotBadges({ item, columnKey }) {
   const [open, setOpen] = useState(false);
@@ -84,6 +85,7 @@ export default function GestionInventario({ contexto }) {
     INVENTORY_DOMAIN_BASE,
     INVENTORY_DOMAIN_CLEANING,
     INVENTORY_DOMAIN_ORDERS,
+    INVENTORY_DOMAIN_MAINTENANCE,
     INVENTORY_DOMAIN_DESTINATIONS,
     CLEANING_SITE_OPTIONS,
     inventoryActionsMenuRef,
@@ -99,7 +101,6 @@ export default function GestionInventario({ contexto }) {
     inventoryStats,
     StatTile,
     currentInventoryItems,
-    currentInventorySupplyableCount,
     Package,
     Eye,
     inventorySearch,
@@ -108,7 +109,6 @@ export default function GestionInventario({ contexto }) {
     RotateCcw,
     catalogMap,
     InventoryStockBar,
-    openInventoryBulkRestockModal,
     openInventoryMovement,
     INVENTORY_MOVEMENT_CONSUME,
     openInventoryRestockModal,
@@ -124,16 +124,19 @@ export default function GestionInventario({ contexto }) {
     openOrderInventoryTransfer,
     openInventoryDestinationModal,
     inventoryTransferAvailableWarehouses,
-    inventoryTransferDestinationsByWarehouse,
     orderInventoryTransferMovements,
+    maintenanceInventoryTransferMovements,
     orderInventoryTransferSummary,
+    maintenanceInventoryTransferSummary,
+    maintenanceInventoryItems,
+    submitMaintenanceUsage,
+    exportMaintenanceInventoryItemsToCsv,
     actionPermissions,
     duplicateInventoryItem,
     Copy,
     inventoryColumns,
     createInventoryColumn,
     deleteInventoryColumn,
-    inventorySystemColumnSuggestions,
   } = contexto;
 
   const [newColumnLabel, setNewColumnLabel] = useState("");
@@ -142,6 +145,26 @@ export default function GestionInventario({ contexto }) {
   const canViewCleaningInventory = Boolean(actionPermissions.viewCleaningInventory || actionPermissions.manageCleaningInventory || actionPermissions.deleteCleaningInventory || actionPermissions.importCleaningInventory);
   const canViewOrderInventory = Boolean(actionPermissions.viewOrderInventory || actionPermissions.manageOrderInventory || actionPermissions.deleteOrderInventory || actionPermissions.importOrderInventory);
   const hasInventoryTabAccess = canViewBaseInventory || canViewCleaningInventory || canViewOrderInventory;
+
+  const getTransferredUnits = (item) => (item?.transferTargets || []).reduce((sum, target) => sum + Number(target?.availableUnits || 0), 0);
+  const getAvailableTransferUnits = (item) => Math.max(0, Number(item?.stockUnits || 0));
+  const getTransferBarTargetUnits = (item) => Math.max(getAvailableTransferUnits(item) + getTransferredUnits(item), Number(item?.minStockUnits || 0), 1);
+  const currentInventoryTransferSummary = inventoryTab === INVENTORY_DOMAIN_MAINTENANCE ? maintenanceInventoryTransferSummary : orderInventoryTransferSummary;
+  const currentInventoryTransferMovements = inventoryTab === INVENTORY_DOMAIN_MAINTENANCE ? maintenanceInventoryTransferMovements : orderInventoryTransferMovements;
+  const orderItemsWithTransfers = currentInventoryTransferSummary.filter((item) => item.transferTargets.length > 0);
+  const isBaseInventoryTab = inventoryTab === INVENTORY_DOMAIN_BASE;
+  const isCleaningInventoryTab = inventoryTab === INVENTORY_DOMAIN_CLEANING;
+  const isOrderInventoryTab = inventoryTab === INVENTORY_DOMAIN_ORDERS;
+  const isMaintenanceInventoryTab = inventoryTab === INVENTORY_DOMAIN_MAINTENANCE;
+  const showPresentationColumn = isBaseInventoryTab || isCleaningInventoryTab;
+  const currentInventoryColumns = useMemo(
+    () => (inventoryColumns || []).filter((column) => column.domain === inventoryTab),
+    [inventoryColumns, inventoryTab],
+  );
+  const customInventoryColumns = useMemo(
+    () => currentInventoryColumns.filter((column) => !column.isSystem),
+    [currentInventoryColumns],
+  );
 
   if (!hasInventoryTabAccess) {
     return (
@@ -158,24 +181,13 @@ export default function GestionInventario({ contexto }) {
     );
   }
 
-  const getTransferredUnits = (item) => (item?.transferTargets || []).reduce((sum, target) => sum + Number(target?.availableUnits || 0), 0);
-  const getAvailableTransferUnits = (item) => Math.max(0, Number(item?.stockUnits || 0));
-  const getTransferBarTargetUnits = (item) => Math.max(getAvailableTransferUnits(item) + getTransferredUnits(item), Number(item?.minStockUnits || 0), 1);
-  const orderItemsWithTransfers = orderInventoryTransferSummary.filter((item) => item.transferTargets.length > 0);
-  const isBaseInventoryTab = inventoryTab === INVENTORY_DOMAIN_BASE;
-  const isCleaningInventoryTab = inventoryTab === INVENTORY_DOMAIN_CLEANING;
-  const isOrderInventoryTab = inventoryTab === INVENTORY_DOMAIN_ORDERS;
-  const isDestinationsInventoryTab = inventoryTab === INVENTORY_DOMAIN_DESTINATIONS;
-  const showPresentationColumn = isBaseInventoryTab || isCleaningInventoryTab;
-  const currentInventoryColumns = useMemo(
-    () => (inventoryColumns || []).filter((column) => column.domain === inventoryTab),
-    [inventoryColumns, inventoryTab],
-  );
-  const customInventoryColumns = useMemo(
-    () => currentInventoryColumns.filter((column) => !column.isSystem),
-    [currentInventoryColumns],
-  );
-  const inventoryTitle = inventoryTab === INVENTORY_DOMAIN_CLEANING ? "Insumos de limpieza" : inventoryTab === INVENTORY_DOMAIN_ORDERS ? "Insumos para pedidos" : "Productos";
+  const inventoryTitle = inventoryTab === INVENTORY_DOMAIN_CLEANING
+    ? "Insumos de limpieza"
+    : inventoryTab === INVENTORY_DOMAIN_ORDERS
+      ? "Insumos para pedidos"
+      : inventoryTab === INVENTORY_DOMAIN_MAINTENANCE
+        ? "Insumos de mantenimiento"
+        : "Productos";
 
   function formatCleaningLocation(item) {
     return [item?.cleaningSite || "C3", item?.storageLocation || "Sin ubicación"].join(" · ");
@@ -206,6 +218,22 @@ export default function GestionInventario({ contexto }) {
       );
     }
 
+    if (isMaintenanceInventoryTab) {
+      const currentStock = Number(item.stockUnits || 0);
+      const target = Math.max(currentStock, Number(item.minStockUnits || 0), 1);
+      return (
+        <InventoryStockBar
+          current={currentStock}
+          minimum={item.minStockUnits}
+          target={target}
+          unitLabel={item.unitLabel}
+          primaryLabel={`Stock disponible ${currentStock} ${item.unitLabel || "pzas"}`}
+          secondaryLabel={item.minStockUnits ? `Mínimo ${item.minStockUnits} ${item.unitLabel || "pzas"}` : ""}
+          className="inventory-stock-bar"
+        />
+      );
+    }
+
     return <InventoryStockBar current={item.stockUnits} minimum={item.minStockUnits} unitLabel={item.unitLabel} className="inventory-stock-bar" />;
   }
 
@@ -220,7 +248,7 @@ export default function GestionInventario({ contexto }) {
   }
 
   function renderInventoryControlCell(item) {
-    if (isOrderInventoryTab) {
+    if (isOrderInventoryTab || isMaintenanceInventoryTab) {
       return (
         <div className="saved-board-list board-builder-launch-list">
           <button type="button" className="icon-button inventory-inline-action" onClick={() => openInventoryTransferHistory(item)} disabled={!currentInventoryManagePermission}>
@@ -256,7 +284,10 @@ export default function GestionInventario({ contexto }) {
                 <button type="button" className={inventoryTab === INVENTORY_DOMAIN_CLEANING ? "tab active" : "tab"} onClick={() => setInventoryTab(INVENTORY_DOMAIN_CLEANING)}>Insumos de limpieza</button>
               ) : null}
               {(actionPermissions.viewOrderInventory || actionPermissions.manageOrderInventory || actionPermissions.deleteOrderInventory || actionPermissions.importOrderInventory) ? (
-                <button type="button" className={inventoryTab === INVENTORY_DOMAIN_ORDERS ? "tab active" : "tab"} onClick={() => setInventoryTab(INVENTORY_DOMAIN_ORDERS)}>Insumos para pedidos</button>
+                <>
+                  <button type="button" className={inventoryTab === INVENTORY_DOMAIN_ORDERS ? "tab active" : "tab"} onClick={() => setInventoryTab(INVENTORY_DOMAIN_ORDERS)}>Insumos para pedidos</button>
+                  <button type="button" className={inventoryTab === INVENTORY_DOMAIN_MAINTENANCE ? "tab active" : "tab"} onClick={() => setInventoryTab(INVENTORY_DOMAIN_MAINTENANCE)}>Insumos de mantenimiento</button>
+                </>
               ) : null}
             </div>
             {inventoryTab === INVENTORY_DOMAIN_CLEANING ? (
@@ -313,6 +344,11 @@ export default function GestionInventario({ contexto }) {
                 <button type="button" className="custom-board-menu-item" onClick={() => { setInventoryActionsMenuOpen(false); downloadInventoryTemplate(); }} disabled={!currentInventoryImportPermission}>
                   Plantilla Excel
                 </button>
+                {isMaintenanceInventoryTab ? (
+                  <button type="button" className="custom-board-menu-item" onClick={() => { setInventoryActionsMenuOpen(false); exportMaintenanceInventoryItemsToCsv(); }} disabled={!currentInventoryImportPermission}>
+                    Exportar insumos de mantenimiento
+                  </button>
+                ) : null}
                 <button type="button" className="custom-board-menu-item" onClick={() => { setInventoryActionsMenuOpen(false); inventoryFileInputRef.current?.click(); }} disabled={!currentInventoryImportPermission}>
                   Importar CSV / Excel
                 </button>
@@ -416,7 +452,7 @@ export default function GestionInventario({ contexto }) {
         </article>
       ) : null}
 
-      {/* Control de transferencias — solo para insumos para pedidos (arriba de la tabla) */}
+      {/* Control de transferencias — insumos para pedidos y mantenimiento (arriba de la tabla) */}
       {isOrderInventoryTab ? (
         <article className="surface-card inventory-surface-card table-card">
           <div className="card-header-row">
@@ -426,7 +462,7 @@ export default function GestionInventario({ contexto }) {
             <div className="inventory-transfer-card-actions">
               <button type="button" className="icon-button" onClick={() => openOrderInventoryTransfer()} disabled={!currentInventoryManagePermission}><ArrowUp size={15} /> Nueva transferencia</button>
               <button type="button" className="icon-button" onClick={openInventoryTransferViewer} disabled={!currentInventoryManagePermission}><Eye size={15} /> Ver saldos</button>
-              <span className="chip primary">{orderInventoryTransferMovements.length}</span>
+              <span className="chip primary">{currentInventoryTransferMovements.length}</span>
             </div>
           </div>
           <div className="saved-board-list board-builder-launch-list">
@@ -448,6 +484,13 @@ export default function GestionInventario({ contexto }) {
             {!orderItemsWithTransfers.length ? <p className="subtle-line">No hay transferencias registradas.</p> : null}
           </div>
         </article>
+      ) : null}
+      {isMaintenanceInventoryTab ? (
+        <MantenimientoInsumosForm
+          inventoryItems={maintenanceInventoryItems}
+          onSubmit={submitMaintenanceUsage}
+          disabled={!currentInventoryManagePermission}
+        />
       ) : null}
 
       <section className="page-grid">
@@ -521,7 +564,7 @@ export default function GestionInventario({ contexto }) {
                       <td>
                         <div className="row-actions compact">
                           {!isBaseInventoryTab ? <button type="button" className="icon-button" title="Surtir" onClick={() => openInventoryRestockModal(item)} disabled={!currentInventoryManagePermission}><Plus size={15} /></button> : null}
-                          {!isBaseInventoryTab ? <button type="button" className="icon-button" title={isOrderInventoryTab ? "Transferir" : "Descontar"} onClick={() => isOrderInventoryTab ? openOrderInventoryTransfer(item) : openInventoryMovement(item, INVENTORY_MOVEMENT_CONSUME)} disabled={!currentInventoryManagePermission}><ArrowUp size={15} /></button> : null}
+                          {!isBaseInventoryTab ? <button type="button" className="icon-button" title={isOrderInventoryTab ? "Transferir" : isMaintenanceInventoryTab ? "Descontar" : "Descontar"} onClick={() => isOrderInventoryTab ? openOrderInventoryTransfer(item) : isMaintenanceInventoryTab ? openInventoryMovement(item, INVENTORY_MOVEMENT_CONSUME) : openInventoryMovement(item, INVENTORY_MOVEMENT_CONSUME)} disabled={!currentInventoryManagePermission}><ArrowUp size={15} /></button> : null}
                           <button type="button" className="icon-button" title="Editar" onClick={() => openEditInventoryItem(item)} disabled={!currentInventoryManagePermission}><Pencil size={15} /></button>
                           {duplicateInventoryItem ? <button type="button" className="icon-button" title="Duplicar artículo" onClick={() => duplicateInventoryItem(item.id)} disabled={!currentInventoryManagePermission}><Copy size={15} /></button> : null}
                           <button type="button" className="icon-button danger" title="Eliminar" onClick={() => setDeleteInventoryId(item.id)} disabled={!currentInventoryDeletePermission}><Trash2 size={15} /></button>

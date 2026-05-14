@@ -1,4 +1,10 @@
-﻿// Convierte milisegundos a formato hh:mm:ss
+/* eslint-disable */
+import {
+  STORAGE_KEY, SIDEBAR_COLLAPSED_KEY, ACTIVE_PAGE_KEY, DASHBOARD_SECTIONS_KEY, NOTIFICATION_READ_KEY, NOTIFICATION_DELETED_KEY, NOTIFICATION_INBOX_KEY, EMPTY_OBJECT, BOOTSTRAP_MASTER_ID, MASTER_USERNAME, API_BASE_URL, ENABLE_LEGACY_WHOLE_STATE_SYNC, PAGE_BOARD, PAGE_CUSTOM_BOARDS, PAGE_ADMIN, PAGE_DASHBOARD, PAGE_HISTORY, PAGE_PROCESS_AUDITS, PAGE_INVENTORY, PAGE_USERS, PAGE_BIBLIOTECA, PAGE_INCIDENCIAS, PAGE_NOT_FOUND, PAGE_ROUTE_SLUGS, PAGE_ROUTE_ALIASES, EMPTY_LOGIN_DIRECTORY, ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR, STATUS_PENDING, STATUS_RUNNING, STATUS_PAUSED, STATUS_FINISHED, INVENTORY_DOMAIN_BASE, INVENTORY_DOMAIN_CLEANING, INVENTORY_DOMAIN_ORDERS, INVENTORY_DOMAIN_MAINTENANCE, INVENTORY_DOMAIN_DESTINATIONS, INVENTORY_MOVEMENT_RESTOCK, INVENTORY_MOVEMENT_CONSUME, INVENTORY_MOVEMENT_TRANSFER, CONTROL_STATUS_OPTIONS, USER_ROLES, PERMISSION_SCHEMA_VERSION, ROLE_LEVEL, TEMPORARY_PASSWORD_MIN_LENGTH, PROFILE_SELF_EDIT_LIMIT, DEFAULT_AREA_OPTIONS, DEFAULT_BOARD_SECTION_OPTIONS, INVENTORY_LOOKUP_LOGISTICS_FIELD, BOARD_ACTIVITY_LIST_FIELD, DEFAULT_JOB_TITLE_BY_ROLE, DASHBOARD_CHART_PALETTE, DEFAULT_DASHBOARD_SECTION_STATE, DEFAULT_ADMIN_TAB, ACTIVITY_FREQUENCY_OPTIONS, ACTIVITY_FREQUENCY_LABELS, ACTIVITY_FREQUENCY_DAY_OFFSETS, BOARD_FIELD_TYPES, BOARD_FIELD_TYPE_DETAILS, BOARD_FIELD_WIDTHS, COLOR_RULE_OPERATORS, BOARD_FIELD_WIDTH_STYLES, BOARD_FIELD_MIN_WIDTH_BY_TYPE, DEFAULT_BOARD_AUX_COLUMNS_ORDER, BOARD_AUX_COLUMN_DEFINITIONS, BOARD_AUX_COLUMN_IDS, BOARD_TEMPLATES, FORMULA_OPERATIONS, OPTION_SOURCE_TYPES, INVENTORY_PROPERTIES, INVENTORY_IMPORT_FIELD_ALIASES, INVENTORY_DOMAIN_OPTIONS, INVENTORY_MOVEMENT_OPTIONS, CLEANING_SITE_OPTIONS, DEFAULT_CLEANING_SITE, BOARD_OPERATIONAL_CONTEXT_NONE, BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE, BOARD_OPERATIONAL_CONTEXT_CUSTOM, BOARD_OPERATIONAL_CONTEXT_OPTIONS, NAV_ITEMS, ACTION_DEFINITIONS, BOARD_PERMISSION_ACTION_IDS, BOARD_PERMISSION_ACTIONS, PAGE_ACTION_GROUPS, PERMISSION_PRESETS, RESPONSIBLE_VISUALS, ALL_PAGES, ALL_ACTION_IDS, ROLE_PERMISSION_MATRIX, KPI_STYLES
+} from "./constantes.js";
+import { getExcelJsModule } from "./utilidadesImportExcel.js";
+
+// Convierte milisegundos a formato hh:mm:ss
 export function formatElapsedMs(ms) {
   if (!Number.isFinite(ms) || ms < 0) return "00:00:00";
   const totalSeconds = Math.floor(ms / 1000);
@@ -7,11 +13,6 @@ export function formatElapsedMs(ms) {
   const seconds = String(totalSeconds % 60).padStart(2, "0");
   return `${hours}:${minutes}:${seconds}`;
 }
-/* eslint-disable */
-import {
-  STORAGE_KEY, SIDEBAR_COLLAPSED_KEY, ACTIVE_PAGE_KEY, DASHBOARD_SECTIONS_KEY, NOTIFICATION_READ_KEY, NOTIFICATION_DELETED_KEY, NOTIFICATION_INBOX_KEY, EMPTY_OBJECT, BOOTSTRAP_MASTER_ID, MASTER_USERNAME, API_BASE_URL, ENABLE_LEGACY_WHOLE_STATE_SYNC, PAGE_BOARD, PAGE_CUSTOM_BOARDS, PAGE_ADMIN, PAGE_DASHBOARD, PAGE_HISTORY, PAGE_PROCESS_AUDITS, PAGE_INVENTORY, PAGE_USERS, PAGE_BIBLIOTECA, PAGE_INCIDENCIAS, PAGE_NOT_FOUND, PAGE_ROUTE_SLUGS, PAGE_ROUTE_ALIASES, EMPTY_LOGIN_DIRECTORY, ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR, STATUS_PENDING, STATUS_RUNNING, STATUS_PAUSED, STATUS_FINISHED, INVENTORY_DOMAIN_BASE, INVENTORY_DOMAIN_CLEANING, INVENTORY_DOMAIN_ORDERS, INVENTORY_MOVEMENT_RESTOCK, INVENTORY_MOVEMENT_CONSUME, INVENTORY_MOVEMENT_TRANSFER, CONTROL_STATUS_OPTIONS, USER_ROLES, PERMISSION_SCHEMA_VERSION, ROLE_LEVEL, TEMPORARY_PASSWORD_MIN_LENGTH, PROFILE_SELF_EDIT_LIMIT, DEFAULT_AREA_OPTIONS, DEFAULT_BOARD_SECTION_OPTIONS, INVENTORY_LOOKUP_LOGISTICS_FIELD, BOARD_ACTIVITY_LIST_FIELD, DEFAULT_JOB_TITLE_BY_ROLE, DASHBOARD_CHART_PALETTE, DEFAULT_DASHBOARD_SECTION_STATE, DEFAULT_ADMIN_TAB, ACTIVITY_FREQUENCY_OPTIONS, ACTIVITY_FREQUENCY_LABELS, ACTIVITY_FREQUENCY_DAY_OFFSETS, BOARD_FIELD_TYPES, BOARD_FIELD_TYPE_DETAILS, BOARD_FIELD_WIDTHS, COLOR_RULE_OPERATORS, BOARD_FIELD_WIDTH_STYLES, BOARD_FIELD_MIN_WIDTH_BY_TYPE, DEFAULT_BOARD_AUX_COLUMNS_ORDER, BOARD_AUX_COLUMN_DEFINITIONS, BOARD_AUX_COLUMN_IDS, BOARD_TEMPLATES, FORMULA_OPERATIONS, OPTION_SOURCE_TYPES, INVENTORY_PROPERTIES, INVENTORY_IMPORT_FIELD_ALIASES, INVENTORY_DOMAIN_OPTIONS, INVENTORY_MOVEMENT_OPTIONS, CLEANING_SITE_OPTIONS, DEFAULT_CLEANING_SITE, BOARD_OPERATIONAL_CONTEXT_NONE, BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE, BOARD_OPERATIONAL_CONTEXT_CUSTOM, BOARD_OPERATIONAL_CONTEXT_OPTIONS, NAV_ITEMS, ACTION_DEFINITIONS, BOARD_PERMISSION_ACTION_IDS, BOARD_PERMISSION_ACTIONS, PAGE_ACTION_GROUPS, PERMISSION_PRESETS, RESPONSIBLE_VISUALS, ALL_PAGES, ALL_ACTION_IDS, ROLE_PERMISSION_MATRIX, KPI_STYLES
-} from "./constantes.js";
-import { getExcelJsModule } from "./utilidadesImportExcel.js";
 
 export function getInitialRouteState() {
   const pathPage = String(globalThis.location.pathname.split("/").find(Boolean) || "").trim().toLowerCase();
@@ -159,6 +160,7 @@ export function normalizeInventoryDomain(value) {
   const key = normalizeKey(value);
   if (["cleaning", "limpieza", "clean"].includes(key)) return INVENTORY_DOMAIN_CLEANING;
   if (["orders", "order", "pedidos", "pedido"].includes(key)) return INVENTORY_DOMAIN_ORDERS;
+  if (["maintenance", "mantenimiento", "mantenimiento pedidos", "pedido mantenimiento"].includes(key)) return INVENTORY_DOMAIN_MAINTENANCE;
   return INVENTORY_DOMAIN_BASE;
 }
 
@@ -206,7 +208,8 @@ export function mergeInventoryColumnsWithSystem(columns = []) {
 }
 
 export function inventoryDomainUsesPresentation(domain) {
-  return normalizeInventoryDomain(domain) !== INVENTORY_DOMAIN_ORDERS;
+  const normalized = normalizeInventoryDomain(domain);
+  return normalized !== INVENTORY_DOMAIN_ORDERS && normalized !== INVENTORY_DOMAIN_MAINTENANCE;
 }
 
 export function inventoryDomainUsesPackagingMetrics(domain) {
@@ -224,28 +227,32 @@ export function getInventoryPresentationPlaceholder(domain) {
 }
 
 export function getInventoryUnitPlaceholder(domain) {
-  if (normalizeInventoryDomain(domain) === INVENTORY_DOMAIN_CLEANING) {
+  const normalized = normalizeInventoryDomain(domain);
+  if (normalized === INVENTORY_DOMAIN_CLEANING) {
     return "Ej: bidones, rollos, bolsas";
   }
-  if (normalizeInventoryDomain(domain) === INVENTORY_DOMAIN_ORDERS) {
+  if (normalized === INVENTORY_DOMAIN_ORDERS || normalized === INVENTORY_DOMAIN_MAINTENANCE) {
     return "Ej: pzas, rollos, paquetes";
   }
   return "Ej: pzas, rollos";
 }
 
 export function getInventoryStoragePlaceholder(domain) {
-  if (normalizeInventoryDomain(domain) === INVENTORY_DOMAIN_CLEANING) {
+  const normalized = normalizeInventoryDomain(domain);
+  if (normalized === INVENTORY_DOMAIN_CLEANING) {
     return "Ej: Cuarto de limpieza · anaquel 2";
   }
-  if (normalizeInventoryDomain(domain) === INVENTORY_DOMAIN_ORDERS) {
+  if (normalized === INVENTORY_DOMAIN_ORDERS || normalized === INVENTORY_DOMAIN_MAINTENANCE) {
     return "Ej: Nave 2 · rack de surtido";
   }
   return "Ej: Nave 2 · Estante 4";
 }
 
 export function getInventoryEntityLabel(domain) {
-  if (normalizeInventoryDomain(domain) === INVENTORY_DOMAIN_CLEANING) return "insumo de limpieza";
-  if (normalizeInventoryDomain(domain) === INVENTORY_DOMAIN_ORDERS) return "insumo para pedidos";
+  const normalized = normalizeInventoryDomain(domain);
+  if (normalized === INVENTORY_DOMAIN_CLEANING) return "insumo de limpieza";
+  if (normalized === INVENTORY_DOMAIN_ORDERS) return "insumo para pedidos";
+  if (normalized === INVENTORY_DOMAIN_MAINTENANCE) return "insumo de mantenimiento";
   return "producto";
 }
 
@@ -568,19 +575,19 @@ export function getInventoryDefaultTransferDestination(item, movements = []) {
 
 export function getInventoryDeleteActionId(domain) {
   if (domain === INVENTORY_DOMAIN_CLEANING) return "deleteCleaningInventory";
-  if (domain === INVENTORY_DOMAIN_ORDERS) return "deleteOrderInventory";
+  if (domain === INVENTORY_DOMAIN_ORDERS || domain === INVENTORY_DOMAIN_MAINTENANCE) return "deleteOrderInventory";
   return "deleteInventory";
 }
 
 export function getInventoryManageActionId(domain) {
   if (domain === INVENTORY_DOMAIN_CLEANING) return "manageCleaningInventory";
-  if (domain === INVENTORY_DOMAIN_ORDERS) return "manageOrderInventory";
+  if (domain === INVENTORY_DOMAIN_ORDERS || domain === INVENTORY_DOMAIN_MAINTENANCE) return "manageOrderInventory";
   return "manageInventory";
 }
 
 export function getInventoryImportActionId(domain) {
   if (domain === INVENTORY_DOMAIN_CLEANING) return "importCleaningInventory";
-  if (domain === INVENTORY_DOMAIN_ORDERS) return "importOrderInventory";
+  if (domain === INVENTORY_DOMAIN_ORDERS || domain === INVENTORY_DOMAIN_MAINTENANCE) return "importOrderInventory";
   return "importInventory";
 }
 
@@ -1814,7 +1821,7 @@ export function formatInventoryLookupLabel(item) {
 }
 
 export function isInventoryLookupFieldType(type) {
-  return ["inventoryLookup", INVENTORY_LOOKUP_LOGISTICS_FIELD].includes(type);
+  return ["inventoryLookup", "maintenanceInventoryLookup", INVENTORY_LOOKUP_LOGISTICS_FIELD].includes(type);
 }
 
 export function getInventoryLookupSourceFields(fields = [], excludedFieldIds = []) {
@@ -1846,6 +1853,35 @@ function parseInventoryLotHistory(rawValue) {
 export function resolveInventoryPropertyValue(item, property) {
   const normalizedItem = item && typeof item === "object" ? item : null;
   if (!normalizedItem) return "";
+
+  if (Array.isArray(normalizedItem)) {
+    const inventoryItems = normalizedItem.filter((entry) => entry && typeof entry === "object");
+    if (!inventoryItems.length) return "";
+
+    switch (property) {
+      case "lot":
+      case "expiry":
+      case "label":
+        return Array.from(new Set(inventoryItems.map((entry) => resolveInventoryPropertyValue(entry, property)).filter(Boolean))).join(" / ");
+      case "family": {
+        const families = Array.from(new Set(inventoryItems.map((entry) => String(entry.family || "").trim()).filter(Boolean)));
+        return families.length === 1 ? families[0] : families.length > 1 ? "Mixto" : "";
+      }
+      case "price": {
+        const prices = Array.from(new Set(inventoryItems.map((entry) => entry.price).filter((value) => value !== undefined && value !== null && String(value).trim() !== "")));
+        return prices.length === 1 ? prices[0] : prices.length > 1 ? prices.join(" / ") : "";
+      }
+      case "cost": {
+        return inventoryItems.reduce((sum, entry) => {
+          const qty = Number(entry.quantity || 1);
+          const unitCost = Number(entry.cost ?? (entry.price || 0));
+          return sum + (Number.isFinite(qty) ? qty * unitCost : 0);
+        }, 0);
+      }
+      default:
+        return String(inventoryItems[0]?.[property] ?? "");
+    }
+  }
 
   const customFields = normalizedItem.customFields && typeof normalizedItem.customFields === "object"
     ? normalizedItem.customFields
@@ -2939,6 +2975,9 @@ export function mapInventoryImportRow(row, index, defaultDomain = "base") {
     stockUnits: toInventoryNumber(normalizedRow.stockUnits),
     minStockUnits: toInventoryNumber(normalizedRow.minStockUnits),
     storageLocation: String(normalizedRow.storageLocation || "").trim(),
+    family: String(normalizedRow.family || "").trim(),
+    price: toInventoryNumber(normalizedRow.price),
+    cost: toInventoryNumber(normalizedRow.cost),
     cleaningSite: normalizeCleaningSite(normalizedRow.cleaningSite),
     unitLabel: String(normalizedRow.unitLabel || "pzas").trim() || "pzas",
     activityCatalogIds: String(normalizedRow.activityCatalogIds || "").split(/[;,]/).map((entry) => entry.trim()).filter(Boolean),
@@ -3185,7 +3224,29 @@ export async function downloadInventoryTemplateFile(domain = INVENTORY_DOMAIN_BA
             unidad: "pzas",
           },
         }
-      : {
+      : normalizedDomain === INVENTORY_DOMAIN_MAINTENANCE
+        ? {
+            fileName: "plantilla-inventario-mantenimiento.xlsx",
+            columns: [
+              { header: "codigo", key: "codigo", width: 18 },
+              { header: "dominio", key: "dominio", width: 18 },
+              { header: "nombre", key: "nombre", width: 28 },
+              { header: "stock_actual", key: "stock_actual", width: 18 },
+              { header: "stock_minimo", key: "stock_minimo", width: 18 },
+              { header: "ubicacion", key: "ubicacion", width: 24 },
+              { header: "unidad", key: "unidad", width: 14 },
+            ],
+            sampleRow: {
+              codigo: "MNT-001",
+              dominio: "maintenance",
+              nombre: "Cable eléctrico 2.5mm",
+              stock_actual: 40,
+              stock_minimo: 12,
+              ubicacion: "Taller mantenimiento",
+              unidad: "metros",
+            },
+          }
+        : {
           fileName: "plantilla-inventario-productos.xlsx",
           columns: [
             { header: "codigo", key: "codigo", width: 18 },
@@ -4317,4 +4378,5 @@ export function updateElapsedForFinish(activity, nowIso, pauseState) {
     pauseState,
   );
 }
+
 

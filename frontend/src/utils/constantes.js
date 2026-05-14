@@ -99,6 +99,7 @@ export const STATUS_FINISHED = "Terminado";
 export const INVENTORY_DOMAIN_BASE = "base";
 export const INVENTORY_DOMAIN_CLEANING = "cleaning";
 export const INVENTORY_DOMAIN_ORDERS = "orders";
+export const INVENTORY_DOMAIN_MAINTENANCE = "maintenance";
 export const INVENTORY_DOMAIN_DESTINATIONS = "destinations";
 export const INVENTORY_MOVEMENT_RESTOCK = "restock";
 export const INVENTORY_MOVEMENT_CONSUME = "consume";
@@ -135,6 +136,7 @@ export const DEFAULT_BOARD_SECTION_OPTIONS = [
   "Cierre",
 ];
 export const INVENTORY_LOOKUP_LOGISTICS_FIELD = "inventoryLookupLogistics";
+export const MAINTENANCE_INVENTORY_LOOKUP_FIELD = "maintenanceInventoryLookup";
 export const BOARD_ACTIVITY_LIST_FIELD = "activityList";
 export const DEFAULT_JOB_TITLE_BY_ROLE = {
   [ROLE_LEAD]: "Encargado de área",
@@ -213,6 +215,7 @@ export const BOARD_FIELD_TYPES = [
   { value: "evidenceGallery", label: "Evidencias (foto/video)" },
   // Inventario
   { value: "inventoryLookup", label: "Buscador de inventario" },
+  { value: MAINTENANCE_INVENTORY_LOOKUP_FIELD, label: "Buscador de insumos de mantenimiento" },
   { value: INVENTORY_LOOKUP_LOGISTICS_FIELD, label: "Buscador + empaque" },
   { value: "inventoryProperty", label: "Dato derivado de inventario" },
   // Actividades
@@ -248,6 +251,7 @@ export const BOARD_FIELD_TYPE_DETAILS = {
   evidenceGallery: "Sube fotos o videos dentro de la celda con miniaturas y vista previa navegable.",
   formula: "Calcula un resultado automático usando otros campos del tablero.",
   inventoryLookup: "Busca un artículo del inventario y lo vincula a la fila.",
+  [MAINTENANCE_INVENTORY_LOOKUP_FIELD]: "Busca insumos de mantenimiento y permite seleccionar varios insumos en un solo registro.",
   [INVENTORY_LOOKUP_LOGISTICS_FIELD]: "Duplica el buscador de inventario y agrega piezas por caja y cajas por tarima como campos editables.",
   inventoryProperty: "Trae un dato automático del inventario ya vinculado.",
   [BOARD_ACTIVITY_LIST_FIELD]: "Toma una lista de actividades y genera una fila por cada actividad dentro del tablero.",
@@ -286,6 +290,7 @@ export const BOARD_FIELD_WIDTH_STYLES = {
 
 export const BOARD_FIELD_MIN_WIDTH_BY_TYPE = {
   inventoryLookup: 210,
+  maintenanceInventoryLookup: 260,
   inventoryLookupLogistics: 210,
   select: 190,
   multiSelectDetail: 240,
@@ -527,9 +532,12 @@ export const INVENTORY_PROPERTIES = [
   { value: "code", label: "Código" },
   { value: "name", label: "Nombre" },
   { value: "presentation", label: "Presentación" },
+  { value: "family", label: "Familia" },
   { value: "lot", label: "Lote" },
   { value: "expiry", label: "Caducidad" },
   { value: "label", label: "Etiqueta" },
+  { value: "price", label: "Precio unitario" },
+  { value: "cost", label: "Costo total" },
   { value: "piecesPerBox", label: "Piezas por caja" },
   { value: "boxesPerPallet", label: "Cajas por tarima" },
 ];
@@ -564,6 +572,12 @@ export const INVENTORY_IMPORT_FIELD_ALIASES = {
   stockminimo: "minStockUnits",
   minimoreorden: "minStockUnits",
   minstockunits: "minStockUnits",
+  family: "family",
+  familia: "family",
+  costo: "cost",
+  cost: "cost",
+  precio: "price",
+  price: "price",
   ubicacion: "storageLocation",
   storagelocation: "storageLocation",
   unidad: "unitLabel",
@@ -584,6 +598,7 @@ export const INVENTORY_DOMAIN_OPTIONS = [
   { value: INVENTORY_DOMAIN_BASE, label: "Base" },
   { value: INVENTORY_DOMAIN_CLEANING, label: "Insumos de limpieza" },
   { value: INVENTORY_DOMAIN_ORDERS, label: "Insumos para pedidos" },
+  { value: INVENTORY_DOMAIN_MAINTENANCE, label: "Insumos de mantenimiento" },
   { value: INVENTORY_DOMAIN_DESTINATIONS, label: "Naves de destino" },
 ];
 

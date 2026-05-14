@@ -142,7 +142,7 @@ import {
 
   STATUS_PENDING, STATUS_RUNNING, STATUS_PAUSED, STATUS_FINISHED,
 
-  INVENTORY_DOMAIN_BASE, INVENTORY_DOMAIN_CLEANING, INVENTORY_DOMAIN_ORDERS, INVENTORY_DOMAIN_DESTINATIONS,
+  INVENTORY_DOMAIN_BASE, INVENTORY_DOMAIN_CLEANING, INVENTORY_DOMAIN_ORDERS, INVENTORY_DOMAIN_MAINTENANCE, INVENTORY_DOMAIN_DESTINATIONS,
 
   INVENTORY_MOVEMENT_RESTOCK, INVENTORY_MOVEMENT_CONSUME, INVENTORY_MOVEMENT_TRANSFER,
 
@@ -3963,12 +3963,14 @@ function App() { // NOSONAR
     [INVENTORY_DOMAIN_BASE]: allInventoryItems.filter((item) => item.domain === INVENTORY_DOMAIN_BASE),
     [INVENTORY_DOMAIN_CLEANING]: allInventoryItems.filter((item) => item.domain === INVENTORY_DOMAIN_CLEANING),
     [INVENTORY_DOMAIN_ORDERS]: allInventoryItems.filter((item) => item.domain === INVENTORY_DOMAIN_ORDERS),
+    [INVENTORY_DOMAIN_MAINTENANCE]: allInventoryItems.filter((item) => item.domain === INVENTORY_DOMAIN_MAINTENANCE),
   }), [allInventoryItems]);
 
   const inventoryItemsByDomain = useMemo(() => ({
     [INVENTORY_DOMAIN_BASE]: inventoryItems.filter((item) => item.domain === INVENTORY_DOMAIN_BASE),
     [INVENTORY_DOMAIN_CLEANING]: inventoryItems.filter((item) => item.domain === INVENTORY_DOMAIN_CLEANING),
     [INVENTORY_DOMAIN_ORDERS]: inventoryItems.filter((item) => item.domain === INVENTORY_DOMAIN_ORDERS),
+    [INVENTORY_DOMAIN_MAINTENANCE]: inventoryItems.filter((item) => item.domain === INVENTORY_DOMAIN_MAINTENANCE),
   }), [inventoryItems]);
 
   const inventoryItemsById = useMemo(
@@ -3981,9 +3983,14 @@ function App() { // NOSONAR
     if (inventoryTab === INVENTORY_DOMAIN_CLEANING) {
       return items.filter((item) => item.cleaningSite === inventoryCleaningSite);
     }
-    if (inventoryTab === INVENTORY_DOMAIN_ORDERS && inventoryDestinationWarehouse) {
+    if (inventoryTab === INVENTORY_DOMAIN_ORDERS) {
+      const warehouseItems = items.filter((item) => (item.transferTargets || []).some((target) => String(target.warehouse || "").trim()));
+      if (!inventoryDestinationWarehouse) return warehouseItems;
       const normalizedWarehouse = String(inventoryDestinationWarehouse || "").trim().toLowerCase();
-      return items.filter((item) => (item.transferTargets || []).some((target) => String(target.warehouse || "Sin nave").trim().toLowerCase() === normalizedWarehouse));
+      return warehouseItems.filter((item) => (item.transferTargets || []).some((target) => String(target.warehouse || "").trim().toLowerCase() === normalizedWarehouse));
+    }
+    if (inventoryTab === INVENTORY_DOMAIN_MAINTENANCE) {
+      return items;
     }
     return items;
   }, [allInventoryItemsByDomain, inventoryCleaningSite, inventoryDestinationWarehouse, inventoryTab]);
@@ -3993,9 +4000,14 @@ function App() { // NOSONAR
     if (inventoryTab === INVENTORY_DOMAIN_CLEANING) {
       return items.filter((item) => item.cleaningSite === inventoryCleaningSite);
     }
-    if (inventoryTab === INVENTORY_DOMAIN_ORDERS && inventoryDestinationWarehouse) {
+    if (inventoryTab === INVENTORY_DOMAIN_ORDERS) {
+      const warehouseItems = items.filter((item) => (item.transferTargets || []).some((target) => String(target.warehouse || "").trim()));
+      if (!inventoryDestinationWarehouse) return warehouseItems;
       const normalizedWarehouse = String(inventoryDestinationWarehouse || "").trim().toLowerCase();
-      return items.filter((item) => (item.transferTargets || []).some((target) => String(target.warehouse || "Sin nave").trim().toLowerCase() === normalizedWarehouse));
+      return warehouseItems.filter((item) => (item.transferTargets || []).some((target) => String(target.warehouse || "").trim().toLowerCase() === normalizedWarehouse));
+    }
+    if (inventoryTab === INVENTORY_DOMAIN_MAINTENANCE) {
+      return items;
     }
     return items;
   }, [inventoryCleaningSite, inventoryDestinationWarehouse, inventoryItemsByDomain, inventoryTab]);
@@ -4036,9 +4048,15 @@ function App() { // NOSONAR
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const orderInventoryItems = inventoryItemsByDomain[INVENTORY_DOMAIN_ORDERS] || [];
+  const maintenanceInventoryItems = inventoryItemsByDomain[INVENTORY_DOMAIN_MAINTENANCE] || [];
 
   const orderInventoryTransferMovements = useMemo(
     () => inventoryMovements.filter((movement) => movement.domain === INVENTORY_DOMAIN_ORDERS && movement.movementType === INVENTORY_MOVEMENT_TRANSFER),
+    [inventoryMovements],
+  );
+
+  const maintenanceInventoryTransferMovements = useMemo(
+    () => inventoryMovements.filter((movement) => movement.domain === INVENTORY_DOMAIN_MAINTENANCE && movement.movementType === INVENTORY_MOVEMENT_TRANSFER),
     [inventoryMovements],
   );
 
@@ -4055,6 +4073,21 @@ function App() { // NOSONAR
         return left.name.localeCompare(right.name, "es-MX");
       }),
     [orderInventoryItems],
+  );
+
+  const maintenanceInventoryTransferSummary = useMemo(
+    () => maintenanceInventoryItems
+      .map((item) => ({
+        ...item,
+        allocatedUnits: getInventoryAllocatedUnits(item),
+        availableToTransferUnits: getInventoryAvailableToTransfer(item),
+      }))
+      .sort((left, right) => {
+        const balanceGap = right.allocatedUnits - left.allocatedUnits;
+        if (balanceGap !== 0) return balanceGap;
+        return left.name.localeCompare(right.name, "es-MX");
+      }),
+    [maintenanceInventoryItems],
   );
 
   const inventoryMovementSelectedItem = useMemo(
@@ -4084,13 +4117,13 @@ function App() { // NOSONAR
   const inventoryTransferDefaultWarehouse = useMemo(() => {
     const counts = new Map();
     const rememberWarehouse = (warehouse) => {
-      const normalized = String(warehouse || "Sin nave").trim();
+      const normalized = String(warehouse || "").trim();
       if (!normalized) return;
       counts.set(normalized, (counts.get(normalized) || 0) + 1);
     };
 
     inventoryDestinations.forEach((destination) => rememberWarehouse(destination.warehouse));
-    orderInventoryTransferSummary.forEach((item) => {
+    [...orderInventoryTransferSummary, ...maintenanceInventoryTransferSummary].forEach((item) => {
       (item.transferTargets || []).forEach((target) => rememberWarehouse(target.warehouse));
     });
 
@@ -4100,7 +4133,7 @@ function App() { // NOSONAR
     });
 
     return sorted[0]?.[0] || "";
-  }, [inventoryDestinations, orderInventoryTransferSummary]);
+  }, [inventoryDestinations, orderInventoryTransferSummary, maintenanceInventoryTransferSummary]);
 
   const inventoryMovementSelectedSavedLocation = useMemo(() => {
     const normalizedStorageLocation = normalizeKey(inventoryMovementModal.storageLocation);
@@ -4131,8 +4164,8 @@ function App() { // NOSONAR
     const grouped = {};
     const addDestination = (destination) => {
       const normalized = normalizeInventoryTransferTargetRecord(destination, inventoryMovementSelectedItem?.unitLabel || "pzas");
-      if (!normalized.warehouse && !normalized.storageLocation) return;
-      const warehouse = normalized.warehouse || "Sin nave";
+      if (!normalized.warehouse || !normalized.storageLocation) return;
+      const warehouse = normalized.warehouse;
       if (!grouped[warehouse]) grouped[warehouse] = [];
       if (!grouped[warehouse].some((entry) => entry.destinationKey === normalized.destinationKey)) {
         grouped[warehouse].push(normalized);
@@ -4153,15 +4186,17 @@ function App() { // NOSONAR
   const inventoryTransferAvailableWarehouses = useMemo(() => {
     const warehouses = new Set();
     inventoryDestinations.forEach((destination) => {
-      warehouses.add(String(destination.warehouse || "Sin nave"));
+      const warehouse = String(destination.warehouse || "").trim();
+      if (warehouse) warehouses.add(warehouse);
     });
-    orderInventoryTransferSummary.forEach((item) => {
+    [...orderInventoryTransferSummary, ...maintenanceInventoryTransferSummary].forEach((item) => {
       (item.transferTargets || []).forEach((target) => {
-        warehouses.add(String(target.warehouse || "Sin nave"));
+        const warehouse = String(target.warehouse || "").trim();
+        if (warehouse) warehouses.add(warehouse);
       });
     });
     return [...warehouses].sort((left, right) => left.localeCompare(right, "es-MX"));
-  }, [inventoryDestinations, orderInventoryTransferSummary]);
+  }, [inventoryDestinations, orderInventoryTransferSummary, maintenanceInventoryTransferSummary]);
 
   useEffect(() => {
     if (!inventoryDestinationWarehouse && !inventoryDestinationWarehouseAutoSet && inventoryTransferAvailableWarehouses.length) {
@@ -4172,24 +4207,34 @@ function App() { // NOSONAR
 
   const isOrderTransferMovementModal = inventoryMovementModal.movementType === INVENTORY_MOVEMENT_TRANSFER && inventoryMovementModal.domain === INVENTORY_DOMAIN_ORDERS;
   const inventoryMovementModalTitle = isOrderTransferMovementModal ? "Registrar transferencia" : "Registrar movimiento";
-  const hasOrderTransferTargets = orderInventoryTransferSummary.some((item) => item.transferTargets.length > 0);
+  const hasOrderTransferTargets = [...orderInventoryTransferSummary, ...maintenanceInventoryTransferSummary].some((item) => item.transferTargets.length > 0);
   const inventoryTransferViewerItem = useMemo(
     () => (inventoryTransferViewerState.itemId ? inventoryItemsById.get(inventoryTransferViewerState.itemId) || null : null),
     [inventoryItemsById, inventoryTransferViewerState.itemId],
   );
 
+  const allInventoryTransferSummary = useMemo(
+    () => [...orderInventoryTransferSummary, ...maintenanceInventoryTransferSummary],
+    [orderInventoryTransferSummary, maintenanceInventoryTransferSummary],
+  );
+
+  const allInventoryTransferMovements = useMemo(
+    () => [...orderInventoryTransferMovements, ...maintenanceInventoryTransferMovements],
+    [orderInventoryTransferMovements, maintenanceInventoryTransferMovements],
+  );
+
   const viewedOrderInventoryTransferSummary = useMemo(
     () => inventoryTransferViewerState.itemId
-      ? orderInventoryTransferSummary.filter((item) => item.id === inventoryTransferViewerState.itemId)
-      : orderInventoryTransferSummary,
-    [inventoryTransferViewerState.itemId, orderInventoryTransferSummary],
+      ? allInventoryTransferSummary.filter((item) => item.id === inventoryTransferViewerState.itemId)
+      : allInventoryTransferSummary,
+    [inventoryTransferViewerState.itemId, allInventoryTransferSummary],
   );
 
   const viewedOrderInventoryTransferMovements = useMemo(
     () => inventoryTransferViewerState.itemId
-      ? orderInventoryTransferMovements.filter((movement) => movement.itemId === inventoryTransferViewerState.itemId)
-      : orderInventoryTransferMovements,
-    [inventoryTransferViewerState.itemId, orderInventoryTransferMovements],
+      ? allInventoryTransferMovements.filter((movement) => movement.itemId === inventoryTransferViewerState.itemId)
+      : allInventoryTransferMovements,
+    [inventoryTransferViewerState.itemId, allInventoryTransferMovements],
   );
 
   const currentInventorySupplyableItems = useMemo(
@@ -4633,6 +4678,7 @@ function App() { // NOSONAR
     }
     if (actionPermissions.viewOrderInventory || actionPermissions.manageOrderInventory || actionPermissions.deleteOrderInventory || actionPermissions.importOrderInventory) {
       visibleDomains.push(INVENTORY_DOMAIN_ORDERS);
+      visibleDomains.push(INVENTORY_DOMAIN_MAINTENANCE);
     }
     return visibleDomains;
   }, [actionPermissions]);
@@ -7343,22 +7389,25 @@ function App() { // NOSONAR
   }
 
   function openOrderInventoryTransfer(item = null) {
-    if (!actionPermissions[getInventoryManageActionId(INVENTORY_DOMAIN_ORDERS)]) return;
+    const transferDomain = inventoryTab === INVENTORY_DOMAIN_MAINTENANCE ? INVENTORY_DOMAIN_MAINTENANCE : INVENTORY_DOMAIN_ORDERS;
+    if (!actionPermissions[getInventoryManageActionId(transferDomain)]) return;
     setInventoryImportFeedback({ tone: "", message: "" });
     setInventoryMovementModal({
-      ...createInventoryMovementModalState(item, INVENTORY_MOVEMENT_TRANSFER, INVENTORY_DOMAIN_ORDERS),
+      ...createInventoryMovementModalState(item, INVENTORY_MOVEMENT_TRANSFER, transferDomain),
       selectedTransferDestinationTab: inventoryTransferDefaultWarehouse || "",
       open: true,
     });
   }
 
   function openInventoryTransferViewer() {
-    if (!actionPermissions[getInventoryManageActionId(INVENTORY_DOMAIN_ORDERS)]) return;
+    const transferDomain = inventoryTab === INVENTORY_DOMAIN_MAINTENANCE ? INVENTORY_DOMAIN_MAINTENANCE : INVENTORY_DOMAIN_ORDERS;
+    if (!actionPermissions[getInventoryManageActionId(transferDomain)]) return;
     setInventoryTransferViewerState({ open: true, itemId: null });
   }
 
   function openInventoryTransferHistory(item = null) {
-    if (!actionPermissions[getInventoryManageActionId(INVENTORY_DOMAIN_ORDERS)]) return;
+    const transferDomain = inventoryTab === INVENTORY_DOMAIN_MAINTENANCE ? INVENTORY_DOMAIN_MAINTENANCE : INVENTORY_DOMAIN_ORDERS;
+    if (!actionPermissions[getInventoryManageActionId(transferDomain)]) return;
     setInventoryTransferViewerState({ open: true, itemId: item?.id || null });
   }
 
@@ -7782,6 +7831,57 @@ function App() { // NOSONAR
       await downloadInventoryTemplateFile(inventoryTab);
     } catch {
       setInventoryImportFeedback({ tone: "danger", message: "No se pudo generar la plantilla de inventario." });
+    }
+  }
+
+  function exportMaintenanceInventoryItemsToCsv() {
+    const rows = maintenanceInventoryItems.map((item) => ({
+      codigo: item.code || "",
+      nombre: item.name || "",
+      familia: item.family || "",
+      precio: item.price || "",
+      costo: item.cost || "",
+      ubicacion: item.storageLocation || "",
+      unidad: item.unitLabel || "pzas",
+      stock_actual: item.stockUnits || 0,
+      stock_minimo: item.minStockUnits || 0,
+    }));
+
+    const headers = ["codigo", "nombre", "familia", "precio", "costo", "ubicacion", "unidad", "stock_actual", "stock_minimo"];
+    const csvText = [
+      headers.join(";"),
+      ...rows.map((row) => headers.map((key) => String(row[key] || "").replace(/"/g, '""')).map((value) => `"${value}"`).join(";")),
+    ].join("\r\n");
+
+    const buffer = new TextEncoder().encode(csvText);
+    triggerBrowserDownload(buffer, `inventario-mantenimiento-${new Date().toISOString().slice(0, 10)}.csv`, "text/csv;charset=utf-8");
+  }
+
+  async function submitMaintenanceUsage(usageItems = []) {
+    if (!actionPermissions[getInventoryManageActionId(INVENTORY_DOMAIN_MAINTENANCE)]) return;
+    if (!Array.isArray(usageItems) || !usageItems.length) return;
+
+    try {
+      for (const usage of usageItems) {
+        const selectedItem = inventoryItemsById.get(usage.itemId);
+        if (!selectedItem || !usage.quantity || Number.isNaN(Number(usage.quantity)) || Number(usage.quantity) <= 0) continue;
+
+        await requestInventoryMovement({
+          itemId: selectedItem.id,
+          movementType: INVENTORY_MOVEMENT_CONSUME,
+          quantity: Number(usage.quantity),
+          notes: usage.note?.trim() || "Uso en mantenimiento",
+          warehouse: "",
+          recipientName: "",
+          storageLocation: selectedItem.storageLocation || "",
+          unitLabel: selectedItem.unitLabel || "pzas",
+          remainingUnits: null,
+        });
+      }
+
+      setInventoryImportFeedback({ tone: "success", message: "Uso de insumos de mantenimiento registrado." });
+    } catch (error) {
+      setInventoryImportFeedback({ tone: "danger", message: error?.message || "No se pudo registrar el uso de mantenimiento." });
     }
   }
 
@@ -9142,6 +9242,9 @@ function App() { // NOSONAR
     DashboardSection,
     departmentOptions,
     downloadInventoryTemplate,
+    exportMaintenanceInventoryItemsToCsv,
+    maintenanceInventoryItems,
+    submitMaintenanceUsage,
     Download,
     duplicateBoardRecord,
     Eye,
@@ -9230,12 +9333,15 @@ function App() { // NOSONAR
     inventoryTransferAvailableWarehouses,
     inventoryTransferDestinationsByWarehouse,
     orderInventoryTransferMovements,
+    maintenanceInventoryTransferMovements,
     orderInventoryTransferSummary,
+    maintenanceInventoryTransferSummary,
     InventoryLookupInput,
     InventoryStockBar,
     INVENTORY_DOMAIN_BASE,
     INVENTORY_DOMAIN_CLEANING,
     INVENTORY_DOMAIN_ORDERS,
+    INVENTORY_DOMAIN_MAINTENANCE,
     INVENTORY_MOVEMENT_CONSUME,
     INVENTORY_MOVEMENT_RESTOCK,
     INVENTORY_MOVEMENT_TRANSFER,

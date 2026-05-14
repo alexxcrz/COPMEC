@@ -19,7 +19,9 @@ import {
   parseBoardWeekKey,
   addDays,
   resolveInventoryPropertySourceFieldId,
+  normalizeInventoryDomain,
 } from "../utils/utilidades.jsx";
+import { INVENTORY_DOMAIN_MAINTENANCE } from "../utils/constantes.js";
 
 const EDITABLE_INVENTORY_PROPERTIES = new Set(["lot", "expiry", "label"]);
 
@@ -114,6 +116,130 @@ function formatBoardCellObjectValue(rawValue) {
   }
 }
 
+function normalizeMaintenanceInventoryLookupValue(rawValue) {
+  if (Array.isArray(rawValue)) return rawValue;
+  if (!rawValue) return [];
+  if (typeof rawValue === "string") {
+    try {
+      const parsed = JSON.parse(rawValue);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      // Ignore invalid JSON
+    }
+  }
+  return [rawValue];
+}
+
+function BoardMaintenanceInventoryLookupCell({ field, inventoryItems, value, onChange, disabled, InventoryLookupInput }) {
+  const selectedItems = normalizeMaintenanceInventoryLookupValue(value);
+  const resolvedItems = selectedItems.map((entry) => {
+    const item = resolveInventoryItemFromLookupValue(inventoryItems, entry);
+    if (!item) return entry;
+    return {
+      ...entry,
+      id: item.id,
+      code: item.code,
+      name: item.name,
+      presentation: item.presentation,
+      family: item.family,
+      price: item.price,
+      cost: item.cost,
+      quantity: entry?.quantity ?? 1,
+    };
+  });
+
+  function updateRowValue(nextItems) {
+    onChange(nextItems);
+  }
+
+  function handleSelectItem(nextValue) {
+    if (!nextValue) return;
+    const existingIndex = resolvedItems.findIndex((entry) => String(entry?.id || entry).trim() === String(nextValue || "").trim());
+    if (existingIndex !== -1) return;
+
+    const nextItem = resolveInventoryItemFromLookupValue(inventoryItems, nextValue);
+    if (!nextItem) return;
+
+    updateRowValue([
+      ...resolvedItems,
+      {
+        id: nextItem.id,
+        code: nextItem.code,
+        name: nextItem.name,
+        presentation: nextItem.presentation,
+        family: nextItem.family,
+        price: nextItem.price,
+        cost: nextItem.cost,
+        quantity: 1,
+      },
+    ]);
+  }
+
+  function handleRemoveItem(itemId) {
+    updateRowValue(resolvedItems.filter((item) => String(item?.id || item).trim() !== String(itemId || "").trim()));
+  }
+
+  function handleQuantityChange(itemId, nextQuantity) {
+    const numeric = Number(nextQuantity);
+    if (!Number.isFinite(numeric) || numeric < 0) return;
+    updateRowValue(resolvedItems.map((item) => {
+      if (String(item?.id || item).trim() !== String(itemId || "").trim()) return item;
+      return { ...item, quantity: numeric };
+    }));
+  }
+
+  return (
+    <div style={{ display: "grid", gap: "0.5rem" }}>
+      <InventoryLookupInput
+        inventoryItems={inventoryItems || []}
+        value=""
+        onChange={handleSelectItem}
+        placeholder={field.placeholder || "Buscar insumo de mantenimiento"}
+        disabled={disabled}
+        style={{ width: "100%" }}
+        title={field.helpText || field.label}
+      />
+      {resolvedItems.length ? (
+        <div style={{ display: "grid", gap: "0.4rem" }}>
+          {resolvedItems.map((selectedItem) => {
+            const itemLabel = formatInventoryLookupLabel(selectedItem) || String(selectedItem.id || "");
+            return (
+              <div key={String(selectedItem.id || itemLabel)} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "0.45rem", padding: "0.45rem", border: "1px solid rgba(162, 170, 181, 0.2)", borderRadius: "0.85rem" }}>
+                <div style={{ display: "grid", gap: "0.18rem" }}>
+                  <strong style={{ fontSize: "0.78rem" }}>{itemLabel}</strong>
+                  <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.74rem" }}>
+                      Cantidad:
+                      <input
+                        type="number"
+                        min="0"
+                        value={selectedItem.quantity ?? 1}
+                        onChange={(event) => handleQuantityChange(selectedItem.id, event.target.value)}
+                        disabled={disabled}
+                        style={{ width: "4.4rem", padding: "0.25rem 0.35rem", borderRadius: "0.55rem", border: "1px solid rgba(148, 163, 184, 0.4)" }}
+                      />
+                    </label>
+                    {selectedItem.price !== undefined ? <span style={{ fontSize: "0.74rem", color: "#334155" }}>Precio: {selectedItem.price}</span> : null}
+                    {selectedItem.cost !== undefined ? <span style={{ fontSize: "0.74rem", color: "#334155" }}>Costo: {selectedItem.cost}</span> : null}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveItem(selectedItem.id)}
+                  disabled={disabled}
+                  style={{ border: "none", background: "transparent", color: "#b91c1c", fontSize: "0.9rem", cursor: disabled ? "default" : "pointer" }}
+                >
+                  Eliminar
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function resolveInventoryItemFromLookupValue(inventoryItems, lookupValue) {
   const availableItems = Array.isArray(inventoryItems) ? inventoryItems : [];
   if (!availableItems.length) return null;
@@ -190,9 +316,10 @@ function normalizeCatalogSites(value) {
 function formatBoardReadOnlyValue(field, rawValue, inventoryItems) {
   if (!field) return formatBoardCellObjectValue(rawValue);
 
-  if (field.type === "inventoryLookup") {
+  if (field.type === "inventoryLookup" || field.type === "maintenanceInventoryLookup") {
     const matchedItem = resolveInventoryItemFromLookupValue(inventoryItems, rawValue);
     if (matchedItem) return formatInventoryLookupLabel(matchedItem);
+    if (Array.isArray(rawValue)) return formatBoardCellObjectValue(rawValue);
   }
 
   if (field.type === "multiSelectDetail") {
@@ -205,7 +332,7 @@ function formatBoardReadOnlyValue(field, rawValue, inventoryItems) {
 function getBoardReadOnlyFieldDisplayValue(field, resolvedValue, rowValues, inventoryItems) {
   if (!field) return formatBoardCellObjectValue(resolvedValue);
 
-  if (field.type === "inventoryLookup" || field.type === "multiSelectDetail") {
+  if (["inventoryLookup", "maintenanceInventoryLookup", "multiSelectDetail"].includes(field.type)) {
     return formatBoardReadOnlyValue(field, rowValues?.[field.id], inventoryItems);
   }
 
@@ -1676,6 +1803,22 @@ export default function MisTableros({ contexto }) {
                                   style={controlStyle}
                                   title={field.helpText || field.label}
                                   disabled={!rowFieldEditable}
+                                />
+                              </td>
+                            );
+                          }
+
+                          if (field.type === "maintenanceInventoryLookup") {
+                            const maintenanceItems = (state.inventoryItems || []).filter((item) => normalizeInventoryDomain(item.domain) === INVENTORY_DOMAIN_MAINTENANCE);
+                            return (
+                              <td key={field.id} style={columnStyle}>
+                                <BoardMaintenanceInventoryLookupCell
+                                  field={field}
+                                  inventoryItems={maintenanceItems}
+                                  value={row.values?.[field.id] || []}
+                                  onChange={(nextValue) => updateBoardRowValue(selectedCustomBoard.id, row.id, field, nextValue)}
+                                  disabled={!rowFieldEditable}
+                                  InventoryLookupInput={InventoryLookupInput}
                                 />
                               </td>
                             );
