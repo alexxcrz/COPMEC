@@ -3009,13 +3009,14 @@ function buildSampleState() {
       { id: "week-old", name: getWeekName(oldWeekStart), startDate: oldWeekStart.toISOString(), endDate: endOfWeek(oldWeekStart).toISOString(), isActive: false },
     ],
     catalog: [
-      { id: "cat-piso", name: "Piso producción", timeLimitMinutes: 50, isMandatory: true, isDeleted: false, frequency: "daily", category: "Limpieza" },
-      { id: "cat-banos", name: "Lavado de baños", timeLimitMinutes: 40, isMandatory: true, isDeleted: false, frequency: "daily", category: "Limpieza" },
-      { id: "cat-inspeccion", name: "Inspección nave", timeLimitMinutes: 75, isMandatory: true, isDeleted: false, frequency: "threeTimesWeek", category: "Seguridad" },
-      { id: "cat-oficinas", name: "Limpieza oficinas", timeLimitMinutes: 50, isMandatory: true, isDeleted: false, frequency: "weekdays", category: "Limpieza" },
-      { id: "cat-comedor", name: "Comedor", timeLimitMinutes: 50, isMandatory: true, isDeleted: false, frequency: "daily", category: "Servicios" },
-      { id: "cat-vidrios", name: "Limpieza vidrios", timeLimitMinutes: 50, isMandatory: false, isDeleted: false, frequency: "twiceWeek", category: "Limpieza" },
-      { id: "cat-rampas", name: "Revisión de rampas", timeLimitMinutes: 35, isMandatory: false, isDeleted: false, frequency: "weekly", category: "Seguridad" },
+      { id: "cat-piso", name: "Piso producción", timeLimitMinutes: 50, isMandatory: true, isDeleted: false, frequency: "daily", category: "Limpieza", area: "Limpieza" },
+      { id: "cat-banos", name: "Lavado de baños", timeLimitMinutes: 40, isMandatory: true, isDeleted: false, frequency: "daily", category: "Limpieza", area: "Limpieza" },
+      { id: "cat-inspeccion", name: "Inspección nave", timeLimitMinutes: 75, isMandatory: true, isDeleted: false, frequency: "threeTimesWeek", category: "Seguridad", area: "Seguridad" },
+      { id: "cat-oficinas", name: "Limpieza oficinas", timeLimitMinutes: 50, isMandatory: true, isDeleted: false, frequency: "weekdays", category: "Limpieza", area: "Limpieza" },
+      { id: "cat-comedor", name: "Comedor", timeLimitMinutes: 50, isMandatory: true, isDeleted: false, frequency: "daily", category: "Servicios", area: "Limpieza" },
+      { id: "cat-vidrios", name: "Limpieza vidrios", timeLimitMinutes: 50, isMandatory: false, isDeleted: false, frequency: "twiceWeek", category: "Limpieza", area: "Limpieza" },
+      { id: "cat-rampas", name: "Revisión de rampas", timeLimitMinutes: 35, isMandatory: false, isDeleted: false, frequency: "weekly", category: "Seguridad", area: "Seguridad" },
+      { id: "cat-limpieza-general", name: "Checklist Limpieza General", timeLimitMinutes: 60, isMandatory: true, isDeleted: false, frequency: "daily", category: "Limpieza", area: "Limpieza" },
     ],
     inventoryItems: getDefaultInventoryItems(),
     inventoryColumns: withSystemInventoryColumns([]),
@@ -6070,6 +6071,9 @@ function sanitizeCatalogItemDraft(payload = {}, existingId = null) {
         linkedAt: String(rawChecklistConfig.linkedAt || "").trim(),
         linkedById: String(rawChecklistConfig.linkedById || "").trim(),
         linkedByName: String(rawChecklistConfig.linkedByName || "").trim(),
+        linkedActivityNames: Array.isArray(rawChecklistConfig.linkedActivityNames)
+          ? rawChecklistConfig.linkedActivityNames.map((item) => String(item || "").trim()).filter(Boolean)
+          : [],
       }
     : null;
   return {

@@ -64,6 +64,98 @@ export const OPERATIONAL_INSPECTION_TEMPLATE = {
   ],
 };
 
+export const CLEANING_CHECKLIST_TEMPLATE = {
+  id: "cleaning-checklist-v1",
+  name: "Checklist - Limpieza General",
+  version: 1,
+  incidenceRules: {
+    createOnNoOk: true,
+    requirePhotoOnNoOk: true,
+    autoAssignToReporter: true,
+    defaultStatus: "abierta",
+    defaultPriority: "media",
+  },
+  metadataFields: [
+    { key: "area", label: "Area", required: true },
+    { key: "date", label: "Fecha", required: true },
+    { key: "responsable", label: "Responsable", required: true },
+    { key: "shift", label: "Turno", required: false },
+    { key: "process", label: "Proceso/Tablero", required: false },
+  ],
+  siteOptions: [],
+  sections: [
+    {
+      id: "control-fauna",
+      title: "Control de Fauna Nociva",
+      incidenceCategory: "Limpieza",
+      checks: [
+        { id: "fauna-verificacion", label: "Verificar que no haya fauna nociva (insectos, roedores)" },
+        { id: "fauna-trampa-control", label: "Trampas de control en buen estado y posicionadas" },
+        { id: "fauna-evidencia", label: "Ausencia de evidencia de plagas (heces, nidos)" },
+      ],
+    },
+    {
+      id: "sanitarios-limpieza",
+      title: "Servicios Higiénicos",
+      incidenceCategory: "Limpieza",
+      checks: [
+        { id: "sanitarios-limpieza-general", label: "Limpieza completa de sanitarios" },
+        { id: "sanitarios-desinfectante", label: "Desinfectante aplicado en pisos y superficies" },
+        { id: "sanitarios-papel", label: "Papel higiénico disponible en todos los inodoros" },
+        { id: "sanitarios-toallas", label: "Toallas de manos disponibles y limpias" },
+        { id: "sanitarios-jabonera", label: "Jabón disponible en lavamanos" },
+      ],
+    },
+    {
+      id: "comedor-empleados",
+      title: "Comedor de Empleados",
+      incidenceCategory: "Limpieza",
+      checks: [
+        { id: "comedor-mesas", label: "Mesas limpias y desinfectadas" },
+        { id: "comedor-sillas", label: "Sillas y bancas en buen estado y limpias" },
+        { id: "comedor-piso", label: "Piso limpio sin derrames ni residuos" },
+        { id: "comedor-basura", label: "Basura recolectada y contenedores limpios" },
+        { id: "comedor-ventilacion", label: "Ventilación adecuada y ausencia de olores desagradables" },
+      ],
+    },
+    {
+      id: "areas-almacenamiento",
+      title: "Tarimas y Almacenamiento",
+      incidenceCategory: "Limpieza",
+      checks: [
+        { id: "tarimas-orden", label: "Tarimas ordenadas y posicionadas correctamente" },
+        { id: "tarimas-limpieza", label: "Tarimas limpias sin restos de producto o polvo" },
+        { id: "encharcamientos", label: "Ausencia de encharcamientos y derrames de líquidos" },
+        { id: "playas-orden", label: "Playas de almacenamiento sin carros fuera de lugar" },
+        { id: "carros-posicionados", label: "Carros de transporte en sus lugares asignados" },
+      ],
+    },
+    {
+      id: "epp-seguridad",
+      title: "Equipos de Protección Personal",
+      incidenceCategory: "Seguridad",
+      checks: [
+        { id: "epp-disponibilidad", label: "EPP disponible en cantidad suficiente" },
+        { id: "epp-estado", label: "EPP en buen estado y sin daños" },
+        { id: "epp-signalizacion", label: "Señalización clara de uso obligatorio de EPP" },
+        { id: "epp-almacenamiento", label: "EPP almacenado correctamente y accesible" },
+      ],
+    },
+    {
+      id: "areas-comunes",
+      title: "Áreas Comunes",
+      incidenceCategory: "Limpieza",
+      checks: [
+        { id: "pasillos-limpieza", label: "Pasillos limpios sin obstáculos" },
+        { id: "escritorios-limpieza", label: "Escritorios y superficies de trabajo limpias" },
+        { id: "cables-organizacion", label: "Cables eléctricos organizados y asegurados" },
+        { id: "basura-separacion", label: "Recipientes de basura diferenciados y disponibles" },
+        { id: "articulos-limpieza", label: "Artículos de limpieza disponibles (trapos, escobas, trapeadores)" },
+      ],
+    },
+  ],
+};
+
 function makeChecklistToken(value, fallback) {
   const normalized = String(value || "")
     .normalize("NFD")
@@ -134,6 +226,17 @@ export const OPERATIONAL_INSPECTION_ACTIVITY_BINDINGS = [
       "revision de naves",
       "inspeccion operativa",
       "revisar naves",
+    ],
+  },
+  {
+    templateId: CLEANING_CHECKLIST_TEMPLATE.id,
+    activityMatchers: [
+      "limpieza general",
+      "limpieza de areas",
+      "limpieza",
+      "checklist limpieza",
+      "inspeccion limpieza",
+      "verificacion limpieza",
     ],
   },
 ];

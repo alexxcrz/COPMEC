@@ -3984,10 +3984,9 @@ function App() { // NOSONAR
       return items.filter((item) => item.cleaningSite === inventoryCleaningSite);
     }
     if (inventoryTab === INVENTORY_DOMAIN_ORDERS) {
-      const warehouseItems = items.filter((item) => (item.transferTargets || []).some((target) => String(target.warehouse || "").trim()));
-      if (!inventoryDestinationWarehouse) return warehouseItems;
+      if (!inventoryDestinationWarehouse) return items;
       const normalizedWarehouse = String(inventoryDestinationWarehouse || "").trim().toLowerCase();
-      return warehouseItems.filter((item) => (item.transferTargets || []).some((target) => String(target.warehouse || "").trim().toLowerCase() === normalizedWarehouse));
+      return items.filter((item) => (item.transferTargets || []).some((target) => String(target.warehouse || "").trim().toLowerCase() === normalizedWarehouse));
     }
     if (inventoryTab === INVENTORY_DOMAIN_MAINTENANCE) {
       return items;
@@ -4001,10 +4000,9 @@ function App() { // NOSONAR
       return items.filter((item) => item.cleaningSite === inventoryCleaningSite);
     }
     if (inventoryTab === INVENTORY_DOMAIN_ORDERS) {
-      const warehouseItems = items.filter((item) => (item.transferTargets || []).some((target) => String(target.warehouse || "").trim()));
-      if (!inventoryDestinationWarehouse) return warehouseItems;
+      if (!inventoryDestinationWarehouse) return items;
       const normalizedWarehouse = String(inventoryDestinationWarehouse || "").trim().toLowerCase();
-      return warehouseItems.filter((item) => (item.transferTargets || []).some((target) => String(target.warehouse || "").trim().toLowerCase() === normalizedWarehouse));
+      return items.filter((item) => (item.transferTargets || []).some((target) => String(target.warehouse || "").trim().toLowerCase() === normalizedWarehouse));
     }
     if (inventoryTab === INVENTORY_DOMAIN_MAINTENANCE) {
       return items;
@@ -7545,6 +7543,9 @@ function App() { // NOSONAR
       stockUnits: inventoryModal.domain === INVENTORY_DOMAIN_BASE ? 0 : Number(inventoryModal.stockUnits || 0),
       minStockUnits: inventoryModal.domain === INVENTORY_DOMAIN_BASE ? 0 : Number(inventoryModal.minStockUnits || 0),
       storageLocation: inventoryModal.domain === INVENTORY_DOMAIN_BASE ? "" : inventoryModal.storageLocation.trim(),
+      family: inventoryModal.domain === INVENTORY_DOMAIN_MAINTENANCE ? inventoryModal.family.trim() : "",
+      price: inventoryModal.domain === INVENTORY_DOMAIN_MAINTENANCE ? Number(inventoryModal.price || 0) : 0,
+      cost: inventoryModal.domain === INVENTORY_DOMAIN_MAINTENANCE ? Number(inventoryModal.cost || 0) : 0,
       cleaningSite: inventoryModal.domain === INVENTORY_DOMAIN_CLEANING ? normalizeCleaningSite(inventoryModal.cleaningSite) : "",
       unitLabel: inventoryModal.unitLabel.trim() || "pzas",
       activityCatalogIds: inventoryModal.domain === INVENTORY_DOMAIN_CLEANING ? normalizedActivityConsumptions.map((entry) => entry.catalogActivityId) : [],
@@ -10707,27 +10708,29 @@ function App() { // NOSONAR
 
       <Modal className="inventory-item-modal" open={inventoryModal.open} title={inventoryModal.mode === "create" ? `Agregar ${inventoryEntityLabel}` : `Editar ${inventoryEntityLabel}`} confirmLabel={inventoryModal.mode === "create" ? `Guardar ${inventoryEntityLabel}` : "Guardar cambios"} cancelLabel="Cancelar" onClose={() => setInventoryModal(createInventoryModalState())} onConfirm={submitInventoryModal} confirmDisabled={inventoryModal.submitting}>
         <div className="modal-form-grid">
-          <label className="app-modal-field">
-            <span>Dominio</span>
-            <select
-              value={inventoryModal.domain}
-              onChange={(event) => {
-                const nextDomain = normalizeInventoryDomain(event.target.value);
-                setInventoryModal((current) => ({
-                  ...current,
-                  domain: nextDomain,
-                  presentation: inventoryDomainUsesPresentation(nextDomain) ? current.presentation : "",
-                  piecesPerBox: inventoryDomainUsesPackagingMetrics(nextDomain) ? current.piecesPerBox : "",
-                  boxesPerPallet: inventoryDomainUsesPackagingMetrics(nextDomain) ? current.boxesPerPallet : "",
-                  cleaningSite: nextDomain === INVENTORY_DOMAIN_CLEANING ? current.cleaningSite || inventoryCleaningSite || DEFAULT_CLEANING_SITE : DEFAULT_CLEANING_SITE,
-                  activityCatalogIds: nextDomain === INVENTORY_DOMAIN_CLEANING ? current.activityCatalogIds : [],
-                  activityConsumptions: nextDomain === INVENTORY_DOMAIN_CLEANING ? current.activityConsumptions : [],
-                }));
-              }}
-            >
-              {INVENTORY_DOMAIN_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-          </label>
+          {inventoryModal.domain !== INVENTORY_DOMAIN_MAINTENANCE ? (
+            <label className="app-modal-field">
+              <span>Dominio</span>
+              <select
+                value={inventoryModal.domain}
+                onChange={(event) => {
+                  const nextDomain = normalizeInventoryDomain(event.target.value);
+                  setInventoryModal((current) => ({
+                    ...current,
+                    domain: nextDomain,
+                    presentation: inventoryDomainUsesPresentation(nextDomain) ? current.presentation : "",
+                    piecesPerBox: inventoryDomainUsesPackagingMetrics(nextDomain) ? current.piecesPerBox : "",
+                    boxesPerPallet: inventoryDomainUsesPackagingMetrics(nextDomain) ? current.boxesPerPallet : "",
+                    cleaningSite: nextDomain === INVENTORY_DOMAIN_CLEANING ? current.cleaningSite || inventoryCleaningSite || DEFAULT_CLEANING_SITE : DEFAULT_CLEANING_SITE,
+                    activityCatalogIds: nextDomain === INVENTORY_DOMAIN_CLEANING ? current.activityCatalogIds : [],
+                    activityConsumptions: nextDomain === INVENTORY_DOMAIN_CLEANING ? current.activityConsumptions : [],
+                  }));
+                }}
+              >
+                {INVENTORY_DOMAIN_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+          ) : null}
           <label className="app-modal-field">
             <span>Código</span>
             <input value={inventoryModal.code} onChange={(event) => setInventoryModal((current) => ({ ...current, code: event.target.value }))} />
@@ -10736,6 +10739,22 @@ function App() { // NOSONAR
             <span>Nombre</span>
             <input value={inventoryModal.name} onChange={(event) => setInventoryModal((current) => ({ ...current, name: event.target.value }))} />
           </label>
+          {inventoryModal.domain === INVENTORY_DOMAIN_MAINTENANCE ? (
+            <>
+              <label className="app-modal-field">
+                <span>Familia</span>
+                <input value={inventoryModal.family} onChange={(event) => setInventoryModal((current) => ({ ...current, family: event.target.value }))} />
+              </label>
+              <label className="app-modal-field">
+                <span>Precio unitario</span>
+                <input type="number" value={inventoryModal.price} onChange={(event) => setInventoryModal((current) => ({ ...current, price: event.target.value }))} />
+              </label>
+              <label className="app-modal-field">
+                <span>Costo</span>
+                <input type="number" value={inventoryModal.cost} onChange={(event) => setInventoryModal((current) => ({ ...current, cost: event.target.value }))} />
+              </label>
+            </>
+          ) : null}
           {shouldShowInventoryPresentationField ? (
             <label className="app-modal-field">
               <span>{inventoryPresentationLabel}</span>

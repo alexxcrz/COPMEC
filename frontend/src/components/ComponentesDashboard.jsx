@@ -479,7 +479,7 @@ export function DashboardIshikawaDiagram({ rows }) {
 
 // ── Marca e identidad ─────────────────────────────────────────────────────────
 
-export function CopmecBrand({ headingTag = "h1", subtitle = "Sistema de Gestión Operativa.", tone = "dark", compact = false, showKicker = true, kicker = "AXO" }) {
+export function CopmecBrand({ headingTag = "h1", subtitle = "Sistema de Gestión Operativa.", tone = "dark", compact = false, showKicker = false, kicker = "AXO" }) {
   const HeadingTag = headingTag;
   return (
     <div className={`copmec-brand ${tone} ${compact ? "compact" : ""}`.trim()}>

@@ -372,6 +372,8 @@ export default function TablerosCreados({ contexto }) {
 
     setChecklistLinkModal((current) => ({ ...current, saving: true, error: "" }));
     try {
+      const selectedCatalogItem = activeCatalogItems.find((item) => String(item?.id || "").trim() === String(checklistLinkModal.itemId).trim());
+      const selectedActivityName = String(selectedCatalogItem?.name || "").trim();
       const payload = {
         operationalChecklistConfig: {
           enabled: true,
@@ -379,6 +381,7 @@ export default function TablerosCreados({ contexto }) {
           linkedAt: new Date().toISOString(),
           linkedById: String(currentUser?.id || "").trim(),
           linkedByName: String(currentUser?.name || "").trim(),
+          linkedActivityNames: selectedActivityName ? [selectedActivityName] : [],
         },
       };
       const result = await requestJson(`/warehouse/catalog/${checklistLinkModal.itemId}`, {

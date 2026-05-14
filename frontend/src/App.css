@@ -15783,6 +15783,28 @@ html[data-ui-theme] {
   --chat-text-secondary: var(--cp-text-2);
 }
 
+html[data-ui-theme] body,
+html[data-ui-theme] body button,
+html[data-ui-theme] body input,
+html[data-ui-theme] body select,
+html[data-ui-theme] body textarea,
+html[data-ui-theme] body label,
+html[data-ui-theme] body p,
+html[data-ui-theme] body a,
+html[data-ui-theme] body h1,
+html[data-ui-theme] body h2,
+html[data-ui-theme] body h3,
+html[data-ui-theme] body h4,
+html[data-ui-theme] body h5,
+html[data-ui-theme] body h6,
+html[data-ui-theme] body span,
+html[data-ui-theme] body small,
+html[data-ui-theme] body strong,
+html[data-ui-theme] body th,
+html[data-ui-theme] body td {
+  color: var(--sicfla-text);
+}
+
 html[data-ui-font="bahnschrift"] body,
 html[data-ui-font="bahnschrift"] button,
 html[data-ui-font="bahnschrift"] input,
@@ -16072,6 +16094,30 @@ html[data-ui-theme] .sidebar-shell {
   background:
     radial-gradient(circle at top left, color-mix(in srgb, white 16%, transparent), transparent 35%),
     linear-gradient(180deg, var(--ui-shell-top) 0%, var(--ui-shell-bottom) 100%);
+  color: #f8fbff;
+}
+
+html[data-ui-theme] .sidebar-shell h1,
+html[data-ui-theme] .sidebar-shell h2,
+html[data-ui-theme] .sidebar-shell h3,
+html[data-ui-theme] .sidebar-shell p,
+html[data-ui-theme] .sidebar-shell span,
+html[data-ui-theme] .sidebar-shell strong,
+html[data-ui-theme] .sidebar-shell small,
+html[data-ui-theme] .sidebar-shell label,
+html[data-ui-theme] .sidebar-shell a {
+  color: rgba(255, 255, 255, 0.96) !important;
+}
+
+html[data-ui-theme] .sidebar-shell .nav-item.active,
+html[data-ui-theme] .sidebar-shell .nav-item:hover,
+html[data-ui-theme] .sidebar-shell .sidebar-profile-card:hover,
+html[data-ui-theme] .sidebar-shell .sidebar-ai-btn:hover {
+  color: #ffffff !important;
+}
+
+html[data-ui-theme] .sidebar-shell .sidebar-profile-meta span {
+  color: rgba(255, 255, 255, 0.72) !important;
 }
 
 html[data-ui-theme] .content-header {
@@ -16167,5 +16213,150 @@ html[data-ui-theme] .success-tag,
 html[data-ui-theme] .copmec-ai-download-btn--cop,
 html[data-ui-theme] .copmec-ai-fix-badge {
   background: color-mix(in srgb, var(--ui-primary) 14%, white) !important;
+}
+
+html[data-ui-theme] .dashboard-section,
+html[data-ui-theme] .dashboard-filter-panel,
+html[data-ui-theme] .dashboard-area-detail-card,
+html[data-ui-theme] .dashboard-kpi-card,
+html[data-ui-theme] .dashboard-panel,
+html[data-ui-theme] .dashboard-date-range-popover,
+html[data-ui-theme] .dashboard-date-range-trigger,
+html[data-ui-theme] .dashboard-empty-state {
+  background: var(--cp-surface);
+  border-color: var(--cp-border);
+  box-shadow: var(--cp-shadow-sm);
+  color: var(--cp-text);
+}
+
+html[data-ui-theme] .dashboard-section-body {
+  border-top-color: color-mix(in srgb, var(--ui-primary) 15%, var(--cp-border));
+}
+
+html[data-ui-theme] .dashboard-topbar p,
+html[data-ui-theme] .dashboard-panel-header {
+  color: var(--cp-text-2);
+}
+
+html[data-ui-theme] .dashboard-section-summary-main strong,
+html[data-ui-theme] .dashboard-topbar h3,
+html[data-ui-theme] .dashboard-panel h3,
+html[data-ui-theme] .dashboard-kpi-card strong {
+  color: var(--cp-text);
+}
+
+html[data-ui-theme] .dashboard-section-summary-main span,
+html[data-ui-theme] .dashboard-section-summary-side small,
+html[data-ui-theme] .dashboard-filter-field span,
+html[data-ui-theme] .dashboard-date-range-trigger span,
+html[data-ui-theme] .dashboard-date-range-year-select span,
+html[data-ui-theme] .dashboard-date-range-weekdays span,
+html[data-ui-theme] .dashboard-kpi-head span,
+html[data-ui-theme] .dashboard-kpi-card small,
+html[data-ui-theme] .dashboard-empty-text,
+html[data-ui-theme] .dashboard-column-value,
+html[data-ui-theme] .dashboard-column-item small,
+html[data-ui-theme] .dashboard-area-summary-row td,
+html[data-ui-theme] .dashboard-date-cell,
+html[data-ui-theme] .dashboard-date-cell.muted {
+  color: var(--cp-text-2);
+}
+
+html[data-ui-theme] .dashboard-section-summary-icon {
+  background: color-mix(in srgb, var(--ui-primary) 24%, var(--cp-surface));
+  color: color-mix(in srgb, var(--ui-primary) 80%, #07141c);
+}
+
+html[data-ui-theme] .dashboard-section-chevron {
+  background: var(--cp-surface);
+  color: var(--cp-text);
+  border-color: var(--cp-border);
+}
+
+html[data-ui-theme] .dashboard-area-tab {
+  background: var(--cp-surface-2);
+  border-color: color-mix(in srgb, var(--ui-primary) 12%, var(--cp-surface));
+  color: var(--cp-text);
+}
+
+html[data-ui-theme] .dashboard-area-tab.active {
+  background: linear-gradient(135deg, var(--ui-primary-strong), var(--ui-primary));
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--ui-primary) 20%, transparent);
+}
+
+html[data-ui-theme] .dashboard-filter-field select,
+html[data-ui-theme] .dashboard-filter-field input {
+  background: var(--cp-input-bg);
+  border-color: var(--cp-border);
+  color: var(--cp-text);
+}
+
+html[data-ui-theme] .dashboard-date-range-trigger,
+html[data-ui-theme] .dashboard-date-range-popover {
+  background: var(--cp-surface);
+  border-color: var(--cp-border);
+  color: var(--cp-text);
+}
+
+html[data-ui-theme] .dashboard-date-cell.selected {
+  background: linear-gradient(135deg, var(--ui-primary-strong), var(--ui-primary));
+  color: #ffffff;
+}
+
+html[data-ui-theme] .dashboard-area-summary-row {
+  background: color-mix(in srgb, var(--ui-primary) 10%, var(--cp-surface));
+}
+
+html[data-ui-theme] .dashboard-area-summary-row td {
+  border-top-color: color-mix(in srgb, var(--ui-primary) 25%, var(--cp-border));
+}
+
+html[data-ui-theme] .dashboard-kpi-card {
+  border-color: color-mix(in srgb, var(--ui-primary) 12%, var(--cp-border));
+}
+
+html[data-ui-theme] .dashboard-kpi-card strong {
+  color: var(--ui-primary);
+}
+
+html[data-ui-theme] .dashboard-alert-pill {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--ui-primary) 50%, #ffbf47) 0%, color-mix(in srgb, var(--ui-primary) 70%, #ffc857) 100%);
+  color: var(--cp-text);
+}
+
+html[data-ui-theme] .dashboard-empty-state {
+  border-color: color-mix(in srgb, var(--ui-primary) 18%, var(--cp-border));
+}
+
+html[data-ui-theme] .dashboard-section,
+html[data-ui-theme] .dashboard-panel,
+html[data-ui-theme] .dashboard-filter-panel,
+html[data-ui-theme] .dashboard-area-detail-card,
+html[data-ui-theme] .dashboard-fishbone-card,
+html[data-ui-theme] .dashboard-pareto-row,
+html[data-ui-theme] .dashboard-cause-card,
+html[data-ui-theme] .dashboard-rank-item,
+html[data-ui-theme] .dashboard-bar-content,
+html[data-ui-theme] .dashboard-progress-metric,
+html[data-ui-theme] .dashboard-date-range-trigger,
+html[data-ui-theme] .dashboard-date-range-popover {
+  color: var(--cp-text) !important;
+}
+
+html[data-ui-theme] .dashboard-section *,
+html[data-ui-theme] .dashboard-panel *,
+html[data-ui-theme] .dashboard-filter-panel *,
+html[data-ui-theme] .dashboard-area-detail-card *,
+html[data-ui-theme] .dashboard-fishbone-card *,
+html[data-ui-theme] .dashboard-pareto-row *,
+html[data-ui-theme] .dashboard-cause-card *,
+html[data-ui-theme] .dashboard-rank-item *,
+html[data-ui-theme] .dashboard-bar-content *,
+html[data-ui-theme] .dashboard-progress-metric *,
+html[data-ui-theme] .dashboard-date-range-trigger *,
+html[data-ui-theme] .dashboard-date-range-popover * {
+  color: inherit !important;
 }
 

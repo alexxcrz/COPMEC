@@ -248,7 +248,7 @@ export function Sidebar({ currentUser, page, onPageChange, isOpen, isCollapsed, 
         </button>
       </div>
       <div className="brand-block">
-        <CopmecBrand headingTag="h1" compact={isCollapsed} />
+        <CopmecBrand headingTag="h1" compact={isCollapsed} showKicker={false} />
       </div>
 
       <nav className="sidebar-nav">
