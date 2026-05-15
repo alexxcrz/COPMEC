@@ -59,6 +59,7 @@ export default function OperationalInspectionStartModal({
   const [siteDrafts, setSiteDrafts] = useState({});
   const [activeSite, setActiveSite] = useState("");
   const [completedSites, setCompletedSites] = useState([]);
+
   const [savingEvidenceByCheckId, setSavingEvidenceByCheckId] = useState({});
   const [formError, setFormError] = useState("");
   const galleryInputRefs = useRef({});
@@ -168,6 +169,8 @@ export default function OperationalInspectionStartModal({
     isMultiSiteMode,
     normalizedIncidentSiteOptions,
   ]);
+
+
 
   const totalNoOk = useMemo(() => {
     return Object.values(currentDraft.checks || {}).filter((entry) => entry?.status === "no_ok").length;
@@ -329,6 +332,8 @@ export default function OperationalInspectionStartModal({
             })}
           </div>
         ) : null}
+
+
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "0.55rem" }}>
           <label style={{ display: "grid", gap: "0.2rem" }}>

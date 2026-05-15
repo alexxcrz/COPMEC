@@ -1162,14 +1162,6 @@ function App() { // NOSONAR
   const [securityEvents, setSecurityEvents] = useState([]);
   const [securityEventsStatus, setSecurityEventsStatus] = useState("idle");
 
-  const activeAreaScopes = useMemo(
-    () => {
-      const selectedAreaSection = APP_AREA_SECTIONS.find((section) => section.id === selectedAreaSectionId) || null;
-      return selectedAreaSection ? selectedAreaSection.scopes : [];
-    },
-    [selectedAreaSectionId],
-  );
-
   const operationalPauseState = useMemo(() => ({
     areaPauseControls: state?.system?.operational?.pauseControl?.areaPauseControls || EMPTY_OBJECT,
   }), [state?.system?.operational]);
@@ -4313,6 +4305,14 @@ function App() { // NOSONAR
       .map((rootArea) => normalizeAreaOption(rootArea))
       .filter((rootArea) => rootArea && !staticRoots.has(rootArea));
   }, [rootAreaOptions]);
+
+  const activeAreaScopes = useMemo(() => {
+    if (selectedAreaSectionId === "all") return [];
+    const selectedStaticSection = APP_AREA_SECTIONS.find((section) => section.id === selectedAreaSectionId) || null;
+    if (selectedStaticSection?.scopes?.length) return selectedStaticSection.scopes;
+    const matchedDynamicRoot = dynamicAreaSectionRoots.find((root) => normalizeAreaSectionId(root) === selectedAreaSectionId);
+    return matchedDynamicRoot ? [matchedDynamicRoot] : [];
+  }, [selectedAreaSectionId, dynamicAreaSectionRoots]);
 
   // Sub-areas for a given root area
   const getSubAreaOptions = (rootArea) => {

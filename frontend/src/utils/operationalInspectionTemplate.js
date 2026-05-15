@@ -64,10 +64,10 @@ export const OPERATIONAL_INSPECTION_TEMPLATE = {
   ],
 };
 
-export const CLEANING_CHECKLIST_TEMPLATE = {
-  id: "cleaning-checklist-v1",
-  name: "Checklist - Limpieza General",
-  version: 1,
+export const CLEANING_CHECKLIST_TEMPLATE_V2 = {
+  id: "cleaning-checklist-v2",
+  name: "Checklist - Área de Limpieza",
+  version: 2,
   incidenceRules: {
     createOnNoOk: true,
     requirePhotoOnNoOk: true,
@@ -82,7 +82,7 @@ export const CLEANING_CHECKLIST_TEMPLATE = {
     { key: "shift", label: "Turno", required: false },
     { key: "process", label: "Proceso/Tablero", required: false },
   ],
-  siteOptions: [],
+  siteOptions: ["C1", "C2", "C3", "P"],
   sections: [
     {
       id: "control-fauna",
@@ -92,6 +92,7 @@ export const CLEANING_CHECKLIST_TEMPLATE = {
         { id: "fauna-verificacion", label: "Verificar que no haya fauna nociva (insectos, roedores)" },
         { id: "fauna-trampa-control", label: "Trampas de control en buen estado y posicionadas" },
         { id: "fauna-evidencia", label: "Ausencia de evidencia de plagas (heces, nidos)" },
+        { id: "fauna-alimentos", label: "Alimentos y residuos no accesibles para fauna" },
       ],
     },
     {
@@ -104,6 +105,8 @@ export const CLEANING_CHECKLIST_TEMPLATE = {
         { id: "sanitarios-papel", label: "Papel higiénico disponible en todos los inodoros" },
         { id: "sanitarios-toallas", label: "Toallas de manos disponibles y limpias" },
         { id: "sanitarios-jabonera", label: "Jabón disponible en lavamanos" },
+        { id: "sanitarios-olor", label: "Ausencia de olores desagradables" },
+        { id: "sanitarios-espejos", label: "Espejos y superficies reflectantes limpios" },
       ],
     },
     {
@@ -116,6 +119,8 @@ export const CLEANING_CHECKLIST_TEMPLATE = {
         { id: "comedor-piso", label: "Piso limpio sin derrames ni residuos" },
         { id: "comedor-basura", label: "Basura recolectada y contenedores limpios" },
         { id: "comedor-ventilacion", label: "Ventilación adecuada y ausencia de olores desagradables" },
+        { id: "comedor-microondas", label: "Microondas y áreas de preparación limpias" },
+        { id: "comedor-nevera", label: "Nevera organizada y sin alimentos vencidos" },
       ],
     },
     {
@@ -128,6 +133,8 @@ export const CLEANING_CHECKLIST_TEMPLATE = {
         { id: "encharcamientos", label: "Ausencia de encharcamientos y derrames de líquidos" },
         { id: "playas-orden", label: "Playas de almacenamiento sin carros fuera de lugar" },
         { id: "carros-posicionados", label: "Carros de transporte en sus lugares asignados" },
+        { id: "estanterias-limpieza", label: "Estanterías y anaqueles libres de polvo y residuos" },
+        { id: "productos-etiquetados", label: "Productos correctamente etiquetados y organizados" },
       ],
     },
     {
@@ -139,6 +146,7 @@ export const CLEANING_CHECKLIST_TEMPLATE = {
         { id: "epp-estado", label: "EPP en buen estado y sin daños" },
         { id: "epp-signalizacion", label: "Señalización clara de uso obligatorio de EPP" },
         { id: "epp-almacenamiento", label: "EPP almacenado correctamente y accesible" },
+        { id: "epp-limpieza", label: "EPP limpio y en condiciones higiénicas" },
       ],
     },
     {
@@ -151,6 +159,36 @@ export const CLEANING_CHECKLIST_TEMPLATE = {
         { id: "cables-organizacion", label: "Cables eléctricos organizados y asegurados" },
         { id: "basura-separacion", label: "Recipientes de basura diferenciados y disponibles" },
         { id: "articulos-limpieza", label: "Artículos de limpieza disponibles (trapos, escobas, trapeadores)" },
+        { id: "iluminacion-adecuada", label: "Iluminación adecuada en áreas de trabajo y limpieza" },
+        { id: "ventanas-limpieza", label: "Ventanas y vidrios limpios y transparentes" },
+      ],
+    },
+    {
+      id: "revision-naves",
+      title: "Revisión de Naves",
+      incidenceCategory: "Limpieza",
+      checks: [
+        { id: "naves-piso-limpieza", label: "Piso de naves completamente limpio y sin residuos" },
+        { id: "naves-paredes-limpieza", label: "Paredes y estructuras libres de polvo y suciedad" },
+        { id: "naves-techo-inspeccion", label: "Techo y luminarias libres de polvo acumulado" },
+        { id: "naves-maquinaria-limpieza", label: "Maquinaria y equipos limpios y libres de residuos" },
+        { id: "naves-ventilacion-filtros", label: "Filtros de ventilación limpios y funcionales" },
+        { id: "naves-drenajes-libres", label: "Drenajes y desagües libres de obstrucciones" },
+        { id: "naves-orden-general", label: "Orden general en áreas de producción y almacenamiento" },
+        { id: "naves-seguridad-pasos", label: "Pasos de seguridad y áreas de evacuación despejadas" },
+      ],
+    },
+    {
+      id: "insumos-limpieza",
+      title: "Insumos y Equipos de Limpieza",
+      incidenceCategory: "Limpieza",
+      checks: [
+        { id: "insumos-disponibilidad", label: "Todos los insumos de limpieza disponibles en cantidades adecuadas" },
+        { id: "insumos-vencimiento", label: "Productos de limpieza dentro de fecha de vencimiento" },
+        { id: "insumos-almacenamiento", label: "Insumos almacenados correctamente y con etiquetado adecuado" },
+        { id: "equipos-funcionamiento", label: "Equipos de limpieza en buen estado y funcionamiento" },
+        { id: "equipos-calibracion", label: "Equipos de medición y dosificación calibrados" },
+        { id: "seguridad-productos", label: "Productos químicos almacenados con medidas de seguridad" },
       ],
     },
   ],
@@ -229,7 +267,7 @@ export const OPERATIONAL_INSPECTION_ACTIVITY_BINDINGS = [
     ],
   },
   {
-    templateId: CLEANING_CHECKLIST_TEMPLATE.id,
+    templateId: CLEANING_CHECKLIST_TEMPLATE_V2.id,
     activityMatchers: [
       "limpieza general",
       "limpieza de areas",
@@ -237,6 +275,9 @@ export const OPERATIONAL_INSPECTION_ACTIVITY_BINDINGS = [
       "checklist limpieza",
       "inspeccion limpieza",
       "verificacion limpieza",
+      "area de limpieza",
+      "revision limpieza",
+      "control limpieza",
     ],
   },
 ];

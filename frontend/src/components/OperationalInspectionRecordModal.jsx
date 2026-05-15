@@ -49,12 +49,15 @@ export default function OperationalInspectionRecordModal({
 }) {
   const resolvedRecord = useMemo(() => normalizeInspectionRecord(record), [record]);
   const [activeSite, setActiveSite] = useState("");
+
   const [selectedPhoto, setSelectedPhoto] = useState(null);
 
   useEffect(() => {
     if (activeSite && resolvedRecord.siteKeys.includes(activeSite)) return;
     setActiveSite(resolvedRecord.siteKeys[0] || "GENERAL");
   }, [activeSite, resolvedRecord.siteKeys]);
+
+
 
   const currentSiteKey = activeSite || resolvedRecord.siteKeys[0] || "GENERAL";
   const currentDraft = resolvedRecord.bySiteDrafts[currentSiteKey] && typeof resolvedRecord.bySiteDrafts[currentSiteKey] === "object"
@@ -176,7 +179,9 @@ export default function OperationalInspectionRecordModal({
             </div>
           ) : null}
 
-          {resolvedRecord.template.sections.map((section) => (
+
+
+{resolvedRecord.template.sections.map((section) => (
             <article key={section.id} style={{ border: "1px solid rgba(49, 77, 105, 0.14)", borderRadius: "0.9rem", padding: "0.7rem", display: "grid", gap: "0.6rem" }}>
               <div className="board-meta-inline created-board-card-meta" style={{ margin: 0 }}>
                 <strong>{section.title}</strong>

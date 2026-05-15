@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Modal } from "../components/Modal";
 import { downloadBoardAsJson, parseBoardImportJson } from "../utils/boardImportExport";
-import { OPERATIONAL_INSPECTION_TEMPLATE, normalizeOperationalInspectionTemplate } from "../utils/operationalInspectionTemplate";
+import { CLEANING_CHECKLIST_TEMPLATE_V2, OPERATIONAL_INSPECTION_TEMPLATE, normalizeOperationalInspectionTemplate } from "../utils/operationalInspectionTemplate";
 
 const CHECKLIST_SITE_OPTIONS = ["C1", "C2", "C3", "P"];
 const CHECKLIST_TEMPLATE_STORAGE_KEY = "copmec:operational-checklist-template:v1";
@@ -73,8 +73,10 @@ export default function TablerosCreados({ contexto }) {
 
   const selectedSectionAreaScopes = useMemo(() => {
     if (selectedAreaSectionId === "all") return [];
-    if (!Array.isArray(selectedAreaSection?.scopes)) return [];
-    return Array.from(new Set(selectedAreaSection.scopes
+    const sectionScopes = Array.isArray(selectedAreaSection?.scopes)
+      ? selectedAreaSection.scopes
+      : [selectedAreaSectionId];
+    return Array.from(new Set(sectionScopes
       .map((scope) => normalizeBoardAreaToken(scope))
       .filter(Boolean)));
   }, [selectedAreaSection, selectedAreaSectionId]);
@@ -88,10 +90,12 @@ export default function TablerosCreados({ contexto }) {
   
   // Filtrar catálogo solo por el área actual
   const activeCatalogItems = useMemo(() => {
-    if (selectedAreaSectionId === "all" || !selectedAreaSection?.scopes?.length) {
+    if (selectedAreaSectionId === "all") {
       return allCatalogItems;
     }
-    const areaScopes = selectedAreaSection.scopes.map((scope) => String(scope || "").trim().toUpperCase()).filter(Boolean);
+    const areaScopes = (Array.isArray(selectedAreaSection?.scopes) ? selectedAreaSection.scopes : [selectedAreaSectionId])
+      .map((scope) => String(scope || "").trim().toUpperCase())
+      .filter(Boolean);
     if (!areaScopes.length) return allCatalogItems;
     return allCatalogItems.filter((item) => {
       const itemArea = String(item.area || item.category || "General").trim().toUpperCase();
@@ -197,6 +201,7 @@ export default function TablerosCreados({ contexto }) {
 
   const [checklistTemplateDraft, setChecklistTemplateDraft] = useState(() => loadPersistedChecklistTemplate());
   const [checklistEditorOpen, setChecklistEditorOpen] = useState(false);
+  const [checklistEditorMode, setChecklistEditorMode] = useState("edit");
   const [checklistTemplateSaving, setChecklistTemplateSaving] = useState(false);
   const [checklistLinkModal, setChecklistLinkModal] = useState({
     open: false,
@@ -205,6 +210,7 @@ export default function TablerosCreados({ contexto }) {
     saving: false,
     error: "",
   });
+  const [unlinkingChecklistItems, setUnlinkingChecklistItems] = useState({});
   const checklistBaseChecksCount = useMemo(
     () => checklistTemplateDraft.sections.reduce((total, section) => total + (Array.isArray(section?.checks) ? section.checks.length : 0), 0),
     [checklistTemplateDraft],
@@ -352,6 +358,34 @@ export default function TablerosCreados({ contexto }) {
     });
   }
 
+  function openChecklistCreator() {
+    setChecklistTemplateDraft(normalizeOperationalInspectionTemplate({
+      name: "Checklist nuevo",
+      siteOptions: [],
+      sections: [
+        {
+          id: createChecklistToken("section"),
+          title: "Nueva sección",
+          incidenceCategory: "Operativa",
+          checks: [{ id: createChecklistToken("check"), label: "Nuevo check" }],
+        },
+      ],
+    }));
+    setChecklistEditorMode("create");
+    setChecklistEditorOpen(true);
+  }
+
+  function openChecklistEditor(templateKey = "operational") {
+    const normalizedKey = String(templateKey || "").trim().toLowerCase();
+    if (normalizedKey === "cleaning") {
+      setChecklistTemplateDraft(normalizeOperationalInspectionTemplate(CLEANING_CHECKLIST_TEMPLATE_V2));
+    } else {
+      setChecklistTemplateDraft(normalizeOperationalInspectionTemplate(OPERATIONAL_INSPECTION_TEMPLATE));
+    }
+    setChecklistEditorMode("edit");
+    setChecklistEditorOpen(true);
+  }
+
   function openChecklistLinkModal() {
     const nextCategory = checklistCatalogCategoryOptions[0] || "General";
     const nextItem = activeCatalogItems.find((item) => (String(item?.category || "General").trim() || "General") === nextCategory);
@@ -397,6 +431,71 @@ export default function TablerosCreados({ contexto }) {
         saving: false,
         error: error?.message || "No se pudo vincular el checklist a la actividad.",
       }));
+    }
+  }
+
+  async function unlinkChecklistActivityFromCatalogItem(itemId) {
+    if (!itemId || unlinkingChecklistItems[itemId]) return;
+    setUnlinkingChecklistItems((current) => ({ ...current, [itemId]: true }));
+    try {
+      const catalogItem = activeCatalogItems.find((item) => String(item?.id || "").trim() === String(itemId).trim());
+      if (!catalogItem) throw new Error("Actividad no encontrada.");
+      const payload = {
+        operationalChecklistConfig: {
+          ...catalogItem.operationalChecklistConfig,
+          enabled: false,
+          linkedActivityNames: [],
+        },
+      };
+      const result = await requestJson(`/warehouse/catalog/${itemId}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+      applyRemoteWarehouseState(result?.data?.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      pushAppToast("Se eliminó la vinculación del checklist con la actividad.", "success");
+    } catch (error) {
+      pushAppToast(error?.message || "No se pudo eliminar la actividad vinculada.", "danger");
+    } finally {
+      setUnlinkingChecklistItems((current) => {
+        const next = { ...current };
+        delete next[itemId];
+        return next;
+      });
+    }
+  }
+
+  async function unlinkChecklistActivityFromBoard(boardId, activityName) {
+    if (!boardId || !activityName || unlinkingChecklistItems[`${boardId}:${activityName}`]) return;
+    setUnlinkingChecklistItems((current) => ({ ...current, [`${boardId}:${activityName}`]: true }));
+    try {
+      const board = visibleCreatorBoards.find((item) => item.id === boardId);
+      if (!board) throw new Error("Tablero no encontrado.");
+      const checklistConfig = board?.settings?.operationalChecklistConfig;
+      if (!checklistConfig || !Array.isArray(checklistConfig.linkedActivityNames)) throw new Error("Configuración de checklist inválida.");
+      const nextLinkedActivityNames = checklistConfig.linkedActivityNames.filter((name) => String(name || "").trim() !== String(activityName || "").trim());
+      const payload = {
+        settings: {
+          ...board.settings,
+          operationalChecklistConfig: {
+            ...checklistConfig,
+            linkedActivityNames: nextLinkedActivityNames,
+          },
+        },
+      };
+      const result = await requestJson(`/warehouse/boards/${boardId}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+      applyRemoteWarehouseState(result?.data?.state, setState, setLoginDirectory, skipNextSyncRef, setSyncStatus);
+      pushAppToast("Se eliminó la actividad vinculada del checklist.", "success");
+    } catch (error) {
+      pushAppToast(error?.message || "No se pudo eliminar la actividad vinculada.", "danger");
+    } finally {
+      setUnlinkingChecklistItems((current) => {
+        const next = { ...current };
+        delete next[`${boardId}:${activityName}`];
+        return next;
+      });
     }
   }
 
@@ -516,7 +615,7 @@ export default function TablerosCreados({ contexto }) {
               </>
             ) : null}
             {creatorTab === "checklists" ? (
-              <button type="button" className="primary-button" onClick={openChecklistLinkModal} disabled={!actionPermissions.editCatalog || !activeCatalogItems.length}>
+              <button type="button" className="primary-button" onClick={openChecklistCreator} disabled={!actionPermissions.editCatalog}>
                 <Plus size={16} /> Crear checklist
               </button>
             ) : null}
@@ -743,19 +842,30 @@ export default function TablerosCreados({ contexto }) {
                     </div>
                   </article>
                 ))}
-                <div className="saved-board-list" style={{ marginTop: "0.25rem" }}>
+                <div className="saved-board-list" style={{ marginTop: "0.25rem", gap: "0.35rem", alignItems: "center" }}>
                   <span className="chip primary">Actividades vinculadas: {linkedChecklistCatalogActivities.length}</span>
                   {linkedChecklistCatalogActivities.length
                     ? linkedChecklistCatalogActivities.map((item) => (
-                        <span key={item.id} className="chip">{item.category || "General"} · {item.name}</span>
+                        <div key={item.id} style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                          <span className="chip">{item.category || "General"} · {item.name}</span>
+                          <button
+                            type="button"
+                            className="icon-button danger"
+                            onClick={() => void unlinkChecklistActivityFromCatalogItem(item.id)}
+                            disabled={Boolean(unlinkingChecklistItems[item.id])}
+                            title="Eliminar vínculo"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       ))
                     : <span className="subtle-line">Aun no hay actividades vinculadas.</span>}
                 </div>
               </div>
 
               <div className="toolbar-actions">
-                <button type="button" className="icon-button" onClick={() => setChecklistEditorOpen(true)}>
-                  <Pencil size={15} /> Editar plantilla
+                <button type="button" className="icon-button" onClick={() => openChecklistEditor()}>
+                  <Pencil size={15} /> Abrir checklist operativo
                 </button>
                 <button
                   type="button"
@@ -764,6 +874,43 @@ export default function TablerosCreados({ contexto }) {
                   disabled={!actionPermissions.editCatalog || !activeCatalogItems.length}
                 >
                   <Plus size={16} /> Vincular a actividad
+                </button>
+              </div>
+            </article>
+
+            <article className="created-board-card surface-card" style={{ border: "1px solid rgba(49, 77, 105, 0.14)", background: "linear-gradient(180deg, rgba(248, 250, 252, 0.8) 0%, rgba(255, 255, 255, 1) 100%)", maxWidth: "560px" }}>
+              <div className="created-board-card-top">
+                <div className="created-board-card-head">
+                  <strong>{OPERATIONAL_INSPECTION_TEMPLATE.name}</strong>
+                  <p>Checklist original de inspección operativa disponible sin afectar el checklist de limpieza.</p>
+                </div>
+                <div className="saved-board-list created-board-card-stats">
+                  <span className="chip primary">Secciones: {OPERATIONAL_INSPECTION_TEMPLATE.sections.length}</span>
+                  <span className="chip">Checks: {OPERATIONAL_INSPECTION_TEMPLATE.sections.reduce((total, section) => total + (Array.isArray(section.checks) ? section.checks.length : 0), 0)}</span>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gap: "0.45rem", marginBottom: "0.8rem" }}>
+                <div className="saved-board-list" style={{ marginBottom: "0.25rem" }}>
+                  <span className="chip primary">Naves configuradas:</span>
+                  {(Array.isArray(CLEANING_CHECKLIST_TEMPLATE_V2.siteOptions) ? CLEANING_CHECKLIST_TEMPLATE_V2.siteOptions : []).length
+                    ? CLEANING_CHECKLIST_TEMPLATE_V2.siteOptions.map((site) => <span key={site} className="chip primary">{site}</span>)
+                    : <span className="subtle-line">Sin naves fijas (usa catálogo o contexto operativo)</span>}
+                </div>
+                {CLEANING_CHECKLIST_TEMPLATE_V2.sections.map((section) => (
+                  <article key={section.id} className="surface-card" style={{ padding: "0.65rem 0.75rem", display: "grid", gap: "0.22rem" }}>
+                    <strong style={{ fontSize: "0.86rem", lineHeight: 1.2 }}>{section.title}</strong>
+                    <div className="board-meta-inline created-board-card-meta" style={{ margin: 0, fontSize: "0.74rem" }}>
+                      <span>{section.incidenceCategory || "Otro"}</span>
+                      <span>{section.checks.length} checks</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              <div className="toolbar-actions">
+                <button type="button" className="primary-button created-board-open-action" onClick={() => openChecklistEditor("cleaning") }>
+                  <Pencil size={16} /> Abrir checklist de limpieza
                 </button>
               </div>
             </article>
@@ -787,9 +934,22 @@ export default function TablerosCreados({ contexto }) {
                     <span>Actividades vinculadas · {linkedActivityNames.length}</span>
                   </div>
 
-                  <div className="saved-board-list" style={{ marginBottom: "0.7rem" }}>
+                  <div className="saved-board-list" style={{ marginBottom: "0.7rem", gap: "0.35rem", alignItems: "center" }}>
                     {linkedActivityNames.length
-                      ? linkedActivityNames.map((activityName) => <span key={`${board.id}-${activityName}`} className="chip">{activityName}</span>)
+                      ? linkedActivityNames.map((activityName) => (
+                          <div key={`${board.id}-${activityName}`} style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                            <span className="chip">{activityName}</span>
+                            <button
+                              type="button"
+                              className="icon-button danger"
+                              onClick={() => void unlinkChecklistActivityFromBoard(board.id, activityName)}
+                              disabled={Boolean(unlinkingChecklistItems[`${board.id}:${activityName}`])}
+                              title="Eliminar vínculo"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        ))
                       : <span className="subtle-line">Sin actividades vinculadas todavía.</span>}
                   </div>
 
@@ -823,14 +983,14 @@ export default function TablerosCreados({ contexto }) {
 
       <Modal
         open={checklistEditorOpen}
-        title="Editar plantilla de checklist"
+        title={checklistEditorMode === "create" ? "Crear checklist" : "Editar plantilla de checklist"}
         confirmLabel="Cerrar"
         hideCancel
         onClose={() => setChecklistEditorOpen(false)}
         onConfirm={() => setChecklistEditorOpen(false)}
         footerActions={(
           <button type="button" className="icon-button" onClick={persistChecklistTemplateDraft} disabled={checklistTemplateSaving}>
-            {checklistTemplateSaving ? "Guardando..." : "Guardar cambios"}
+            {checklistTemplateSaving ? "Guardando..." : checklistEditorMode === "create" ? "Crear checklist" : "Guardar cambios"}
           </button>
         )}
       >
