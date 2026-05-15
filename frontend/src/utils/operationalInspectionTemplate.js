@@ -222,7 +222,10 @@ export function normalizeOperationalInspectionTemplate(rawTemplate) {
           const checkLabel = String(check?.label || "").trim();
           if (!checkLabel) return null;
           const checkId = String(check?.id || "").trim() || `${sectionId}-${makeChecklistToken(checkLabel, `chk-${checkIndex + 1}`)}`;
-          return { id: checkId, label: checkLabel };
+          const normalizedCheckSiteOptions = Array.isArray(check?.siteOptions)
+            ? Array.from(new Set(check.siteOptions.map((s) => String(s || "").trim().toUpperCase()).filter(Boolean)))
+            : [];
+          return { id: checkId, label: checkLabel, siteOptions: normalizedCheckSiteOptions };
         })
         .filter(Boolean);
 

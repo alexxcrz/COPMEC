@@ -36,7 +36,7 @@ import {
 } from "lucide-react";
 import { CopmecBrand } from "./ComponentesDashboard";
 import logoIA from "../assets/AXOIA.png";
-import { PAGE_DASHBOARD, PAGE_PROCESS_AUDITS, PAGE_ROUTE_SLUGS } from "../utils/constantes";
+import { PAGE_DASHBOARD, PAGE_PROCESS_AUDITS, PAGE_ROUTE_SLUGS, PAGE_TRANSPORT } from "../utils/constantes";
 
 // No hay atajos dentro de Mejora continua. Auditoría e Historial son entradas separadas en NAV_ITEMS.
 
@@ -51,9 +51,27 @@ function getUserJobTitle(user) {
   return String(user?.jobTitle || DEFAULT_JOB_TITLE_BY_ROLE[user?.role] || "").trim();
 }
 
-function getPageHref(pageId) {
-  const slug = PAGE_ROUTE_SLUGS?.[pageId];
-  return slug ? `/${slug}` : "/";
+function getPageHref(pageId, areaId = "all", subPath = "") {
+  const pageSlug = PAGE_ROUTE_SLUGS?.[pageId];
+  if (!pageSlug) return "/";
+
+  const normalizedArea = normalizeSidebarKey(areaId);
+  const normalizedSubPath = String(subPath || "").trim().toLowerCase().replaceAll(/\s+/g, "-").replace(/(^-|-$)/g, "");
+
+  if (!normalizedArea || normalizedArea === "all") {
+    if (pageId === PAGE_TRANSPORT && normalizedSubPath) {
+      return `/${pageSlug}/${normalizedSubPath}`;
+    }
+    return normalizedSubPath ? `/${normalizedSubPath}` : `/${pageSlug}`;
+  }
+
+  if (pageId === PAGE_TRANSPORT && normalizedSubPath) {
+    return `/${normalizedArea}/${normalizedSubPath}`;
+  }
+
+  return normalizedSubPath
+    ? `/${normalizedArea}/${pageSlug}/${normalizedSubPath}`
+    : `/${normalizedArea}/${pageSlug}`;
 }
 
 function getUserAvatarUrl(user) {
@@ -299,7 +317,7 @@ export function Sidebar({ currentUser, page, onPageChange, isOpen, isCollapsed, 
                         <a
                           key={`${section.id}-${item.pageId}-${item.transportSection || ""}-${item.transportTab || ""}`}
                           className={`nav-item nav-area-item ${itemActive ? "active" : ""}`}
-                          href={getPageHref(item.pageId)}
+                          href={getPageHref(item.pageId, section.id, item.transportSection)}
                           title={item.label}
                           aria-label={`${section.label} · ${item.label}`}
                           onClick={(event) => {

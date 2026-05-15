@@ -1,6 +1,6 @@
 /* eslint-disable */
 import {
-  STORAGE_KEY, SIDEBAR_COLLAPSED_KEY, ACTIVE_PAGE_KEY, DASHBOARD_SECTIONS_KEY, NOTIFICATION_READ_KEY, NOTIFICATION_DELETED_KEY, NOTIFICATION_INBOX_KEY, EMPTY_OBJECT, BOOTSTRAP_MASTER_ID, MASTER_USERNAME, API_BASE_URL, ENABLE_LEGACY_WHOLE_STATE_SYNC, PAGE_BOARD, PAGE_CUSTOM_BOARDS, PAGE_ADMIN, PAGE_DASHBOARD, PAGE_HISTORY, PAGE_PROCESS_AUDITS, PAGE_INVENTORY, PAGE_USERS, PAGE_BIBLIOTECA, PAGE_INCIDENCIAS, PAGE_NOT_FOUND, PAGE_ROUTE_SLUGS, PAGE_ROUTE_ALIASES, EMPTY_LOGIN_DIRECTORY, ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR, STATUS_PENDING, STATUS_RUNNING, STATUS_PAUSED, STATUS_FINISHED, INVENTORY_DOMAIN_BASE, INVENTORY_DOMAIN_CLEANING, INVENTORY_DOMAIN_ORDERS, INVENTORY_DOMAIN_MAINTENANCE, INVENTORY_DOMAIN_DESTINATIONS, INVENTORY_MOVEMENT_RESTOCK, INVENTORY_MOVEMENT_CONSUME, INVENTORY_MOVEMENT_TRANSFER, CONTROL_STATUS_OPTIONS, USER_ROLES, PERMISSION_SCHEMA_VERSION, ROLE_LEVEL, TEMPORARY_PASSWORD_MIN_LENGTH, PROFILE_SELF_EDIT_LIMIT, DEFAULT_AREA_OPTIONS, DEFAULT_BOARD_SECTION_OPTIONS, INVENTORY_LOOKUP_LOGISTICS_FIELD, BOARD_ACTIVITY_LIST_FIELD, DEFAULT_JOB_TITLE_BY_ROLE, DASHBOARD_CHART_PALETTE, DEFAULT_DASHBOARD_SECTION_STATE, DEFAULT_ADMIN_TAB, ACTIVITY_FREQUENCY_OPTIONS, ACTIVITY_FREQUENCY_LABELS, ACTIVITY_FREQUENCY_DAY_OFFSETS, BOARD_FIELD_TYPES, BOARD_FIELD_TYPE_DETAILS, BOARD_FIELD_WIDTHS, COLOR_RULE_OPERATORS, BOARD_FIELD_WIDTH_STYLES, BOARD_FIELD_MIN_WIDTH_BY_TYPE, DEFAULT_BOARD_AUX_COLUMNS_ORDER, BOARD_AUX_COLUMN_DEFINITIONS, BOARD_AUX_COLUMN_IDS, BOARD_TEMPLATES, FORMULA_OPERATIONS, OPTION_SOURCE_TYPES, INVENTORY_PROPERTIES, INVENTORY_IMPORT_FIELD_ALIASES, INVENTORY_DOMAIN_OPTIONS, INVENTORY_MOVEMENT_OPTIONS, CLEANING_SITE_OPTIONS, DEFAULT_CLEANING_SITE, BOARD_OPERATIONAL_CONTEXT_NONE, BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE, BOARD_OPERATIONAL_CONTEXT_CUSTOM, BOARD_OPERATIONAL_CONTEXT_OPTIONS, NAV_ITEMS, ACTION_DEFINITIONS, BOARD_PERMISSION_ACTION_IDS, BOARD_PERMISSION_ACTIONS, PAGE_ACTION_GROUPS, PERMISSION_PRESETS, RESPONSIBLE_VISUALS, ALL_PAGES, ALL_ACTION_IDS, ROLE_PERMISSION_MATRIX, KPI_STYLES
+  STORAGE_KEY, SIDEBAR_COLLAPSED_KEY, ACTIVE_PAGE_KEY, DASHBOARD_SECTIONS_KEY, NOTIFICATION_READ_KEY, NOTIFICATION_DELETED_KEY, NOTIFICATION_INBOX_KEY, EMPTY_OBJECT, BOOTSTRAP_MASTER_ID, MASTER_USERNAME, API_BASE_URL, ENABLE_LEGACY_WHOLE_STATE_SYNC, PAGE_BOARD, PAGE_CUSTOM_BOARDS, PAGE_ADMIN, PAGE_DASHBOARD, PAGE_HISTORY, PAGE_PROCESS_AUDITS, PAGE_INVENTORY, PAGE_TRANSPORT, PAGE_USERS, PAGE_BIBLIOTECA, PAGE_INCIDENCIAS, PAGE_NOT_FOUND, PAGE_ROUTE_SLUGS, PAGE_ROUTE_ALIASES, EMPTY_LOGIN_DIRECTORY, ROLE_LEAD, ROLE_SR, ROLE_SSR, ROLE_JR, STATUS_PENDING, STATUS_RUNNING, STATUS_PAUSED, STATUS_FINISHED, INVENTORY_DOMAIN_BASE, INVENTORY_DOMAIN_CLEANING, INVENTORY_DOMAIN_ORDERS, INVENTORY_DOMAIN_MAINTENANCE, INVENTORY_DOMAIN_DESTINATIONS, INVENTORY_MOVEMENT_RESTOCK, INVENTORY_MOVEMENT_CONSUME, INVENTORY_MOVEMENT_TRANSFER, CONTROL_STATUS_OPTIONS, USER_ROLES, PERMISSION_SCHEMA_VERSION, ROLE_LEVEL, TEMPORARY_PASSWORD_MIN_LENGTH, PROFILE_SELF_EDIT_LIMIT, DEFAULT_AREA_OPTIONS, DEFAULT_BOARD_SECTION_OPTIONS, INVENTORY_LOOKUP_LOGISTICS_FIELD, BOARD_ACTIVITY_LIST_FIELD, DEFAULT_JOB_TITLE_BY_ROLE, DASHBOARD_CHART_PALETTE, DEFAULT_DASHBOARD_SECTION_STATE, DEFAULT_ADMIN_TAB, ACTIVITY_FREQUENCY_OPTIONS, ACTIVITY_FREQUENCY_LABELS, ACTIVITY_FREQUENCY_DAY_OFFSETS, BOARD_FIELD_TYPES, BOARD_FIELD_TYPE_DETAILS, BOARD_FIELD_WIDTHS, COLOR_RULE_OPERATORS, BOARD_FIELD_WIDTH_STYLES, BOARD_FIELD_MIN_WIDTH_BY_TYPE, DEFAULT_BOARD_AUX_COLUMNS_ORDER, BOARD_AUX_COLUMN_DEFINITIONS, BOARD_AUX_COLUMN_IDS, BOARD_TEMPLATES, FORMULA_OPERATIONS, OPTION_SOURCE_TYPES, INVENTORY_PROPERTIES, INVENTORY_IMPORT_FIELD_ALIASES, INVENTORY_DOMAIN_OPTIONS, INVENTORY_MOVEMENT_OPTIONS, CLEANING_SITE_OPTIONS, DEFAULT_CLEANING_SITE, BOARD_OPERATIONAL_CONTEXT_NONE, BOARD_OPERATIONAL_CONTEXT_CLEANING_SITE, BOARD_OPERATIONAL_CONTEXT_CUSTOM, BOARD_OPERATIONAL_CONTEXT_OPTIONS, NAV_ITEMS, ACTION_DEFINITIONS, BOARD_PERMISSION_ACTION_IDS, BOARD_PERMISSION_ACTIONS, PAGE_ACTION_GROUPS, PERMISSION_PRESETS, RESPONSIBLE_VISUALS, ALL_PAGES, ALL_ACTION_IDS, ROLE_PERMISSION_MATRIX, KPI_STYLES
 } from "./constantes.js";
 import { getExcelJsModule } from "./utilidadesImportExcel.js";
 
@@ -15,16 +15,43 @@ export function formatElapsedMs(ms) {
 }
 
 export function getInitialRouteState() {
-  const pathPage = String(globalThis.location.pathname.split("/").find(Boolean) || "").trim().toLowerCase();
+  const pathSegments = globalThis.location.pathname
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => String(segment || "").trim().toLowerCase());
+
   const params = new URLSearchParams(globalThis.location.search);
+  let inferredArea = "all";
+  let inferredPage = PAGE_DASHBOARD;
+  let inferredTransportSection = "";
+
+  if (pathSegments.length === 1) {
+    inferredPage = PAGE_DASHBOARD;
+  } else if (pathSegments.length >= 2) {
+    const [firstSegment, secondSegment] = pathSegments;
+    if (PAGE_ROUTE_ALIASES[secondSegment]) {
+      inferredArea = firstSegment;
+      inferredPage = PAGE_ROUTE_ALIASES[secondSegment];
+    } else if (firstSegment === PAGE_ROUTE_SLUGS[PAGE_TRANSPORT]) {
+      inferredArea = firstSegment;
+      inferredPage = PAGE_TRANSPORT;
+      inferredTransportSection = secondSegment;
+    } else {
+      inferredPage = PAGE_ROUTE_ALIASES[firstSegment] || PAGE_DASHBOARD;
+    }
+  }
+
   const routePage = String(params.get("page") || "").trim();
+  const routeArea = String(params.get("area") || inferredArea || "all").trim() || "all";
+
   return {
-    page: PAGE_ROUTE_ALIASES[pathPage] || PAGE_ROUTE_ALIASES[routePage] || PAGE_DASHBOARD,
+    page: PAGE_ROUTE_ALIASES[routePage] || inferredPage || PAGE_DASHBOARD,
     adminTab: normalizeAdminTab(params.get("tab") || DEFAULT_ADMIN_TAB),
     selectedBoardId: params.get("board") || "",
     selectedWeekId: params.get("week") || "",
     selectedHistoryWeekId: params.get("history") || "",
-    area: String(params.get("area") || "all").trim() || "all",
+    area: routeArea,
+    transportSection: String(params.get("transportSection") || inferredTransportSection || "").trim(),
   };
 }
 
@@ -1113,18 +1140,36 @@ export function buildLoginDirectoryFromState(state) {
   };
 }
 
-export function buildRouteQuery({ page, adminTab, selectedBoardId, selectedWeekId, selectedHistoryWeekId, area }) {
+export function buildRouteQuery({ page, adminTab, selectedBoardId, selectedWeekId, selectedHistoryWeekId }) {
   const params = new URLSearchParams();
   if (adminTab && adminTab !== DEFAULT_ADMIN_TAB && page === PAGE_ADMIN) params.set("tab", adminTab);
   if (selectedBoardId && page === PAGE_CUSTOM_BOARDS) params.set("board", selectedBoardId);
   if (selectedHistoryWeekId && page === PAGE_HISTORY) params.set("history", selectedHistoryWeekId);
-  if (area && area !== "all") params.set("area", area);
   return params.toString();
 }
 
-export function buildRoutePath(page) {
+export function buildRoutePath(page, area = "all", subPath = "") {
   const pageSlug = PAGE_ROUTE_SLUGS[page] || PAGE_ROUTE_SLUGS[PAGE_DASHBOARD];
-  return `/${pageSlug}`;
+  const normalizedArea = String(area || "").trim().toLowerCase().replaceAll(/\s+/g, "-").replace(/(^-|-$)/g, "");
+  const normalizedSubPath = String(subPath || "").trim().toLowerCase().replaceAll(/\s+/g, "-").replace(/(^-|-$)/g, "");
+
+  if (!normalizedArea || normalizedArea === "all") {
+    if (page === PAGE_TRANSPORT && normalizedSubPath) {
+      return `/${pageSlug}/${normalizedSubPath}`;
+    }
+    if (page !== PAGE_DASHBOARD) {
+      return `/${PAGE_ROUTE_SLUGS[PAGE_DASHBOARD]}`;
+    }
+    return normalizedSubPath ? `/${normalizedSubPath}` : `/${pageSlug}`;
+  }
+
+  if (page === PAGE_TRANSPORT && normalizedSubPath) {
+    return `/${normalizedArea}/${normalizedSubPath}`;
+  }
+
+  return normalizedSubPath
+    ? `/${normalizedArea}/${pageSlug}/${normalizedSubPath}`
+    : `/${normalizedArea}/${pageSlug}`;
 }
 
 export function normalizeAdminTab(value) {

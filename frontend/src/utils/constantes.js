@@ -35,7 +35,7 @@ export const PAGE_NOT_FOUND = "404";
 
 export const PAGE_ROUTE_SLUGS = {
   [PAGE_DASHBOARD]: "dashboard",
-  [PAGE_CUSTOM_BOARDS]: "mis-tableros",
+  [PAGE_CUSTOM_BOARDS]: "tableros",
   [PAGE_BOARD]: "creador-de-tableros",
   [PAGE_ADMIN]: "creador-de-tableros",
   [PAGE_HISTORY]: "historial",
@@ -53,6 +53,7 @@ export const PAGE_ROUTE_ALIASES = {
   dashboard: PAGE_DASHBOARD,
   [PAGE_DASHBOARD]: PAGE_DASHBOARD,
   "mis-tableros": PAGE_CUSTOM_BOARDS,
+  "tableros": PAGE_CUSTOM_BOARDS,
   [PAGE_CUSTOM_BOARDS]: PAGE_CUSTOM_BOARDS,
   "creador-de-tableros": PAGE_BOARD,
   "tableros-creados": PAGE_BOARD,

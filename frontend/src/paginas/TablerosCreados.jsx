@@ -5,6 +5,7 @@ import { CLEANING_CHECKLIST_TEMPLATE_V2, OPERATIONAL_INSPECTION_TEMPLATE, normal
 
 const CHECKLIST_SITE_OPTIONS = ["C1", "C2", "C3", "P"];
 const CHECKLIST_TEMPLATE_STORAGE_KEY = "copmec:operational-checklist-template:v1";
+const CHECKLIST_TEMPLATE_STORAGE_KEY_CLEANING = "copmec:operational-checklist-template:v1:cleaning";
 
 function loadPersistedChecklistTemplate() {
   if (typeof window === "undefined") return normalizeOperationalInspectionTemplate(OPERATIONAL_INSPECTION_TEMPLATE);
@@ -12,7 +13,11 @@ function loadPersistedChecklistTemplate() {
     const raw = window.localStorage.getItem(CHECKLIST_TEMPLATE_STORAGE_KEY);
     if (!raw) return normalizeOperationalInspectionTemplate(OPERATIONAL_INSPECTION_TEMPLATE);
     const parsed = JSON.parse(raw);
-    return normalizeOperationalInspectionTemplate(parsed);
+    const normalized = normalizeOperationalInspectionTemplate(parsed);
+    if (normalized.id === CLEANING_CHECKLIST_TEMPLATE_V2.id) {
+      return normalizeOperationalInspectionTemplate(OPERATIONAL_INSPECTION_TEMPLATE);
+    }
+    return normalized;
   } catch {
     return normalizeOperationalInspectionTemplate(OPERATIONAL_INSPECTION_TEMPLATE);
   }
@@ -28,6 +33,13 @@ function resolveBoardAreaLabel(board, userMap) {
 
 function normalizeBoardAreaToken(value) {
   return String(value || "").trim().toUpperCase();
+}
+
+function resolveChecklistTemplateReferenceKey(template) {
+  const source = template && typeof template === "object" ? template : {};
+  const idKey = String(source.id || "").trim().toLowerCase();
+  const nameKey = String(source.name || "").trim().toLowerCase();
+  return idKey || nameKey;
 }
 
 export default function TablerosCreados({ contexto }) {
@@ -228,11 +240,38 @@ export default function TablerosCreados({ contexto }) {
     [activeCatalogItems, checklistLinkModal.category],
   );
 
+  const checklistTemplateDraftKey = useMemo(
+    () => resolveChecklistTemplateReferenceKey(checklistTemplateDraft),
+    [checklistTemplateDraft],
+  );
+
+  const cleaningChecklistTemplateKey = useMemo(
+    () => resolveChecklistTemplateReferenceKey(CLEANING_CHECKLIST_TEMPLATE_V2),
+    [],
+  );
+
+  const checklistLinkedCatalogActivitiesByTemplate = useMemo(() => {
+    const map = new Map();
+    activeCatalogItems.forEach((item) => {
+      if (!item?.operationalChecklistConfig?.enabled) return;
+      const templateKey = resolveChecklistTemplateReferenceKey(item.operationalChecklistConfig.template);
+      if (!templateKey) return;
+      const next = map.get(templateKey) || [];
+      map.set(templateKey, next.concat(item));
+    });
+    return map;
+  }, [activeCatalogItems]);
+
   const linkedChecklistCatalogActivities = useMemo(
-    () => activeCatalogItems
-      .filter((item) => item?.operationalChecklistConfig?.enabled)
-      .sort((left, right) => String(left?.name || "").localeCompare(String(right?.name || ""), "es-MX")),
-    [activeCatalogItems],
+    () => checklistTemplateDraftKey
+      ? (checklistLinkedCatalogActivitiesByTemplate.get(checklistTemplateDraftKey) || [])
+      : [],
+    [checklistLinkedCatalogActivitiesByTemplate, checklistTemplateDraftKey],
+  );
+
+  const linkedCleaningChecklistCatalogActivities = useMemo(
+    () => checklistLinkedCatalogActivitiesByTemplate.get(cleaningChecklistTemplateKey) || [],
+    [checklistLinkedCatalogActivitiesByTemplate, cleaningChecklistTemplateKey],
   );
 
   function getScopedBoardAssignmentSummary(board) {
@@ -331,10 +370,19 @@ export default function TablerosCreados({ contexto }) {
     if (typeof window === "undefined") return;
     setChecklistTemplateSaving(true);
     try {
-      window.localStorage.setItem(
-        CHECKLIST_TEMPLATE_STORAGE_KEY,
-        JSON.stringify(normalizeOperationalInspectionTemplate(checklistTemplateDraft)),
-      );
+      const normalizedDraft = normalizeOperationalInspectionTemplate(checklistTemplateDraft);
+      if (normalizedDraft.id === OPERATIONAL_INSPECTION_TEMPLATE.id) {
+        window.localStorage.setItem(
+          CHECKLIST_TEMPLATE_STORAGE_KEY,
+          JSON.stringify(normalizedDraft),
+        );
+      }
+      if (normalizedDraft.id === CLEANING_CHECKLIST_TEMPLATE_V2.id) {
+        window.localStorage.setItem(
+          CHECKLIST_TEMPLATE_STORAGE_KEY_CLEANING,
+          JSON.stringify(normalizedDraft),
+        );
+      }
       pushAppToast("Checklist guardado correctamente.", "success");
     } catch {
       pushAppToast("No se pudo guardar el checklist en este dispositivo.", "danger");
@@ -356,6 +404,29 @@ export default function TablerosCreados({ contexto }) {
           : currentSites.concat(normalizedSite),
       };
     });
+  }
+
+  function toggleChecklistCheckSite(sectionId, checkId, siteOption) {
+    const normalizedSite = String(siteOption || "").trim().toUpperCase();
+    if (!normalizedSite) return;
+    updateChecklistTemplateDraft((current) => ({
+      ...current,
+      sections: current.sections.map((section) => {
+        if (section.id !== sectionId) return section;
+        return {
+          ...section,
+          checks: section.checks.map((check) => {
+            if (check.id !== checkId) return check;
+            const currentSites = Array.isArray(check.siteOptions) ? check.siteOptions : [];
+            const hasSite = currentSites.includes(normalizedSite);
+            return {
+              ...check,
+              siteOptions: hasSite ? currentSites.filter((s) => s !== normalizedSite) : currentSites.concat(normalizedSite),
+            };
+          }),
+        };
+      }),
+    }));
   }
 
   function openChecklistCreator() {
@@ -881,12 +952,12 @@ export default function TablerosCreados({ contexto }) {
             <article className="created-board-card surface-card" style={{ border: "1px solid rgba(49, 77, 105, 0.14)", background: "linear-gradient(180deg, rgba(248, 250, 252, 0.8) 0%, rgba(255, 255, 255, 1) 100%)", maxWidth: "560px" }}>
               <div className="created-board-card-top">
                 <div className="created-board-card-head">
-                  <strong>{OPERATIONAL_INSPECTION_TEMPLATE.name}</strong>
-                  <p>Checklist original de inspección operativa disponible sin afectar el checklist de limpieza.</p>
+                  <strong>{CLEANING_CHECKLIST_TEMPLATE_V2.name}</strong>
+                  <p>Checklist original de limpieza disponible sin afectar el checklist operativo.</p>
                 </div>
                 <div className="saved-board-list created-board-card-stats">
-                  <span className="chip primary">Secciones: {OPERATIONAL_INSPECTION_TEMPLATE.sections.length}</span>
-                  <span className="chip">Checks: {OPERATIONAL_INSPECTION_TEMPLATE.sections.reduce((total, section) => total + (Array.isArray(section.checks) ? section.checks.length : 0), 0)}</span>
+                  <span className="chip primary">Secciones: {CLEANING_CHECKLIST_TEMPLATE_V2.sections.length}</span>
+                  <span className="chip">Checks: {CLEANING_CHECKLIST_TEMPLATE_V2.sections.reduce((total, section) => total + (Array.isArray(section.checks) ? section.checks.length : 0), 0)}</span>
                 </div>
               </div>
 
@@ -906,11 +977,42 @@ export default function TablerosCreados({ contexto }) {
                     </div>
                   </article>
                 ))}
+
+                <div className="saved-board-list" style={{ marginTop: "0.25rem", gap: "0.35rem", alignItems: "center" }}>
+                  <span className="chip primary">Actividades vinculadas: {linkedCleaningChecklistCatalogActivities.length}</span>
+                  {linkedCleaningChecklistCatalogActivities.length
+                    ? linkedCleaningChecklistCatalogActivities.map((item) => (
+                        <div key={item.id} style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                          <span className="chip">{item.category || "General"} · {item.name}</span>
+                          <button
+                            type="button"
+                            className="icon-button danger"
+                            onClick={() => void unlinkChecklistActivityFromCatalogItem(item.id)}
+                            disabled={Boolean(unlinkingChecklistItems[item.id])}
+                            title="Eliminar vínculo"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))
+                    : <span className="subtle-line">Aun no hay actividades vinculadas.</span>}
+                </div>
               </div>
 
               <div className="toolbar-actions">
                 <button type="button" className="primary-button created-board-open-action" onClick={() => openChecklistEditor("cleaning") }>
                   <Pencil size={16} /> Abrir checklist de limpieza
+                </button>
+                <button
+                  type="button"
+                  className="primary-button created-board-open-action"
+                  onClick={() => {
+                    setChecklistTemplateDraft(normalizeOperationalInspectionTemplate(CLEANING_CHECKLIST_TEMPLATE_V2));
+                    openChecklistLinkModal();
+                  }}
+                  disabled={!actionPermissions.editCatalog || !activeCatalogItems.length}
+                >
+                  <Plus size={16} /> Vincular a actividad
                 </button>
               </div>
             </article>
@@ -1048,10 +1150,26 @@ export default function TablerosCreados({ contexto }) {
 
                 <div style={{ display: "grid", gap: "0.45rem" }}>
                   {section.checks.map((check) => (
-                    <div key={check.id} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: "0.45rem", alignItems: "end" }}>
+                    <div key={check.id} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: "0.45rem", alignItems: "start" }}>
                       <label className="app-modal-field" style={{ margin: 0 }}>
                         <span>Check</span>
                         <input value={check.label} onChange={(event) => updateChecklistCheck(section.id, check.id, { label: event.target.value })} />
+                        <div style={{ marginTop: "0.45rem", display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
+                          {CHECKLIST_SITE_OPTIONS.map((siteOption) => {
+                            const active = Array.isArray(check.siteOptions) ? check.siteOptions.includes(siteOption) : false;
+                            return (
+                              <button
+                                key={siteOption}
+                                type="button"
+                                className={active ? "tab active" : "tab"}
+                                onClick={() => toggleChecklistCheckSite(section.id, check.id, siteOption)}
+                                style={{ fontSize: "0.8rem", padding: "0.25rem 0.45rem" }}
+                              >
+                                {siteOption}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </label>
                       <button type="button" className="icon-button danger" onClick={() => removeChecklistCheck(section.id, check.id)} disabled={section.checks.length <= 1}>
                         <Trash2 size={15} />

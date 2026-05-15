@@ -1017,7 +1017,8 @@ function App() { // NOSONAR
   const [state, setState] = useState(loadState);
   const [page, setPage] = useState(() => {
     const urlPage = INITIAL_ROUTE_STATE.page;
-    if (urlPage && urlPage !== PAGE_DASHBOARD) return urlPage;
+    const urlArea = String(INITIAL_ROUTE_STATE.area || "all").trim().toLowerCase();
+    if (urlPage && urlPage !== PAGE_DASHBOARD && urlArea !== "all") return urlPage;
     try {
       const saved = localStorage.getItem(ACTIVE_PAGE_KEY);
       return saved && PAGE_ROUTE_ALIASES[saved] ? PAGE_ROUTE_ALIASES[saved] : urlPage;
@@ -1026,7 +1027,7 @@ function App() { // NOSONAR
     }
   });
   const [selectedAreaSectionId, setSelectedAreaSectionId] = useState(() => String(INITIAL_ROUTE_STATE.area || "all").trim() || "all");
-  const [navTransportSection, setNavTransportSection] = useState("registros-envios");
+  const [navTransportSection, setNavTransportSection] = useState(() => String(INITIAL_ROUTE_STATE.transportSection || "registros-envios").trim() || "registros-envios");
   const [navTransportTab, setNavTransportTab] = useState("");
   const [auditShortcutPreset, setAuditShortcutPreset] = useState(null);
   const [dashboardSectionsOpen, setDashboardSectionsOpen] = useState(() => {
@@ -1702,10 +1703,11 @@ function App() { // NOSONAR
           selectedBoardId: selectedCustomBoardId,
           selectedWeekId,
           selectedHistoryWeekId,
-          area: selectedAreaSectionId,
         })
       : "";
-    const nextPath = shouldPersistRoute ? buildRoutePath(page) : "/";
+    const nextPath = shouldPersistRoute
+      ? buildRoutePath(page, selectedAreaSectionId, page === PAGE_TRANSPORT ? navTransportSection : "")
+      : "/";
     const queryPrefix = nextQuery ? `?${nextQuery}` : "";
     const nextUrl = `${nextPath}${queryPrefix}${globalThis.location.hash || ""}`;
 
@@ -1719,7 +1721,7 @@ function App() { // NOSONAR
 
     globalThis.history.pushState(null, "", nextUrl);
     routeLastUrlRef.current = nextUrl;
-  }, [adminTab, page, selectedAreaSectionId, selectedCustomBoardId, selectedHistoryWeekId, selectedWeekId, sessionUserId]);
+  }, [adminTab, page, selectedAreaSectionId, selectedCustomBoardId, selectedHistoryWeekId, selectedWeekId, navTransportSection, sessionUserId]);
 
   useEffect(() => {
     function handlePopState() {
@@ -1730,6 +1732,7 @@ function App() { // NOSONAR
       setSelectedCustomBoardId(routeState.selectedBoardId || "");
       setSelectedHistoryWeekId(routeState.selectedHistoryWeekId || "");
       setSelectedAreaSectionId(routeState.area || "all");
+      setNavTransportSection(routeState.transportSection || "registros-envios");
     }
 
     globalThis.addEventListener("popstate", handlePopState);
